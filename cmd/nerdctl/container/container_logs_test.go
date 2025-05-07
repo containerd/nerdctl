@@ -19,8 +19,7 @@ package container
 import (
 	"errors"
 	"fmt"
-	"io"
-	"os/exec"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -28,7 +27,6 @@ import (
 	"time"
 
 	"gotest.tools/v3/assert"
-	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
@@ -39,41 +37,86 @@ import (
 )
 
 func TestLogs(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
 	const expected = `foo
-bar`
+bar
+`
 
-	defer base.Cmd("rm", containerName).Run()
-	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
-		"sh", "-euxc", "echo foo; echo bar").AssertOK()
+	testCase := nerdtest.Setup()
 
-	//test since / until flag
-	time.Sleep(3 * time.Second)
-	base.Cmd("logs", "--since", "1s", containerName).AssertOutNotContains(expected)
-	base.Cmd("logs", "--since", "10s", containerName).AssertOutContains(expected)
-	base.Cmd("logs", "--until", "10s", containerName).AssertOutNotContains(expected)
-	base.Cmd("logs", "--until", "1s", containerName).AssertOutContains(expected)
+	if runtime.GOOS == "windows" {
+		testCase.Require = nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/4237")
+	}
 
-	// Ensure follow flag works as expected:
-	base.Cmd("logs", "-f", containerName).AssertOutContains("bar")
-	base.Cmd("logs", "-f", containerName).AssertOutContains("foo")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
 
-	//test timestamps flag
-	base.Cmd("logs", "-t", containerName).AssertOutContains(time.Now().UTC().Format("2006-01-02"))
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "--quiet", "--name", data.Identifier(), testutil.CommonImage, "sh", "-euxc", "echo foo; echo bar;")
+		data.Labels().Set("cID", data.Identifier())
+	}
 
-	//test tail flag
-	base.Cmd("logs", "-n", "all", containerName).AssertOutContains(expected)
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "since 1s",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", "--since", "1s", data.Labels().Get("cID"))
+			},
+			Expected: test.Expects(0, nil, expect.DoesNotContain(expected)),
+		},
+		{
+			Description: "since 60s",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", "--since", "60s", data.Labels().Get("cID"))
+			},
+			Expected: test.Expects(0, nil, expect.Equals(expected)),
+		},
+		{
+			Description: "until 60s",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", "--until", "60s", data.Labels().Get("cID"))
+			},
+			Expected: test.Expects(0, nil, expect.DoesNotContain(expected)),
+		},
+		{
+			Description: "until 1s",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", "--until", "1s", data.Labels().Get("cID"))
+			},
+			Expected: test.Expects(0, nil, expect.Equals(expected)),
+		},
+		{
+			Description: "follow",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", "-f", data.Labels().Get("cID"))
+			},
+			Expected: test.Expects(0, nil, expect.Equals(expected)),
+		},
+		{
+			Description: "timestamp",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", "-t", data.Labels().Get("cID"))
+			},
+			Expected: test.Expects(0, nil, expect.Contains(time.Now().UTC().Format("2006-01-02"))),
+		},
+		{
+			Description: "tail flag",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", "-n", "all", data.Labels().Get("cID"))
+			},
+			Expected: test.Expects(0, nil, expect.Equals(expected)),
+		},
+		{
+			Description: "tail flag",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", "-n", "1", data.Labels().Get("cID"))
+			},
+			// FIXME: why?
+			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("^(?:bar\n|)$"))),
+		},
+	}
 
-	base.Cmd("logs", "-n", "1", containerName).AssertOutWithFunc(func(stdout string) error {
-		if !(stdout == "bar\n" || stdout == "") {
-			return fmt.Errorf("expected %q or %q, got %q", "bar", "", stdout)
-		}
-		return nil
-	})
-
-	base.Cmd("rm", "-f", containerName).AssertOK()
+	testCase.Run(t)
 }
 
 // Tests whether `nerdctl logs` properly separates stdout/stderr output
@@ -81,8 +124,13 @@ bar`
 func TestLogsOutStreamsSeparated(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	if runtime.GOOS == "windows" {
+		// Logging seems broken on windows.
+		testCase.Require = nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/4237")
+	}
+
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage,
+		helpers.Ensure("run", "--name", data.Identifier(), testutil.CommonImage,
 			"sh", "-euc", "echo stdout1; echo stderr1 >&2; echo stdout2; echo stderr2 >&2")
 	}
 
@@ -91,8 +139,6 @@ func TestLogsOutStreamsSeparated(t *testing.T) {
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		// Arbitrary, but we need to wait until the logs show up
-		time.Sleep(3 * time.Second)
 		return helpers.Command("logs", data.Identifier())
 	}
 
@@ -105,116 +151,165 @@ func TestLogsOutStreamsSeparated(t *testing.T) {
 }
 
 func TestLogsWithInheritedFlags(t *testing.T) {
-	// Seen flaky with Docker
-	t.Parallel()
-	base := testutil.NewBase(t)
-	for k, v := range base.Args {
-		if strings.HasPrefix(v, "--namespace=") {
-			base.Args[k] = "-n=" + testutil.Namespace
-		}
+	testCase := nerdtest.Setup()
+
+	testCase.Require = require.Not(nerdtest.Docker)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("-n="+testutil.Namespace, "run", "--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-euxc", "echo foo; echo bar")
 	}
-	containerName := testutil.Identifier(t)
 
-	defer base.Cmd("rm", containerName).Run()
-	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
-		"sh", "-euxc", "echo foo; echo bar").AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
 
-	// It appears this test flakes out with Docker seeing only "foo\n"
-	// Tentatively adding a pause in case this is just slow
-	time.Sleep(time.Second)
-	// test rootCmd alias `-n` already used in logs subcommand
-	base.Cmd("logs", "-n", "1", containerName).AssertOutWithFunc(func(stdout string) error {
-		if !(stdout == "bar\n" || stdout == "") {
-			return fmt.Errorf("expected %q or %q, got %q", "bar", "", stdout)
-		}
-		return nil
-	})
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("-n="+testutil.Namespace, "logs", "-n", "1", data.Identifier())
+	}
+
+	// FIXME: why?
+	testCase.Expected = test.Expects(0, nil, expect.Match(regexp.MustCompile("^(?:bar\n|)$")))
+
+	testCase.Run(t)
 }
 
 func TestLogsOfJournaldDriver(t *testing.T) {
-	testutil.RequireExecutable(t, "journalctl")
-	journalctl, _ := exec.LookPath("journalctl")
-	res := icmd.RunCmd(icmd.Command(journalctl, "-xe"))
-	if res.ExitCode != 0 {
-		t.Skipf("current user is not allowed to access journal logs: %s", res.Combined())
+	const expected = `foo
+bar
+`
+
+	testCase := nerdtest.Setup()
+
+	testCase.Require = require.All(
+		require.Binary("journalctl"),
+		&test.Requirement{
+			Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+				works := false
+				cmd := helpers.Custom("journalctl", "-xe")
+				cmd.Run(&test.Expected{
+					ExitCode: expect.ExitCodeNoCheck,
+					Output: func(stdout, info string, t *testing.T) {
+						if stdout != "" {
+							works = true
+						}
+					},
+				})
+				return works, "Journactl to return data for the current user"
+			},
+		},
+	)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
 
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "--network", "none", "--log-driver", "journald", "--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-euxc", "echo foo; echo bar")
+		data.Labels().Set("cID", data.Identifier())
+	}
 
-	defer base.Cmd("rm", containerName).Run()
-	base.Cmd("run", "-d", "--network", "none", "--log-driver", "journald", "--name", containerName, testutil.CommonImage,
-		"sh", "-euxc", "echo foo; echo bar").AssertOK()
-
-	time.Sleep(3 * time.Second)
-	base.Cmd("logs", containerName).AssertOutContains("bar")
-	// Run logs twice, make sure that the logs are not removed
-	base.Cmd("logs", containerName).AssertOutContains("foo")
-
-	base.Cmd("logs", "--since", "5s", containerName).AssertOutWithFunc(func(stdout string) error {
-		if !strings.Contains(stdout, "bar") {
-			return fmt.Errorf("expected bar, got %s", stdout)
-		}
-		if !strings.Contains(stdout, "foo") {
-			return fmt.Errorf("expected foo, got %s", stdout)
-		}
-		return nil
-	})
-
-	base.Cmd("rm", "-f", containerName).AssertOK()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "logs",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", data.Labels().Get("cID"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals(expected)),
+		},
+		{
+			Description: "logs --since 60s",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", "--since", "60s", data.Labels().Get("cID"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.DoesNotContain("foo", "bar")),
+		},
+	}
 }
 
 func TestLogsWithFailingContainer(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-	defer base.Cmd("rm", containerName).Run()
-	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
-		"sh", "-euxc", "echo foo; echo bar; exit 42; echo baz").AssertOK()
-	time.Sleep(3 * time.Second)
-	// AssertOutContains also asserts that the exit code of the logs command == 0,
-	// even when the container is failing
-	base.Cmd("logs", "-f", containerName).AssertOutContains("bar")
-	base.Cmd("logs", "-f", containerName).AssertOutNotContains("baz")
-	base.Cmd("rm", "-f", containerName).AssertOK()
+	const expected = `foo
+bar
+`
+
+	testCase := nerdtest.Setup()
+
+	if runtime.GOOS == "windows" {
+		// Logging seems broken on windows.
+		testCase.Require = nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/4237")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("run", "--name", data.Identifier(), testutil.CommonImage, "sh", "-euxc", "echo foo; echo bar; exit 42; echo baz")
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("logs", data.Identifier())
+	}
+
+	testCase.Expected = test.Expects(0, nil, expect.Equals(expected))
+
+	testCase.Run(t)
 }
 
 func TestLogsWithRunningContainer(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", containerName).Run()
 	expected := make([]string, 10)
 	for i := 0; i < 10; i++ {
 		expected[i] = fmt.Sprint(i + 1)
 	}
 
-	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
-		"sh", "-euc", "for i in `seq 1 10`; do echo $i; sleep 1; done").AssertOK()
-	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
+	testCase := nerdtest.Setup()
+
+	if runtime.GOOS == "windows" {
+		// Logging seems broken on windows.
+		testCase.Require = nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/4237")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "--name", data.Identifier(), testutil.CommonImage, "sh", "-euc", "for i in `seq 1 10`; do echo $i; sleep 1; done")
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("logs", data.Identifier())
+	}
+
+	testCase.Expected = test.Expects(0, nil, expect.Contains(expected[0], expected[1:]...))
+
+	testCase.Run(t)
 }
 
 func TestLogsWithoutNewlineOrEOF(t *testing.T) {
 	testCase := nerdtest.Setup()
+
 	// FIXME: test does not work on Windows yet because containerd doesn't send an exit event appropriately after task exit on Windows")
 	// FIXME: nerdctl behavior does not match docker - test disabled for nerdctl until we fix
 	testCase.Require = require.All(
 		require.Linux,
-		nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/4201"),
 	)
+
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "printf", "'Hello World!\nThere is no newline'")
+		helpers.Ensure("run", "--name", data.Identifier(), testutil.CommonImage, "printf", "'Hello World!\nThere is no newline'")
 	}
+
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
+
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		// FIXME: arbitrary timeouts are by nature a problem.
-		time.Sleep(5 * time.Second)
 		return helpers.Command("logs", "-f", data.Identifier())
 	}
+
 	testCase.Expected = test.Expects(0, nil, expect.Equals("'Hello World!\nThere is no newline'"))
+
 	testCase.Run(t)
 }
 
@@ -222,19 +317,44 @@ func TestLogsAfterRestartingContainer(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("FIXME: test does not work on Windows yet. Restarting a container fails with: failed to create shim task: hcs::CreateComputeSystem <id>: The requested operation for attach namespace failed.: unknown")
 	}
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", containerName).Run()
-	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage,
-		"printf", "'Hello World!\nThere is no newline'").AssertOK()
-	expected := []string{"Hello World!", "There is no newline"}
-	time.Sleep(3 * time.Second)
-	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
-	// restart and check logs again
-	base.Cmd("start", containerName)
-	time.Sleep(3 * time.Second)
-	base.Cmd("logs", "-f", containerName).AssertOutContainsAll(expected...)
+
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "--name", data.Identifier(), testutil.CommonImage,
+			"printf", "'Hello World!\nThere is no newline'")
+		data.Labels().Set("cID", data.Identifier())
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "logs -f works",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", "-f", data.Labels().Get("cID"))
+			},
+			Expected: test.Expects(0, nil, expect.Equals("'Hello World!\nThere is no newline'")),
+		},
+		{
+			Description: "logs -f works after restart",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("start", data.Labels().Get("cID"))
+				// FIXME: this is inherently flaky
+				time.Sleep(5 * time.Second)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("logs", "-f", data.Labels().Get("cID"))
+			},
+			Expected: test.Expects(0, nil, expect.Equals("'Hello World!\nThere is no newline''Hello World!\nThere is no newline'")),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestLogsWithForegroundContainers(t *testing.T) {
@@ -256,10 +376,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo", "bar"),
-				expect.DoesNotContain("baz"),
-			)),
+			Expected: test.Expects(0, nil, expect.Equals("foo\nbar\n")),
 		},
 		{
 			Description: "interactive",
@@ -272,10 +389,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo", "bar"),
-				expect.DoesNotContain("baz"),
-			)),
+			Expected: test.Expects(0, nil, expect.Equals("foo\nbar\n")),
 		},
 		{
 			Description: "PTY",
@@ -290,10 +404,7 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo", "bar"),
-				expect.DoesNotContain("baz"),
-			)),
+			Expected: test.Expects(0, nil, expect.Equals("foo\nbar\n")),
 		},
 		{
 			Description: "interactivePTY",
@@ -308,69 +419,88 @@ func TestLogsWithForegroundContainers(t *testing.T) {
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", data.Identifier())
 			},
-			Expected: test.Expects(0, nil, expect.All(
-				expect.Contains("foo", "bar"),
-				expect.DoesNotContain("baz"),
-			)),
+			Expected: test.Expects(0, nil, expect.Equals("foo\nbar\n")),
 		},
 	}
 }
 
-func TestTailFollowRotateLogs(t *testing.T) {
-	// FIXME this is flaky by nature... 2 lines is arbitrary, 10000 ms is arbitrary, and both are some sort of educated
-	// guess that things will mostly always kinda work maybe...
-	// Furthermore, parallelizing will put pressure on the daemon which might be even slower in answering, increasing
-	// the risk of transient failure.
-	// This test needs to be rethought entirely
-	// t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Skip("tail log is not supported on Windows")
-	}
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-
+func TestLogsTailFollowRotate(t *testing.T) {
+	// FIXME this is flaky by nature... the number of lines is arbitrary, the wait is arbitrary,
+	// and both are some sort of educated guess that things will mostly always kinda work maybe...
 	const sampleJSONLog = `{"log":"A\n","stream":"stdout","time":"2024-04-11T12:01:09.800288974Z"}`
 	const linesPerFile = 200
 
-	defer base.Cmd("rm", "-f", containerName).Run()
-	base.Cmd("run", "-d", "--log-driver", "json-file",
-		"--log-opt", fmt.Sprintf("max-size=%d", len(sampleJSONLog)*linesPerFile),
-		"--log-opt", "max-file=10",
-		"--name", containerName, testutil.CommonImage,
-		"sh", "-euc", "while true; do echo A; usleep 100; done").AssertOK()
+	testCase := nerdtest.Setup()
 
-	tailLogCmd := base.Cmd("logs", "-f", containerName)
-	tailLogCmd.Timeout = 1000 * time.Millisecond
-	logRun := tailLogCmd.Run()
-	tailLogs := strings.Split(strings.TrimSpace(logRun.Stdout()), "\n")
-	for _, line := range tailLogs {
-		if line != "" {
-			assert.Equal(t, "A", line)
-		}
+	// tail log is not supported on Windows
+	testCase.Require = require.Not(require.Windows)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--log-driver", "json-file",
+			"--log-opt", fmt.Sprintf("max-size=%d", len(sampleJSONLog)*linesPerFile),
+			"--log-opt", "max-file=10",
+			"--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-euc", "while true; do echo A; usleep 100; done")
+		// FIXME: ... inherently racy...
+		time.Sleep(5 * time.Second)
 	}
-	assert.Equal(t, true, len(tailLogs) > linesPerFile, logRun.Stderr())
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command("logs", "-f", data.Identifier())
+		// FIXME: this is flaky by nature. We assume that the container has started and will output enough in 5 seconds.
+		cmd.WithTimeout(5 * time.Second)
+		return cmd
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeTimeout, nil, func(stdout, info string, t *testing.T) {
+		tailLogs := strings.Split(strings.TrimSpace(stdout), "\n")
+		for _, line := range tailLogs {
+			if line != "" {
+				assert.Equal(t, "A", line)
+			}
+		}
+
+		assert.Assert(t, len(tailLogs) > linesPerFile, fmt.Sprintf("expected %d lines or more, found %d", linesPerFile, len(tailLogs)))
+	})
+
+	testCase.Run(t)
 }
-func TestNoneLoggerHasNoLogURI(t *testing.T) {
+
+func TestLogsNoneLoggerHasNoLogURI(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("run", "--name", data.Identifier(), "--log-driver", "none", testutil.CommonImage, "sh", "-euxc", "echo foo")
 	}
+
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
+
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		return helpers.Command("logs", data.Identifier())
 	}
+
 	testCase.Expected = test.Expects(1, nil, nil)
+
 	testCase.Run(t)
 }
 
 func TestLogsWithDetails(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	// FIXME: this is not working on windows. There is some deep issue with windows logs:
+	// https://github.com/containerd/nerdctl/issues/4237
+	if runtime.GOOS == "windows" {
+		testCase.Require = nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/4237")
+	}
+
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "-d", "--log-driver", "json-file",
+		helpers.Ensure("run", "--log-driver", "json-file",
 			"--log-opt", "max-size=10m",
 			"--log-opt", "max-file=3",
 			"--log-opt", "env=ENV",
@@ -401,7 +531,7 @@ func TestLogsFollowNoExtraneousLineFeed(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		// Create a container that outputs a message without a trailing newline
-		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage,
+		helpers.Ensure("run", "--name", data.Identifier(), testutil.CommonImage,
 			"sh", "-c", "printf 'Hello without newline'")
 	}
 
@@ -411,8 +541,6 @@ func TestLogsFollowNoExtraneousLineFeed(t *testing.T) {
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		// Use logs -f to follow the logs
-		// Arbitrary, but we need to wait until the logs show up
-		time.Sleep(3 * time.Second)
 		return helpers.Command("logs", "-f", data.Identifier())
 	}
 
@@ -425,7 +553,7 @@ func TestLogsFollowNoExtraneousLineFeed(t *testing.T) {
 func TestLogsWithStartContainer(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	// For windows we  havent added support for dual logging so not adding the test.
+	// Windows does not support dual logging.
 	testCase.Require = require.Not(require.Windows)
 
 	testCase.SubTests = []*test.Case{
@@ -434,34 +562,28 @@ func TestLogsWithStartContainer(t *testing.T) {
 			Setup: func(data test.Data, helpers test.Helpers) {
 				cmd := helpers.Command("run", "-it", "--name", data.Identifier(), testutil.CommonImage)
 				cmd.WithPseudoTTY()
-				cmd.WithFeeder(func() io.Reader {
-					return strings.NewReader("echo foo\nexit\n")
-				})
-
+				cmd.Feed(strings.NewReader("echo foo\nexit\n"))
 				cmd.Run(&test.Expected{
 					ExitCode: 0,
 				})
 
+				cmd = helpers.Command("start", "-ia", data.Identifier())
+				cmd.WithPseudoTTY()
+				cmd.Feed(strings.NewReader("echo bar\nexit\n"))
+				cmd.Run(&test.Expected{
+					ExitCode: 0,
+				})
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				cmd := helpers.Command("start", "-ia", data.Identifier())
-				cmd.WithPseudoTTY()
-				cmd.WithFeeder(func() io.Reader {
-					return strings.NewReader("echo bar\nexit\n")
-				})
-				cmd.Run(&test.Expected{
-					ExitCode: 0,
-				})
-				cmd = helpers.Command("logs", data.Identifier())
-
-				return cmd
+				return helpers.Command("logs", data.Identifier())
 			},
 			Expected: test.Expects(0, nil, expect.Contains("foo", "bar")),
 		},
 		{
+			// FIXME: is this test safe or could it be racy?
 			Description: "Test logs are captured after stopping and starting a non-interactive container and continue capturing new logs",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sh", "-c", "while true; do echo foo; sleep 1; done")
