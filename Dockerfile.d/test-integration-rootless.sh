@@ -26,7 +26,7 @@ if [[ "$(id -u)" = "0" ]]; then
 	fi
 
 	: "${WORKAROUND_ISSUE_622:=}"
-	if [[ "$WORKAROUND_ISSUE_622" = "1" ]]; then
+	if [[ "$WORKAROUND_ISSUE_622" != "" ]]; then
 		touch /workaround-issue-622
 	fi
 
