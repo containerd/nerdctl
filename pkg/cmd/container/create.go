@@ -568,6 +568,8 @@ func withNerdctlOCIHook(cmd string, args []string) (oci.SpecOpts, error) {
 	}
 
 	args = append([]string{cmd}, append(args, "internal", "oci-hook")...)
+	// sbin is appended for iptables https://github.com/containerd/nerdctl/discussions/1536
+	env := append(os.Environ(), "PATH="+os.Getenv("PATH")+":/usr/sbin:/sbin")
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
 		if s.Hooks == nil {
 			s.Hooks = &specs.Hooks{}
@@ -576,14 +578,14 @@ func withNerdctlOCIHook(cmd string, args []string) (oci.SpecOpts, error) {
 		s.Hooks.CreateRuntime = append(s.Hooks.CreateRuntime, specs.Hook{
 			Path: cmd,
 			Args: crArgs,
-			Env:  os.Environ(),
+			Env:  env,
 		})
 		argsCopy := append([]string(nil), args...)
 		psArgs := append(argsCopy, "postStop")
 		s.Hooks.Poststop = append(s.Hooks.Poststop, specs.Hook{
 			Path: cmd,
 			Args: psArgs,
-			Env:  os.Environ(),
+			Env:  env,
 		})
 		return nil
 	}, nil
