@@ -66,15 +66,24 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 	var ioCreator cio.Creator
 	if len(attachStreamOpt) != 0 {
 		log.G(ctx).Debug("attaching output instead of using the log-uri")
+		// when attaching a TTY we use writee for stdio and binary for log persistence
 		if flagT {
-			in, err := consoleutil.NewDetachableStdin(con, detachKeys, closer)
-			if err != nil {
-				return nil, err
+			var in io.Reader
+			if flagI {
+				// FIXME: check IsTerminal on Windows too
+				if runtime.GOOS != "windows" && !term.IsTerminal(0) {
+					return nil, errors.New("the input device is not a TTY")
+				}
+				var err error
+				in, err = consoleutil.NewDetachableStdin(con, detachKeys, closer)
+				if err != nil {
+					return nil, err
+				}
 			}
-			ioCreator = cio.NewCreator(cio.WithStreams(in, con, nil), cio.WithTerminal)
+			ioCreator = cioutil.NewContainerIO(namespace, logURI, true, in, con, nil)
 		} else {
 			streams := processAttachStreamsOpt(attachStreamOpt)
-			ioCreator = cio.NewCreator(cio.WithStreams(streams.stdIn, streams.stdOut, streams.stdErr))
+			ioCreator = cioutil.NewContainerIO(namespace, logURI, false, streams.stdIn, streams.stdOut, streams.stdErr)
 		}
 
 	} else if flagT && flagD {

@@ -16,7 +16,9 @@
 
 package errutil
 
-import "os"
+import (
+	"os"
+)
 
 type ExitCoder interface {
 	error
@@ -46,7 +48,6 @@ func HandleExitCoder(err error) {
 	if err == nil {
 		return
 	}
-
 	if exitErr, ok := err.(ExitCoder); ok {
 		os.Exit(exitErr.ExitCode())
 	}

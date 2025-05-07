@@ -52,13 +52,7 @@ func TestStartDetachKeys(t *testing.T) {
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		flags := "-a"
-		// Started container must be interactive - which is apparently the default for nerdctl, which does not support
-		// the -i flag, while docker requires it explicitly
-		if nerdtest.IsDocker() {
-			flags += "i"
-		}
-		cmd := helpers.Command("start", flags, "--detach-keys=ctrl-a,ctrl-b", data.Identifier())
+		cmd := helpers.Command("start", "-ai", "--detach-keys=ctrl-a,ctrl-b", data.Identifier())
 		cmd.WithPseudoTTY()
 		cmd.WithFeeder(func() io.Reader {
 			// ctrl+a and ctrl+b (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
