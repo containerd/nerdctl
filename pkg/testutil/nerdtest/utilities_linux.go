@@ -68,7 +68,7 @@ func RunSigProxyContainer(signal os.Signal, exitOnSignal bool, args []string, da
 		if strings.Contains(out, ready) {
 			break
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 	}
 
 	return cmd
