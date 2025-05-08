@@ -528,6 +528,8 @@ RUN echo '\
 
 
 RUN go mod init
+# Workaround for "package slices is not in GOROOT" https://github.com/containerd/nerdctl/issues/4214
+RUN go get github.com/containerd/containerd/v2@v2.0.5
 RUN go mod tidy
 RUN go build .
 
