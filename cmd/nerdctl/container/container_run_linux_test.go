@@ -423,6 +423,10 @@ func TestRunSigProxy(t *testing.T) {
 		{
 			Description: "SigProxyFalse",
 
+			// Docker behavior changed sometimes with Docker 27
+			// See https://github.com/containerd/nerdctl/issues/4219 for details
+			Require: require.Not(nerdtest.Docker),
+
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
 			},
