@@ -274,8 +274,8 @@ github.com/rogpeppe/go-internal v1.13.1 h1:KvO1DLK/DRN07sQ1LQKScxyZJuNnedQ5/wKSR
 github.com/rogpeppe/go-internal v1.13.1/go.mod h1:uMEvuHeurkdAXX61udpOXGD/AzZDWNMNyH2VO9fmH0o=
 github.com/rootless-containers/bypass4netns v0.4.2 h1:JUZcpX7VLRfDkLxBPC6fyNalJGv9MjnjECOilZIvKRc=
 github.com/rootless-containers/bypass4netns v0.4.2/go.mod h1:iOY28IeFVqFHnK0qkBCQ3eKzKQgSW5DtlXFQJyJMAQk=
-github.com/rootless-containers/rootlesskit/v2 v2.3.4 h1:EHiqqiq+ntTfdnQtIgDR3etiuqKkRCPr1qpoizJxW/E=
-github.com/rootless-containers/rootlesskit/v2 v2.3.4/go.mod h1:AJNM4jS0jFIF8GvBfnm4I0498zosnHGCIMRhUoEUmFg=
+github.com/rootless-containers/rootlesskit/v2 v2.3.5 h1:WGY05oHE7xQpSkCGfYP9lMY5z19tCxA8PhWlvP1cKx8=
+github.com/rootless-containers/rootlesskit/v2 v2.3.5/go.mod h1:83EIYLeMX8UeNgLHkR1PefoSV76aKEC+OyI3vzrEfvw=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sasha-s/go-deadlock v0.3.5 h1:tNCOEEDG6tBqrNDOX35j/7hL5FcFViG6awUGROb2NsU=
 github.com/sasha-s/go-deadlock v0.3.5/go.mod h1:bugP6EGbdGYObIlx7pUZtWqlvo8k9H6vCBBsiChJQ5U=
