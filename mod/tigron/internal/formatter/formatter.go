@@ -39,6 +39,7 @@ func Table(data [][]any, mark string) string {
 	for _, row := range data {
 		key := fmt.Sprintf("%v", row[0])
 		value := strings.ReplaceAll(fmt.Sprintf("%v", row[1]), "\t", "  ")
+		value = strings.ReplaceAll(value, "\r", "")
 
 		output += fmt.Sprintf("+%s+\n", strings.Repeat(mark, maxLineLength-2))
 
