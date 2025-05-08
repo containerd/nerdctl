@@ -140,9 +140,9 @@ jobs:
       canary: ${{ matrix.canary && true || false }}
       go-version: 1.24
       windows-cni-version: v0.3.1
-      containerd-version: 2.0.5
+      containerd-version: 2.1.0
       # Note: these as for amd64
-      containerd-sha: 88ab31f3e78e4d2fa12dcb933032122d11d441c83b79a89c6c8076f871e50df8
-      containerd-service-sha: 12a76c13cad132222d2b3d2025e56212d205d37eca77508dbbfcdf6ababbf70a
+      containerd-sha: 0e5359e957b66b679be807563a543c7416e305e3aafcf56bad90ef87a917014d
+      containerd-service-sha: 1941362cbaa89dd591b99c32b050d82c583d3cd2e5fa63085d7017457ec5fca8
       linux-cni-version: v1.7.1
       linux-cni-sha: 1a28a0506bfe5bcdc981caf1a49eeab7e72da8321f1119b7be85f22621013098
