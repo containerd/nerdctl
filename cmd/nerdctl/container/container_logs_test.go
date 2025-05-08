@@ -419,6 +419,7 @@ func TestLogsWithStartContainer(t *testing.T) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				//
 				cmd := helpers.Command("start", "-ia", data.Identifier())
 				cmd.WithPseudoTTY()
 				cmd.WithFeeder(func() io.Reader {
