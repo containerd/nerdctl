@@ -385,7 +385,16 @@ type ContainerCommitOptions struct {
 	Change []string
 	// Pause container during commit
 	Pause bool
+	// Compression is set commit compression algorithm
+	Compression string
 }
+
+type CompressionType string
+
+const (
+	ZSTD CompressionType = "zstd"
+	GZIP CompressionType = "gzip"
+)
 
 // ContainerDiffOptions specifies options for `nerdctl (container) diff`.
 type ContainerDiffOptions struct {

@@ -764,6 +764,7 @@ Flags:
 - :whale: `-m, --message`: Commit message
 - :whale: `-c, --change`: Apply Dockerfile instruction to the created image (supported directives: [CMD, ENTRYPOINT])
 - :whale: `-p, --pause`: Pause container during commit (default: true)
+- :nerd_face: `--compression`: Commit compression algorithm,(supported value: zstd or gzip) (default: gzip)
 
 ## Image management
 
