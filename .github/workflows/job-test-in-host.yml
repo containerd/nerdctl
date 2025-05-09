@@ -22,6 +22,9 @@ on:
       go-version:
         required: true
         type: string
+      docker-version:
+        required: true
+        type: string
       containerd-version:
         required: true
         type: string
@@ -105,7 +108,18 @@ jobs:
             echo "::group:: configure cdi for docker"
             sudo mkdir -p /etc/docker
             sudo jq '.features.cdi = true' /etc/docker/daemon.json | sudo tee /etc/docker/daemon.json.tmp && sudo mv /etc/docker/daemon.json.tmp /etc/docker/daemon.json
-            sudo systemctl restart docker
+            echo "::endgroup::"
+            echo "::group:: downgrade docker to the specific version we want to test (${{ inputs.docker-version }})"
+            sudo apt-get update -qq
+            sudo apt-get install -qq ca-certificates curl
+            sudo install -m 0755 -d /etc/apt/keyrings
+            sudo cp ./hack/provisioning/gpg/docker /etc/apt/keyrings/docker.asc
+            sudo chmod a+r /etc/apt/keyrings/docker.asc
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+              $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" \
+              | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+            sudo apt-get update -qq
+            sudo apt-get install -qq --allow-downgrades docker-ce=${{ inputs.docker-version }} docker-ce-cli=${{ inputs.docker-version }}
             echo "::endgroup::"
           else
             # FIXME: this is missing runc (see top level workflow note about the state of this)
@@ -129,12 +143,16 @@ jobs:
           # Since some arm64 platforms do provide native fallback execution for 32 bits,
           # armv7 emulation may or may not be installed, causing variance in the result of `uname -m`.
           # To avoid that, we explicitly list the architectures we do want emulation for.
-          docker run --privileged --rm tonistiigi/binfmt --install linux/amd64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm64
-          docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
+          echo "::group:: install binfmt"
+          docker run --quiet --privileged --rm tonistiigi/binfmt --install linux/amd64
+          docker run --quiet --privileged --rm tonistiigi/binfmt --install linux/arm64
+          docker run --quiet --privileged --rm tonistiigi/binfmt --install linux/arm/v7
+          echo "::endgroup::"
 
           # FIXME: remove expect when we are done removing unbuffer from tests
+          echo "::group:: installing test dependencies"
           sudo apt-get install -qq expect
+          echo "::endgroup::"
 
       - if: ${{ contains(inputs.runner, 'windows') && env.SHOULD_RUN == 'yes' }}
         name: "Init (windows): prepare host"

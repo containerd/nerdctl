@@ -140,6 +140,7 @@ jobs:
       canary: ${{ matrix.canary && true || false }}
       go-version: 1.24
       windows-cni-version: v0.3.1
+      docker-version: 5:28.0.4-1~ubuntu.24.04~noble
       containerd-version: 2.1.0
       # Note: these as for amd64
       containerd-sha: 0e5359e957b66b679be807563a543c7416e305e3aafcf56bad90ef87a917014d
