@@ -35,7 +35,7 @@ jobs:
           # from https://github.com/containerd/containerd/blob/v2.0.2/.github/workflows/ci.yml#L583-L596
           # which is based on https://github.com/opencontainers/runc/blob/v1.1.8/.cirrus.yml#L41-L49
           # FIXME: https://github.com/containerd/nerdctl/issues/4163
-          curl -fsSL --proto '=https' --tlsv1.2 https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          cat ./hack/provisioning/gpg/hashicorp | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
           sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update -qq
