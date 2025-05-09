@@ -150,6 +150,7 @@ func (gc *Command) WithPTY(stdin, stdout, stderr bool) {
 // WithFeeder ensures that the provider function will be executed and its output fed to the command stdin.
 // WithFeeder, like Feed, can be used multiple times, and writes will be performed sequentially, in order.
 // This command has no effect if Run has already been called.
+// Note that if the `writer` function runs a forever loop, we will deadlock and just Wait() forever on the errgroup.
 func (gc *Command) WithFeeder(writers ...func() io.Reader) {
 	gc.writers = append(gc.writers, writers...)
 }
