@@ -255,7 +255,7 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, addres
 			var s string
 			s, err = r.ReadString('\n')
 			if len(s) > 0 {
-				dataChan <- strings.TrimSuffix(s, "\n")
+				dataChan <- s
 			}
 
 			if err != nil && err != io.EOF {

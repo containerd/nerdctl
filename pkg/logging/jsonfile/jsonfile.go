@@ -54,7 +54,7 @@ func Encode(stdout <-chan string, stderr <-chan string, writer io.Writer) error 
 			Stream: name,
 		}
 		for logEntry := range dataChan {
-			e.Log = logEntry + "\n"
+			e.Log = logEntry
 			e.Time = time.Now().UTC()
 			encMu.Lock()
 			encErr := enc.Encode(e)
