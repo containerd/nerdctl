@@ -413,6 +413,8 @@ func TestLogsFollowNoExtraneousLineFeed(t *testing.T) {
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		// Use logs -f to follow the logs
 		// The container will exit after 5 seconds, so we don't need an explicit timeout
+		// Arbitrary, but we need to wait until the logs show up
+		time.Sleep(3 * time.Second)
 		return helpers.Command("logs", "-f", data.Identifier())
 	}
 
