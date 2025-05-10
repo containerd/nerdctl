@@ -39,7 +39,7 @@ func TestDiff(t *testing.T) {
 	testCase.Require = require.Not(require.Windows)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage,
+		helpers.Ensure("run", "--name", data.Identifier(), testutil.CommonImage,
 			"sh", "-euxc", "touch /a; touch /bin/b; rm /bin/base64")
 	}
 
