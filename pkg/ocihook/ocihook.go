@@ -103,11 +103,13 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	// This below is a stopgap solution that just enforces a global lock
 	// Note this here is probably not enough, as concurrent CNI operations may happen outside of the scope of ocihooks
 	// through explicit calls to Remove, etc.
+	// Finally note that this is not the same (albeit similar) as libcni filesystem manipulation locking,
+	// hence the independent lock
 	err = os.MkdirAll(cniNetconfPath, 0o700)
 	if err != nil {
 		return err
 	}
-	lock, err := lockutil.Lock(filepath.Join(cniNetconfPath, ".nerdctl.lock"))
+	lock, err := lockutil.Lock(filepath.Join(cniNetconfPath, ".cni-concurrency.lock"))
 	if err != nil {
 		return err
 	}
