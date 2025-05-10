@@ -58,7 +58,7 @@ require (
 	github.com/rootless-containers/rootlesskit/v2 v2.3.5 //gomodjail:unconfined
 	github.com/spf13/cobra v1.9.1 //gomodjail:unconfined
 	github.com/spf13/pflag v1.0.6 //gomodjail:unconfined
-	github.com/vishvananda/netlink v1.3.1-0.20250303224720-0e7078ed04c8 //gomodjail:unconfined
+	github.com/vishvananda/netlink v1.3.1 //gomodjail:unconfined
 	github.com/vishvananda/netns v0.0.5 //gomodjail:unconfined
 	github.com/yuchanns/srslog v1.1.0
 	go.uber.org/mock v0.5.2
