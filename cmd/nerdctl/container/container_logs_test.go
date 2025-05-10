@@ -401,9 +401,8 @@ func TestLogsFollowNoExtraneousLineFeed(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		// Create a container that outputs a message without a trailing newline
-		// and then sleeps to keep the container running for the logs -f command
 		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage,
-			"sh", "-c", "printf 'Hello without newline'; sleep 5")
+			"sh", "-c", "printf 'Hello without newline'")
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -412,7 +411,6 @@ func TestLogsFollowNoExtraneousLineFeed(t *testing.T) {
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		// Use logs -f to follow the logs
-		// The container will exit after 5 seconds, so we don't need an explicit timeout
 		// Arbitrary, but we need to wait until the logs show up
 		time.Sleep(3 * time.Second)
 		return helpers.Command("logs", "-f", data.Identifier())
