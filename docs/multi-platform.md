@@ -16,6 +16,7 @@ $ sudo nerdctl run --privileged --rm tonistiigi/binfmt:master --install all
 $ ls -1 /proc/sys/fs/binfmt_misc/qemu*
 /proc/sys/fs/binfmt_misc/qemu-aarch64
 /proc/sys/fs/binfmt_misc/qemu-arm
+/proc/sys/fs/binfmt_misc/qemu-loongarch64
 /proc/sys/fs/binfmt_misc/qemu-mips64
 /proc/sys/fs/binfmt_misc/qemu-mips64el
 /proc/sys/fs/binfmt_misc/qemu-ppc64le
