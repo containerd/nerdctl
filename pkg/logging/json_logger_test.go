@@ -73,6 +73,7 @@ func TestReadRotatedJSONLog(t *testing.T) {
 		time.Sleep(1 * time.Millisecond)
 		logData, _ := json.Marshal(log)
 		file.Write(logData)
+		file.Write([]byte("\n"))
 
 		if line == 5 {
 			file.Close()
@@ -104,7 +105,7 @@ func TestReadRotatedJSONLog(t *testing.T) {
 	close(containerStopped)
 
 	if expectedStdout != stdoutBuf.String() {
-		t.Errorf("expected: %s, acoutal: %s", expectedStdout, stdoutBuf.String())
+		t.Errorf("expected: %s, actual: %s", expectedStdout, stdoutBuf.String())
 	}
 }
 

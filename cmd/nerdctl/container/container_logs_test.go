@@ -394,6 +394,34 @@ func TestLogsWithDetails(t *testing.T) {
 	testCase.Run(t)
 }
 
+func TestLogsFollowNoExtraneousLineFeed(t *testing.T) {
+	testCase := nerdtest.Setup()
+	// This test verifies that `nerdctl logs -f` does not add extraneous line feeds
+	testCase.Require = require.Not(require.Windows)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		// Create a container that outputs a message without a trailing newline
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-c", "printf 'Hello without newline'")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// Use logs -f to follow the logs
+		// Arbitrary, but we need to wait until the logs show up
+		time.Sleep(3 * time.Second)
+		return helpers.Command("logs", "-f", data.Identifier())
+	}
+
+	// Verify that the output is exactly "Hello without newline" without any additional line feeds
+	testCase.Expected = test.Expects(0, nil, expect.Equals("Hello without newline"))
+
+	testCase.Run(t)
+}
+
 func TestLogsWithStartContainer(t *testing.T) {
 	testCase := nerdtest.Setup()
 
