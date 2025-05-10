@@ -164,6 +164,7 @@ func Platforms(cmd *cobra.Command, args []string, toComplete string) ([]string, 
 		"riscv64",
 		"ppc64le",
 		"s390x",
+		"loong64",
 		"386",
 		"arm",          // alias of "linux/arm/v7"
 		"linux/arm/v6", // "arm/v6" is invalid (interpreted as OS="arm", Arch="v7")

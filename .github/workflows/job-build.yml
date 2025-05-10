@@ -91,6 +91,7 @@ jobs:
           build darwin
           build linux arm 6
           # These architectures are not released, but we still verify that we can at least compile
+          build linux loong64
           build linux ppc64le
           build linux riscv64
           build linux s390x
