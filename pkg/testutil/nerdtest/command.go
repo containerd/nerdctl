@@ -27,6 +27,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
@@ -126,7 +127,7 @@ func (nc *nerdCommand) prep() {
 	if customDCConfig := nc.GenericCommand.Config.Read(DockerConfig); customDCConfig != "" {
 		if !nc.hasWrittenDockerConfig {
 			dest := filepath.Join(nc.Env["DOCKER_CONFIG"], "config.json")
-			err := os.WriteFile(dest, []byte(customDCConfig), test.FilePermissionsDefault)
+			err := filesystem.WriteFile(dest, []byte(customDCConfig), test.FilePermissionsDefault)
 			assert.NilError(nc.T(), err, "failed to write custom docker config json file for test")
 			nc.hasWrittenDockerConfig = true
 		}
@@ -175,7 +176,7 @@ func (nc *nerdCommand) prep() {
 	if nc.Config.Read(NerdctlToml) != "" {
 		if !nc.hasWrittenToml {
 			dest := nc.Env["NERDCTL_TOML"]
-			err := os.WriteFile(dest, []byte(nc.Config.Read(NerdctlToml)), test.FilePermissionsDefault)
+			err := filesystem.WriteFile(dest, []byte(nc.Config.Read(NerdctlToml)), test.FilePermissionsDefault)
 			assert.NilError(nc.T(), err, "failed to write NerdctlToml")
 			nc.hasWrittenToml = true
 		}

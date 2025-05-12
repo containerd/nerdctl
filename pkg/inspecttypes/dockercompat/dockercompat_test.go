@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/containerd/v2/core/containers"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 )
 
 func TestContainerFromNative(t *testing.T) {
@@ -38,7 +39,7 @@ func TestContainerFromNative(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	os.WriteFile(filepath.Join(tempStateDir, "resolv.conf"), []byte(""), 0644)
+	filesystem.WriteFile(filepath.Join(tempStateDir, "resolv.conf"), []byte(""), 0644)
 	defer os.RemoveAll(tempStateDir)
 
 	testcase := []struct {
@@ -313,7 +314,7 @@ func TestNetworkSettingsFromNative(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	os.WriteFile(filepath.Join(tempStateDir, "resolv.conf"), []byte(""), 0644)
+	filesystem.WriteFile(filepath.Join(tempStateDir, "resolv.conf"), []byte(""), 0644)
 	defer os.RemoveAll(tempStateDir)
 
 	testcase := []struct {
