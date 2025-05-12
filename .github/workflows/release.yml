@@ -5,6 +5,9 @@ on:
     tags:
     - 'v*'
     - 'test-action-release-*'
+  pull_request:
+    paths-ignore:
+    - '**.md'
 
 env:
   GOTOOLCHAIN: local
@@ -21,6 +24,9 @@ jobs:
       attestations: write  # for provenances
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+    # FIXME: setup-qemu-action is depended by `gomodjail pack`
+    - name: "Set up QEMU"
+      uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392  # v3.6.0
     - name: "Install go"
       uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5  # v5.5.0
       with:
@@ -53,6 +59,7 @@ jobs:
       with:
         subject-path: _output/*
     - name: "Create release"
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
