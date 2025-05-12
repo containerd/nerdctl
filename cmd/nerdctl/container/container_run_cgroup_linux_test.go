@@ -38,6 +38,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -246,7 +247,7 @@ func TestRunDevice(t *testing.T) {
 			assert.NilError(t, err)
 			t.Logf("lo[%d] = %+v", i, lo[i])
 			loContent := fmt.Sprintf("lo%d-content", i)
-			assert.NilError(t, os.WriteFile(lo[i].Device, []byte(loContent), 0o700))
+			assert.NilError(t, filesystem.WriteFile(lo[i].Device, []byte(loContent), 0o700))
 			data.Labels().Set("loContent"+strconv.Itoa(i), loContent)
 		}
 

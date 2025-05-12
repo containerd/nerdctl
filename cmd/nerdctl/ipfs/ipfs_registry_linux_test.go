@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -138,7 +139,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 	`, data.Labels().Get(ipfsImageURLKey))
 
 				buildCtx := data.Temp().Path()
-				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+				err := filesystem.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 				assert.NilError(helpers.T(), err)
 
 				helpers.Ensure("build", "-t", data.Identifier("built-image"), buildCtx)

@@ -255,7 +255,7 @@ On a warm cache, it is still over 150MB and 30+ seconds.
 In and of itself, this is hard to reduce, as we need these...
 
 Actions:
-- [ ] we could cache the module download location to reduce round-trips on modules that are shared accross
+- [ ] we could cache the module download location to reduce round-trips on modules that are shared across
 different projects
 - [ ] we are likely installing nerdctl modules six times - (once per architecture during the build phase, then once per
 ubuntu version and architecture during the tests runs (this is not even accounted for in the audit above)) - it should

@@ -19,7 +19,6 @@ package compose
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -32,6 +31,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
@@ -503,7 +503,7 @@ func TestComposeUpProfile(t *testing.T) {
 	// write the env.common file to tmpdir
 	tmpDir := t.TempDir()
 	envFilePath := fmt.Sprintf("%s/env.common", tmpDir)
-	err := os.WriteFile(envFilePath, []byte("TEST_ENV_INJECTION=WORKS\n"), 0644)
+	err := filesystem.WriteFile(envFilePath, []byte("TEST_ENV_INJECTION=WORKS\n"), 0644)
 	assert.NilError(t, err)
 
 	dockerComposeYAML := fmt.Sprintf(`

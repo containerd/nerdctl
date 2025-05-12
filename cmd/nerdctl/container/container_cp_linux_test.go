@@ -28,6 +28,7 @@ import (
 	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -453,7 +454,7 @@ func TestCopyFromContainer(t *testing.T) {
 						ExitCode: 0,
 					},
 					setup: func(base *testutil.Base, container string, destPath string) {
-						err := os.WriteFile(destPath, []byte(""), filePerm)
+						err := filesystem.WriteFile(destPath, []byte(""), filePerm)
 						assert.NilError(t, err)
 					},
 				},
@@ -464,7 +465,7 @@ func TestCopyFromContainer(t *testing.T) {
 						ExitCode: 0,
 					},
 					setup: func(base *testutil.Base, container string, destPath string) {
-						err := os.WriteFile(destPath, []byte(""), filePerm)
+						err := filesystem.WriteFile(destPath, []byte(""), filePerm)
 						assert.NilError(t, err)
 					},
 				},
@@ -476,7 +477,7 @@ func TestCopyFromContainer(t *testing.T) {
 						Err:      containerutil.ErrDestinationIsNotADir.Error(),
 					},
 					setup: func(base *testutil.Base, container string, destPath string) {
-						err := os.WriteFile(destPath, []byte(""), filePerm)
+						err := filesystem.WriteFile(destPath, []byte(""), filePerm)
 						assert.NilError(t, err)
 					},
 				},
@@ -488,7 +489,7 @@ func TestCopyFromContainer(t *testing.T) {
 						Err:      containerutil.ErrDestinationIsNotADir.Error(),
 					},
 					setup: func(base *testutil.Base, container string, destPath string) {
-						err := os.WriteFile(destPath, []byte(""), filePerm)
+						err := filesystem.WriteFile(destPath, []byte(""), filePerm)
 						assert.NilError(t, err)
 					},
 				},
@@ -588,7 +589,7 @@ func TestCopyFromContainer(t *testing.T) {
 					setup: func(base *testutil.Base, container string, destPath string) {
 						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
 						assert.NilError(t, err)
-						err = os.WriteFile(destPath, []byte(""), filePerm)
+						err = filesystem.WriteFile(destPath, []byte(""), filePerm)
 						assert.NilError(t, err)
 					},
 				},
@@ -602,7 +603,7 @@ func TestCopyFromContainer(t *testing.T) {
 					setup: func(base *testutil.Base, container string, destPath string) {
 						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
 						assert.NilError(t, err)
-						err = os.WriteFile(destPath, []byte(""), filePerm)
+						err = filesystem.WriteFile(destPath, []byte(""), filePerm)
 						assert.NilError(t, err)
 					},
 				},
@@ -616,7 +617,7 @@ func TestCopyFromContainer(t *testing.T) {
 					setup: func(base *testutil.Base, container string, destPath string) {
 						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
 						assert.NilError(t, err)
-						err = os.WriteFile(destPath, []byte(""), filePerm)
+						err = filesystem.WriteFile(destPath, []byte(""), filePerm)
 						assert.NilError(t, err)
 					},
 				},
@@ -630,7 +631,7 @@ func TestCopyFromContainer(t *testing.T) {
 					setup: func(base *testutil.Base, container string, destPath string) {
 						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
 						assert.NilError(t, err)
-						err = os.WriteFile(destPath, []byte(""), filePerm)
+						err = filesystem.WriteFile(destPath, []byte(""), filePerm)
 						assert.NilError(t, err)
 					},
 				},
@@ -838,7 +839,7 @@ func cpTestHelper(t *testing.T, tg *testgroup) {
 					// Create file on the host
 					err := os.MkdirAll(filepath.Dir(sourceFile), dirPerm)
 					assert.NilError(t, err)
-					err = os.WriteFile(sourceFile, sourceFileContent, filePerm)
+					err = filesystem.WriteFile(sourceFile, sourceFileContent, filePerm)
 					assert.NilError(t, err)
 				}
 

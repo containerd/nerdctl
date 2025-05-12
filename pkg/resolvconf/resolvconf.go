@@ -36,6 +36,8 @@ import (
 	"sync"
 
 	"github.com/containerd/log"
+
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 )
 
 const (
@@ -317,12 +319,12 @@ func Build(path string, dns, dnsSearch, dnsOptions []string) (*File, error) {
 		return nil, err
 	}
 
-	err = os.WriteFile(path, content.Bytes(), 0o644)
+	err = filesystem.WriteFile(path, content.Bytes(), 0o644)
 	if err != nil {
 		return nil, err
 	}
 
-	// os.WriteFile relies on syscall.Open. Unless there are ACLs, the effective mode of the file will be matched
+	// WriteFile relies on syscall.Open. Unless there are ACLs, the effective mode of the file will be matched
 	// against the current process umask.
 	// See https://www.man7.org/linux/man-pages/man2/open.2.html for details.
 	// Since we must make sure that these files are world readable, explicitly chmod them here.
