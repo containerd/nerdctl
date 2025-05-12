@@ -38,7 +38,7 @@ import (
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
-	"github.com/containerd/nerdctl/v2/pkg/lockutil"
+	"github.com/containerd/nerdctl/v2/pkg/filesystem"
 )
 
 const (
@@ -160,7 +160,7 @@ func getLockPath(dataStore, ns, id string) string {
 
 // WaitForLogger waits until the logger has finished executing and processing container logs
 func WaitForLogger(dataStore, ns, id string) error {
-	return lockutil.WithDirLock(getLockPath(dataStore, ns, id), func() error {
+	return filesystem.WithLock(getLockPath(dataStore, ns, id), func() error {
 		return nil
 	})
 }
@@ -305,16 +305,11 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			}
 
 			loggerLock := getLockPath(dataStore, config.Namespace, config.ID)
-			f, err := os.Create(loggerLock)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
 
 			// the logger will obtain an exclusive lock on a file until the container is
 			// stopped and the driver has finished processing all output,
 			// so that waiting log viewers can be signalled when the process is complete.
-			return lockutil.WithDirLock(loggerLock, func() error {
+			return filesystem.WithLock(loggerLock, func() error {
 				if err := ready(); err != nil {
 					return err
 				}

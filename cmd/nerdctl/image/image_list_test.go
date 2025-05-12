@@ -19,7 +19,6 @@ package image
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -32,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
+	"github.com/containerd/nerdctl/v2/pkg/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/tabutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -149,7 +149,7 @@ LABEL version=0.1
 RUN echo "actually creating a layer so that docker sets the createdAt time"
 `, testutil.CommonImage)
 			buildCtx := data.Temp().Path()
-			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+			err := filesystem.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 			assert.NilError(helpers.T(), err)
 			data.Labels().Set("buildCtx", buildCtx)
 		},
@@ -298,7 +298,7 @@ func TestImagesFilterDangling(t *testing.T) {
 CMD ["echo", "nerdctl-build-notag-string"]
 	`, testutil.CommonImage)
 			buildCtx := data.Temp().Path()
-			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+			err := filesystem.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 			assert.NilError(helpers.T(), err)
 			data.Labels().Set("buildCtx", buildCtx)
 		},

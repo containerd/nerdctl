@@ -31,6 +31,7 @@ linters:
     - revive
     # Gocritic
     - gocritic
+    - forbidigo
 
     # 3. We used to use these, but have now removed them
 
@@ -41,6 +42,10 @@ linters:
     # - nakedret
 
   settings:
+    forbidigo:
+      forbid:
+        - pattern: ^os\.WriteFile.*$
+          msg: os.WriteFile is neither atomic nor durable - use nerdctl filesystem.WriteFile instead
     staticcheck:
       checks:
         # Below is the default set

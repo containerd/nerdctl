@@ -38,6 +38,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/pkg/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -188,7 +189,7 @@ func TestRunIpcHost(t *testing.T) {
 	base := testutil.NewBase(t)
 	testFilePath := filepath.Join("/dev/shm",
 		fmt.Sprintf("%s-%d-%s", testutil.Identifier(t), os.Geteuid(), base.Target))
-	err := os.WriteFile(testFilePath, []byte(""), 0644)
+	err := filesystem.WriteFile(testFilePath, []byte(""), 0644)
 	assert.NilError(base.T, err)
 	defer os.Remove(testFilePath)
 
@@ -691,7 +692,7 @@ func TestRunDeviceCDIWithNerdctlConfig(t *testing.T) {
 	writeTestCDISpec(t, cdiSpecDir)
 
 	tomlPath := filepath.Join(t.TempDir(), "nerdctl.toml")
-	err := os.WriteFile(tomlPath, []byte(fmt.Sprintf(`
+	err := filesystem.WriteFile(tomlPath, []byte(fmt.Sprintf(`
 cdi_spec_dirs = ["%s"]
 `, cdiSpecDir)), 0400)
 	assert.NilError(t, err)
@@ -719,6 +720,6 @@ devices:
 	err := os.MkdirAll(cdiSpecDir, 0700)
 	assert.NilError(t, err)
 	cdiSpecPath := filepath.Join(cdiSpecDir, "vendor1.yaml")
-	err = os.WriteFile(cdiSpecPath, []byte(testCDIVendor1), 0400)
+	err = filesystem.WriteFile(cdiSpecPath, []byte(testCDIVendor1), 0400)
 	assert.NilError(t, err)
 }

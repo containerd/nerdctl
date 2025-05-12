@@ -40,11 +40,11 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/v2/pkg/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
-	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
@@ -524,17 +524,17 @@ func M(m *testing.M) {
 		os.Chmod(filepath.Dir(testLockFile), 0o777)
 
 		// Acquire lock
-		lock, err := lockutil.Lock(filepath.Dir(testLockFile))
+		lock, err := filesystem.Lock(filepath.Dir(testLockFile))
 		if err != nil {
 			log.L.WithError(err).Errorf("failed acquiring testing lock %q", filepath.Dir(testLockFile))
 			return 1
 		}
 
 		// Release...
-		defer lockutil.Unlock(lock)
+		defer filesystem.Unlock(lock)
 
 		// Create marker file
-		err = os.WriteFile(testLockFile, []byte("prevent testing from running in parallel for subpackages integration tests"), 0o666)
+		err = filesystem.WriteFile(testLockFile, []byte("prevent testing from running in parallel for subpackages integration tests"), 0o666)
 		if err != nil {
 			log.L.WithError(err).Errorf("failed writing lock file %q", testLockFile)
 			return 1

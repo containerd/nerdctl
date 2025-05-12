@@ -26,11 +26,13 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/v2/pkg/filesystem"
 )
 
 func CreateBuildContext(t *testing.T, dockerfile string) string {
 	tmpDir := t.TempDir()
-	err := os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644)
+	err := filesystem.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644)
 	assert.NilError(t, err)
 	return tmpDir
 }
