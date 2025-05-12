@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
 
@@ -198,7 +199,7 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 		return "", fmt.Errorf("error while creating container %s: %w", container.Name, err)
 	}
 
-	cid, err := os.ReadFile(cidFilename)
+	cid, err := filesystem.ReadFile(cidFilename)
 	if err != nil {
 		return "", fmt.Errorf("error while creating container %s: %w", container.Name, err)
 	}

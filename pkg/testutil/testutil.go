@@ -292,7 +292,7 @@ func (b *Base) ContainerdAddress() string {
 		xdr = fmt.Sprintf("/run/user/%d", os.Geteuid())
 	}
 	pidFile := filepath.Join(xdr, "containerd-rootless", "child_pid")
-	pidB, err := os.ReadFile(pidFile)
+	pidB, err := filesystem.ReadFile(pidFile)
 	if err != nil {
 		b.T.Fatal(err)
 	}

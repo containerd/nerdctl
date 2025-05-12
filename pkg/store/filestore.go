@@ -138,7 +138,7 @@ func (vs *fileStore) Get(key ...string) ([]byte, error) {
 		return nil, errors.Join(ErrFaultyImplementation, fmt.Errorf("%q is a directory and cannot be read as a file", path))
 	}
 
-	content, err := os.ReadFile(filepath.Join(append([]string{vs.dir}, key...)...))
+	content, err := filesystem.ReadFile(filepath.Join(append([]string{vs.dir}, key...)...))
 	if err != nil {
 		return nil, errors.Join(ErrSystemFailure, err)
 	}

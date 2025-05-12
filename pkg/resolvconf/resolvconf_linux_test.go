@@ -21,6 +21,8 @@ import (
 	"bytes"
 	"os"
 	"testing"
+
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 )
 
 func TestGet(t *testing.T) {
@@ -28,7 +30,7 @@ func TestGet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolvConfSystem, err := os.ReadFile("/run/systemd/resolve/resolv.conf")
+	resolvConfSystem, err := filesystem.ReadFile("/run/systemd/resolve/resolv.conf")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +173,7 @@ func TestBuild(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	content, err := os.ReadFile(file.Name())
+	content, err := filesystem.ReadFile(file.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +195,7 @@ func TestBuildWithZeroLengthDomainSearch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	content, err := os.ReadFile(file.Name())
+	content, err := filesystem.ReadFile(file.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +220,7 @@ func TestBuildWithNoOptions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	content, err := os.ReadFile(file.Name())
+	content, err := filesystem.ReadFile(file.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
