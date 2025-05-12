@@ -107,6 +107,16 @@ ENV CGO_ENABLED=1
 RUN GO=xx-go make static && \
   xx-verify --static bypass4netns && cp -a bypass4netns bypass4netnsd /out/${TARGETARCH}
 
+FROM build-base-debian AS build-gomodjail
+ARG GOMODJAIL_VERSION
+ARG TARGETARCH
+RUN git clone --quiet --depth 1 --branch "${GOMODJAIL_VERSION%@*}" https://github.com/AkihiroSuda/gomodjail.git /go/src/github.com/AkihiroSuda/gomodjail
+WORKDIR /go/src/github.com/AkihiroSuda/gomodjail
+RUN git-checkout-tag-with-hash.sh ${GOMODJAIL_VERSION} && \
+  mkdir -p /out/${TARGETARCH}
+RUN GO=xx-go make STATIC=1 && \
+  xx-verify --static _output/bin/gomodjail && cp -a _output/bin/gomodjail /out/${TARGETARCH}
+
 FROM build-base-debian AS build-kubo
 ARG KUBO_VERSION
 ARG TARGETARCH
@@ -234,12 +244,8 @@ RUN ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION/@BINARY}; \
   rm -f "${fname}" /out/bin/rootlesskit-docker-proxy && \
   echo "- RootlessKit: ${ROOTLESSKIT_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG GOMODJAIL_VERSION
-RUN git clone https://github.com/AkihiroSuda/gomodjail.git /go/src/github.com/AkihiroSuda/gomodjail && \
-  cd /go/src/github.com/AkihiroSuda/gomodjail && \
-  git-checkout-tag-with-hash.sh "${GOMODJAIL_VERSION}" && \
-  make STATIC=1 && \
-  cp -a _output/bin/gomodjail /out/bin/ && \
-  echo "- gomodjail: ${GOMODJAIL_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+COPY --from=build-gomodjail /out/${TARGETARCH:-amd64}/* /out/bin/
+RUN echo "- gomodjail: ${GOMODJAIL_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
@@ -254,6 +260,8 @@ COPY . /go/src/github.com/containerd/nerdctl
 RUN { echo "# nerdctl (full distribution)"; echo "- nerdctl: $(cd /go/src/github.com/containerd/nerdctl && git describe --tags)"; cat /out/share/doc/nerdctl-full/README.md; } > /out/share/doc/nerdctl-full/README.md.new; mv /out/share/doc/nerdctl-full/README.md.new /out/share/doc/nerdctl-full/README.md
 WORKDIR /go/src/github.com/containerd/nerdctl
 RUN BINDIR=/out/bin make binaries install
+# FIXME: `gomodjail pack` depends on QEMU for non-native architecture
+# TODO: gomodjail should provide a plain shell script that utilizes `zip(1)` for packing the self-extract archive, without running `gomodjail pack`..
 RUN /out/bin/gomodjail pack --go-mod=/go/src/github.com/containerd/nerdctl/go.mod /out/bin/nerdctl && \
   cp -a nerdctl.gomodjail /out/bin/
 COPY README.md /out/share/doc/nerdctl/
