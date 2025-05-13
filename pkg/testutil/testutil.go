@@ -768,3 +768,5 @@ func mirrorOf(s string) string {
 	// plain mirror, NOT stargz-converted images
 	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
 }
+
+var GolangImage = mirrorOf("golang:1.23")
