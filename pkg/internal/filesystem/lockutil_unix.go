@@ -1,3 +1,5 @@
+//go:build unix
+
 /*
    Copyright The containerd Authors.
 
@@ -14,45 +16,56 @@
    limitations under the License.
 */
 
-package lockutil
+package filesystem
 
 import (
 	"fmt"
 	"os"
 
-	"golang.org/x/sys/windows"
+	"golang.org/x/sys/unix"
 
 	"github.com/containerd/log"
 )
 
 func WithDirLock(dir string, fn func() error) error {
-	dirFile, err := os.OpenFile(dir+".lock", os.O_CREATE, 0644)
+	_ = os.MkdirAll(dir, 0700)
+	dirFile, err := os.Open(dir)
 	if err != nil {
 		return err
 	}
 	defer dirFile.Close()
-	// see https://msdn.microsoft.com/en-us/library/windows/desktop/aa365203(v=vs.85).aspx
-	if err = windows.LockFileEx(windows.Handle(dirFile.Fd()), windows.LOCKFILE_EXCLUSIVE_LOCK, 0, ^uint32(0), ^uint32(0), new(windows.Overlapped)); err != nil {
+	if err := flock(dirFile, unix.LOCK_EX); err != nil {
 		return fmt.Errorf("failed to lock %q: %w", dir, err)
 	}
-
 	defer func() {
-		if err := windows.UnlockFileEx(windows.Handle(dirFile.Fd()), 0, ^uint32(0), ^uint32(0), new(windows.Overlapped)); err != nil {
+		if err := flock(dirFile, unix.LOCK_UN); err != nil {
 			log.L.WithError(err).Errorf("failed to unlock %q", dir)
 		}
 	}()
 	return fn()
 }
 
+func flock(f *os.File, flags int) error {
+	fd := int(f.Fd())
+	for {
+		err := unix.Flock(fd, flags)
+		if err == nil || err != unix.EINTR {
+			return err
+		}
+	}
+}
+
 func Lock(dir string) (*os.File, error) {
-	dirFile, err := os.OpenFile(dir+".lock", os.O_CREATE, 0644)
+	_ = os.MkdirAll(dir, 0700)
+	dirFile, err := os.Open(dir)
 	if err != nil {
 		return nil, err
 	}
-	// see https://msdn.microsoft.com/en-us/library/windows/desktop/aa365203(v=vs.85).aspx
-	if err = windows.LockFileEx(windows.Handle(dirFile.Fd()), windows.LOCKFILE_EXCLUSIVE_LOCK, 0, ^uint32(0), ^uint32(0), new(windows.Overlapped)); err != nil {
-		return nil, fmt.Errorf("failed to lock %q: %w", dir, err)
+
+	if err = flock(dirFile, unix.LOCK_EX); err != nil {
+		return nil, err
 	}
+
 	return dirFile, nil
 }
 
@@ -61,5 +74,5 @@ func Unlock(locked *os.File) error {
 		_ = locked.Close()
 	}()
 
-	return windows.UnlockFileEx(windows.Handle(locked.Fd()), 0, ^uint32(0), ^uint32(0), new(windows.Overlapped))
+	return flock(locked, unix.LOCK_UN)
 }

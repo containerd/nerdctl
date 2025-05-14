@@ -16,14 +16,14 @@
    limitations under the License.
 */
 
-package store
+package filesystem
 
 import (
 	"fmt"
 	"regexp"
 )
 
-// Note that Darwin has different restrictions - though, we do not support Darwin at this point...
+// Note that Darwin has different restrictions on colons.
 // https://stackoverflow.com/questions/1976007/what-characters-are-forbidden-in-windows-and-linux-directory-names
 var (
 	disallowedKeywords = regexp.MustCompile(`^([.]|[.][.])$`)
@@ -32,11 +32,11 @@ var (
 
 func validatePlatformSpecific(pathComponent string) error {
 	if reservedCharacters.MatchString(pathComponent) {
-		return fmt.Errorf("identifier %q cannot contain any of the following characters: %q", pathComponent, reservedCharacters)
+		return fmt.Errorf("%w: %q (%q)", errForbiddenChars, pathComponent, reservedCharacters)
 	}
 
 	if disallowedKeywords.MatchString(pathComponent) {
-		return fmt.Errorf("identifier %q cannot be any of the reserved keywords: %q", pathComponent, disallowedKeywords)
+		return fmt.Errorf("%w: %q (%q)", errForbiddenKeywords, pathComponent, disallowedKeywords)
 	}
 
 	return nil
