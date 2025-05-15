@@ -53,8 +53,8 @@ func TestKubeCommitSave(t *testing.T) {
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		helpers.Ensure("commit", data.Labels().Get("containerID"), "testcommitsave")
-		return helpers.Command("save", "testcommitsave")
+		helpers.Ensure("commit", data.Labels().Get("containerID"), data.Identifier("testcommitsave"))
+		return helpers.Command("save", data.Identifier("testcommitsave"))
 	}
 
 	testCase.Expected = test.Expects(0, nil, nil)
