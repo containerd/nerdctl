@@ -352,6 +352,8 @@ func TestRunBindMountBind(t *testing.T) {
 			"top",
 		)
 
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier("container"))
+
 		// Save host rwDir location and container id for subtests
 		data.Labels().Set("container", data.Identifier("container"))
 		data.Labels().Set("rwDir", rwDir)
