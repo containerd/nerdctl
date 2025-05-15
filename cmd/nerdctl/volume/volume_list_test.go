@@ -282,8 +282,6 @@ func TestVolumeLsFilter(t *testing.T) {
 		},
 		{
 			Description: "Retrieving name=volume1 and name=volume2",
-			// Nerdctl filter behavior is broken
-			Require: nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/3452"),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("volume", "ls", "--quiet", "--filter", "name="+data.Labels().Get("vol1"), "--filter", "name="+data.Labels().Get("vol2"))
 			},
