@@ -110,6 +110,7 @@ CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
 				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier("ignored"))
+					helpers.Anyhow("rmi", "-f", data.Identifier())
 				},
 				Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 			},
