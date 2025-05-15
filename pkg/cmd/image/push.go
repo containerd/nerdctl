@@ -43,6 +43,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
+	"github.com/containerd/nerdctl/v2/pkg/filesystem"
 	nerdconverter "github.com/containerd/nerdctl/v2/pkg/imgutil/converter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/push"
@@ -85,7 +86,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 				return err
 			}
 			defer os.RemoveAll(dir)
-			if err := os.WriteFile(filepath.Join(dir, "api"), []byte(options.IpfsAddress), 0600); err != nil {
+			if err := filesystem.WriteFile(filepath.Join(dir, "api"), []byte(options.IpfsAddress), 0600); err != nil {
 				return err
 			}
 			ipfsPath = dir

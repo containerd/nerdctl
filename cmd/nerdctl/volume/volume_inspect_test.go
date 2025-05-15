@@ -32,6 +32,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
+	"github.com/containerd/nerdctl/v2/pkg/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -39,7 +40,7 @@ import (
 func createFileWithSize(mountPoint string, size int64) error {
 	token := make([]byte, size)
 	_, _ = rand.Read(token)
-	err := os.WriteFile(filepath.Join(mountPoint, "test-file"), token, 0644)
+	err := filesystem.WriteFile(filepath.Join(mountPoint, "test-file"), token, 0644)
 	return err
 }
 

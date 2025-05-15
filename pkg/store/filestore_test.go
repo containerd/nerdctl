@@ -17,12 +17,12 @@
 package store
 
 import (
-	"fmt"
-	"runtime"
 	"testing"
 	"time"
 
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/v2/pkg/filesystem"
 )
 
 func TestFileStoreBasics(t *testing.T) {
@@ -62,16 +62,16 @@ func TestFileStoreBasics(t *testing.T) {
 
 	// Invalid keys
 	_, err = tempStore.Get("..")
-	assert.ErrorIs(t, err, ErrInvalidArgument, "unsupported characters or patterns should return ErrInvalidArgument")
+	assert.ErrorIs(t, err, filesystem.ErrInvalidPath, "unsupported characters or patterns should return filesystem.ErrInvalidPath")
 
 	err = tempStore.Set([]byte("foo"), "..")
-	assert.ErrorIs(t, err, ErrInvalidArgument, "unsupported characters or patterns should return ErrInvalidArgument")
+	assert.ErrorIs(t, err, filesystem.ErrInvalidPath, "unsupported characters or patterns should return filesystem.ErrInvalidPath")
 
 	err = tempStore.Delete("..")
-	assert.ErrorIs(t, err, ErrInvalidArgument, "unsupported characters or patterns should return ErrInvalidArgument")
+	assert.ErrorIs(t, err, filesystem.ErrInvalidPath, "unsupported characters or patterns should return filesystem.ErrInvalidPath")
 
 	_, err = tempStore.List("..")
-	assert.ErrorIs(t, err, ErrInvalidArgument, "unsupported characters or patterns should return ErrInvalidArgument")
+	assert.ErrorIs(t, err, filesystem.ErrInvalidPath, "unsupported characters or patterns should return filesystem.ErrInvalidPath")
 
 	// Writing, reading, listing, deleting
 	err = tempStore.Set([]byte("foo"), "something")
@@ -219,61 +219,4 @@ func TestFileStoreConcurrent(t *testing.T) {
 		return nil
 	})
 	assert.NilError(t, lErr, "locking should not error")
-}
-
-func TestFileStoreFilesystemRestrictions(t *testing.T) {
-	invalid := []string{
-		"/",
-		"/start",
-		"mid/dle",
-		"end/",
-		".",
-		"..",
-		"",
-		fmt.Sprintf("A%0255s", "A"),
-	}
-
-	valid := []string{
-		fmt.Sprintf("A%0254s", "A"),
-		"test",
-		"test-hyphen",
-		".start.dot",
-		"mid.dot",
-		"∞",
-	}
-
-	if runtime.GOOS == "windows" {
-		invalid = append(invalid, []string{
-			"\\start",
-			"mid\\dle",
-			"end\\",
-			"\\",
-			"\\.",
-			"com².whatever",
-			"lpT2",
-			"Prn.",
-			"nUl",
-			"AUX",
-			"A<A",
-			"A>A",
-			"A:A",
-			"A\"A",
-			"A|A",
-			"A?A",
-			"A*A",
-			"end.dot.",
-			"end.space ",
-		}...)
-	}
-
-	for _, v := range invalid {
-		err := ValidatePathComponent(v)
-		assert.ErrorIs(t, err, ErrInvalidArgument, v)
-	}
-
-	for _, v := range valid {
-		err := ValidatePathComponent(v)
-		assert.NilError(t, err, v)
-	}
-
 }

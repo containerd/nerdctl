@@ -26,6 +26,7 @@ import (
 	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
+	"github.com/containerd/nerdctl/v2/pkg/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -70,7 +71,7 @@ func TestCopyAcid(t *testing.T) {
 			base.Cmd("exec", roContainer, "sh", "-euxc", "cd /vol2/dir2/rw; ln -s ../../../ relativelinktoroot").AssertOK()
 			base.Cmd("exec", roContainer, "sh", "-euxc", "cd /vol2/dir2/rw; ln -s / absolutelinktoroot").AssertOK()
 			// Create file on the host
-			err := os.WriteFile(sourceFile, sourceFileContent, filePerm)
+			err := filesystem.WriteFile(sourceFile, sourceFileContent, filePerm)
 			assert.NilError(t, err)
 		}
 
