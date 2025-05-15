@@ -418,7 +418,7 @@ func getIP6AddressOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 	return nil, nil
 }
 
-func applyNetworkSettings(opts *handlerOpts) error {
+func applyNetworkSettings(opts *handlerOpts) (err error) {
 	portMapOpts, err := getPortMapOpts(opts)
 	if err != nil {
 		return err
@@ -479,6 +479,14 @@ func applyNetworkSettings(opts *handlerOpts) error {
 	if err != nil {
 		return fmt.Errorf("failed to call cni.Setup: %w", err)
 	}
+
+	defer func() {
+		if err != nil {
+			log.L.Warn("Container failed starting. Removing allocated network configuration.")
+			_ = opts.cni.Remove(ctx, opts.fullID, nsPath, namespaceOpts...)
+		}
+	}()
+
 	cniResRaw := cniRes.Raw()
 	for i, cniName := range opts.cniNames {
 		hsMeta.Networks[cniName] = cniResRaw[i]
