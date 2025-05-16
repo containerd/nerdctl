@@ -24,6 +24,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -620,6 +621,15 @@ func onPostStop(opts *handlerOpts) error {
 			log.L.WithError(err).Errorf("failed to call cni.Remove")
 			return err
 		}
+
+		// Clean up iptables rules related to the container
+		// This is needed because when using CNI bridge plugin with ipMasq=true,
+		// three iptables rules are created but not cleaned up when the container is stopped
+		if err := cleanupIptablesRules(opts.fullID); err != nil {
+			log.L.WithError(err).Warnf("failed to clean up iptables rules for container %s", opts.fullID)
+			// Don't return error here, continue with the rest of the cleanup
+		}
+
 		hs, err := hostsstore.New(opts.dataStore, ns)
 		if err != nil {
 			return err
@@ -637,6 +647,55 @@ func onPostStop(opts *handlerOpts) error {
 	if err := namst.Release(name, opts.state.ID); err != nil && !errors.Is(err, store.ErrNotFound) {
 		return fmt.Errorf("failed to release container name %s: %w", name, err)
 	}
+	return nil
+}
+
+// cleanupIptablesRules cleans up iptables rules related to the container
+// This is needed because when using CNI bridge plugin with ipMasq=true,
+// three iptables rules are created but not cleaned up when the container is stopped
+func cleanupIptablesRules(containerID string) error {
+	// Check if iptables command exists
+	if _, err := exec.LookPath("iptables"); err != nil {
+		return fmt.Errorf("iptables command not found: %w", err)
+	}
+
+	// Tables to check for rules
+	tables := []string{"nat", "filter", "mangle"}
+
+	for _, table := range tables {
+		// Get all iptables rules for this table
+		cmd := exec.Command("iptables", "-t", table, "-S")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			log.L.WithError(err).Warnf("failed to list iptables rules for table %s", table)
+			continue
+		}
+
+		// Find and delete rules related to the container
+		rules := strings.Split(string(output), "\n")
+		for _, rule := range rules {
+			if strings.Contains(rule, containerID) {
+				// Extract the rule components
+				parts := strings.Fields(rule)
+				if len(parts) < 2 {
+					continue
+				}
+
+				// Create delete command
+				deleteArgs := []string{"-t", table, "-D"}
+				deleteArgs = append(deleteArgs, parts[1:]...)
+
+				// Execute delete command
+				deleteCmd := exec.Command("iptables", deleteArgs...)
+				if deleteOutput, err := deleteCmd.CombinedOutput(); err != nil {
+					log.L.WithError(err).Warnf("failed to delete iptables rule: %s, output: %s", rule, string(deleteOutput))
+				} else {
+					log.L.Debugf("deleted iptables rule: %s", rule)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
