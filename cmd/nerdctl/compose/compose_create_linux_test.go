@@ -32,8 +32,6 @@ import (
 
 func TestComposeCreate(t *testing.T) {
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s
@@ -87,8 +85,6 @@ services:
 
 func TestComposeCreateDependency(t *testing.T) {
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s
@@ -152,8 +148,6 @@ func TestComposeCreatePull(t *testing.T) {
 
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s

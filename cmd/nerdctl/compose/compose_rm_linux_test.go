@@ -18,23 +18,22 @@ package compose
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
-	"time"
+
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposeRemove(t *testing.T) {
-	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
 
   wordpress:
     image: %s
-    ports:
-      - 8080:80
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: exampleuser
@@ -58,27 +57,71 @@ volumes:
   db:
 `, testutil.WordpressImage, testutil.MariaDBImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	testCase := nerdtest.Setup()
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down")
+	}
 
-	// no stopped containers
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "rm", "-f").AssertOK()
-	time.Sleep(3 * time.Second)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutContainsAny("Up", "running")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutContainsAny("Up", "running")
-	// remove one stopped service
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "wordpress").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "rm", "-f", "wordpress").AssertOK()
-	time.Sleep(3 * time.Second)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutNotContains("wordpress")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutContainsAny("Up", "running")
-	// remove all services with `--stop`
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "rm", "-f", "-s").AssertOK()
-	time.Sleep(3 * time.Second)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutNotContains("db")
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+		data.Labels().Set("yamlPath", data.Temp().Path("compose.yaml"))
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "All services are still up",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("yamlPath"), "rm", "-f")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout, info string, t *testing.T) {
+						wp := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "wordpress")
+						db := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "db")
+						comp := expect.Match(regexp.MustCompile("Up|running"))
+						comp(wp, "", t)
+						comp(db, "", t)
+					},
+				}
+			},
+		},
+		{
+			Description: "Remove stopped service",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				helpers.Ensure("compose", "-f", data.Labels().Get("yamlPath"), "stop", "wordpress")
+				return helpers.Command("compose", "-f", data.Labels().Get("yamlPath"), "rm", "-f")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout, info string, t *testing.T) {
+						wp := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "wordpress")
+						db := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "db")
+						expect.DoesNotContain("wordpress")(wp, "", t)
+						expect.Match(regexp.MustCompile("Up|running"))(db, "", t)
+					},
+				}
+			},
+		},
+		{
+			Description: "Remove all services with stop",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("yamlPath"), "rm", "-f", "-s")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout, info string, t *testing.T) {
+						db := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "db")
+						expect.DoesNotContain("db")(db, "", t)
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
 }

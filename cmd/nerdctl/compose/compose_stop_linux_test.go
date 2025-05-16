@@ -18,22 +18,22 @@ package compose
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposeStop(t *testing.T) {
-	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
 
   wordpress:
     image: %s
-    ports:
-      - 8080:80
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: exampleuser
@@ -57,21 +57,50 @@ volumes:
   db:
 `, testutil.WordpressImage, testutil.MariaDBImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	testCase := nerdtest.Setup()
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+		data.Labels().Set("yamlPath", data.Temp().Path("compose.yaml"))
+	}
 
-	// stop should (only) stop the given service.
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "db").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db", "-a").AssertOutContainsAny("Exit", "exited")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutContainsAny("Up", "running")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down")
+	}
 
-	// `--timeout` arg should work properly.
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "--timeout", "5", "wordpress").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress", "-a").AssertOutContainsAny("Exit", "exited")
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "stop db",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("yamlPath"), "stop", "db")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("yamlPath"), "ps", "db", "-a")
+			},
+			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("Exit|exited"))),
+		},
+		{
+			Description: "wordpress is still running",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("yamlPath"), "ps", "wordpress")
+			},
+			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("Up|running"))),
+		},
+		{
+			Description: "stop wordpress",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("yamlPath"), "stop", "--timeout", "5", "wordpress")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("yamlPath"), "ps", "wordpress", "-a")
+			},
+			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("Exit|exited"))),
+		},
+	}
 
+	testCase.Run(t)
 }
