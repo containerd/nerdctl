@@ -21,10 +21,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
-	"github.com/containerd/nerdctl/v2/pkg/lockutil"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 )
 
 // TODO: implement a read-lock in lockutil, in addition to the current exclusive write-lock
@@ -75,7 +74,7 @@ type fileStore struct {
 func (vs *fileStore) Lock() error {
 	vs.mutex.Lock()
 
-	dirFile, err := lockutil.Lock(vs.dir)
+	dirFile, err := filesystem.Lock(vs.dir)
 	if err != nil {
 		return errors.Join(ErrLockFailure, err)
 	}
@@ -96,7 +95,7 @@ func (vs *fileStore) Release() error {
 		vs.locked = nil
 	}()
 
-	if err := lockutil.Unlock(vs.locked); err != nil {
+	if err := filesystem.Unlock(vs.locked); err != nil {
 		return errors.Join(ErrLockFailure, err)
 	}
 
@@ -194,7 +193,11 @@ func (vs *fileStore) Set(data []byte, key ...string) error {
 		}
 	}
 
-	return atomicWrite(parent, fileName, vs.filePerm, data)
+	if err := filesystem.AtomicWrite(parent, fileName, vs.filePerm, data); err != nil {
+		return errors.Join(ErrSystemFailure, err)
+	}
+
+	return nil
 }
 
 func (vs *fileStore) List(key ...string) ([]string, error) {
@@ -204,8 +207,8 @@ func (vs *fileStore) List(key ...string) ([]string, error) {
 
 	// Unlike Get, Set and Delete, List can have zero length key
 	for _, k := range key {
-		if err := ValidatePathComponent(k); err != nil {
-			return nil, err
+		if err := filesystem.ValidatePathComponent(k); err != nil {
+			return nil, errors.Join(ErrInvalidArgument, err)
 		}
 	}
 
@@ -333,24 +336,6 @@ func (vs *fileStore) GroupSize(key ...string) (int64, error) {
 	return size, nil
 }
 
-// ValidatePathComponent will enforce os specific filename restrictions on a single path component
-func ValidatePathComponent(pathComponent string) error {
-	// https://en.wikipedia.org/wiki/Comparison_of_file_systems#Limits
-	if len(pathComponent) > 255 {
-		return errors.Join(ErrInvalidArgument, errors.New("identifiers must be stricly shorter than 256 characters"))
-	}
-
-	if strings.TrimSpace(pathComponent) == "" {
-		return errors.Join(ErrInvalidArgument, errors.New("identifier cannot be empty"))
-	}
-
-	if err := validatePlatformSpecific(pathComponent); err != nil {
-		return errors.Join(ErrInvalidArgument, err)
-	}
-
-	return nil
-}
-
 // validateAllPathComponents will enforce validation for a slice of components
 func validateAllPathComponents(pathComponent ...string) error {
 	if len(pathComponent) == 0 {
@@ -358,26 +343,17 @@ func validateAllPathComponents(pathComponent ...string) error {
 	}
 
 	for _, key := range pathComponent {
-		if err := ValidatePathComponent(key); err != nil {
-			return err
+		if err := filesystem.ValidatePathComponent(key); err != nil {
+			return errors.Join(ErrInvalidArgument, err)
 		}
 	}
 
 	return nil
 }
 
-func atomicWrite(parent string, fileName string, perm os.FileMode, data []byte) error {
-	dest := filepath.Join(parent, fileName)
-	temp := filepath.Join(parent, ".temp."+fileName)
-
-	err := os.WriteFile(temp, data, perm)
-	if err != nil {
-		return errors.Join(ErrSystemFailure, err)
-	}
-
-	err = os.Rename(temp, dest)
-	if err != nil {
-		return errors.Join(ErrSystemFailure, err)
+func IsFilesystemSafe(identifier string) error {
+	if err := filesystem.ValidatePathComponent(identifier); err != nil {
+		return errors.Join(ErrInvalidArgument, err)
 	}
 
 	return nil

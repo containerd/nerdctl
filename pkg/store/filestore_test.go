@@ -17,8 +17,6 @@
 package store
 
 import (
-	"fmt"
-	"runtime"
 	"testing"
 	"time"
 
@@ -219,61 +217,4 @@ func TestFileStoreConcurrent(t *testing.T) {
 		return nil
 	})
 	assert.NilError(t, lErr, "locking should not error")
-}
-
-func TestFileStoreFilesystemRestrictions(t *testing.T) {
-	invalid := []string{
-		"/",
-		"/start",
-		"mid/dle",
-		"end/",
-		".",
-		"..",
-		"",
-		fmt.Sprintf("A%0255s", "A"),
-	}
-
-	valid := []string{
-		fmt.Sprintf("A%0254s", "A"),
-		"test",
-		"test-hyphen",
-		".start.dot",
-		"mid.dot",
-		"∞",
-	}
-
-	if runtime.GOOS == "windows" {
-		invalid = append(invalid, []string{
-			"\\start",
-			"mid\\dle",
-			"end\\",
-			"\\",
-			"\\.",
-			"com².whatever",
-			"lpT2",
-			"Prn.",
-			"nUl",
-			"AUX",
-			"A<A",
-			"A>A",
-			"A:A",
-			"A\"A",
-			"A|A",
-			"A?A",
-			"A*A",
-			"end.dot.",
-			"end.space ",
-		}...)
-	}
-
-	for _, v := range invalid {
-		err := ValidatePathComponent(v)
-		assert.ErrorIs(t, err, ErrInvalidArgument, v)
-	}
-
-	for _, v := range valid {
-		err := ValidatePathComponent(v)
-		assert.NilError(t, err, v)
-	}
-
 }

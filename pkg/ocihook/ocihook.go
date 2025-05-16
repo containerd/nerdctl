@@ -38,8 +38,8 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
-	"github.com/containerd/nerdctl/v2/pkg/lockutil"
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
@@ -109,11 +109,11 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	if err != nil {
 		return err
 	}
-	lock, err := lockutil.Lock(filepath.Join(cniNetconfPath, ".cni-concurrency.lock"))
+	lock, err := filesystem.Lock(filepath.Join(cniNetconfPath, ".cni-concurrency.lock"))
 	if err != nil {
 		return err
 	}
-	defer lockutil.Unlock(lock)
+	defer filesystem.Unlock(lock)
 
 	opts, err := newHandlerOpts(&state, dataStore, cniPath, cniNetconfPath, bridgeIP)
 	if err != nil {

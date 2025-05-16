@@ -14,9 +14,10 @@
    limitations under the License.
 */
 
-package store
+package filesystem
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 )
@@ -26,19 +27,21 @@ import (
 var (
 	disallowedKeywords = regexp.MustCompile(`(?i)^(con|prn|nul|aux|com[1-9¹²³]|lpt[1-9¹²³])([.].*)?$`)
 	reservedCharacters = regexp.MustCompile(`[\x{0}-\x{1f}<>:"/\\|?*]`)
+
+	errNoEndingSpaceDot = errors.New("component cannot end with a space or dot")
 )
 
 func validatePlatformSpecific(pathComponent string) error {
 	if reservedCharacters.MatchString(pathComponent) {
-		return fmt.Errorf("identifier %q cannot contain any of the following characters: %q", pathComponent, reservedCharacters)
+		return fmt.Errorf("%w: %q (%q)", errForbiddenChars, pathComponent, reservedCharacters)
 	}
 
 	if disallowedKeywords.MatchString(pathComponent) {
-		return fmt.Errorf("identifier %q cannot be any of the reserved keywords: %q", pathComponent, disallowedKeywords)
+		return fmt.Errorf("%w: %q (%q)", errForbiddenKeywords, pathComponent, disallowedKeywords)
 	}
 
 	if pathComponent[len(pathComponent)-1:] == "." || pathComponent[len(pathComponent)-1:] == " " {
-		return fmt.Errorf("identifier %q cannot end with a space or dot", pathComponent)
+		return fmt.Errorf("%w: %q", errNoEndingSpaceDot, pathComponent)
 	}
 
 	return nil

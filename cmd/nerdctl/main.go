@@ -248,12 +248,12 @@ Config file ($NERDCTL_TOML): %s
 		}
 
 		// Since we store containers' stateful information on the filesystem per namespace, we need namespaces to be
-		// valid, safe path segments. This is enforced by store.ValidatePathComponent.
+		// valid, safe path segments.
 		// Note that the container runtime will further enforce additional restrictions on namespace names
 		// (containerd treats namespaces as valid identifiers - eg: alphanumericals + dash, starting with a letter)
 		// See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#path-segment-names for
 		// considerations about path segments identifiers.
-		if err = store.ValidatePathComponent(globalOptions.Namespace); err != nil {
+		if err = store.IsFilesystemSafe(globalOptions.Namespace); err != nil {
 			return err
 		}
 		if appNeedsRootlessParentMain(cmd, args) {

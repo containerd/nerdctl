@@ -24,7 +24,7 @@ import (
 
 	"github.com/containerd/errdefs"
 
-	"github.com/containerd/nerdctl/v2/pkg/lockutil"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 )
 
 // NOTE: libcni is not safe to use concurrently - or at least delegates concurrency management to the consumer.
@@ -48,7 +48,7 @@ func fsRemove(e *CNIEnv, net *NetworkConfig) error {
 		}
 		return net.clean()
 	}
-	return lockutil.WithDirLock(filepath.Join(e.NetconfPath, ".nerdctl.lock"), fn)
+	return filesystem.WithDirLock(filepath.Join(e.NetconfPath, ".nerdctl.lock"), fn)
 }
 
 func fsExists(e *CNIEnv, name string) (bool, error) {
@@ -62,7 +62,7 @@ func fsWrite(e *CNIEnv, net *NetworkConfig) error {
 	// Concurrent access may independently first figure out that a given network is missing, and while the lock
 	// here will prevent concurrent writes, one of the routines will fail.
 	// Consuming code MUST account for that scenario.
-	return lockutil.WithDirLock(filepath.Join(e.NetconfPath, ".nerdctl.lock"), func() error {
+	return filesystem.WithDirLock(filepath.Join(e.NetconfPath, ".nerdctl.lock"), func() error {
 		if _, err := os.Stat(filename); err == nil {
 			return errdefs.ErrAlreadyExists
 		}
@@ -73,7 +73,7 @@ func fsWrite(e *CNIEnv, net *NetworkConfig) error {
 func fsRead(e *CNIEnv) ([]*NetworkConfig, error) {
 	var nc []*NetworkConfig
 	var err error
-	err = lockutil.WithDirLock(filepath.Join(e.NetconfPath, ".nerdctl.lock"), func() error {
+	err = filesystem.WithDirLock(filepath.Join(e.NetconfPath, ".nerdctl.lock"), func() error {
 		namespaced := []string{}
 		var common []string
 		common, err = libcni.ConfFiles(e.NetconfPath, []string{".conf", ".conflist", ".json"})
