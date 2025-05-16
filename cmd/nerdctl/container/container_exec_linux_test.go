@@ -65,6 +65,9 @@ func TestExecTTY(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+
 		data.Labels().Set("container_name", data.Identifier())
 	}
 
