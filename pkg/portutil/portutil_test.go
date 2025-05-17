@@ -178,10 +178,10 @@ func TestParsePortsLabel(t *testing.T) {
 			},
 			want: []cni.PortMapping{
 				{
-					HostPort:      3000,
-					ContainerPort: 8080,
+					HostPort:      12345,
+					ContainerPort: 10000,
 					Protocol:      "tcp",
-					HostIP:        "127.0.0.1",
+					HostIP:        "0.0.0.0",
 				},
 			},
 			wantErr: false,
@@ -219,7 +219,7 @@ func TestParsePortsLabel(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				if len(got) == len(tt.want) {
-					if len(got) > 1 {
+					if len(got) > 0 {
 						var hostPorts []int32
 						var containerPorts []int32
 						for _, value := range got {
@@ -234,6 +234,14 @@ func TestParsePortsLabel(t *testing.T) {
 						})
 						if (hostPorts[len(hostPorts)-1] - hostPorts[0]) != (containerPorts[len(hostPorts)-1] - containerPorts[0]) {
 							t.Errorf("ParsePortsLabel() = %v, want %v", got, tt.want)
+						}
+						sort.Slice(got, func(i, j int) bool {
+							return got[i].HostPort < got[j].HostPort
+						})
+						for i := 0; i < len(got); i++ {
+							if got[i].HostPort != tt.want[i].HostPort || got[i].ContainerPort != tt.want[i].ContainerPort || got[i].Protocol != tt.want[i].Protocol || got[i].HostIP != tt.want[i].HostIP {
+								t.Errorf("ParsePortsLabel() = %v, want %v", got, tt.want)
+							}
 						}
 					}
 				} else {
