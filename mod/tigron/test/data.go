@@ -126,7 +126,7 @@ func (tp *temp) SaveToWriter(writer func(file io.Writer) error, key ...string) s
 	silentT := assertive.WithSilentSuccess(tp.t)
 
 	//nolint:gosec // it is fine
-	file, err := os.OpenFile(pth, os.O_CREATE, FilePermissionsDefault)
+	file, err := os.OpenFile(pth, os.O_CREATE|os.O_WRONLY, FilePermissionsDefault)
 	assertive.ErrorIsNil(
 		silentT,
 		err,
