@@ -29,7 +29,7 @@ import (
 )
 
 func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
-	if runtime.GOOS != "Linux" || rootlessutil.IsRootless() {
+	if runtime.GOOS != "linux" || rootlessutil.IsRootless() {
 		t.Skip("no non-Linux platform or rootless mode in Linux are not supported yet")
 	}
 	type args struct {
@@ -48,7 +48,6 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 			},
 			want: []cni.PortMapping{
 				{
-					HostPort:      3000,
 					ContainerPort: 3000,
 					Protocol:      "tcp",
 					HostIP:        "0.0.0.0",
@@ -63,13 +62,11 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 			},
 			want: []cni.PortMapping{
 				{
-					HostPort:      3000,
 					ContainerPort: 3000,
 					Protocol:      "tcp",
 					HostIP:        "0.0.0.0",
 				},
 				{
-					HostPort:      3001,
 					ContainerPort: 3001,
 					Protocol:      "tcp",
 					HostIP:        "0.0.0.0",
@@ -92,13 +89,11 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 			},
 			want: []cni.PortMapping{
 				{
-					HostPort:      3000,
 					ContainerPort: 3000,
 					Protocol:      "tcp",
 					HostIP:        "0.0.0.0",
 				},
 				{
-					HostPort:      3001,
 					ContainerPort: 3001,
 					Protocol:      "tcp",
 					HostIP:        "0.0.0.0",
@@ -113,15 +108,13 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 			},
 			want: []cni.PortMapping{
 				{
-					HostPort:      3000,
 					ContainerPort: 3000,
-					Protocol:      "tcp",
+					Protocol:      "udp",
 					HostIP:        "0.0.0.0",
 				},
 				{
-					HostPort:      3001,
 					ContainerPort: 3001,
-					Protocol:      "tcp",
+					Protocol:      "udp",
 					HostIP:        "0.0.0.0",
 				},
 			},
@@ -138,7 +131,7 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				if len(got) == len(tt.want) {
-					if len(got) > 1 {
+					if len(got) > 0 {
 						var hostPorts []int32
 						var containerPorts []int32
 						for _, value := range got {
@@ -153,6 +146,14 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 						})
 						if (hostPorts[len(hostPorts)-1] - hostPorts[0]) != (containerPorts[len(hostPorts)-1] - containerPorts[0]) {
 							t.Errorf("ParseFlagP() = %v, want %v", got, tt.want)
+						}
+						sort.Slice(got, func(i, j int) bool {
+							return got[i].HostPort < got[j].HostPort
+						})
+						for i := 0; i < len(got); i++ {
+							if got[i].ContainerPort != tt.want[i].ContainerPort || got[i].Protocol != tt.want[i].Protocol || got[i].HostIP != tt.want[i].HostIP {
+								t.Errorf("ParseFlagP() = %v, want %v", got, tt.want)
+							}
 						}
 					}
 				} else {
