@@ -27,7 +27,6 @@ import (
 	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 // https://github.com/containerd/nerdctl/issues/1942
@@ -48,11 +47,7 @@ services:
 	c := base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d")
 	expected := icmd.Expected{
 		ExitCode: 1,
-		Err:      `exec: \"invalid\": executable file not found in $PATH`,
-	}
-	// Docker expected err is different
-	if nerdtest.IsDocker() {
-		expected.Err = `unknown or invalid runtime name: invalid`
+		Err:      `invalid runtime name`,
 	}
 	c.Assert(expected)
 }
