@@ -17,5 +17,6 @@
 package filesystem
 
 const (
+	lockPermission         = 0o600
 	pathComponentMaxLength = 255
 )
