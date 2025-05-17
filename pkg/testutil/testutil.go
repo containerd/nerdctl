@@ -40,7 +40,6 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
-	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
@@ -749,22 +748,10 @@ func Identifier(t testing.TB) string {
 	return s
 }
 
-// ImageRepo returns the image repo that can be used to, e.g, validate output
-// from `nerdctl images`.
-func ImageRepo(s string) string {
-	repo, _ := imgutil.ParseRepoTag(s)
-	return repo
-}
-
 // RegisterBuildCacheCleanup adds a 'builder prune --all --force' cleanup function
 // to run on test teardown.
 func RegisterBuildCacheCleanup(t *testing.T) {
 	t.Cleanup(func() {
 		NewBase(t).Cmd("builder", "prune", "--all", "--force").Run()
 	})
-}
-
-func mirrorOf(s string) string {
-	// plain mirror, NOT stargz-converted images
-	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
 }

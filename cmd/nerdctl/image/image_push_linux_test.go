@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -28,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
@@ -37,6 +37,9 @@ func TestPush(t *testing.T) {
 	nerdtest.Setup()
 
 	var registryNoAuthHTTPRandom, registryNoAuthHTTPDefault, registryTokenAuthHTTPSRandom *testregistry.RegistryServer
+	commonImage, _ := referenceutil.Parse(testutil.CommonImage)
+	ubuntuImage, _ := referenceutil.Parse(testutil.UbuntuImage)
+	nonDistBlobImage, _ := referenceutil.Parse(testutil.NonDistBlobImage)
 
 	testCase := &test.Case{
 		Require: require.Linux,
@@ -66,7 +69,7 @@ func TestPush(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), commonImage.Tag)
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 				},
@@ -86,7 +89,7 @@ func TestPush(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), commonImage.Tag)
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 				},
@@ -105,7 +108,7 @@ func TestPush(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						"127.0.0.1", registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+						"127.0.0.1", registryNoAuthHTTPRandom.Port, data.Identifier(), commonImage.Tag)
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 				},
@@ -120,7 +123,7 @@ func TestPush(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s/%s:%s",
-						registryNoAuthHTTPDefault.IP.String(), data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+						registryNoAuthHTTPDefault.IP.String(), data.Identifier(), commonImage.Tag)
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 				},
@@ -140,7 +143,7 @@ func TestPush(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, data.Identifier(), commonImage.Tag)
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 					helpers.Ensure("--insecure-registry", "login", "-u", "admin", "-p", "badmin",
@@ -163,7 +166,7 @@ func TestPush(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, data.Identifier(), commonImage.Tag)
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 					helpers.Ensure("--hosts-dir", registryTokenAuthHTTPSRandom.HostsDir, "login", "-u", "admin", "-p", "badmin",
@@ -186,7 +189,7 @@ func TestPush(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.NonDistBlobImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.NonDistBlobImage, ":")[1])
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), nonDistBlobImage.Tag)
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.NonDistBlobImage, testImageRef)
 				},
@@ -218,7 +221,7 @@ func TestPush(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.NonDistBlobImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.NonDistBlobImage, ":")[1])
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), nonDistBlobImage.Tag)
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.NonDistBlobImage, testImageRef)
 				},
@@ -253,7 +256,7 @@ func TestPush(t *testing.T) {
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.UbuntuImage)
 					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.UbuntuImage, ":")[1])
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), ubuntuImage.Tag)
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.UbuntuImage, testImageRef)
 				},

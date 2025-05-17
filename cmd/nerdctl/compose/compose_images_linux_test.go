@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
@@ -65,16 +66,16 @@ volumes:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
-	wordpressImageName := strings.Split(testutil.WordpressImage, ":")[0]
-	dbImageName := strings.Split(testutil.MariaDBImage, ":")[0]
+	wordpressImageName, _ := referenceutil.Parse(testutil.WordpressImage)
+	dbImageName, _ := referenceutil.Parse(testutil.MariaDBImage)
 
 	// check one service image
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "db").AssertOutContains(dbImageName)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "db").AssertOutNotContains(wordpressImageName)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "db").AssertOutContains(dbImageName.Name())
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "db").AssertOutNotContains(wordpressImageName.Name())
 
 	// check all service images
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images").AssertOutContains(dbImageName)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images").AssertOutContains(wordpressImageName)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "images").AssertOutContains(dbImageName.Name())
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "images").AssertOutContains(wordpressImageName.Name())
 }
 
 func TestComposeImagesJson(t *testing.T) {
