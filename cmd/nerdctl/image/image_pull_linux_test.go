@@ -130,8 +130,8 @@ CMD ["echo", "nerdctl-build-test-string"]
 			data.Temp().Save(dockerfile, "Dockerfile")
 			reg = nerdtest.RegistryWithNoAuth(data, helpers, 80, false)
 			reg.Setup(data, helpers)
-			testImageRef := fmt.Sprintf("%s/%s:%s",
-				reg.IP.String(), data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+			testImageRef := fmt.Sprintf("%s/%s",
+				reg.IP.String(), data.Identifier())
 			buildCtx := data.Temp().Path()
 
 			helpers.Ensure("build", "-t", testImageRef, buildCtx)
