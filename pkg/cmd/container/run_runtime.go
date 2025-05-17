@@ -18,6 +18,7 @@ package container
 
 import (
 	"context"
+	"os/exec"
 	"strings"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -49,8 +50,14 @@ func generateRuntimeCOpts(cgroupManager, runtimeStr string) ([]containerd.NewCon
 				runtimeOpts = nil
 			}
 		} else {
-			// runtimeStr is a runc binary
-			runcOpts.BinaryName = runtimeStr
+			// runtimeStr may be a runc binary - check that it exists
+			// if it does not, treat it as a runtime
+			ex, err := exec.LookPath(runtimeStr)
+			if err != nil {
+				runtime = runtimeStr
+			} else {
+				runcOpts.BinaryName = ex
+			}
 		}
 	}
 	o := containerd.WithRuntime(runtime, runtimeOpts)
