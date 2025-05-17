@@ -30,33 +30,43 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
 )
 
 func TestPush(t *testing.T) {
 	nerdtest.Setup()
 
-	var registryNoAuthHTTPRandom, registryNoAuthHTTPDefault, registryTokenAuthHTTPSRandom *testregistry.RegistryServer
+	var registryNoAuthHTTPRandom, registryNoAuthHTTPDefault, registryTokenAuthHTTPSRandom *registry.Server
+	var tokenServer *registry.TokenAuthServer
 
 	testCase := &test.Case{
-		Require: require.Linux,
+		Require: require.All(
+			require.Linux,
+			nerdtest.Registry,
+		),
 
 		Setup: func(data test.Data, helpers test.Helpers) {
-			base := testutil.NewBase(t)
-			registryNoAuthHTTPRandom = testregistry.NewWithNoAuth(base, 0, false)
-			registryNoAuthHTTPDefault = testregistry.NewWithNoAuth(base, 80, false)
-			registryTokenAuthHTTPSRandom = testregistry.NewWithTokenAuth(base, "admin", "badmin", 0, true)
+			registryNoAuthHTTPRandom = nerdtest.RegistryWithNoAuth(data, helpers, 0, false)
+			registryNoAuthHTTPRandom.Setup(data, helpers)
+			registryNoAuthHTTPDefault = nerdtest.RegistryWithNoAuth(data, helpers, 80, false)
+			registryNoAuthHTTPDefault.Setup(data, helpers)
+			registryTokenAuthHTTPSRandom, tokenServer = nerdtest.RegistryWithTokenAuth(data, helpers, "admin", "badmin", 0, true)
+			tokenServer.Setup(data, helpers)
+			registryTokenAuthHTTPSRandom.Setup(data, helpers)
 		},
 
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			if registryNoAuthHTTPRandom != nil {
-				registryNoAuthHTTPRandom.Cleanup(nil)
+				registryNoAuthHTTPRandom.Cleanup(data, helpers)
 			}
 			if registryNoAuthHTTPDefault != nil {
-				registryNoAuthHTTPDefault.Cleanup(nil)
+				registryNoAuthHTTPDefault.Cleanup(data, helpers)
 			}
 			if registryTokenAuthHTTPSRandom != nil {
-				registryTokenAuthHTTPSRandom.Cleanup(nil)
+				registryTokenAuthHTTPSRandom.Cleanup(data, helpers)
+			}
+			if tokenServer != nil {
+				tokenServer.Cleanup(data, helpers)
 			}
 		},
 
