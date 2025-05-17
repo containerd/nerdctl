@@ -107,7 +107,18 @@ func (ca *Cert) GenerateCustomX509(
 	template *x509.Certificate,
 ) *Cert {
 	silentT := assertive.WithSilentSuccess(helpers.T())
-	key, certPath, keyPath := createCert(silentT, data, underDirectory, template, ca.cert, ca.key)
+
+	var (
+		cert *x509.Certificate
+		key  *rsa.PrivateKey
+	)
+
+	if ca != nil {
+		cert = ca.cert
+		key = ca.key
+	}
+
+	key, certPath, keyPath := createCert(silentT, data, underDirectory, template, cert, key)
 
 	return &Cert{
 		CertPath: certPath,
@@ -124,16 +135,16 @@ func createCert(
 	template, caCert *x509.Certificate,
 	caKey *rsa.PrivateKey,
 ) (key *rsa.PrivateKey, certPath, keyPath string) {
-	if caCert == nil {
-		caCert = template
-	}
+	key, err := rsa.GenerateKey(rand.Reader, keyLength)
+	assertive.ErrorIsNil(testing, err, "key generation should succeed")
 
 	if caKey == nil {
 		caKey = key
 	}
 
-	key, err := rsa.GenerateKey(rand.Reader, keyLength)
-	assertive.ErrorIsNil(testing, err, "key generation should succeed")
+	if caCert == nil {
+		caCert = template
+	}
 
 	signedCert, err := x509.CreateCertificate(rand.Reader, template, caCert, &key.PublicKey, caKey)
 	assertive.ErrorIsNil(testing, err, "certificate creation should succeed")
@@ -144,16 +155,17 @@ func createCert(
 	}
 
 	data.Temp().Dir(dir)
-	certPath = data.Temp().Path(dir, serial.String()+".cert")
-	keyPath = data.Temp().Path(dir, serial.String()+".key")
 
 	data.Temp().SaveToWriter(func(writer io.Writer) error {
 		return pem.Encode(writer, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
-	}, keyPath)
+	}, dir, serial.String()+".key")
 
 	data.Temp().SaveToWriter(func(writer io.Writer) error {
 		return pem.Encode(writer, &pem.Block{Type: "CERTIFICATE", Bytes: signedCert})
-	}, keyPath)
+	}, dir, serial.String()+".cert")
+
+	certPath = data.Temp().Path(dir, serial.String()+".cert")
+	keyPath = data.Temp().Path(dir, serial.String()+".key")
 
 	return key, certPath, keyPath
 }
