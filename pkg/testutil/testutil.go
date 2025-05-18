@@ -763,8 +763,3 @@ func RegisterBuildCacheCleanup(t *testing.T) {
 		NewBase(t).Cmd("builder", "prune", "--all", "--force").Run()
 	})
 }
-
-func mirrorOf(s string) string {
-	// plain mirror, NOT stargz-converted images
-	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
-}

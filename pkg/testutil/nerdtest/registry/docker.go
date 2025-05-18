@@ -19,7 +19,6 @@ package registry
 import (
 	"fmt"
 	"net"
-	"os"
 	"strconv"
 
 	"gotest.tools/v3/assert"
@@ -71,15 +70,7 @@ func NewDockerRegistry(data test.Data, helpers test.Helpers, currentCA *testca.C
 	// Attach authentication params returns by authenticator
 	args = append(args, auth.Params(data)...)
 
-	// Get the right registry version
 	registryImage := platform.RegistryImageStable
-	up := os.Getenv("DISTRIBUTION_VERSION")
-	if up != "" {
-		if up[0:1] != "v" {
-			up = "v" + up
-		}
-		registryImage = platform.RegistryImageNext + up
-	}
 	args = append(args, registryImage)
 
 	cleanup := func(data test.Data, helpers test.Helpers) {
