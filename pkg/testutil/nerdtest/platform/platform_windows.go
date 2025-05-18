@@ -16,22 +16,12 @@
 
 package platform
 
-import (
-	"fmt"
-)
-
 func DataHome() (string, error) {
 	panic("not supported")
 }
 
-// The following are here solely for windows to compile. They are not used, as the corresponding tests are running only on linux.
-func mirrorOf(s string) string {
-	return fmt.Sprintf("ghcr.io/stargz-containers/%s-org", s)
-}
-
 var (
-	RegistryImageStable = mirrorOf("registry:2")
-	RegistryImageNext   = "ghcr.io/distribution/distribution:"
-	KuboImage           = mirrorOf("ipfs/kubo:v0.16.0")
-	DockerAuthImage     = mirrorOf("cesanta/docker_auth:1.7")
+	RegistryImageStable = "there-is-no-such-test-on-windows"
+	KuboImage           = "there-is-no-such-test-on-windows"
+	DockerAuthImage     = "there-is-no-such-test-on-windows"
 )
