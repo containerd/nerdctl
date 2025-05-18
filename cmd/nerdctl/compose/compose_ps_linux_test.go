@@ -36,8 +36,6 @@ services:
   wordpress:
     image: %s
     container_name: wordpress_container
-    ports:
-      - 8080:80
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: exampleuser

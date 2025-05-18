@@ -533,8 +533,6 @@ func TestComposeUpAbortOnContainerExit(t *testing.T) {
 services:
   %s:
     image: %s
-    ports:
-      - 8080:80
   %s:
     image: %s
     entrypoint: /bin/sh -c "exit 1"

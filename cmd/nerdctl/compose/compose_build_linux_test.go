@@ -51,8 +51,6 @@ services:
   svc1:
     build: .
     image: %s
-    ports:
-    - 8081:80
 `, imageSvc0, imageSvc1)
 
 		data.Temp().Save(dockerComposeYAML, "compose.yaml")
