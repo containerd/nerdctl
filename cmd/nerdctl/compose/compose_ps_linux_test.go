@@ -32,8 +32,6 @@ import (
 func TestComposePs(t *testing.T) {
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   wordpress:
     image: %s
@@ -112,8 +110,6 @@ func TestComposePsJSON(t *testing.T) {
 
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   wordpress:
     image: %s

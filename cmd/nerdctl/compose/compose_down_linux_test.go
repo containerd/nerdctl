@@ -30,8 +30,6 @@ func TestComposeDownRemoveUsedNetwork(t *testing.T) {
 
 	var (
 		dockerComposeYAMLOrphan = fmt.Sprintf(`
-version: '3.1'
-
 services:
   test:
     image: %s
@@ -66,8 +64,6 @@ func TestComposeDownRemoveOrphans(t *testing.T) {
 
 	var (
 		dockerComposeYAMLOrphan = fmt.Sprintf(`
-version: '3.1'
-
 services:
   test:
     image: %s

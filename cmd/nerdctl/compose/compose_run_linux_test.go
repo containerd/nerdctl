@@ -40,7 +40,6 @@ func TestComposeRun(t *testing.T) {
 	const expectedOutput = "speed 38400 baud"
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
@@ -120,7 +119,6 @@ func TestComposeRunWithServicePorts(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   web:
     image: %s
@@ -182,7 +180,6 @@ func TestComposeRunWithPublish(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   web:
     image: %s
@@ -242,7 +239,6 @@ func TestComposeRunWithEnv(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
@@ -274,7 +270,6 @@ func TestComposeRunWithUser(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
@@ -303,7 +298,6 @@ func TestComposeRunWithLabel(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
@@ -341,7 +335,6 @@ func TestComposeRunWithArgs(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
@@ -371,7 +364,6 @@ func TestComposeRunWithEntrypoint(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
@@ -399,7 +391,6 @@ func TestComposeRunWithVolume(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s

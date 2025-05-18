@@ -27,8 +27,6 @@ import (
 func TestComposeKill(t *testing.T) {
 	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
 
   wordpress:
