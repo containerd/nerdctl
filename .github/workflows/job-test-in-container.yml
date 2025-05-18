@@ -86,6 +86,8 @@ jobs:
           canary::build::integration
       - if: ${{ ! inputs.canary }}
         name: "Init: prepare test image"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           buildargs=()
           # If the runner is old, use old ubuntu inside the container as well
@@ -104,6 +106,7 @@ jobs:
           arch=${{ env.RUNNER_ARCH == 'ARM64' && 'arm64' || 'amd64' }}
           docker buildx create --name with-gha --use
           docker buildx build \
+            --secret id=github_token,env=GITHUB_TOKEN \
             --output=type=docker \
             --cache-from type=gha,scope=test-integration-dependencies-"$arch" \
             -t "$target" --target "$target" \

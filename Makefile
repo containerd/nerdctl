@@ -253,7 +253,7 @@ TAR_OWNER0_FLAGS=--owner=0 --group=0
 TAR_FLATTEN_FLAGS=--transform 's/.*\///g'
 
 define make_artifact_full_linux
-	$(DOCKER) build --output type=tar,dest=$(CURDIR)/_output/nerdctl-full-$(VERSION_TRIMMED)-linux-$(1).tar --target out-full --platform $(1) --build-arg GO_VERSION -f $(MAKEFILE_DIR)/Dockerfile $(MAKEFILE_DIR)
+	$(DOCKER) build --secret id=github_token,env=GITHUB_TOKEN --output type=tar,dest=$(CURDIR)/_output/nerdctl-full-$(VERSION_TRIMMED)-linux-$(1).tar --target out-full --platform $(1) --build-arg GO_VERSION -f $(MAKEFILE_DIR)/Dockerfile $(MAKEFILE_DIR)
 	gzip -9 $(CURDIR)/_output/nerdctl-full-$(VERSION_TRIMMED)-linux-$(1).tar
 endef
 

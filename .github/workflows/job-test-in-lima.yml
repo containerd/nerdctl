@@ -79,6 +79,8 @@ jobs:
         uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124  # v3.1.0
 
       - name: "Init: prepare integration tests"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eux
 
@@ -88,6 +90,7 @@ jobs:
           [ "$TARGET" = "rootless" ] && TARGET=test-integration-rootless || TARGET=test-integration
           docker buildx create --name with-gha --use
           docker buildx build \
+            --secret id=github_token,env=GITHUB_TOKEN \
             --output=type=docker \
             --cache-from type=gha,scope=test-integration-dependencies-amd64 \
             -t test-integration --target "${TARGET}" \

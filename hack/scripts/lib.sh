@@ -226,9 +226,10 @@ github::settoken(){
 }
 
 github::request(){
-  local endpoint="$1"
+  local accept="$1"
+  local endpoint="$2"
   local args=(
-    "Accept: application/vnd.github+json"
+    "Accept: $accept"
     "X-GitHub-Api-Version: 2022-11-28"
   )
 
@@ -237,21 +238,30 @@ github::request(){
   http::get /dev/stdout https://api.github.com/"$endpoint" "${args[@]}"
 }
 
+github::file(){
+  local repo="$1"
+  local path="$2"
+  local ref="${3:-main}"
+  github::request "application/vnd.github.v3.raw" "repos/$repo/contents/$path?ref=$ref"
+}
+
 github::tags::latest(){
   local repo="$1"
-  github::request "repos/$repo/tags" | jq -rc .[0].name
+  github::request "application/vnd.github+json" "repos/$repo/tags" | jq -rc .[0].name
 }
 
 github::releases(){
   local repo="$1"
-  github::request "repos/$repo/releases" |
+  github::request "application/vnd.github+json" "repos/$repo/releases" |
     jq -rc .[]
 }
 
 github::releases::latest(){
   local repo="$1"
-  github::request "repos/$repo/releases/latest" | jq -rc .
+  github::request "application/vnd.github+json" "repos/$repo/releases/latest" | jq -rc .
 }
 
 log::init
 host::require jq tar curl shasum
+
+[[ "${1:-}" != "github"* ]] || "$@"

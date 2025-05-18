@@ -61,6 +61,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
   make \
   git \
+  jq \
   curl \
   dpkg-dev
 ARG TARGETARCH
@@ -75,6 +76,7 @@ RUN xx-apt-get update -qq && xx-apt-get install -qq --no-install-recommends \
   pkg-config
 RUN git config --global advice.detachedHead false
 ADD hack/git-checkout-tag-with-hash.sh /usr/local/bin/
+ADD hack/scripts/lib.sh /usr/local/bin/http::helper
 
 FROM build-base AS build-containerd
 ARG TARGETARCH
@@ -174,10 +176,11 @@ RUN cd /out/lib/systemd/system && \
   echo "" >> buildkit.service && \
   echo "# This file was converted from containerd.service, with \`sed -E '${sedcomm}'\`" >> buildkit.service
 ARG STARGZ_SNAPSHOTTER_VERSION
-RUN STARGZ_SNAPSHOTTER_VERSION=${STARGZ_SNAPSHOTTER_VERSION%%@*}; \
+RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
+  STARGZ_SNAPSHOTTER_VERSION=${STARGZ_SNAPSHOTTER_VERSION%%@*}; \
   fname="stargz-snapshotter-${STARGZ_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
   curl -o "${fname}" -fsSL --proto '=https' --tlsv1.2 "https://github.com/containerd/stargz-snapshotter/releases/download/${STARGZ_SNAPSHOTTER_VERSION}/${fname}" && \
-  curl -o "stargz-snapshotter.service" -fsSL --proto '=https' --tlsv1.2 "https://raw.githubusercontent.com/containerd/stargz-snapshotter/${STARGZ_SNAPSHOTTER_VERSION}/script/config/etc/systemd/system/stargz-snapshotter.service" && \
+  http::helper github::file containerd/stargz-snapshotter script/config/etc/systemd/system/stargz-snapshotter.service "${STARGZ_SNAPSHOTTER_VERSION}" > "stargz-snapshotter.service" && \
   grep "${fname}" "/SHA256SUMS.d/stargz-snapshotter-${STARGZ_SNAPSHOTTER_VERSION}" | sha256sum -c - && \
   grep "stargz-snapshotter.service" "/SHA256SUMS.d/stargz-snapshotter-${STARGZ_SNAPSHOTTER_VERSION}" | sha256sum -c - && \
   tar xzf "${fname}" -C /out/bin && \
@@ -245,6 +248,10 @@ RUN ROOTLESSKIT_VERSION=${ROOTLESSKIT_VERSION%%@*}; \
 ARG GOMODJAIL_VERSION
 COPY --from=build-gomodjail /out/${TARGETARCH:-amd64}/* /out/bin/
 RUN echo "- gomodjail: ${GOMODJAIL_VERSION}" >> /out/share/doc/nerdctl-full/README.md
+ARG CONTAINERIZED_SYSTEMD_VERSION
+RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
+  http::helper github::file AkihiroSuda/containerized-systemd docker-entrypoint.sh "${CONTAINERIZED_SYSTEMD_VERSION}" > /docker-entrypoint.sh && \
+  chmod +x /docker-entrypoint.sh
 
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
@@ -281,9 +288,7 @@ RUN apt-get update -qq && apt-get install -qq -y --no-install-recommends \
   iproute2 iptables \
   dbus dbus-user-session systemd systemd-sysv \
   fuse3
-ARG CONTAINERIZED_SYSTEMD_VERSION
-RUN curl -o /docker-entrypoint.sh -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/AkihiroSuda/containerized-systemd/${CONTAINERIZED_SYSTEMD_VERSION}/docker-entrypoint.sh && \
-  chmod +x /docker-entrypoint.sh
+COPY --from=build-full /docker-entrypoint.sh /docker-entrypoint.sh
 COPY --from=out-full / /usr/local/
 RUN perl -pi -e 's/multi-user.target/docker-entrypoint.target/g' /usr/local/lib/systemd/system/*.service && \
   systemctl enable containerd buildkit stargz-snapshotter && \
