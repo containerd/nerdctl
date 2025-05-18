@@ -23,7 +23,6 @@ func DataHome() (string, error) {
 var (
 	// The following are here solely for darwin to compile / lint. They are not used, as the corresponding tests are running only on linux.
 	RegistryImageStable = "registry:2"
-	RegistryImageNext   = "ghcr.io/distribution/distribution:"
 	KuboImage           = "ipfs/kubo:v0.16.0"
 	DockerAuthImage     = "cesanta/docker_auth:1.7"
 )
