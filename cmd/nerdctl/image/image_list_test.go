@@ -19,8 +19,6 @@ package image
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -149,8 +147,7 @@ LABEL version=0.1
 RUN echo "actually creating a layer so that docker sets the createdAt time"
 `, testutil.CommonImage)
 			buildCtx := data.Temp().Path()
-			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
-			assert.NilError(helpers.T(), err)
+			data.Temp().Save(dockerfile, "Dockerfile")
 			data.Labels().Set("buildCtx", buildCtx)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -296,8 +293,7 @@ func TestImagesFilterDangling(t *testing.T) {
 CMD ["echo", "nerdctl-build-notag-string"]
 	`, testutil.CommonImage)
 			buildCtx := data.Temp().Path()
-			err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
-			assert.NilError(helpers.T(), err)
+			data.Temp().Save(dockerfile, "Dockerfile")
 			data.Labels().Set("buildCtx", buildCtx)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {

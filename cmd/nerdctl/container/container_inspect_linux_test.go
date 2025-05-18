@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -535,8 +534,7 @@ RUN groupadd -r test && useradd -r -g test test
 USER test
 `, testutil.UbuntuImage)
 
-			err := os.WriteFile(filepath.Join(data.Temp().Path(), "Dockerfile"), []byte(dockerfile), 0o600)
-			assert.NilError(helpers.T(), err)
+			data.Temp().Save(dockerfile, "Dockerfile")
 
 			helpers.Ensure("build", "-t", data.Identifier(), data.Temp().Path())
 			helpers.Ensure("create", "--name", data.Identifier(), "--user", "test", data.Identifier())
