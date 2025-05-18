@@ -62,7 +62,7 @@ services:
 volumes:
   wordpress:
   db:
-`, testutil.WordpressImage, testutil.MariaDBImage, testutil.AlpineImage)
+`, testutil.WordpressImage, testutil.MariaDBImage, testutil.CommonImage)
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
 	projectName := comp.ProjectName()
@@ -98,9 +98,9 @@ volumes:
 	time.Sleep(3 * time.Second)
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(assertHandler("wordpress_container", testutil.WordpressImage))
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(assertHandler("db_container", testutil.MariaDBImage))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps").AssertOutNotContains(testutil.AlpineImage)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "alpine", "-a").AssertOutWithFunc(assertHandler("alpine_container", testutil.AlpineImage))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "-a", "--filter", "status=exited").AssertOutWithFunc(assertHandler("alpine_container", testutil.AlpineImage))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps").AssertOutNotContains(testutil.CommonImage)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "alpine", "-a").AssertOutWithFunc(assertHandler("alpine_container", testutil.CommonImage))
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "-a", "--filter", "status=exited").AssertOutWithFunc(assertHandler("alpine_container", testutil.CommonImage))
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "--services", "-a").AssertOutContainsAll("wordpress\n", "db\n", "alpine\n")
 }
 

@@ -34,14 +34,14 @@ services:
   test:
     image: %s
     command: "sleep infinity"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 		dockerComposeYAMLFull = fmt.Sprintf(`
 %s
   orphan:
     image: %s
     command: "sleep infinity"
-`, dockerComposeYAMLOrphan, testutil.AlpineImage)
+`, dockerComposeYAMLOrphan, testutil.CommonImage)
 	)
 
 	compOrphan := testutil.NewComposeDir(t, dockerComposeYAMLOrphan)
@@ -68,14 +68,14 @@ services:
   test:
     image: %s
     command: "sleep infinity"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 		dockerComposeYAMLFull = fmt.Sprintf(`
 %s
   orphan:
     image: %s
     command: "sleep infinity"
-`, dockerComposeYAMLOrphan, testutil.AlpineImage)
+`, dockerComposeYAMLOrphan, testutil.CommonImage)
 	)
 
 	compOrphan := testutil.NewComposeDir(t, dockerComposeYAMLOrphan)

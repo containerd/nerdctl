@@ -29,7 +29,7 @@ import (
 )
 
 func TestComposeBuild(t *testing.T) {
-	dockerfile := "FROM " + testutil.AlpineImage
+	dockerfile := "FROM " + testutil.CommonImage
 
 	testCase := nerdtest.Setup()
 

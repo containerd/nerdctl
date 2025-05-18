@@ -276,7 +276,7 @@ services:
   test:
     image: %s
     command: "sleep infinity"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -303,7 +303,7 @@ networks:
     ipam:
       config:
         - subnet: 10.1.100.0/24
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -325,14 +325,14 @@ services:
   test:
     image: %s
     command: "sleep infinity"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 		dockerComposeYAMLFull = fmt.Sprintf(`
 %s
   orphan:
     image: %s
     command: "sleep infinity"
-`, dockerComposeYAMLOrphan, testutil.AlpineImage)
+`, dockerComposeYAMLOrphan, testutil.CommonImage)
 	)
 
 	compOrphan := testutil.NewComposeDir(t, dockerComposeYAMLOrphan)
@@ -361,7 +361,7 @@ services:
   test:
     image: %s
     command: "sleep infinity"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()

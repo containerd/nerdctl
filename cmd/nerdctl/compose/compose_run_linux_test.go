@@ -45,7 +45,7 @@ services:
     image: %s
     entrypoint:
       - stty
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	testCase := nerdtest.Setup()
 
@@ -246,7 +246,7 @@ services:
       - sh
       - -c
       - "echo $$FOO"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -276,7 +276,7 @@ services:
     entrypoint:
       - id
       - -u
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -306,7 +306,7 @@ services:
       - "dummy log"
     labels:
       - "foo=bar"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -340,7 +340,7 @@ services:
     image: %s
     entrypoint:
       - echo
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -369,7 +369,7 @@ services:
     image: %s
     entrypoint:
       - stty # should be changed
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -396,7 +396,7 @@ services:
     image: %s
     entrypoint:
     - stty # no meaning, just put any command
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -480,7 +480,7 @@ services:
 `, imageSvc0, keyPair.PublicKey, keyPair.PrivateKey,
 		imageSvc1, keyPair.PrivateKey, imageSvc2)
 
-	dockerfile := fmt.Sprintf(`FROM %s`, testutil.AlpineImage)
+	dockerfile := fmt.Sprintf(`FROM %s`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
