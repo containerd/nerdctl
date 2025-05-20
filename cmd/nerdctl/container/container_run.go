@@ -234,6 +234,15 @@ func setCreateFlags(cmd *cobra.Command) {
 	// rootfs flags (from Podman)
 	cmd.Flags().Bool("rootfs", false, "The first argument is not an image but the rootfs to the exploded container")
 
+	// Health check flags
+	cmd.Flags().String("health-cmd", "", "Command to run to check health")
+	cmd.Flags().Duration("health-interval", 0, "Time between running the check (default: 30s)")
+	cmd.Flags().Duration("health-timeout", 0, "Maximum time to allow one check to run (default: 30s)")
+	cmd.Flags().Int("health-retries", 0, "Consecutive failures needed to report unhealthy")
+	cmd.Flags().Duration("health-start-period", 0, "Start period for the container to initialize before starting health-retries countdown")
+	cmd.Flags().Duration("health-start-interval", 0, "Time between running the check during the start period")
+	cmd.Flags().Bool("no-healthcheck", false, "Disable any container-specified HEALTHCHECK")
+
 	// #region env flags
 	// entrypoint needs to be StringArray, not StringSlice, to prevent "FOO=foo1,foo2" from being split to {"FOO=foo1", "foo2"}
 	// entrypoint StringArray is an internal implementation to support `nerdctl compose` entrypoint yaml filed with multiple strings
