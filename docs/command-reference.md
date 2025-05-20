@@ -244,6 +244,7 @@ Security flags:
 - :whale: `--security-opt apparmor=<PROFILE>`: specify custom AppArmor profile
 - :whale: `--security-opt no-new-privileges`: disallow privilege escalation, e.g., setuid and file capabilities
 - :whale: `--security-opt systempaths=unconfined`: Turn off confinement for system paths (masked paths, read-only paths) for the container
+- :whale: `--security-opt writable-cgroups`: making the cgroups writeable
 - :nerd_face: `--security-opt privileged-without-host-devices`: Don't pass host devices to privileged containers
 - :whale: `--cap-add=<CAP>`: Add Linux capabilities
 - :whale: `--cap-drop=<CAP>`: Drop Linux capabilities
