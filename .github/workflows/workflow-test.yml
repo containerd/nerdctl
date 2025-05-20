@@ -141,9 +141,9 @@ jobs:
       go-version: 1.24
       windows-cni-version: v0.3.1
       docker-version: 5:28.0.4-1~ubuntu.24.04~noble
-      containerd-version: 2.1.0
+      containerd-version: 2.1.1
       # Note: these as for amd64
-      containerd-sha: 0e5359e957b66b679be807563a543c7416e305e3aafcf56bad90ef87a917014d
+      containerd-sha: 918e88fd393c28c89424e6535df0546ca36c1dfa7d8a5d685dee70b449380a9b
       containerd-service-sha: 1941362cbaa89dd591b99c32b050d82c583d3cd2e5fa63085d7017457ec5fca8
       linux-cni-version: v1.7.1
       linux-cni-sha: 1a28a0506bfe5bcdc981caf1a49eeab7e72da8321f1119b7be85f22621013098
