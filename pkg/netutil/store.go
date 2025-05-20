@@ -66,7 +66,7 @@ func fsWrite(e *CNIEnv, net *NetworkConfig) error {
 		if _, err := os.Stat(filename); err == nil {
 			return errdefs.ErrAlreadyExists
 		}
-		return os.WriteFile(filename, net.Bytes, 0644)
+		return filesystem.WriteFile(filename, net.Bytes, 0644)
 	})
 }
 

@@ -33,6 +33,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -535,7 +536,7 @@ RUN groupadd -r test && useradd -r -g test test
 USER test
 `, testutil.UbuntuImage)
 
-			err := os.WriteFile(filepath.Join(data.Temp().Path(), "Dockerfile"), []byte(dockerfile), 0o600)
+			err := filesystem.WriteFile(filepath.Join(data.Temp().Path(), "Dockerfile"), []byte(dockerfile), 0o600)
 			assert.NilError(helpers.T(), err)
 
 			helpers.Ensure("build", "-t", data.Identifier(), data.Temp().Path())

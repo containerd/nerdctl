@@ -18,7 +18,6 @@ package image
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -30,6 +29,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -72,7 +72,7 @@ func TestImagePrune(t *testing.T) {
 					`, testutil.CommonImage)
 
 				buildCtx := data.Temp().Path()
-				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+				err := filesystem.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", buildCtx)
 				// After we rebuild with tag, docker will no longer show the <none> version from above
@@ -120,7 +120,7 @@ func TestImagePrune(t *testing.T) {
 					`, testutil.CommonImage)
 
 				buildCtx := data.Temp().Path()
-				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+				err := filesystem.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", buildCtx)
 				helpers.Ensure("build", "-t", identifier, buildCtx)
@@ -164,7 +164,7 @@ CMD ["echo", "nerdctl-test-image-prune-filter-label"]
 LABEL foo=bar
 LABEL version=0.1`, testutil.CommonImage)
 				buildCtx := data.Temp().Path()
-				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+				err := filesystem.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
 				imgList := helpers.Capture("images")
@@ -204,7 +204,7 @@ LABEL version=0.1`, testutil.CommonImage)
 RUN echo "Anything, so that we create actual content for docker to set the current time for CreatedAt"
 CMD ["echo", "nerdctl-test-image-prune-until"]`, testutil.CommonImage)
 				buildCtx := data.Temp().Path()
-				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
+				err := filesystem.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
 				assert.NilError(helpers.T(), err)
 				helpers.Ensure("build", "-t", data.Identifier(), buildCtx)
 				imgList := helpers.Capture("images")

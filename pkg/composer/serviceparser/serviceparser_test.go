@@ -18,7 +18,6 @@ package serviceparser
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -27,6 +26,7 @@ import (
 	"github.com/compose-spec/compose-go/v2/types"
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
@@ -521,7 +521,7 @@ configs:
 	assert.NilError(t, err)
 
 	for _, f := range []string{"secret1", "secret2", "secret3", "config1", "config2"} {
-		err = os.WriteFile(filepath.Join(project.WorkingDir, f), []byte("content-"+f), 0444)
+		err = filesystem.WriteFile(filepath.Join(project.WorkingDir, f), []byte("content-"+f), 0444)
 		assert.NilError(t, err)
 	}
 

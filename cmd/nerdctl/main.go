@@ -47,9 +47,9 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/config"
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/logging"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
-	"github.com/containerd/nerdctl/v2/pkg/store"
 	"github.com/containerd/nerdctl/v2/pkg/version"
 )
 

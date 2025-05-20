@@ -30,6 +30,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
@@ -329,7 +330,7 @@ func TestNetworkWithDefaultNameAlreadyExists(t *testing.T) {
 
 	// Filename is irrelevant as long as it's not nerdctl's.
 	testConfFile := filepath.Join(cniConfTestDir, fmt.Sprintf("%s.conf", testutil.Identifier(t)))
-	err = os.WriteFile(testConfFile, buf.Bytes(), 0600)
+	err = filesystem.WriteFile(testConfFile, buf.Bytes(), 0600)
 	assert.NilError(t, err)
 
 	// Check network is detected.
