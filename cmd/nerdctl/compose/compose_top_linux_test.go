@@ -20,20 +20,16 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/containerd/nerdctl/v2/pkg/infoutil"
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposeTop(t *testing.T) {
-	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
-		t.Skip("test skipped for rootless containers on cgroup v1")
-	}
-
-	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s
@@ -42,15 +38,36 @@ services:
     image: %s
 `, testutil.CommonImage, testutil.NginxAlpineImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	testCase := nerdtest.Setup()
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+	testCase.Require = require.All(nerdtest.CgroupsAccessible)
 
-	// a running container should have the process command in output
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "top", "svc0").AssertOutContains("sleep infinity")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "top", "svc1").AssertOutContains("nginx")
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+		data.Labels().Set("yamlPath", data.Temp().Path("compose.yaml"))
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down")
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "svc0 contains sleep infinity",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("yamlPath"), "top", "svc0")
+			},
+			Expected: test.Expects(0, nil, expect.Contains("sleep infinity")),
+		},
+		{
+			Description: "svc1 contains sleep nginx",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("yamlPath"), "top", "svc1")
+			},
+			Expected: test.Expects(0, nil, expect.Contains("nginx")),
+		},
+	}
+
+	testCase.Run(t)
 }
