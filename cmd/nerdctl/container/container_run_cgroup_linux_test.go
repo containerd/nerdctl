@@ -134,7 +134,9 @@ func TestRunCgroupV2(t *testing.T) {
 	base.Cmd("exec", testutil.Identifier(t)+"-testUpdate2",
 		"cat", "cpu.max", "memory.max", "memory.swap.max", "memory.low",
 		"pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
-
+	base.Cmd("run", "--rm", "--security-opt", "writable-cgroups=true", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo").AssertOK()
+	base.Cmd("run", "--rm", "--security-opt", "writable-cgroups=false", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo").AssertFail()
+	base.Cmd("run", "--rm", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo").AssertFail()
 }
 
 func TestRunCgroupV1(t *testing.T) {
@@ -176,6 +178,9 @@ func TestRunCgroupV1(t *testing.T) {
 	const expected = "42000\n100000\n0\n44040192\n6291456\n104857600\n0\n42\n2000\n0-1\n"
 	base.Cmd("run", "--rm", "--cpus", "0.42", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus).AssertOutExactly(expected)
 	base.Cmd("run", "--rm", "--cpu-quota", "42000", "--cpu-period", "100000", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus).AssertOutExactly(expected)
+	base.Cmd("run", "--rm", "--security-opt", "writable-cgroups=true", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/pids/foo").AssertOK()
+	base.Cmd("run", "--rm", "--security-opt", "writable-cgroups=false", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/pids/foo").AssertFail()
+	base.Cmd("run", "--rm", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/pids/foo").AssertFail()
 }
 
 // TestIssue3781 tests https://github.com/containerd/nerdctl/issues/3781

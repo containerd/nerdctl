@@ -18,6 +18,8 @@ package container
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -52,7 +54,7 @@ const (
 func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([]oci.SpecOpts, error) {
 	for k := range securityOptsMap {
 		switch k {
-		case "seccomp", "apparmor", "no-new-privileges", "systempaths", "privileged-without-host-devices":
+		case "seccomp", "apparmor", "no-new-privileges", "systempaths", "privileged-without-host-devices", "writable-cgroups":
 		default:
 			log.L.Warnf("unknown security-opt: %q", k)
 		}
@@ -117,6 +119,15 @@ func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([
 
 	if privilegedWithoutHostDevices && !privileged {
 		return nil, errors.New("flag `--security-opt privileged-without-host-devices` can't be used without `--privileged` enabled")
+	}
+	if value, ok := securityOptsMap["writable-cgroups"]; ok {
+		writable, err := strconv.ParseBool(value)
+		if err != nil {
+			return nil, fmt.Errorf("invalid \"writable-cgroups\" value: %q", value)
+		}
+		if writable {
+			opts = append(opts, oci.WithWriteableCgroupfs)
+		}
 	}
 
 	if privileged {
