@@ -1,7 +1,7 @@
 //gomodjail:confined
 module github.com/containerd/nerdctl/v2
 
-go 1.23.0
+go 1.23.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
@@ -38,7 +38,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.3.0 //gomodjail:unconfined
 	github.com/fatih/color v1.18.0 //gomodjail:unconfined
-	github.com/fluent/fluent-logger-golang v1.9.0
+	github.com/fluent/fluent-logger-golang v1.10.0
 	github.com/fsnotify/fsnotify v1.9.0 //gomodjail:unconfined
 	github.com/go-viper/mapstructure/v2 v2.2.1
 	github.com/ipfs/go-cid v0.5.0
@@ -75,7 +75,6 @@ require (
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
-	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/cilium/ebpf v0.16.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/go-runc v1.1.0 // indirect
@@ -116,7 +115,7 @@ require (
 	github.com/opencontainers/runtime-tools v0.9.1-0.20221107090550-2e043c6bd626 // indirect
 	github.com/opencontainers/selinux v1.12.0 // indirect
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
-	github.com/philhofer/fwd v1.1.3-0.20240612014219-fbbf4953d986 // indirect
+	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sasha-s/go-deadlock v0.3.5 // indirect
 	//gomodjail:unconfined
@@ -126,7 +125,7 @@ require (
 	github.com/stefanberger/go-pkcs11uri v0.0.0-20230803200340-78284954bff6 // indirect
 	//gomodjail:unconfined
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
-	github.com/tinylib/msgp v1.2.0 // indirect
+	github.com/tinylib/msgp v1.3.0 // indirect
 	github.com/vbatts/tar-split v0.11.6 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
