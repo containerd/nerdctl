@@ -24,6 +24,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -418,7 +419,7 @@ func getIP6AddressOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 	return nil, nil
 }
 
-func applyNetworkSettings(opts *handlerOpts) error {
+func applyNetworkSettings(opts *handlerOpts) (err error) {
 	portMapOpts, err := getPortMapOpts(opts)
 	if err != nil {
 		return err
@@ -475,10 +476,19 @@ func applyNetworkSettings(opts *handlerOpts) error {
 	// See https://github.com/containerd/nerdctl/issues/3355
 	_ = opts.cni.Remove(ctx, opts.fullID, "", namespaceOpts...)
 
+	// Defer CNI configuration removal to ensure idempotency of oci-hook.
+	defer func() {
+		if err != nil {
+			log.L.Warn("Container failed starting. Removing allocated network configuration.")
+			_ = opts.cni.Remove(ctx, opts.fullID, nsPath, namespaceOpts...)
+		}
+	}()
+
 	cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, namespaceOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to call cni.Setup: %w", err)
 	}
+
 	cniResRaw := cniRes.Raw()
 	for i, cniName := range opts.cniNames {
 		hsMeta.Networks[cniName] = cniResRaw[i]
@@ -622,6 +632,15 @@ func onPostStop(opts *handlerOpts) error {
 			log.L.WithError(err).Errorf("failed to call cni.Remove")
 			return err
 		}
+
+		// opts.cni.Remove has trouble removing network configurations when netns is empty.
+		// Therefore, we force the deletion of iptables rules here to prevent netns exhaustion.
+		// This is a workaround until https://github.com/containernetworking/plugins/pull/1078 is merged.
+		if err := cleanupIptablesRules(opts.fullID); err != nil {
+			log.L.WithError(err).Warnf("failed to clean up iptables rules for container %s", opts.fullID)
+			// Don't return error here, continue with the rest of the cleanup
+		}
+
 		hs, err := hostsstore.New(opts.dataStore, ns)
 		if err != nil {
 			return err
@@ -639,6 +658,43 @@ func onPostStop(opts *handlerOpts) error {
 	if err := namst.Release(name, opts.state.ID); err != nil && !errors.Is(err, store.ErrNotFound) {
 		return fmt.Errorf("failed to release container name %s: %w", name, err)
 	}
+	return nil
+}
+
+// cleanupIptablesRules cleans up iptables rules related to the container
+func cleanupIptablesRules(containerID string) error {
+	// Check if iptables command exists
+	if _, err := exec.LookPath("iptables"); err != nil {
+		return fmt.Errorf("iptables command not found: %w", err)
+	}
+
+	// Tables to check for rules
+	tables := []string{"nat", "filter", "mangle"}
+
+	for _, table := range tables {
+		// Get all iptables rules for this table
+		cmd := exec.Command("iptables", "-t", table, "-S")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			log.L.WithError(err).Warnf("failed to list iptables rules for table %s", table)
+			continue
+		}
+
+		// Find and delete rules related to the container
+		rules := strings.Split(string(output), "\n")
+		for _, rule := range rules {
+			if strings.Contains(rule, containerID) {
+				// Execute delete command
+				deleteCmd := exec.Command("sh", "-c", "--", fmt.Sprintf(`iptables -t %s -D %s`, table, rule[3:]))
+				if deleteOutput, err := deleteCmd.CombinedOutput(); err != nil {
+					log.L.WithError(err).Warnf("failed to delete iptables rule: %s, output: %s", rule, string(deleteOutput))
+				} else {
+					log.L.Debugf("deleted iptables rule: %s", rule)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
