@@ -19,7 +19,6 @@ package ipfs
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -138,8 +137,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 	`, data.Labels().Get(ipfsImageURLKey))
 
 				buildCtx := data.Temp().Path()
-				err := os.WriteFile(filepath.Join(buildCtx, "Dockerfile"), []byte(dockerfile), 0o600)
-				assert.NilError(helpers.T(), err)
+				data.Temp().Save(dockerfile, "Dockerfile")
 
 				helpers.Ensure("build", "-t", data.Identifier("built-image"), buildCtx)
 			},

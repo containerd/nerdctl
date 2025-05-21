@@ -30,20 +30,18 @@ func TestComposeDownRemoveUsedNetwork(t *testing.T) {
 
 	var (
 		dockerComposeYAMLOrphan = fmt.Sprintf(`
-version: '3.1'
-
 services:
   test:
     image: %s
     command: "sleep infinity"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 		dockerComposeYAMLFull = fmt.Sprintf(`
 %s
   orphan:
     image: %s
     command: "sleep infinity"
-`, dockerComposeYAMLOrphan, testutil.AlpineImage)
+`, dockerComposeYAMLOrphan, testutil.CommonImage)
 	)
 
 	compOrphan := testutil.NewComposeDir(t, dockerComposeYAMLOrphan)
@@ -66,20 +64,18 @@ func TestComposeDownRemoveOrphans(t *testing.T) {
 
 	var (
 		dockerComposeYAMLOrphan = fmt.Sprintf(`
-version: '3.1'
-
 services:
   test:
     image: %s
     command: "sleep infinity"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 		dockerComposeYAMLFull = fmt.Sprintf(`
 %s
   orphan:
     image: %s
     command: "sleep infinity"
-`, dockerComposeYAMLOrphan, testutil.AlpineImage)
+`, dockerComposeYAMLOrphan, testutil.CommonImage)
 	)
 
 	compOrphan := testutil.NewComposeDir(t, dockerComposeYAMLOrphan)

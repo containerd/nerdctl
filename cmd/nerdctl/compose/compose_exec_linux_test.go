@@ -34,8 +34,6 @@ import (
 
 func TestComposeExec(t *testing.T) {
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s
@@ -179,8 +177,6 @@ services:
 func TestComposeExecTTY(t *testing.T) {
 	const expectedOutput = "speed 38400 baud"
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s
@@ -267,8 +263,6 @@ services:
 
 func TestComposeExecWithIndex(t *testing.T) {
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s

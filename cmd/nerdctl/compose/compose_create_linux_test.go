@@ -35,7 +35,7 @@ func TestComposeCreate(t *testing.T) {
 services:
   svc0:
     image: %s
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	testCase := nerdtest.Setup()
 
@@ -151,7 +151,7 @@ func TestComposeCreatePull(t *testing.T) {
 services:
   svc0:
     image: %s
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -161,12 +161,12 @@ services:
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
 
 	// `compose create --pull never` should fail: no such image
-	base.Cmd("rmi", "-f", testutil.AlpineImage).Run()
+	base.Cmd("rmi", "-f", testutil.CommonImage).Run()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "create", "--pull", "never").AssertFail()
 	// `compose create --pull missing(default)|always` should succeed: image is pulled and container is created
-	base.Cmd("rmi", "-f", testutil.AlpineImage).Run()
+	base.Cmd("rmi", "-f", testutil.CommonImage).Run()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "create").AssertOK()
-	base.Cmd("rmi", "-f", testutil.AlpineImage).Run()
+	base.Cmd("rmi", "-f", testutil.CommonImage).Run()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "create", "--pull", "always").AssertOK()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0", "-a").AssertOutContainsAny("Created", "created")
 }
@@ -181,7 +181,7 @@ services:
     image: %s
 `, imageSvc0)
 
-	dockerfile := fmt.Sprintf(`FROM %s`, testutil.AlpineImage)
+	dockerfile := fmt.Sprintf(`FROM %s`, testutil.CommonImage)
 
 	testutil.RequiresBuild(t)
 	testutil.RegisterBuildCacheCleanup(t)

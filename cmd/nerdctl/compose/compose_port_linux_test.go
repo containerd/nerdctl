@@ -27,8 +27,6 @@ func TestComposePort(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s
@@ -55,8 +53,6 @@ func TestComposePortFailure(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s

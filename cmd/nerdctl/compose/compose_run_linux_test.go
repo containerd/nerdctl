@@ -40,13 +40,12 @@ func TestComposeRun(t *testing.T) {
 	const expectedOutput = "speed 38400 baud"
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
     entrypoint:
       - stty
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	testCase := nerdtest.Setup()
 
@@ -120,7 +119,6 @@ func TestComposeRunWithServicePorts(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   web:
     image: %s
@@ -182,7 +180,6 @@ func TestComposeRunWithPublish(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   web:
     image: %s
@@ -242,7 +239,6 @@ func TestComposeRunWithEnv(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
@@ -250,7 +246,7 @@ services:
       - sh
       - -c
       - "echo $$FOO"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -274,14 +270,13 @@ func TestComposeRunWithUser(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
     entrypoint:
       - id
       - -u
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -303,7 +298,6 @@ func TestComposeRunWithLabel(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
@@ -312,7 +306,7 @@ services:
       - "dummy log"
     labels:
       - "foo=bar"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -341,13 +335,12 @@ func TestComposeRunWithArgs(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
     entrypoint:
       - echo
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -371,13 +364,12 @@ func TestComposeRunWithEntrypoint(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
     entrypoint:
       - stty # should be changed
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -399,13 +391,12 @@ func TestComposeRunWithVolume(t *testing.T) {
 	containerName := testutil.Identifier(t)
 
 	dockerComposeYAML := fmt.Sprintf(`
-version: '3.1'
 services:
   alpine:
     image: %s
     entrypoint:
     - stty # no meaning, just put any command
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -489,7 +480,7 @@ services:
 `, imageSvc0, keyPair.PublicKey, keyPair.PrivateKey,
 		imageSvc1, keyPair.PrivateKey, imageSvc2)
 
-	dockerfile := fmt.Sprintf(`FROM %s`, testutil.AlpineImage)
+	dockerfile := fmt.Sprintf(`FROM %s`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()

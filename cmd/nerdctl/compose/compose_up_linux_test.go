@@ -40,8 +40,6 @@ import (
 func TestComposeUp(t *testing.T) {
 	base := testutil.NewBase(t)
 	helpers.ComposeUp(t, base, fmt.Sprintf(`
-version: '3.1'
-
 services:
 
   wordpress:
@@ -117,8 +115,6 @@ func TestComposeUpNetWithStaticIP(t *testing.T) {
 	base := testutil.NewBase(t)
 	staticIP := "172.20.0.12"
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s
@@ -155,8 +151,6 @@ func TestComposeUpMultiNet(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s
@@ -204,8 +198,6 @@ func TestComposeUpOsEnvVar(t *testing.T) {
 	base := testutil.NewBase(t)
 	const containerName = "nginxAlpine"
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc1:
     image: %s
@@ -237,8 +229,6 @@ func TestComposeUpDotEnvFile(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = `
-version: '3.1'
-
 services:
   svc3:
     image: ghcr.io/stargz-containers/nginx:$TAG
@@ -260,8 +250,6 @@ func TestComposeUpEnvFileNotFoundError(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = `
-version: '3.1'
-
 services:
   svc4:
     image: ghcr.io/stargz-containers/nginx:$TAG
@@ -284,13 +272,11 @@ func TestComposeUpWithScale(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   test:
     image: %s
     command: "sleep infinity"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -307,8 +293,6 @@ func TestComposeIPAMConfig(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   foo:
     image: %s
@@ -319,7 +303,7 @@ networks:
     ipam:
       config:
         - subnet: 10.1.100.0/24
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -337,20 +321,18 @@ func TestComposeUpRemoveOrphans(t *testing.T) {
 
 	var (
 		dockerComposeYAMLOrphan = fmt.Sprintf(`
-version: '3.1'
-
 services:
   test:
     image: %s
     command: "sleep infinity"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 		dockerComposeYAMLFull = fmt.Sprintf(`
 %s
   orphan:
     image: %s
     command: "sleep infinity"
-`, dockerComposeYAMLOrphan, testutil.AlpineImage)
+`, dockerComposeYAMLOrphan, testutil.CommonImage)
 	)
 
 	compOrphan := testutil.NewComposeDir(t, dockerComposeYAMLOrphan)
@@ -375,13 +357,11 @@ func TestComposeUpIdempotent(t *testing.T) {
 	base := testutil.NewBase(t)
 
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   test:
     image: %s
     command: "sleep infinity"
-`, testutil.AlpineImage)
+`, testutil.CommonImage)
 
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -399,7 +379,6 @@ func TestComposeUpWithExternalNetwork(t *testing.T) {
 	containerName2 := testutil.Identifier(t) + "-2"
 	networkName := testutil.Identifier(t) + "-network"
 	var dockerComposeYaml1 = fmt.Sprintf(`
-version: "3"
 services:
   %s:
     image: %s
@@ -413,7 +392,6 @@ networks:
     external: true
 `, containerName1, testutil.NginxAlpineImage, containerName1, networkName, networkName)
 	var dockerComposeYaml2 = fmt.Sprintf(`
-version: "3"
 services:
   %s:
     image: %s
@@ -457,8 +435,6 @@ func TestComposeUpWithBypass4netns(t *testing.T) {
 	testutil.RequireSystemService(t, "bypass4netnsd")
 	base := testutil.NewBase(t)
 	helpers.ComposeUp(t, base, fmt.Sprintf(`
-version: '3.1'
-
 services:
 
   wordpress:
@@ -557,8 +533,6 @@ func TestComposeUpAbortOnContainerExit(t *testing.T) {
 services:
   %s:
     image: %s
-    ports:
-      - 8080:80
   %s:
     image: %s
     entrypoint: /bin/sh -c "exit 1"

@@ -31,8 +31,6 @@ import (
 
 func TestComposeCopy(t *testing.T) {
 	var dockerComposeYAML = fmt.Sprintf(`
-version: '3.1'
-
 services:
   svc0:
     image: %s
