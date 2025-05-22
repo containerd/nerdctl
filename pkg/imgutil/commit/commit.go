@@ -57,11 +57,12 @@ type Changes struct {
 }
 
 type Opts struct {
-	Author  string
-	Message string
-	Ref     string
-	Pause   bool
-	Changes Changes
+	Author      string
+	Message     string
+	Ref         string
+	Pause       bool
+	Changes     Changes
+	Compression types.CompressionType
 }
 
 var (
@@ -176,7 +177,7 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 	// Sync filesystem to make sure that all the data writes in container could be persisted to disk.
 	Sync()
 
-	diffLayerDesc, diffID, err := createDiff(ctx, id, sn, client.ContentStore(), differ)
+	diffLayerDesc, diffID, err := createDiff(ctx, id, sn, client.ContentStore(), differ, opts.Compression)
 	if err != nil {
 		return emptyDigest, fmt.Errorf("failed to export layer: %w", err)
 	}
@@ -356,8 +357,14 @@ func writeContentsForImage(ctx context.Context, snName string, baseImg container
 }
 
 // createDiff creates a layer diff into containerd's content store.
-func createDiff(ctx context.Context, name string, sn snapshots.Snapshotter, cs content.Store, comparer diff.Comparer) (ocispec.Descriptor, digest.Digest, error) {
-	newDesc, err := rootfs.CreateDiff(ctx, name, sn, comparer)
+func createDiff(ctx context.Context, name string, sn snapshots.Snapshotter, cs content.Store, comparer diff.Comparer, compression types.CompressionType) (ocispec.Descriptor, digest.Digest, error) {
+	opts := make([]diff.Opt, 0)
+	mediaType := images.MediaTypeDockerSchema2LayerGzip
+	if compression == types.Zstd {
+		opts = append(opts, diff.WithMediaType(ocispec.MediaTypeImageLayerZstd))
+		mediaType = images.MediaTypeDockerSchema2LayerZstd
+	}
+	newDesc, err := rootfs.CreateDiff(ctx, name, sn, comparer, opts...)
 	if err != nil {
 		return ocispec.Descriptor{}, digest.Digest(""), err
 	}
@@ -378,7 +385,7 @@ func createDiff(ctx context.Context, name string, sn snapshots.Snapshotter, cs c
 	}
 
 	return ocispec.Descriptor{
-		MediaType: images.MediaTypeDockerSchema2LayerGzip,
+		MediaType: mediaType,
 		Digest:    newDesc.Digest,
 		Size:      info.Size,
 	}, diffID, nil

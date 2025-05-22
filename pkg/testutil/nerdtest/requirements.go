@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/containerd/v2/defaults"
@@ -32,6 +33,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -415,4 +417,25 @@ var RemapIDs = &test.Requirement{
 		}
 		return false, "snapshotter does not support ID remapping"
 	},
+}
+
+func ContainerdVersion(v string) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+			ctx := context.Background()
+			namespace := defaultNamespace
+			address := defaults.DefaultAddress
+			client, ctx, cancel, err := clientutil.NewClient(ctx, namespace, address)
+			if err != nil {
+				return false, fmt.Sprintf("failed to create client: %v", err)
+			}
+			defer cancel()
+			if sv, err := infoutil.ServerSemVer(ctx, client); err != nil {
+				return false, err.Error()
+			} else if sv.LessThan(semver.MustParse(v)) {
+				return false, fmt.Sprintf("`nerdctl commit --compression expects containerd %s or later, got containerd %v", v, sv)
+			}
+			return true, ""
+		},
+	}
 }
