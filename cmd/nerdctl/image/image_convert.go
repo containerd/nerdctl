@@ -89,6 +89,12 @@ func convertCommand() *cobra.Command {
 	cmd.Flags().String("overlaybd-dbstr", "", "Database config string for overlaybd")
 	// #endregion
 
+	// #region soci flags
+	cmd.Flags().Bool("soci", false, "Convert image to SOCI Index V2 format.")
+	cmd.Flags().Int64("soci-min-layer-size", -1, "The minimum size of layers that will be converted to SOCI Index V2 format")
+	cmd.Flags().Int64("soci-span-size", -1, "The size of SOCI spans")
+	// #endregion
+
 	// #region generic flags
 	cmd.Flags().Bool("uncompress", false, "Convert tar.gz layers to uncompressed tar layers")
 	cmd.Flags().Bool("oci", false, "Convert Docker media types to OCI media types")
@@ -213,6 +219,21 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 	}
 	// #endregion
 
+	// #region soci flags
+	soci, err := cmd.Flags().GetBool("soci")
+	if err != nil {
+		return types.ImageConvertOptions{}, err
+	}
+	sociMinLayerSize, err := cmd.Flags().GetInt64("soci-min-layer-size")
+	if err != nil {
+		return types.ImageConvertOptions{}, err
+	}
+	sociSpanSize, err := cmd.Flags().GetInt64("soci-span-size")
+	if err != nil {
+		return types.ImageConvertOptions{}, err
+	}
+	// #endregion
+
 	// #region generic flags
 	uncompress, err := cmd.Flags().GetBool("uncompress")
 	if err != nil {
@@ -276,6 +297,13 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 			Overlaybd:      overlaybd,
 			OverlayFsType:  overlaybdFsType,
 			OverlaydbDBStr: overlaybdDbstr,
+		},
+		SociConvertOptions: types.SociConvertOptions{
+			Soci: soci,
+			SociOptions: types.SociOptions{
+				SpanSize:     sociSpanSize,
+				MinLayerSize: sociMinLayerSize,
+			},
 		},
 		Stdout: cmd.OutOrStdout(),
 	}, nil

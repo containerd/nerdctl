@@ -18,23 +18,26 @@ package snapshotterutil
 
 import (
 	"bufio"
+	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 
+	"github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
-// CreateSoci creates a SOCI index(`rawRef`)
-func CreateSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform bool, platforms []string, sOpts types.SociOptions) error {
+// setupSociCommand creates and sets up a SOCI command with common configuration
+func setupSociCommand(gOpts types.GlobalCommandOptions) (*exec.Cmd, error) {
 	sociExecutable, err := exec.LookPath("soci")
 	if err != nil {
 		log.L.WithError(err).Error("soci executable not found in path $PATH")
 		log.L.Info("you might consider installing soci from: https://github.com/awslabs/soci-snapshotter/blob/main/docs/install.md")
-		return err
+		return nil, err
 	}
 
 	sociCmd := exec.Command(sociExecutable)
@@ -47,7 +50,64 @@ func CreateSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform boo
 	if gOpts.Namespace != "" {
 		sociCmd.Args = append(sociCmd.Args, "--namespace", gOpts.Namespace)
 	}
-	// #endregion
+
+	return sociCmd, nil
+}
+
+// ConvertSociIndexV2 converts an image to SOCI format and returns the converted image reference with digest
+func ConvertSociIndexV2(ctx context.Context, client *client.Client, srcRef string, destRef string, gOpts types.GlobalCommandOptions, platforms []string, sOpts types.SociOptions) (string, error) {
+	sociCmd, err := setupSociCommand(gOpts)
+	if err != nil {
+		return "", err
+	}
+
+	sociCmd.Args = append(sociCmd.Args, "convert")
+
+	if len(platforms) > 0 {
+		// multiple values need to be passed as separate, repeating flags in soci as it uses urfave
+		// https://github.com/urfave/cli/blob/main/docs/v2/examples/flags.md#multiple-values-per-single-flag
+		for _, p := range platforms {
+			sociCmd.Args = append(sociCmd.Args, "--platform", p)
+		}
+	}
+
+	if sOpts.SpanSize != -1 {
+		sociCmd.Args = append(sociCmd.Args, "--span-size", strconv.FormatInt(sOpts.SpanSize, 10))
+	}
+
+	if sOpts.MinLayerSize != -1 {
+		sociCmd.Args = append(sociCmd.Args, "--min-layer-size", strconv.FormatInt(sOpts.MinLayerSize, 10))
+	}
+
+	sociCmd.Args = append(sociCmd.Args, srcRef, destRef)
+
+	log.L.Infof("Converting image from %s to %s using SOCI format", srcRef, destRef)
+
+	err = processSociIO(sociCmd)
+	if err != nil {
+		return "", err
+	}
+	err = sociCmd.Wait()
+	if err != nil {
+		return "", err
+	}
+
+	// Get the converted image's digest
+	img, err := client.GetImage(ctx, destRef)
+	if err != nil {
+		return "", fmt.Errorf("failed to get converted image: %w", err)
+	}
+
+	// Return the full reference with digest
+	return fmt.Sprintf("%s@%s", destRef, img.Target().Digest), nil
+}
+
+// CreateSociIndexV1 creates a SOCI index(`rawRef`)
+func CreateSociIndexV1(rawRef string, gOpts types.GlobalCommandOptions, allPlatform bool, platforms []string, sOpts types.SociOptions) error {
+	sociCmd, err := setupSociCommand(gOpts)
+	if err != nil {
+		return err
+	}
 
 	// Global flags have to be put before subcommand before soci upgrades to urfave v3.
 	// https://github.com/urfave/cli/issues/1113
@@ -73,7 +133,7 @@ func CreateSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform boo
 	// --timeout, --debug, --content-store
 	sociCmd.Args = append(sociCmd.Args, rawRef)
 
-	log.L.Debugf("running %s %v", sociExecutable, sociCmd.Args)
+	log.L.Debugf("running soci %v", sociCmd.Args)
 
 	err = processSociIO(sociCmd)
 	if err != nil {
@@ -88,24 +148,10 @@ func CreateSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform boo
 func PushSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform bool, platforms []string) error {
 	log.L.Debugf("pushing SOCI index: %s", rawRef)
 
-	sociExecutable, err := exec.LookPath("soci")
+	sociCmd, err := setupSociCommand(gOpts)
 	if err != nil {
-		log.L.WithError(err).Error("soci executable not found in path $PATH")
-		log.L.Info("you might consider installing soci from: https://github.com/awslabs/soci-snapshotter/blob/main/docs/install.md")
 		return err
 	}
-
-	sociCmd := exec.Command(sociExecutable)
-	sociCmd.Env = os.Environ()
-
-	// #region for global flags.
-	if gOpts.Address != "" {
-		sociCmd.Args = append(sociCmd.Args, "--address", gOpts.Address)
-	}
-	if gOpts.Namespace != "" {
-		sociCmd.Args = append(sociCmd.Args, "--namespace", gOpts.Namespace)
-	}
-	// #endregion
 
 	// Global flags have to be put before subcommand before soci upgrades to urfave v3.
 	// https://github.com/urfave/cli/issues/1113
@@ -131,7 +177,7 @@ func PushSoci(rawRef string, gOpts types.GlobalCommandOptions, allPlatform bool,
 	}
 	sociCmd.Args = append(sociCmd.Args, rawRef)
 
-	log.L.Debugf("running %s %v", sociExecutable, sociCmd.Args)
+	log.L.Debugf("running soci %v", sociCmd.Args)
 
 	err = processSociIO(sociCmd)
 	if err != nil {

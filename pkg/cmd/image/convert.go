@@ -47,6 +47,7 @@ import (
 	converterutil "github.com/containerd/nerdctl/v2/pkg/imgutil/converter"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
+	"github.com/containerd/nerdctl/v2/pkg/snapshotterutil"
 )
 
 func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRawRef string, options types.ImageConvertOptions) error {
@@ -86,8 +87,9 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 	zstdchunked := options.ZstdChunked
 	overlaybd := options.Overlaybd
 	nydus := options.Nydus
+	soci := options.Soci
 	var finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error)
-	if estargz || zstd || zstdchunked || overlaybd || nydus {
+	if estargz || zstd || zstdchunked || overlaybd || nydus || soci {
 		convertCount := 0
 		if estargz {
 			convertCount++
@@ -104,9 +106,12 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 		if nydus {
 			convertCount++
 		}
+		if soci {
+			convertCount++
+		}
 
 		if convertCount > 1 {
-			return errors.New("options --estargz, --zstdchunked, --overlaybd and --nydus lead to conflict, only one of them can be used")
+			return errors.New("options --estargz, --zstdchunked, --overlaybd, --nydus and --soci lead to conflict, only one of them can be used")
 		}
 
 		var convertFunc converter.ConvertFunc
@@ -164,6 +169,16 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 				)),
 			)
 			convertType = "nydus"
+		case soci:
+			// Convert image to SOCI format
+			convertedRef, err := snapshotterutil.ConvertSociIndexV2(ctx, client, srcRef, targetRef, options.GOptions, options.Platforms, options.SociOptions)
+			if err != nil {
+				return fmt.Errorf("failed to convert image to SOCI format: %w", err)
+			}
+			res := converterutil.ConvertedImageInfo{
+				Image: convertedRef,
+			}
+			return printConvertedImage(options.Stdout, options, res)
 		}
 
 		if convertType != "overlaybd" {

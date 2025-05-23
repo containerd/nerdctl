@@ -210,7 +210,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return err
 	}
 	if options.GOptions.Snapshotter == "soci" {
-		if err = snapshotterutil.CreateSoci(ref, options.GOptions, options.AllPlatforms, options.Platforms, options.SociOptions); err != nil {
+		if err = snapshotterutil.CreateSociIndexV1(ref, options.GOptions, options.AllPlatforms, options.Platforms, options.SociOptions); err != nil {
 			return err
 		}
 		if err = snapshotterutil.PushSoci(ref, options.GOptions, options.AllPlatforms, options.Platforms); err != nil {

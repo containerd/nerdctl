@@ -89,6 +89,24 @@ func TestImageConvert(t *testing.T) {
 				},
 				Expected: test.Expects(0, nil, nil),
 			},
+			{
+				Description: "soci",
+				Require: require.All(
+					require.Not(nerdtest.Docker),
+					nerdtest.Soci,
+					nerdtest.SociVersion("0.10.0"),
+				),
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("image", "convert", "--soci",
+						"--soci-span-size", "2097152",
+						"--soci-min-layer-size", "20971520",
+						testutil.CommonImage, data.Identifier("converted-image"))
+				},
+				Expected: test.Expects(0, nil, nil),
+			},
 		},
 	}
 
