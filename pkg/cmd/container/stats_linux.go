@@ -17,9 +17,13 @@
 package container
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,8 +37,17 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/statsutil"
 )
 
+const (
+	// The value comes from `C.sysconf(C._SC_CLK_TCK)`, and
+	// on Linux it's a constant which is safe to be hard coded,
+	// so we can avoid using cgo here. For details, see:
+	// https://github.com/containerd/cgroups/pull/12
+	clockTicksPerSecond  = 100
+	nanoSecondsPerSecond = 1e9
+)
+
 //nolint:nakedret
-func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStats, firstSet bool, anydata interface{}, pid int, interfaces []native.NetInterface) (statsEntry statsutil.StatsEntry, err error) {
+func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStats, firstSet bool, anydata interface{}, pid int, interfaces []native.NetInterface, systemInfo statsutil.SystemInfo) (statsEntry statsutil.StatsEntry, err error) {
 
 	var (
 		data  *v1.Metrics
@@ -96,10 +109,10 @@ func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStat
 
 	if data != nil {
 		if !firstSet {
-			statsEntry, err = statsutil.SetCgroupStatsFields(previousStats, data, nlinks)
+			statsEntry, err = statsutil.SetCgroupStatsFields(previousStats, data, nlinks, systemInfo)
 		}
 		previousStats.CgroupCPU = data.CPU.Usage.Total
-		previousStats.CgroupSystem = data.CPU.Usage.Kernel
+		previousStats.CgroupSystem = systemInfo.SystemUsage
 		if err != nil {
 			return
 		}
@@ -116,4 +129,60 @@ func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStat
 	previousStats.Time = time.Now()
 
 	return
+}
+
+// getSystemCPUUsage reads the system's CPU usage from /proc/stat and returns
+// the total CPU usage in nanoseconds and the number of CPUs.
+func getSystemCPUUsage() (cpuUsage uint64, cpuNum uint32, _ error) {
+	f, err := os.Open("/proc/stat")
+	if err != nil {
+		return 0, 0, err
+	}
+	defer f.Close()
+
+	return readSystemCPUUsage(f)
+}
+
+// readSystemCPUUsage parses CPU usage information from a reader providing
+// /proc/stat format data. It returns the total CPU usage in nanoseconds
+// and the number of CPUs. More:
+// https://github.com/moby/moby/blob/26db31fdab628a2345ed8f179e575099384166a9/daemon/stats_unix.go#L327-L368
+func readSystemCPUUsage(r io.Reader) (cpuUsage uint64, cpuNum uint32, _ error) {
+	rdr := bufio.NewReaderSize(r, 1024)
+
+	for {
+		data, isPartial, err := rdr.ReadLine()
+
+		if err != nil {
+			return 0, 0, fmt.Errorf("error scanning /proc/stat file: %w", err)
+		}
+		// Assume all cpu* records are at the start of the file, like glibc:
+		// https://github.com/bminor/glibc/blob/5d00c201b9a2da768a79ea8d5311f257871c0b43/sysdeps/unix/sysv/linux/getsysstats.c#L108-L135
+		if isPartial || len(data) < 4 {
+			break
+		}
+		line := string(data)
+		if line[:3] != "cpu" {
+			break
+		}
+		if line[3] == ' ' {
+			parts := strings.Fields(line)
+			if len(parts) < 8 {
+				return 0, 0, fmt.Errorf("invalid number of cpu fields")
+			}
+			var totalClockTicks uint64
+			for _, i := range parts[1:8] {
+				v, err := strconv.ParseUint(i, 10, 64)
+				if err != nil {
+					return 0, 0, fmt.Errorf("unable to convert value %s to int: %w", i, err)
+				}
+				totalClockTicks += v
+			}
+			cpuUsage = (totalClockTicks * nanoSecondsPerSecond) / clockTicksPerSecond
+		}
+		if '0' <= line[3] && line[3] <= '9' {
+			cpuNum++
+		}
+	}
+	return cpuUsage, cpuNum, nil
 }

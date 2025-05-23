@@ -23,6 +23,12 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/statsutil"
 )
 
-func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStats, firstSet bool, anydata interface{}, pid int, interfaces []native.NetInterface) (statsutil.StatsEntry, error) {
+func setContainerStatsAndRenderStatsEntry(previousStats *statsutil.ContainerStats, firstSet bool, anydata interface{}, pid int, interfaces []native.NetInterface, systemInfo statsutil.SystemInfo) (statsutil.StatsEntry, error) {
 	return statsutil.StatsEntry{}, nil
+}
+
+// getSystemCPUUsage reads the system's CPU usage from /proc/stat and returns
+// the total CPU usage in nanoseconds and the number of CPUs.
+func getSystemCPUUsage() (uint64, uint32, error) {
+	return 0, 0, nil
 }

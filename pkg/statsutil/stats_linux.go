@@ -38,8 +38,8 @@ func calculateMemPercent(limit float64, usedNo float64) float64 {
 	return 0
 }
 
-func SetCgroupStatsFields(previousStats *ContainerStats, data *v1.Metrics, links []netlink.Link) (StatsEntry, error) {
-	cpuPercent := calculateCgroupCPUPercent(previousStats, data)
+func SetCgroupStatsFields(previousStats *ContainerStats, data *v1.Metrics, links []netlink.Link, systemInfo SystemInfo) (StatsEntry, error) {
+	cpuPercent := calculateCgroupCPUPercent(previousStats, data, systemInfo)
 	blkRead, blkWrite := calculateCgroupBlockIO(data)
 	mem := calculateCgroupMemUsage(data)
 	memLimit := getCgroupMemLimit(float64(data.Memory.Usage.Limit))
@@ -114,18 +114,21 @@ func getHostMemLimit() float64 {
 	return float64(^uint64(0))
 }
 
-func calculateCgroupCPUPercent(previousStats *ContainerStats, metrics *v1.Metrics) float64 {
+func calculateCgroupCPUPercent(previousStats *ContainerStats, metrics *v1.Metrics, systemInfo SystemInfo) float64 {
 	var (
 		cpuPercent = 0.0
 		// calculate the change for the cpu usage of the container in between readings
 		cpuDelta = float64(metrics.CPU.Usage.Total) - float64(previousStats.CgroupCPU)
 		// calculate the change for the entire system between readings
-		systemDelta = float64(metrics.CPU.Usage.Kernel) - float64(previousStats.CgroupSystem)
-		onlineCPUs  = float64(len(metrics.CPU.Usage.PerCPU))
+		systemDelta = float64(systemInfo.SystemUsage) - float64(previousStats.CgroupSystem)
+		onlineCPUs  = systemInfo.OnlineCPUs
 	)
 
+	if onlineCPUs == 0 {
+		onlineCPUs = uint32(len(metrics.CPU.Usage.PerCPU))
+	}
 	if systemDelta > 0.0 && cpuDelta > 0.0 {
-		cpuPercent = (cpuDelta / systemDelta) * onlineCPUs * 100.0
+		cpuPercent = (cpuDelta / systemDelta) * float64(onlineCPUs) * 100.0
 	}
 	return cpuPercent
 }

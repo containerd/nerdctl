@@ -26,6 +26,11 @@ import (
 	units "github.com/docker/go-units"
 )
 
+type SystemInfo struct {
+	OnlineCPUs  uint32
+	SystemUsage uint64
+}
+
 // StatsEntry represents the statistics data collected from a container
 type StatsEntry struct {
 	Name             string
