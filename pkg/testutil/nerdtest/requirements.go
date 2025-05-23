@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -277,13 +276,6 @@ var Registry = require.All(
 				// - when we start a large number of registries in subtests, no need to round-trip to ghcr everytime
 				// This of course assumes that the subtests are NOT going to prune / rmi images
 				registryImage := platform.RegistryImageStable
-				up := os.Getenv("DISTRIBUTION_VERSION")
-				if up != "" {
-					if up[0:1] != "v" {
-						up = "v" + up
-					}
-					registryImage = platform.RegistryImageNext + up
-				}
 				helpers.Ensure("pull", "--quiet", registryImage)
 				helpers.Ensure("pull", "--quiet", platform.DockerAuthImage)
 				helpers.Ensure("pull", "--quiet", platform.KuboImage)
