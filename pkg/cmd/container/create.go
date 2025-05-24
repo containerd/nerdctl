@@ -339,8 +339,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	cOpts = append(cOpts, lCOpts...)
 
 	var containerNameStore namestore.NameStore
-	if options.Name == "" && !options.NameChanged {
-		// Automatically set the container name, unless `--name=""` was explicitly specified.
+	if options.Name == "" {
 		var imageRef string
 		if ensuredImage != nil {
 			imageRef = ensuredImage.Ref
@@ -352,15 +351,15 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		}
 		options.Name = parsedReference.SuggestContainerName(id)
 	}
-	if options.Name != "" {
-		containerNameStore, err = namestore.New(dataStore, options.GOptions.Namespace)
-		if err != nil {
-			return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
-		}
-		if err := containerNameStore.Acquire(options.Name, id); err != nil {
-			return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
-		}
+
+	containerNameStore, err = namestore.New(dataStore, options.GOptions.Namespace)
+	if err != nil {
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
+	if err := containerNameStore.Acquire(options.Name, id); err != nil {
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
+	}
+
 	internalLabels.name = options.Name
 	internalLabels.pidFile = options.PidFile
 
@@ -714,9 +713,7 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 	var hostConfigLabel dockercompat.HostConfigLabel
 	var dnsSettings dockercompat.DNSSettings
 	m[labels.Namespace] = internalLabels.namespace
-	if internalLabels.name != "" {
-		m[labels.Name] = internalLabels.name
-	}
+	m[labels.Name] = internalLabels.name
 	m[labels.Hostname] = internalLabels.hostname
 	m[labels.Domainname] = internalLabels.domainname
 	extraHostsJSON, err := json.Marshal(internalLabels.extraHosts)
@@ -1024,15 +1021,13 @@ func generateGcFunc(ctx context.Context, container containerd.Container, ns, id,
 			log.G(ctx).WithError(rmErr).Warnf("failed to remove container %q state dir %q", id, internalLabels.stateDir)
 		}
 
-		if name != "" {
-			var errE error
-			if containerNameStore, errE = namestore.New(dataStore, ns); errE != nil {
-				log.G(ctx).WithError(errE).Warnf("failed to instantiate container name store during cleanup for container %q", id)
-			}
-			// Double-releasing may happen with containers started with --rm, so, ignore NotFound errors
-			if errE := containerNameStore.Release(name, id); errE != nil && !errors.Is(errE, store.ErrNotFound) {
-				log.G(ctx).WithError(errE).Warnf("failed to release container name store for container %q (%s)", name, id)
-			}
+		var errE error
+		if containerNameStore, errE = namestore.New(dataStore, ns); errE != nil {
+			log.G(ctx).WithError(errE).Warnf("failed to instantiate container name store during cleanup for container %q", id)
+		}
+		// Double-releasing may happen with containers started with --rm, so, ignore NotFound errors
+		if errE := containerNameStore.Release(name, id); errE != nil && !errors.Is(errE, store.ErrNotFound) {
+			log.G(ctx).WithError(errE).Warnf("failed to release container name store for container %q (%s)", name, id)
 		}
 	}
 }

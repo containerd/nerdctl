@@ -237,8 +237,6 @@ type ContainerCreateOptions struct {
 	// #endregion
 
 	// #region for metadata flags
-	// NameChanged specifies whether the name has been changed
-	NameChanged bool
 	// Name assign a name to the container
 	Name string
 	// Label set meta data on a container

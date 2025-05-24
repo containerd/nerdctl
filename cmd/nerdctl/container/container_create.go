@@ -371,7 +371,6 @@ func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 	// #endregion
 
 	// #region for metadata flags
-	opt.NameChanged = cmd.Flags().Changed("name")
 	opt.Name, err = cmd.Flags().GetString("name")
 	if err != nil {
 		return opt, err
