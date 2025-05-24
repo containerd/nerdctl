@@ -379,6 +379,17 @@ func collect(ctx context.Context, globalOptions types.GlobalCommandOptions, s *s
 				continue
 			}
 
+			// Sample system CPU usage close to container usage to avoid
+			// noise in metric calculations.
+			systemUsage, onlineCPUs, err := getSystemCPUUsage()
+			if err != nil {
+				u <- err
+				continue
+			}
+			systemInfo := statsutil.SystemInfo{
+				OnlineCPUs:  onlineCPUs,
+				SystemUsage: systemUsage,
+			}
 			metric, err := task.Metrics(ctx)
 			if err != nil {
 				u <- err
@@ -397,7 +408,7 @@ func collect(ctx context.Context, globalOptions types.GlobalCommandOptions, s *s
 			}
 
 			// when (firstSet == true), we only set container stats without rendering stat entry
-			statsEntry, err := setContainerStatsAndRenderStatsEntry(previousStats, firstSet, anydata, int(task.Pid()), netNS.Interfaces)
+			statsEntry, err := setContainerStatsAndRenderStatsEntry(previousStats, firstSet, anydata, int(task.Pid()), netNS.Interfaces, systemInfo)
 			if err != nil {
 				u <- err
 				continue
