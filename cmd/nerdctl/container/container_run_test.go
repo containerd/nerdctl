@@ -837,3 +837,111 @@ func TestRunDomainname(t *testing.T) {
 		})
 	}
 }
+
+func TestRunHealthcheckFlags(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCases := []struct {
+		name              string
+		args              []string
+		shouldFail        bool
+		expectTest        []string
+		expectRetries     int
+		expectInterval    time.Duration
+		expectTimeout     time.Duration
+		expectStartPeriod time.Duration
+	}{
+		{
+			name: "Valid_full_config",
+			args: []string{
+				"--health-cmd", "curl -f http://localhost || exit 1",
+				"--health-interval", "30s",
+				"--health-timeout", "5s",
+				"--health-retries", "3",
+				"--health-start-period", "2s",
+			},
+			expectTest:        []string{"CMD-SHELL", "curl -f http://localhost || exit 1"},
+			expectInterval:    30 * time.Second,
+			expectTimeout:     5 * time.Second,
+			expectRetries:     3,
+			expectStartPeriod: 2 * time.Second,
+		},
+		{
+			name: "No_healthcheck",
+			args: []string{
+				"--no-healthcheck",
+			},
+			expectTest: []string{"NONE"},
+		},
+		{
+			name: "Conflicting_flags",
+			args: []string{
+				"--no-healthcheck", "--health-cmd", "true",
+			},
+			shouldFail: true,
+		},
+		{
+			name: "Missing_health_cmd",
+			args: []string{
+				"--health-interval", "10s",
+			},
+			shouldFail: true,
+		},
+		{
+			name: "Negative_retries",
+			args: []string{
+				"--health-cmd", "true",
+				"--health-retries", "-2",
+			},
+			shouldFail: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		testCase.SubTests = append(testCase.SubTests, &test.Case{
+			Description: tc.name,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				args := append([]string{"run", "-d", "--name", tc.name}, tc.args...)
+				args = append(args, testutil.CommonImage, "sleep", "infinity")
+				return helpers.Command(args...)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				if tc.shouldFail {
+					return &test.Expected{
+						ExitCode: expect.ExitCodeGenericFail,
+					}
+				}
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: expect.All(
+						func(stdout, info string, t *testing.T) {
+							inspect := nerdtest.InspectContainer(helpers, tc.name)
+							hc := inspect.Config.Healthcheck
+							assert.Assert(t, hc != nil)
+							assert.DeepEqual(t, hc.Test, tc.expectTest)
+							if tc.expectRetries > 0 {
+								assert.Equal(t, hc.Retries, tc.expectRetries)
+							}
+							if tc.expectTimeout > 0 {
+								assert.Equal(t, hc.Timeout, tc.expectTimeout)
+							}
+							if tc.expectInterval > 0 {
+								assert.Equal(t, hc.Interval, tc.expectInterval)
+							}
+							if tc.expectStartPeriod > 0 {
+								assert.Equal(t, hc.StartPeriod, tc.expectStartPeriod)
+							}
+						},
+					),
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", tc.name)
+			},
+		})
+	}
+
+	testCase.Run(t)
+}
