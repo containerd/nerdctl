@@ -39,6 +39,8 @@ jobs:
         uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124  # v3.1.0
 
       - name: "Run: build dependencies for the integration test environment image"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Cache is sharded per-architecture
           arch=${{ env.RUNNER_ARCH == 'ARM64' && 'arm64' || 'amd64' }}
@@ -49,6 +51,7 @@ jobs:
             args=(--build-arg CONTAINERD_VERSION=${{ inputs.containerd-version }})
           fi
           docker buildx build \
+            --secret id=github_token,env=GITHUB_TOKEN \
             --cache-to type=gha,compression=zstd,mode=max,scope=test-integration-dependencies-"$arch" \
             --cache-from type=gha,scope=test-integration-dependencies-"$arch" \
             --target build-dependencies "${args[@]}" .
