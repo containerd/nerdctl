@@ -892,12 +892,6 @@ func NetworkOptionsFromSpec(spec *specs.Spec) (types.NetworkOptions, error) {
 	}
 	opts.NetworkSlice = networks
 
-	if portsJSON := spec.Annotations[labels.Ports]; portsJSON != "" {
-		if err := json.Unmarshal([]byte(portsJSON), &opts.PortMappings); err != nil {
-			return opts, err
-		}
-	}
-
 	return opts, nil
 }
 

@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/docker/go-connections/nat"
@@ -27,7 +29,6 @@ import (
 	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
-	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
@@ -129,16 +130,56 @@ func ParseFlagP(s string) ([]cni.PortMapping, error) {
 	return mr, nil
 }
 
-// ParsePortsLabel parses JSON-marshalled string from label map
-// (under `labels.Ports` key) and returns []cni.PortMapping.
-func ParsePortsLabel(labelMap map[string]string) ([]cni.PortMapping, error) {
-	portsJSON := labelMap[labels.Ports]
-	if portsJSON == "" {
-		return []cni.PortMapping{}, nil
+func portMappingsPath(dataStore, ns, id string) string {
+	return filepath.Join(dataStore, "containers", ns, id, "port-mappings.json")
+}
+
+func GeneratePortMappingsConfig(dataStore, ns, id string, portMappings []cni.PortMapping) error {
+	portsJSON, err := json.Marshal(portMappings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal port mappings to JSON: %w", err)
 	}
+	portMappingsPath := portMappingsPath(dataStore, ns, id)
+	if err := os.WriteFile(portMappingsPath, portsJSON, 0644); err != nil {
+		return fmt.Errorf("failed to write %s to %s: %w", portMappingsPath, string(portsJSON), err)
+	}
+	return nil
+}
+
+func LoadPortMappingsData(dataStore, ns, id string) (string, error) {
+	portMappingsPath := portMappingsPath(dataStore, ns, id)
+	if _, err := os.Stat(portMappingsPath); err != nil {
+		return "", nil
+	}
+	portMappingsData, err := os.ReadFile(portMappingsPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read portMappings file %q: %w", portMappingsData, err)
+	}
+	return string(portMappingsData), err
+}
+
+// ParsePortsLabel parses a JSON string containing port specifications
+// like [{"HostPort":80,"ContainerPort":80,"Protocol":"tcp","HostIP":"0.0.0.0"}]
+// and returns a slice of cni.PortMapping.
+func ParsePortsLabel(portsJSON string) ([]cni.PortMapping, error) {
 	var ports []cni.PortMapping
+	if portsJSON == "" {
+		return ports, nil
+	}
 	if err := json.Unmarshal([]byte(portsJSON), &ports); err != nil {
-		return nil, fmt.Errorf("failed to parse label %q=%q: %s", labels.Ports, portsJSON, err.Error())
+		return ports, fmt.Errorf("failed to parse port mappings %s: %w", portsJSON, err)
 	}
 	return ports, nil
+}
+
+func LoadPortMappings(dataStore, ns, id string) ([]cni.PortMapping, error) {
+	portMappingsData, err := LoadPortMappingsData(dataStore, ns, id)
+	if err != nil {
+		return []cni.PortMapping{}, err
+	}
+	portMappings, err := ParsePortsLabel(portMappingsData)
+	if err != nil {
+		return []cni.PortMapping{}, fmt.Errorf("failed to read portMappings file %q: %w", portMappingsData, err)
+	}
+	return portMappings, nil
 }

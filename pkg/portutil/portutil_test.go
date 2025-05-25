@@ -26,7 +26,6 @@ import (
 
 	"github.com/containerd/go-cni"
 
-	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
@@ -154,16 +153,14 @@ func TestTestParseFlagPWithPlatformSpec(t *testing.T) {
 
 func TestParsePortsLabel(t *testing.T) {
 	tests := []struct {
-		name     string
-		labelMap map[string]string
-		want     []cni.PortMapping
-		wantErr  bool
+		name      string
+		portsJSON string
+		want      []cni.PortMapping
+		wantErr   bool
 	}{
 		{
-			name: "normal",
-			labelMap: map[string]string{
-				labels.Ports: "[{\"HostPort\":12345,\"ContainerPort\":10000,\"Protocol\":\"tcp\",\"HostIP\":\"0.0.0.0\"}]",
-			},
+			name:      "normal",
+			portsJSON: "[{\"HostPort\":12345,\"ContainerPort\":10000,\"Protocol\":\"tcp\",\"HostIP\":\"0.0.0.0\"}]",
 			want: []cni.PortMapping{
 				{
 					HostPort:      12345,
@@ -175,31 +172,27 @@ func TestParsePortsLabel(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "empty ports (value empty)",
-			labelMap: map[string]string{
-				labels.Ports: "",
-			},
-			want:    []cni.PortMapping{},
-			wantErr: false,
+			name:      "empty ports (value empty)",
+			portsJSON: "",
+			want:      []cni.PortMapping{},
+			wantErr:   false,
 		},
 		{
-			name:     "empty ports (key not exists)",
-			labelMap: map[string]string{},
-			want:     []cni.PortMapping{},
-			wantErr:  false,
+			name:      "empty ports (key not exists)",
+			portsJSON: "",
+			want:      []cni.PortMapping{},
+			wantErr:   false,
 		},
 		{
-			name: "parse error (wrong format)",
-			labelMap: map[string]string{
-				labels.Ports: "{\"HostPort\":12345,\"ContainerPort\":10000,\"Protocol\":\"tcp\",\"HostIP\":\"0.0.0.0\"}",
-			},
-			want:    nil,
-			wantErr: true,
+			name:      "parse error (wrong format)",
+			portsJSON: "{\"HostPort\":12345,\"ContainerPort\":10000,\"Protocol\":\"tcp\",\"HostIP\":\"0.0.0.0\"}",
+			want:      nil,
+			wantErr:   true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParsePortsLabel(tt.labelMap)
+			got, err := ParsePortsLabel(tt.portsJSON)
 			if err != nil {
 				t.Log(err)
 				assert.Equal(t, true, tt.wantErr)
