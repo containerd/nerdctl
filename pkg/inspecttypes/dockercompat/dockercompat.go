@@ -664,7 +664,7 @@ func statusFromNative(x containerd.Status, labels map[string]string) string {
 	}
 }
 
-func networkSettingsFromNative(n *native.NetNS, sp *specs.Spec) (*NetworkSettings, error) {
+func networkSettingsFromNative(n *native.NetNS, _ *specs.Spec) (*NetworkSettings, error) {
 	res := &NetworkSettings{
 		Networks: make(map[string]*NetworkEndpointSettings),
 	}
@@ -707,19 +707,12 @@ func networkSettingsFromNative(n *native.NetNS, sp *specs.Spec) (*NetworkSetting
 		fakeDockerNetworkName := fmt.Sprintf("unknown-%s", x.Name)
 		res.Networks[fakeDockerNetworkName] = nes
 
-		if portsLabel, ok := sp.Annotations[labels.Ports]; ok {
-			var ports []cni.PortMapping
-			err := json.Unmarshal([]byte(portsLabel), &ports)
-			if err != nil {
-				return nil, err
-			}
-			nports, err := convertToNatPort(ports)
-			if err != nil {
-				return nil, err
-			}
-			for portLabel, portBindings := range *nports {
-				resPortMap[portLabel] = portBindings
-			}
+		nports, err := convertToNatPort(n.PortMappings)
+		if err != nil {
+			return nil, err
+		}
+		for portLabel, portBindings := range *nports {
+			resPortMap[portLabel] = portBindings
 		}
 
 		if x.Index == n.PrimaryInterface {

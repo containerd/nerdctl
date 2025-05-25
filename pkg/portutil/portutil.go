@@ -17,7 +17,6 @@
 package portutil
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -27,7 +26,7 @@ import (
 	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
-	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/netutil/networkstore"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
@@ -129,16 +128,21 @@ func ParseFlagP(s string) ([]cni.PortMapping, error) {
 	return mr, nil
 }
 
-// ParsePortsLabel parses JSON-marshalled string from label map
-// (under `labels.Ports` key) and returns []cni.PortMapping.
-func ParsePortsLabel(labelMap map[string]string) ([]cni.PortMapping, error) {
-	portsJSON := labelMap[labels.Ports]
-	if portsJSON == "" {
-		return []cni.PortMapping{}, nil
+func GeneratePortMappingsConfig(dataStore, namespace, id string, portMappings []cni.PortMapping) error {
+	ns, err := networkstore.New(dataStore, namespace, id)
+	if err != nil {
+		return err
 	}
-	var ports []cni.PortMapping
-	if err := json.Unmarshal([]byte(portsJSON), &ports); err != nil {
-		return nil, fmt.Errorf("failed to parse label %q=%q: %s", labels.Ports, portsJSON, err.Error())
+	return ns.Acquire(portMappings)
+}
+
+func LoadPortMappings(dataStore, namespace, id string) ([]cni.PortMapping, error) {
+	ns, err := networkstore.New(dataStore, namespace, id)
+	if err != nil {
+		return []cni.PortMapping{}, err
 	}
-	return ports, nil
+	if err = ns.Load(); err != nil {
+		return []cni.PortMapping{}, err
+	}
+	return ns.PortMappings, nil
 }
