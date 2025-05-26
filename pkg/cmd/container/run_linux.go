@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
@@ -44,7 +45,7 @@ func WithoutRunMount() func(ctx context.Context, client oci.Client, c *container
 	return oci.WithoutRunMount
 }
 
-func setPlatformOptions(ctx context.Context, client *containerd.Client, id, uts string, internalLabels *internalLabels, options types.ContainerCreateOptions) ([]oci.SpecOpts, error) {
+func setPlatformOptions(ctx context.Context, client *containerd.Client, id, uts string, internalLabels *annotations.Annotations, options types.ContainerCreateOptions) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
 	opts = append(opts,
 		oci.WithDefaultUnixDevices,
@@ -128,7 +129,7 @@ func generateNamespaceOpts(
 	ctx context.Context,
 	client *containerd.Client,
 	uts string,
-	internalLabels *internalLabels,
+	internalLabels *annotations.Annotations,
 	options types.ContainerCreateOptions,
 ) ([]oci.SpecOpts, error) {
 	var opts []oci.SpecOpts
@@ -142,19 +143,19 @@ func generateNamespaceOpts(
 		return nil, fmt.Errorf("unknown uts value. valid value(s) are 'host', got: %q", uts)
 	}
 
-	stateDir := internalLabels.stateDir
+	stateDir := internalLabels.StateDir
 	ipcOpts, ipcLabel, err := generateIPCOpts(ctx, client, options.IPC, options.ShmSize, stateDir)
 	if err != nil {
 		return nil, err
 	}
-	internalLabels.ipc = ipcLabel
+	internalLabels.IPC = ipcLabel
 	opts = append(opts, ipcOpts...)
 
 	pidOpts, pidLabel, err := generatePIDOpts(ctx, client, options.Pid)
 	if err != nil {
 		return nil, err
 	}
-	internalLabels.pidContainer = pidLabel
+	internalLabels.PidContainer = pidLabel
 	opts = append(opts, pidOpts...)
 
 	return opts, nil

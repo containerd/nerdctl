@@ -18,7 +18,6 @@ package bypass4netnsutil
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -33,28 +32,21 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
 )
 
-func NewBypass4netnsCNIBypassManager(client client.Client, rlkClient rlkclient.Client, annotationsMap map[string]string) (*Bypass4netnsCNIBypassManager, error) {
+func NewBypass4netnsCNIBypassManager(client client.Client, rlkClient rlkclient.Client, containerAnnotations *annotations.Annotations) (*Bypass4netnsCNIBypassManager, error) {
 	if client == nil || rlkClient == nil {
 		return nil, errdefs.ErrInvalidArgument
 	}
-	enabled, bindEnabled, err := IsBypass4netnsEnabled(annotationsMap)
-	if err != nil {
-		return nil, err
-	}
+
+	enabled := containerAnnotations.Bypass4netns
 	if !enabled {
 		return nil, errdefs.ErrInvalidArgument
 	}
-	var ignoreSubnets []string
-	if v := annotationsMap[annotations.Bypass4netnsIgnoreSubnets]; v != "" {
-		if err := json.Unmarshal([]byte(v), &ignoreSubnets); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal annotation %q: %q: %w", annotations.Bypass4netnsIgnoreSubnets, v, err)
-		}
-	}
+
 	pm := &Bypass4netnsCNIBypassManager{
 		Client:        client,
 		rlkClient:     rlkClient,
-		ignoreSubnets: ignoreSubnets,
-		ignoreBind:    !bindEnabled,
+		ignoreSubnets: containerAnnotations.Bypass4netnsIgnoreSubnets,
+		ignoreBind:    containerAnnotations.Bypass4netnsIgnoreBind,
 	}
 	return pm, nil
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/oci"
 
+	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
@@ -37,7 +38,7 @@ func setPlatformOptions(
 	ctx context.Context,
 	client *containerd.Client,
 	id, uts string,
-	internalLabels *internalLabels,
+	internalLabels *annotations.Annotations,
 	options types.ContainerCreateOptions,
 ) ([]oci.SpecOpts, error) {
 	return []oci.SpecOpts{}, nil
