@@ -148,13 +148,18 @@ propagate_env_from() {
 cmd_entrypoint_nsenter() {
 	# No need to call init()
 	pid=$(cat "$XDG_RUNTIME_DIR/containerd-rootless/child_pid")
-	n=""
-	# If RootlessKit is running with `--detach-netns` mode, we do NOT enter the detached netns here
-	if [ ! -e "$XDG_RUNTIME_DIR/containerd-rootless/netns" ]; then
-		n="-n"
-	fi
 	propagate_env_from "$pid" ROOTLESSKIT_STATE_DIR ROOTLESSKIT_PARENT_EUID ROOTLESSKIT_PARENT_EGID
-	exec nsenter --no-fork --wd="$(pwd)" --preserve-credentials -m $n -U -t "$pid" -- "$@"
+
+	# First enter the user namespace
+	if [ -e "$XDG_RUNTIME_DIR/containerd-rootless/netns" ]; then
+		# If RootlessKit is running with `--detach-netns` mode, we first enter the user namespace
+		# and then enter the network namespace separately
+		exec nsenter --no-fork --wd="$(pwd)" --preserve-credentials -m -U -t "$pid" -- \
+			nsenter --no-fork -n"$XDG_RUNTIME_DIR/containerd-rootless/netns" -- "$@"
+	else
+		# If not in detach mode, enter all namespaces at once
+		exec nsenter --no-fork --wd="$(pwd)" --preserve-credentials -m -n -U -t "$pid" -- "$@"
+	fi
 }
 
 show_systemd_error() {
