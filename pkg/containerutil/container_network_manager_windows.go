@@ -25,9 +25,9 @@ import (
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/go-cni"
 
+	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
-	"github.com/containerd/nerdctl/v2/pkg/ocihook"
 )
 
 type cniNetworkManagerPlatform struct {
@@ -119,9 +119,9 @@ func (m *cniNetworkManager) CleanupNetworking(ctx context.Context, container con
 		return fmt.Errorf("failed to get container specs for networking cleanup: %w", err)
 	}
 
-	netNsID, found := spec.Annotations[ocihook.NetworkNamespace]
+	netNsID, found := spec.Annotations[annotations.NetworkNamespace]
 	if !found {
-		return fmt.Errorf("no %q annotation present on container with ID %s", ocihook.NetworkNamespace, containerID)
+		return fmt.Errorf("no %q annotation present on container with ID %s", annotations.NetworkNamespace, containerID)
 	}
 
 	return cni.Remove(ctx, containerID, netNsID, m.getCNINamespaceOpts()...)
@@ -148,7 +148,7 @@ func (m *cniNetworkManager) ContainerNetworkingOpts(_ context.Context, container
 	cOpts := []containerd.NewContainerOpts{
 		containerd.WithAdditionalContainerLabels(
 			map[string]string{
-				ocihook.NetworkNamespace: ns.GetPath(),
+				annotations.NetworkNamespace: ns.GetPath(),
 			},
 		),
 	}
