@@ -31,7 +31,7 @@ jobs:
           fetch-depth: 1
 
       - name: "Init: lima"
-        uses: lima-vm/lima-actions/setup@be564a1408f84557d067b099a475652288074b2e  # v1.0.0
+        uses: lima-vm/lima-actions/setup@03b96d61959e83b2c737e44162c3088e81de0886  # v1.0.1
         id: lima-actions-setup
 
       - name: "Init: Cache"
