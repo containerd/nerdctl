@@ -44,6 +44,7 @@ import (
 	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
@@ -210,9 +211,9 @@ type Config struct {
 	// TODO: Tty          bool        // Attach standard streams to a tty, including stdin if it is not closed.
 	// TODO: OpenStdin    bool        // Open stdin
 	// TODO: StdinOnce    bool        // If true, close stdin after the 1 attached client disconnects.
-	Env []string `json:",omitempty"` // List of environment variable to set in the container
-	Cmd []string `json:",omitempty"` // Command to run when starting the container
-	// TODO Healthcheck     *HealthConfig       `json:",omitempty"` // Healthcheck describes how to check the container is healthy
+	Env         []string                 `json:",omitempty"` // List of environment variable to set in the container
+	Cmd         []string                 `json:",omitempty"` // Command to run when starting the container
+	Healthcheck *healthcheck.Healthcheck `json:",omitempty"` // Healthcheck describes how to check the container is healthy
 	// TODO: ArgsEscaped     bool                `json:",omitempty"` // True if command is already escaped (meaning treat as a command line) (Windows specific).
 	// TODO: Image           string              // Name of the image as it was passed by the operator (e.g. could be symbolic)
 	Volumes    map[string]struct{} `json:",omitempty"` // List of volumes (mounts) used for the container
@@ -240,7 +241,7 @@ type ContainerState struct {
 	Error      string
 	StartedAt  string
 	FinishedAt string
-	// TODO: Health     *Health `json:",omitempty"`
+	Health     *healthcheck.Health `json:",omitempty"`
 }
 
 type NetworkSettings struct {
@@ -580,6 +581,26 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		c.Config.User = n.Labels[labels.User]
 	}
 
+	// Add health check config if present in labels
+	if hConfig, ok := n.Labels[labels.HealthCheck]; ok && hConfig != "" {
+		healthCheckConfig, err := healthcheck.HealthCheckFromJSON(hConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse healthcheck label: %w", err)
+		}
+		c.Config.Healthcheck = healthCheckConfig
+	}
+
+	// Add health status to container state.
+	if healthState, ok := n.Labels[labels.HealthState]; ok && healthState != "" {
+		healthStatus, err := healthcheck.ReadHealthStatusForInspect(n.Labels[labels.StateDir], n.Labels[labels.HealthState])
+		if err != nil {
+			return nil, fmt.Errorf("failed to get health status for inspect: %w", err)
+		}
+		if healthStatus != nil {
+			c.State.Health = healthStatus
+		}
+	}
+
 	return c, nil
 }
 
@@ -627,6 +648,15 @@ func ImageFromNative(nativeImage *native.Image) (*Image, error) {
 		Entrypoint:   imgOCI.Config.Entrypoint,
 		Labels:       imgOCI.Config.Labels,
 		ExposedPorts: portSet,
+	}
+
+	// Add health check if present in labels
+	if healthStr, ok := imgOCI.Config.Labels[labels.HealthCheck]; ok && healthStr != "" {
+		healthCheckConfig, err := healthcheck.HealthCheckFromJSON(healthStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse healthcheck label: %w", err)
+		}
+		image.Config.Healthcheck = healthCheckConfig
 	}
 
 	return image, nil
