@@ -40,9 +40,11 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
+	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
@@ -271,6 +273,10 @@ func getImageConfig(ctx context.Context, image containerd.Image) (*ocispec.Image
 		if err := json.Unmarshal(b, &ocispecImage); err != nil {
 			return nil, err
 		}
+
+		if err := addHealthCheckToImageConfig(b, &ocispecImage.Config); err != nil {
+			log.G(ctx).WithError(err).Debug("failed to add health check config")
+		}
 		return &ocispecImage.Config, nil
 	default:
 		return nil, fmt.Errorf("unknown media type %q", desc.MediaType)
@@ -353,6 +359,9 @@ func ReadImageConfig(ctx context.Context, img containerd.Image) (ocispec.Image, 
 	}
 	if err := json.Unmarshal(p, &config); err != nil {
 		return config, configDesc, err
+	}
+	if err := addHealthCheckToImageConfig(p, &config.Config); err != nil {
+		log.G(ctx).WithError(err).Debug("failed to add health check config")
 	}
 	return config, configDesc, nil
 }
@@ -463,4 +472,29 @@ func GetDanglingImages(ctx context.Context, client *containerd.Client, filters .
 	filters = append([]Filter{FilterDanglingImages()}, filters...)
 
 	return ApplyFilters(allImages, filters...)
+}
+
+// addHealthCheckToImageConfig extracts health check information from the image content store and adds it to the labels
+func addHealthCheckToImageConfig(rawConfigContent []byte, config *ocispec.ImageConfig) error {
+	var imgConfig struct {
+		Config struct {
+			Healthcheck *healthcheck.Healthcheck `json:"Healthcheck,omitempty"`
+		} `json:"config"`
+	}
+
+	if err := json.Unmarshal(rawConfigContent, &imgConfig); err != nil {
+		return err
+	}
+
+	if imgConfig.Config.Healthcheck != nil {
+		healthCheckJSON, err := json.Marshal(imgConfig.Config.Healthcheck)
+		if err != nil {
+			return err
+		}
+		if config.Labels == nil {
+			config.Labels = make(map[string]string)
+		}
+		config.Labels[labels.HealthCheck] = string(healthCheckJSON)
+	}
+	return nil
 }
