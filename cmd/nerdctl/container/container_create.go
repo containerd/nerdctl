@@ -258,6 +258,40 @@ func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 	}
 	// #endregion
 
+	// #region for healthcheck flags
+	opt.HealthCmd, err = cmd.Flags().GetString("health-cmd")
+	if err != nil {
+		return opt, err
+	}
+	opt.HealthInterval, err = cmd.Flags().GetDuration("health-interval")
+	if err != nil {
+		return opt, err
+	}
+	opt.HealthTimeout, err = cmd.Flags().GetDuration("health-timeout")
+	if err != nil {
+		return opt, err
+	}
+	opt.HealthRetries, err = cmd.Flags().GetInt("health-retries")
+	if err != nil {
+		return opt, err
+	}
+	opt.HealthStartPeriod, err = cmd.Flags().GetDuration("health-start-period")
+	if err != nil {
+		return opt, err
+	}
+	opt.HealthStartInterval, err = cmd.Flags().GetDuration("health-start-interval")
+	if err != nil {
+		return opt, err
+	}
+	opt.NoHealthcheck, err = cmd.Flags().GetBool("no-healthcheck")
+	if err != nil {
+		return opt, err
+	}
+	if err := helpers.ValidateHealthcheckFlags(opt); err != nil {
+		return opt, err
+	}
+	// #endregion
+
 	// #region for intel RDT flags
 	opt.RDTClass, err = cmd.Flags().GetString("rdt-class")
 	if err != nil {

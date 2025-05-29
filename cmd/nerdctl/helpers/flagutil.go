@@ -46,6 +46,39 @@ func VerifyOptions(cmd *cobra.Command) (opt types.ImageVerifyOptions, err error)
 	return
 }
 
+func ValidateHealthcheckFlags(options types.ContainerCreateOptions) error {
+	healthFlagsSet :=
+		options.HealthInterval != 0 ||
+			options.HealthTimeout != 0 ||
+			options.HealthRetries != 0 ||
+			options.HealthStartPeriod != 0 ||
+			options.HealthStartInterval != 0
+
+	if options.NoHealthcheck {
+		if options.HealthCmd != "" || healthFlagsSet {
+			return fmt.Errorf("--no-healthcheck conflicts with --health-* options")
+		}
+	}
+
+	// Note: HealthCmd can be empty with other healthcheck flags set cause healthCmd could be coming from image.
+	if options.HealthInterval < 0 {
+		return fmt.Errorf("--health-interval cannot be negative")
+	}
+	if options.HealthTimeout < 0 {
+		return fmt.Errorf("--health-timeout cannot be negative")
+	}
+	if options.HealthRetries < 0 {
+		return fmt.Errorf("--health-retries cannot be negative")
+	}
+	if options.HealthStartPeriod < 0 {
+		return fmt.Errorf("--health-start-period cannot be negative")
+	}
+	if options.HealthStartInterval < 0 {
+		return fmt.Errorf("--health-start-interval cannot be negative")
+	}
+	return nil
+}
+
 func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error) {
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
