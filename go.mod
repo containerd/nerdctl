@@ -28,7 +28,7 @@ require (
 	github.com/containerd/typeurl/v2 v2.2.3
 	github.com/containernetworking/cni v1.3.0 //gomodjail:unconfined
 	github.com/containernetworking/plugins v1.7.1 //gomodjail:unconfined
-	github.com/coreos/go-iptables v0.8.0
+	github.com/coreos/go-iptables v0.8.0 //gomodjail:unconfined
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/cyphar/filepath-securejoin v0.4.1 //gomodjail:unconfined
 	github.com/distribution/reference v0.6.0
