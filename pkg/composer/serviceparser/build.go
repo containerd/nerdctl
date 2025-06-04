@@ -19,6 +19,7 @@ package serviceparser
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -34,7 +35,7 @@ import (
 
 func parseBuildConfig(c *types.BuildConfig, project *types.Project, imageName string) (*Build, error) {
 	if unknown := reflectutil.UnknownNonEmptyFields(c,
-		"Context", "Dockerfile", "Args", "CacheFrom", "Target", "Labels", "Secrets", "AdditionalContexts",
+		"Context", "Dockerfile", "Args", "CacheFrom", "Target", "Labels", "Secrets", "DockerfileInline", "AdditionalContexts",
 	); len(unknown) > 0 {
 		log.L.Warnf("Ignoring: build: %+v", unknown)
 	}
@@ -86,6 +87,19 @@ func parseBuildConfig(c *types.BuildConfig, project *types.Project, imageName st
 		}
 	}
 
+	if c.DockerfileInline != "" {
+		// if DockerfileInline is specified, write it to a temporary file
+		// and use -f flag to use that docker file with project's ctxdir
+		tmpFile, err := os.CreateTemp("", fmt.Sprintf("%s.Dockerfile", imageName))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create temp file for DockerfileInline: %w", err)
+		}
+		defer tmpFile.Close()
+		if _, err := tmpFile.Write([]byte(c.DockerfileInline)); err != nil {
+			return nil, fmt.Errorf("failed to write DockerfileInline: %w", err)
+		}
+		b.BuildArgs = append(b.BuildArgs, "-f="+tmpFile.Name())
+	}
 	for _, s := range c.Secrets {
 		fileRef := types.FileReferenceConfig(s)
 
