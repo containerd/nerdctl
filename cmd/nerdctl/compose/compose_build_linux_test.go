@@ -39,6 +39,7 @@ func TestComposeBuild(t *testing.T) {
 		// Make sure we shard the image name to something unique to the test to avoid conflicts with other tests
 		imageSvc0 := data.Identifier("svc0")
 		imageSvc1 := data.Identifier("svc1")
+		imageSvc2 := data.Identifier("svc2")
 
 		// We are not going to run them, so, ports conflicts should not matter here
 		dockerComposeYAML := fmt.Sprintf(`
@@ -51,7 +52,13 @@ services:
   svc1:
     build: .
     image: %s
-`, imageSvc0, imageSvc1)
+  svc2:
+    image: %s
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM %s
+`, imageSvc0, imageSvc1, imageSvc2, testutil.CommonImage)
 
 		data.Temp().Save(dockerComposeYAML, "compose.yaml")
 		data.Temp().Save(dockerfile, "Dockerfile")
@@ -59,6 +66,7 @@ services:
 		data.Labels().Set("composeYaml", data.Temp().Path("compose.yaml"))
 		data.Labels().Set("imageSvc0", imageSvc0)
 		data.Labels().Set("imageSvc1", imageSvc1)
+		data.Labels().Set("imageSvc2", imageSvc2)
 	}
 
 	testCase.SubTests = []*test.Case{
@@ -76,22 +84,41 @@ services:
 					Output: expect.All(
 						expect.Contains(data.Labels().Get("imageSvc0")),
 						expect.DoesNotContain(data.Labels().Get("imageSvc1")),
+						expect.DoesNotContain(data.Labels().Get("imageSvc2")),
 					),
 				}
 			},
 		},
 		{
-			Description: "build svc0 and svc1",
+			Description: "build svc2",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("compose", "-f", data.Labels().Get("composeYaml"), "build", "svc0", "svc1")
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYaml"), "build", "svc2")
 			},
 
 			Command: test.Command("images"),
 
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: expect.Contains(data.Labels().Get("imageSvc0"), data.Labels().Get("imageSvc1")),
+					Output: expect.All(
+						expect.Contains(data.Labels().Get("imageSvc2")),
+						expect.DoesNotContain(data.Labels().Get("imageSvc1")),
+					),
+				}
+			},
+		},
+		{
+			Description: "build svc0, svc1, svc2",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYaml"), "build", "svc0", "svc1", "svc2")
+			},
+
+			Command: test.Command("images"),
+
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.Contains(data.Labels().Get("imageSvc0"), data.Labels().Get("imageSvc1"), data.Labels().Get("imageSvc2")),
 				}
 			},
 		},
@@ -122,7 +149,7 @@ services:
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		if data.Labels().Get("imageSvc0") != "" {
-			helpers.Anyhow("rmi", data.Labels().Get("imageSvc0"), data.Labels().Get("imageSvc1"))
+			helpers.Anyhow("rmi", data.Labels().Get("imageSvc0"), data.Labels().Get("imageSvc1"), data.Labels().Get("imageSvc2"))
 		}
 	}
 

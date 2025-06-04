@@ -63,6 +63,23 @@ func (c *Composer) buildServiceImage(ctx context.Context, image string, b *servi
 	if bo.Progress != "" {
 		args = append(args, "--progress="+bo.Progress)
 	}
+
+	if b.DockerfileInline != "" {
+		// if DockerfileInline is specified, write it to a temporary file
+		// and use -f flag to use that docker file with project's ctxdir
+		tmpFile, err := os.CreateTemp("", "inline-dockerfile-*.Dockerfile")
+		if err != nil {
+			return fmt.Errorf("failed to create temp file for DockerfileInline: %w", err)
+		}
+		defer os.Remove(tmpFile.Name())
+		defer tmpFile.Close()
+
+		if _, err := tmpFile.Write([]byte(b.DockerfileInline)); err != nil {
+			return fmt.Errorf("failed to write DockerfileInline: %w", err)
+		}
+		b.BuildArgs = append(b.BuildArgs, "-f="+tmpFile.Name())
+	}
+
 	args = append(args, b.BuildArgs...)
 
 	cmd := c.createNerdctlCmd(ctx, append([]string{"build"}, args...)...)

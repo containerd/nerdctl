@@ -195,8 +195,9 @@ type Container struct {
 }
 
 type Build struct {
-	Force     bool     // force build even if already present
-	BuildArgs []string // {"-t", "example.com/foo", "--target", "foo", "/path/to/ctx"}
+	Force            bool     // force build even if already present
+	BuildArgs        []string // {"-t", "example.com/foo", "--target", "foo", "/path/to/ctx"}
+	DockerfileInline string   // store contents of dockerfile_inline field is specified
 	// TODO: call BuildKit API directly without executing `nerdctl build`
 }
 

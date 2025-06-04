@@ -18,6 +18,7 @@ package serviceparser
 
 import (
 	"runtime"
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -54,6 +55,12 @@ services:
           target: tgt_secret
         - simple_secret
         - absolute_secret
+  baz:
+    image: bazimg
+    build:
+      context: ./bazctx
+      dockerfile_inline: |
+       FROM random
 secrets:
   src_secret:
     file: test_secret1
@@ -95,4 +102,17 @@ secrets:
 	assert.Assert(t, in(bar.Build.BuildArgs, "--secret=id=tgt_secret,src="+secretPath+"/test_secret1"))
 	assert.Assert(t, in(bar.Build.BuildArgs, "--secret=id=simple_secret,src="+secretPath+"/test_secret2"))
 	assert.Assert(t, in(bar.Build.BuildArgs, "--secret=id=absolute_secret,src=/tmp/absolute_secret"))
+
+	bazSvc, err := project.GetService("baz")
+	assert.NilError(t, err)
+
+	baz, err := Parse(project, bazSvc)
+	assert.NilError(t, err)
+
+	t.Logf("baz: %+v", baz)
+	t.Logf("baz.Build.BuildArgs: %+v", baz.Build.BuildArgs)
+	t.Logf("baz.Build.DockerfileInline: %q", baz.Build.DockerfileInline)
+	assert.Assert(t, func() bool {
+		return strings.TrimSpace(baz.Build.DockerfileInline) == "FROM random"
+	}())
 }
