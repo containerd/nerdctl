@@ -40,6 +40,7 @@ import (
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/store"
 )
 
@@ -116,11 +117,11 @@ func (x *hostsStore) Acquire(meta Meta) (err error) {
 		// Because of the way we call network manager ContainerNetworkingOpts then SetupNetworking in sequence
 		// we need to make sure we do not overwrite an already allocated hosts file.
 		if _, err = os.Stat(loc); os.IsNotExist(err) {
-			if err = os.WriteFile(loc, []byte{}, 0o644); err != nil {
+			if err = filesystem.WriteFile(loc, []byte{}, 0o644); err != nil {
 				return errors.Join(store.ErrSystemFailure, err)
 			}
 
-			// os.WriteFile relies on syscall.Open. Unless there are ACLs, the effective mode of the file will be matched
+			// WriteFile relies on syscall.Open. Unless there are ACLs, the effective mode of the file will be matched
 			// against the current process umask.
 			// See https://www.man7.org/linux/man-pages/man2/open.2.html for details.
 			// Since we must make sure that these files are world readable, explicitly chmod them here.
@@ -185,12 +186,12 @@ func (x *hostsStore) AllocHostsFile(id string, content []byte) (location string,
 			return err
 		}
 
-		err = os.WriteFile(loc, content, 0o644)
+		err = filesystem.WriteFile(loc, content, 0o644)
 		if err != nil {
 			err = errors.Join(store.ErrSystemFailure, err)
 		}
 
-		// os.WriteFile relies on syscall.Open. Unless there are ACLs, the effective mode of the file will be matched
+		// WriteFile relies on syscall.Open. Unless there are ACLs, the effective mode of the file will be matched
 		// against the current process umask.
 		// See https://www.man7.org/linux/man-pages/man2/open.2.html for details.
 		// Since we must make sure that these files are world readable, explicitly chmod them here.
@@ -351,6 +352,13 @@ func (x *hostsStore) updateAllHosts() (err error) {
 			return err
 		}
 
+		// Because the file is mounted, we cannot do atomic writes here as that would change inode.
+		// The practical implications of this are that a partial / interrupted write would leave the hosts file with
+		// an invalid entry and/or missing entries. At worse, this would lead to a container losing localhost network
+		// capabilities.
+		// Proper consistency requires that we would have a rollback mechanism in case of recoverable failure,
+		// and a disaster management / cleanup mechanism, presumably at the top-level of the operation.
+		// nolint:forbidigo
 		err = os.WriteFile(loc, buf.Bytes(), 0o644)
 		if err != nil {
 			log.L.WithError(err).Errorf("failed to write hosts file for %q", entry)

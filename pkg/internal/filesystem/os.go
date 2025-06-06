@@ -16,24 +16,8 @@
 
 package filesystem
 
-import (
-	"os"
-	"path/filepath"
-)
+import "os"
 
-func AtomicWrite(parent string, fileName string, perm os.FileMode, data []byte) error {
-	dest := filepath.Join(parent, fileName)
-	temp := filepath.Join(parent, ".temp."+fileName)
-
-	err := os.WriteFile(temp, data, perm)
-	if err != nil {
-		return err
-	}
-
-	err = os.Rename(temp, dest)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func WriteFile(filename string, data []byte, perm os.FileMode) error {
+	return WriteFileWithRename(filename, data, perm)
 }

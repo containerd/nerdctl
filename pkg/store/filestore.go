@@ -193,7 +193,7 @@ func (vs *fileStore) Set(data []byte, key ...string) error {
 		}
 	}
 
-	if err := filesystem.AtomicWrite(parent, fileName, vs.filePerm, data); err != nil {
+	if err := filesystem.WriteFileWithRename(filepath.Join(parent, fileName), data, vs.filePerm); err != nil {
 		return errors.Join(ErrSystemFailure, err)
 	}
 

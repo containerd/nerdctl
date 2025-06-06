@@ -1,3 +1,5 @@
+//go:build unix
+
 /*
    Copyright The containerd Authors.
 
@@ -16,12 +18,8 @@
 
 package filesystem
 
-import "errors"
+import "syscall"
 
-var (
-	ErrLockFail          = errors.New("failed to acquire lock")
-	ErrUnlockFail        = errors.New("failed to release lock")
-	ErrLockIsNil         = errors.New("nil lock")
-	ErrInvalidPath       = errors.New("invalid path")
-	ErrFilesystemFailure = errors.New("filesystem error")
-)
+func umask(mask int) int {
+	return syscall.Umask(mask)
+}
