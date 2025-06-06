@@ -534,7 +534,7 @@ func M(m *testing.M) {
 		defer filesystem.Unlock(lock)
 
 		// Create marker file
-		err = os.WriteFile(testLockFile, []byte("prevent testing from running in parallel for subpackages integration tests"), 0o666)
+		err = filesystem.WriteFile(testLockFile, []byte("prevent testing from running in parallel for subpackages integration tests"), 0o666)
 		if err != nil {
 			log.L.WithError(err).Errorf("failed writing lock file %q", testLockFile)
 			return 1
