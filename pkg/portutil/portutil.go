@@ -101,6 +101,16 @@ func ParseFlagP(s string) ([]cni.PortMapping, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid hostPort: %s", hostPort)
 		}
+		var usedPorts map[uint64]bool
+		usedPorts, err = getUsedPorts(ip, proto)
+		if err != nil {
+			return nil, err
+		}
+		for i := startHostPort; i <= endHostPort; i++ {
+			if usedPorts[i] {
+				return nil, fmt.Errorf("bind for %s:%d failed: port is already allocated", ip, i)
+			}
+		}
 	}
 	if hostPort != "" && (endPort-startPort) != (endHostPort-startHostPort) {
 		if endPort != startPort {

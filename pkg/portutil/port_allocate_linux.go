@@ -25,11 +25,14 @@ import (
 
 const (
 	// This port range is compatible with Docker, FYI https://github.com/moby/moby/blob/eb9e42a09ee123af1d95bf7d46dd738258fa2109/libnetwork/portallocator/portallocator_unix.go#L7-L12
-	allocateEnd = 60999
+	allocateEnd = uint64(60999)
+
+	tcpTimeWait  = 6 //TIME_WAIT state is represented by the value 6 in /proc/net/tcp
+	tcpCloseWait = 8 //CLOSE_WAIT state is represented by the value 8 in /proc/net/tcp
 )
 
 var (
-	allocateStart = 49153
+	allocateStart = uint64(49153)
 )
 
 func filter(ss []procnet.NetworkDetail, filterFunc func(detail procnet.NetworkDetail) bool) (ret []procnet.NetworkDetail) {
@@ -42,24 +45,56 @@ func filter(ss []procnet.NetworkDetail, filterFunc func(detail procnet.NetworkDe
 }
 
 func portAllocate(protocol string, ip string, count uint64) (uint64, uint64, error) {
-	netprocData, err := procnet.ReadStatsFileData(protocol)
+	usedPorts, err := getUsedPorts(ip, protocol)
 	if err != nil {
 		return 0, 0, err
 	}
-	netprocItems := procnet.Parse(netprocData)
+
+	start := allocateStart
+	if count > allocateEnd-allocateStart+1 {
+		return 0, 0, fmt.Errorf("can not allocate %d ports", count)
+	}
+	for start < allocateEnd {
+		needReturn := true
+		for i := start; i < start+count; i++ {
+			if _, ok := usedPorts[i]; ok {
+				needReturn = false
+				break
+			}
+		}
+		if needReturn {
+			allocateStart = start + count
+			return start, start + count - 1, nil
+		}
+		start += count
+	}
+	return 0, 0, fmt.Errorf("there is not enough %d free ports", count)
+}
+
+func getUsedPorts(ip string, protocol string) (map[uint64]bool, error) {
+	netprocItems := []procnet.NetworkDetail{}
+
+	if protocol == "tcp" || protocol == "udp" {
+		netprocData, err := procnet.ReadStatsFileData(protocol)
+		if err != nil {
+			return nil, err
+		}
+		netprocItems = append(netprocItems, procnet.Parse(netprocData)...)
+	}
+
 	// In some circumstances, when we bind address like "0.0.0.0:80", we will get the formation of ":::80" in /proc/net/tcp6.
 	// So we need some trick to process this situation.
 	if protocol == "tcp" {
 		tempTCPV6Data, err := procnet.ReadStatsFileData("tcp6")
 		if err != nil {
-			return 0, 0, err
+			return nil, err
 		}
 		netprocItems = append(netprocItems, procnet.Parse(tempTCPV6Data)...)
 	}
 	if protocol == "udp" {
 		tempUDPV6Data, err := procnet.ReadStatsFileData("udp6")
 		if err != nil {
-			return 0, 0, err
+			return nil, err
 		}
 		netprocItems = append(netprocItems, procnet.Parse(tempUDPV6Data)...)
 	}
@@ -73,12 +108,20 @@ func portAllocate(protocol string, ip string, count uint64) (uint64, uint64, err
 
 	usedPort := make(map[uint64]bool)
 	for _, value := range netprocItems {
+		// Skip ports in TIME_WAIT or CLOSE_WAIT state
+		if protocol == "tcp" && (value.State == tcpTimeWait || value.State == tcpCloseWait) {
+			// In rootless mode, Rootlesskit creates extra socket connections to proxy traffic from the host network namespace
+			// to the container namespace. Proxy TCP connections can remain in TIME_WAIT state for 10-20 seconds even when the
+			// container is stopped/removed, which is standard TCP behavior. These ports are actually available for allocation
+			// despite appearing in /proc/net/tcp.
+			continue
+		}
 		usedPort[value.LocalPort] = true
 	}
 
 	ipTableItems, err := iptable.ReadIPTables("nat")
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	destinationPorts := iptable.ParseIPTableRules(ipTableItems)
 
@@ -86,23 +129,5 @@ func portAllocate(protocol string, ip string, count uint64) (uint64, uint64, err
 		usedPort[port] = true
 	}
 
-	start := uint64(allocateStart)
-	if count > uint64(allocateEnd-allocateStart+1) {
-		return 0, 0, fmt.Errorf("can not allocate %d ports", count)
-	}
-	for start < allocateEnd {
-		needReturn := true
-		for i := start; i < start+count; i++ {
-			if _, ok := usedPort[i]; ok {
-				needReturn = false
-				break
-			}
-		}
-		if needReturn {
-			allocateStart = int(start + count)
-			return start, start + count - 1, nil
-		}
-		start += count
-	}
-	return 0, 0, fmt.Errorf("there is not enough %d free ports", count)
+	return usedPort, nil
 }
