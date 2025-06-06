@@ -23,7 +23,7 @@ containers can be named the same), etc.
 However, storing data on the filesystem in a reliable way comes with challenges:
 - incomplete writes may happen (because of a system restart, or an application crash), leaving important structured files
 in a broken state
-- concurrent writes, or reading while writing would obviously be a problem as well, be it accross goroutines, or between
+- concurrent writes, or reading while writing would obviously be a problem as well, be it across goroutines, or between
 concurrent executions of the nerdctl binary, or embedded in a third-party application that does concurrently access resources
 
 The `pkg/store` package does provide a "storage" abstraction that takes care of these issues, generally providing
