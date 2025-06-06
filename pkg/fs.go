@@ -14,32 +14,10 @@
    limitations under the License.
 */
 
-package filesystem
+package pkg
 
-import (
-	"os"
-	"path/filepath"
-)
+import "github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 
-func WriteFile(filename string, data []byte, perm os.FileMode) error {
-	dirname := filepath.Dir(filename)
-	filename = filepath.Base(filename)
-	return AtomicWrite(dirname, filename, perm, data)
-}
-
-func AtomicWrite(parent string, fileName string, perm os.FileMode, data []byte) error {
-	dest := filepath.Join(parent, fileName)
-	temp := filepath.Join(parent, ".temp."+fileName)
-
-	err := os.WriteFile(temp, data, perm)
-	if err != nil {
-		return err
-	}
-
-	err = os.Rename(temp, dest)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func InitFS(path string) error {
+	return filesystem.SetFSOpsDirectory(path)
 }

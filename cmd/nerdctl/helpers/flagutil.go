@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/pkg"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
@@ -108,6 +109,11 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		return types.GlobalCommandOptions{}, err
 	}
 	cdiSpecDirs, err := cmd.Flags().GetStringSlice("cdi-spec-dirs")
+	if err != nil {
+		return types.GlobalCommandOptions{}, err
+	}
+
+	err = pkg.InitFS(dataRoot)
 	if err != nil {
 		return types.GlobalCommandOptions{}, err
 	}
