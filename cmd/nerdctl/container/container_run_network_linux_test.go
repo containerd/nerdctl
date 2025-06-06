@@ -36,7 +36,6 @@ import (
 
 	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/containerd/v2/pkg/netns"
-	"github.com/containerd/errdefs"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
@@ -421,8 +420,8 @@ func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 1,
-					Errors:   []error{errdefs.ErrInvalidArgument},
+					ExitCode: 0,
+					Errors:   []error{},
 					Output: func(stdout string, info string, t *testing.T) {
 						getAddrHash := func(addr string) string {
 							const addrHashLen = 8

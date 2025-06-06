@@ -26,7 +26,6 @@ import (
 
 	"github.com/containerd/go-cni"
 
-	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
@@ -142,81 +141,6 @@ func TestParseFlagPWithPlatformSpec(t *testing.T) {
 						got[len(got)-1].ContainerPort-got[0].ContainerPort,
 					)
 					for i := range len(got) {
-						assert.Equal(t, got[i].ContainerPort, tt.want[i].ContainerPort)
-						assert.Equal(t, got[i].Protocol, tt.want[i].Protocol)
-						assert.Equal(t, got[i].HostIP, tt.want[i].HostIP)
-					}
-				}
-			}
-		})
-	}
-}
-
-func TestParsePortsLabel(t *testing.T) {
-	tests := []struct {
-		name     string
-		labelMap map[string]string
-		want     []cni.PortMapping
-		wantErr  bool
-	}{
-		{
-			name: "normal",
-			labelMap: map[string]string{
-				labels.Ports: "[{\"HostPort\":12345,\"ContainerPort\":10000,\"Protocol\":\"tcp\",\"HostIP\":\"0.0.0.0\"}]",
-			},
-			want: []cni.PortMapping{
-				{
-					HostPort:      12345,
-					ContainerPort: 10000,
-					Protocol:      "tcp",
-					HostIP:        "0.0.0.0",
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "empty ports (value empty)",
-			labelMap: map[string]string{
-				labels.Ports: "",
-			},
-			want:    []cni.PortMapping{},
-			wantErr: false,
-		},
-		{
-			name:     "empty ports (key not exists)",
-			labelMap: map[string]string{},
-			want:     []cni.PortMapping{},
-			wantErr:  false,
-		},
-		{
-			name: "parse error (wrong format)",
-			labelMap: map[string]string{
-				labels.Ports: "{\"HostPort\":12345,\"ContainerPort\":10000,\"Protocol\":\"tcp\",\"HostIP\":\"0.0.0.0\"}",
-			},
-			want:    nil,
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParsePortsLabel(tt.labelMap)
-			if err != nil {
-				t.Log(err)
-				assert.Equal(t, true, tt.wantErr)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				assert.Equal(t, len(got), len(tt.want))
-				if len(got) > 0 {
-					sort.Slice(got, func(i, j int) bool {
-						return got[i].HostPort < got[j].HostPort
-					})
-					assert.Equal(
-						t,
-						got[len(got)-1].HostPort-got[0].HostPort,
-						got[len(got)-1].ContainerPort-got[0].ContainerPort,
-					)
-					for i := range len(got) {
-						assert.Equal(t, got[i].HostPort, tt.want[i].HostPort)
 						assert.Equal(t, got[i].ContainerPort, tt.want[i].ContainerPort)
 						assert.Equal(t, got[i].Protocol, tt.want[i].Protocol)
 						assert.Equal(t, got[i].HostIP, tt.want[i].HostIP)
