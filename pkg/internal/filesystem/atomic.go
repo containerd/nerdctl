@@ -21,6 +21,12 @@ import (
 	"path/filepath"
 )
 
+func WriteFile(filename string, data []byte, perm os.FileMode) error {
+	dirname := filepath.Dir(filename)
+	filename = filepath.Base(filename)
+	return AtomicWrite(dirname, filename, perm, data)
+}
+
 func AtomicWrite(parent string, fileName string, perm os.FileMode, data []byte) error {
 	dest := filepath.Join(parent, fileName)
 	temp := filepath.Join(parent, ".temp."+fileName)
