@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
@@ -58,16 +59,14 @@ func Inspect(ctx context.Context, client *containerd.Client, options types.Netwo
 		}
 
 		network := netList[0]
-		var filters = []string{fmt.Sprintf("labels.%q==%q", labels.Networks, []string{network.Name})}
 
+		var filters = []string{fmt.Sprintf("labels.%q~=%q", labels.Networks, network.Name)}
 		filteredContainers, err := client.Containers(ctx, filters...)
-
 		if err != nil {
 			return err
 		}
 
 		var containers []*native.Container
-
 		for _, container := range filteredContainers {
 			nativeContainer, err := containerinspector.Inspect(ctx, container)
 			if err != nil {
@@ -76,7 +75,14 @@ func Inspect(ctx context.Context, client *containerd.Client, options types.Netwo
 			if nativeContainer.Process == nil || nativeContainer.Process.Status.Status != containerd.Running {
 				continue
 			}
-			containers = append(containers, nativeContainer)
+
+			isNetworkMember, err := isContainerInNetwork(ctx, container, network.Name)
+			if err != nil {
+				return err
+			}
+			if isNetworkMember {
+				containers = append(containers, nativeContainer)
+			}
 		}
 
 		r := &native.Network{
@@ -112,4 +118,21 @@ func Inspect(ctx context.Context, client *containerd.Client, options types.Netwo
 	}
 
 	return err
+}
+
+func isContainerInNetwork(ctx context.Context, container containerd.Container, networkName string) (bool, error) {
+	info, err := container.Info(ctx)
+	if err != nil {
+		return false, err
+	}
+	networkLabels, ok := info.Labels[labels.Networks]
+	if !ok {
+		return false, nil
+	}
+
+	var containerNetworks []string
+	if err := json.Unmarshal([]byte(networkLabels), &containerNetworks); err != nil {
+		return false, err
+	}
+	return slices.Contains(containerNetworks, networkName), nil
 }

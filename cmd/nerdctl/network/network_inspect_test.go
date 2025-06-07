@@ -320,6 +320,39 @@ func TestNetworkInspect(t *testing.T) {
 				}
 			},
 		},
+		{
+			Description: "Display containers belonging to multiple networks in the output of nerdctl network inspect",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier("nginx-network-1"))
+				helpers.Ensure("network", "create", data.Identifier("nginx-network-2"))
+
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), "--network", data.Identifier("nginx-network-1"), "--network", data.Identifier("nginx-network-2"), testutil.NginxAlpineImage)
+
+				data.Labels().Set("containerID", strings.Trim(helpers.Capture("inspect", data.Identifier(), "--format", "{{.Id}}"), "\n"))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("network", "remove", data.Identifier("nginx-network-1"))
+				helpers.Anyhow("network", "remove", data.Identifier("nginx-network-2"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("network", "inspect", data.Identifier("nginx-network-1"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						var dc []dockercompat.Network
+						err := json.Unmarshal([]byte(stdout), &dc)
+
+						assert.NilError(t, err, "Unable to unmarshal output\n"+info)
+						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+						assert.Equal(t, dc[0].Name, data.Identifier("nginx-network-1"))
+						assert.Equal(t, 1, len(dc[0].Containers), "Expected a single container as per configuration, but got multiple.")
+						assert.Equal(t, data.Identifier(), dc[0].Containers[data.Labels().Get("containerID")].Name)
+					},
+				}
+			},
+		},
 	}
 
 	testCase.Run(t)
