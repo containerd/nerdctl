@@ -350,6 +350,32 @@ func TestNetworkInspect(t *testing.T) {
 				}
 			},
 		},
+		{
+			Description: "Display only containers attached to the specific network",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier("some-network"))
+				helpers.Ensure("network", "create", data.Identifier("some-network-as-well"))
+
+				helpers.Ensure("run", "-d", "--name", data.Identifier(), "--network", data.Identifier("some-network-as-well"), testutil.CommonImage, "sleep", nerdtest.Infinity)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+				helpers.Anyhow("network", "remove", data.Identifier("some-network"))
+				helpers.Anyhow("network", "remove", data.Identifier("some-network-as-well"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("network", "inspect", data.Identifier("some-network"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.JSON([]dockercompat.Network{}, func(dc []dockercompat.Network, info string, t tig.T) {
+						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+						assert.Equal(t, dc[0].Name, data.Identifier("some-network"))
+						assert.Equal(t, 0, len(dc[0].Containers), "Expected no containers as per configuration, but got multiple.")
+					}),
+				}
+			},
+		},
 	}
 
 	testCase.Run(t)
