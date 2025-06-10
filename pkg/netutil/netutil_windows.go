@@ -18,6 +18,7 @@ package netutil
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 
@@ -94,4 +95,8 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gatewayStr, ipRan
 		return nil, err
 	}
 	return ipam, nil
+}
+
+func FirewallPluginGEQVersion(firewallPath string, versionStr string) (bool, error) {
+	return false, errors.New("unsupported in windows")
 }
