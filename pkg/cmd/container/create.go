@@ -36,7 +36,6 @@ import (
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/cio"
 	"github.com/containerd/containerd/v2/pkg/oci"
-	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
@@ -58,6 +57,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/mountutil"
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
+	"github.com/containerd/nerdctl/v2/pkg/portutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/store"
@@ -378,6 +378,11 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	cOpts = append(cOpts, ilOpt)
 
+	err = portutil.GeneratePortMappingsConfig(dataStore, options.GOptions.Namespace, id, netLabelOpts.PortMappings)
+	if err != nil {
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("Error writing to network-config.json: %v", err)
+	}
+
 	opts = append(opts, propagateInternalContainerdLabelsToOCIAnnotations(),
 		oci.WithAnnotations(strutil.ConvertKVStringsToMap(options.Annotations)))
 
@@ -677,7 +682,6 @@ type internalLabels struct {
 	networks             []string
 	ipAddress            string
 	ip6Address           string
-	ports                []cni.PortMapping
 	macAddress           string
 	dnsServers           []string
 	dnsSearchDomains     []string
@@ -727,13 +731,6 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 		return nil, err
 	}
 	m[labels.Networks] = string(networksJSON)
-	if len(internalLabels.ports) > 0 {
-		portsJSON, err := json.Marshal(internalLabels.ports)
-		if err != nil {
-			return nil, err
-		}
-		m[labels.Ports] = string(portsJSON)
-	}
 	if internalLabels.logURI != "" {
 		m[labels.LogURI] = internalLabels.logURI
 		logConfigJSON, err := json.Marshal(internalLabels.logConfig)
@@ -835,7 +832,6 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 func (il *internalLabels) loadNetOpts(opts types.NetworkOptions) {
 	il.hostname = opts.Hostname
 	il.domainname = opts.Domainname
-	il.ports = opts.PortMappings
 	il.ipAddress = opts.IPAddress
 	il.ip6Address = opts.IP6Address
 	il.networks = opts.NetworkSlice
