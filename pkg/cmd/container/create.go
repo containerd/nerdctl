@@ -51,6 +51,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/load"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/logging"
@@ -951,7 +952,7 @@ func generateLogConfig(dataStore string, id string, logDriver string, logOpt []s
 		}
 
 		logConfigFilePath := logging.LogConfigFilePath(dataStore, ns, id)
-		if err = os.WriteFile(logConfigFilePath, logConfigB, 0600); err != nil {
+		if err = filesystem.WriteFile(logConfigFilePath, logConfigB, 0600); err != nil {
 			return logConfig, err
 		}
 

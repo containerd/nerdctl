@@ -26,6 +26,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
@@ -92,7 +93,7 @@ func TestBrokenCredentialsStore(t *testing.T) {
 			description: "Pointing DOCKER_CONFIG at a directory containing am unparsable `config.json` will prevent instantiation",
 			setup: func() string {
 				tmpDir := createTempDir(t, 0700)
-				err := os.WriteFile(filepath.Join(tmpDir, "config.json"), []byte("porked"), 0600)
+				err := filesystem.WriteFile(filepath.Join(tmpDir, "config.json"), []byte("porked"), 0600)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -143,7 +144,7 @@ func TestBrokenCredentialsStore(t *testing.T) {
 			description: "Pointing DOCKER_CONFIG at a directory containing an unreadable, valid `config.json` file will prevent instantiation",
 			setup: func() string {
 				tmpDir := createTempDir(t, 0700)
-				err := os.WriteFile(filepath.Join(tmpDir, "config.json"), []byte("{}"), 0600)
+				err := filesystem.WriteFile(filepath.Join(tmpDir, "config.json"), []byte("{}"), 0600)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -159,7 +160,7 @@ func TestBrokenCredentialsStore(t *testing.T) {
 			description: "Pointing DOCKER_CONFIG at a directory containing a read-only, valid `config.json` file will NOT prevent saving credentials",
 			setup: func() string {
 				tmpDir := createTempDir(t, 0700)
-				err := os.WriteFile(filepath.Join(tmpDir, "config.json"), []byte("{}"), 0600)
+				err := filesystem.WriteFile(filepath.Join(tmpDir, "config.json"), []byte("{}"), 0600)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -215,7 +216,7 @@ func TestBrokenCredentialsStore(t *testing.T) {
 func writeContent(t *testing.T, content string) string {
 	t.Helper()
 	tmpDir := createTempDir(t, 0700)
-	err := os.WriteFile(filepath.Join(tmpDir, "config.json"), []byte(content), 0600)
+	err := filesystem.WriteFile(filepath.Join(tmpDir, "config.json"), []byte(content), 0600)
 	if err != nil {
 		t.Fatal(err)
 	}
