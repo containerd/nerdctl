@@ -28,7 +28,9 @@ readonly root
 # "Blacklisting" here means that any dependency which name is blacklisted will be left untouched, at the version
 # currently pinned in the Dockerfile.
 # This is convenient so that currently broken alpha/beta/RC can be held back temporarily to keep the build green
-blacklist=()
+# TODO: Blacklisting gotestsum until a new version compatible with golang v1.25rc1 is released
+# Issue: https://github.com/google/go-licenses/issues/312
+blacklist=(gotestsum)
 
 # List all the repositories we depend on to build and run integration tests
 dependencies=(
