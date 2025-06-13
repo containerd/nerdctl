@@ -24,6 +24,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/ipfs"
 )
 
@@ -35,7 +36,7 @@ func RegistryServe(options types.IPFSRegistryServeOptions) error {
 			return err
 		}
 		defer os.RemoveAll(dir)
-		if err := os.WriteFile(filepath.Join(dir, "api"), []byte(options.IPFSAddress), 0600); err != nil {
+		if err := filesystem.WriteFile(filepath.Join(dir, "api"), []byte(options.IPFSAddress), 0600); err != nil {
 			return err
 		}
 		ipfsPath = dir
