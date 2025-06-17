@@ -197,7 +197,7 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			return
 		}
 
-		portSlice, err := portutil.LoadPortMappings(dataStore, globalOptions.Namespace, id)
+		portSlice, err := portutil.LoadPortMappings(dataStore, globalOptions.Namespace, id, containerLabels[labels.Ports])
 		if err != nil {
 			retErr = err
 			return

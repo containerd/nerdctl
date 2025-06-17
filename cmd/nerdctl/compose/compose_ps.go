@@ -255,7 +255,11 @@ func composeContainerPrintableTab(ctx context.Context, container containerd.Cont
 	if err != nil {
 		return composeContainerPrintable{}, err
 	}
-	ports, err := portutil.LoadPortMappings(dataStore, gOptions.Namespace, info.ID)
+	containerLabels, err := container.Labels(ctx)
+	if err != nil {
+		return composeContainerPrintable{}, err
+	}
+	ports, err := portutil.LoadPortMappings(dataStore, gOptions.Namespace, info.ID, containerLabels[labels.Ports])
 	if err != nil {
 		return composeContainerPrintable{}, err
 	}
@@ -306,7 +310,11 @@ func composeContainerPrintableJSON(ctx context.Context, container containerd.Con
 	if err != nil {
 		return composeContainerPrintable{}, err
 	}
-	portMappings, err := portutil.LoadPortMappings(dataStore, gOptions.Namespace, info.ID)
+	containerLabels, err := container.Labels(ctx)
+	if err != nil {
+		return composeContainerPrintable{}, err
+	}
+	portMappings, err := portutil.LoadPortMappings(dataStore, gOptions.Namespace, info.ID, containerLabels[labels.Ports])
 	if err != nil {
 		return composeContainerPrintable{}, err
 	}

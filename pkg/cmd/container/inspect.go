@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/portutil"
 )
 
@@ -80,7 +81,11 @@ func (x *containerInspector) Handler(ctx context.Context, found containerwalker.
 		return err
 	}
 
-	ports, err := portutil.LoadPortMappings(x.dataStore, x.namespace, n.ID)
+	containerLabels, err := found.Container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+	ports, err := portutil.LoadPortMappings(x.dataStore, x.namespace, n.ID, containerLabels[labels.Ports])
 	if err != nil {
 		return err
 	}

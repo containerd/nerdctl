@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/containerd/go-cni"
@@ -86,25 +85,25 @@ func (ns *NetworkStore) Load() (err error) {
 		}
 	}()
 
-	loc, err := ns.safeStore.Location(networkConfigName)
-	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(loc); err != nil {
-		return nil
-	}
-
 	return ns.safeStore.WithLock(func() error {
-		data, err := ns.safeStore.Get(networkConfigName)
-		if err == nil {
-			var ports []cni.PortMapping
-			if err := json.Unmarshal(data, &ports); err != nil {
-				return fmt.Errorf("failed to parse port mappings %v: %w", ports, err)
-			}
-			ns.PortMappings = ports
-		} else if errors.Is(err, store.ErrNotFound) {
-			err = nil
+		doesExist, err := ns.safeStore.Exists(networkConfigName)
+		if err != nil || !doesExist {
+			return err
 		}
+
+		data, err := ns.safeStore.Get(networkConfigName)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				err = nil
+			}
+			return err
+		}
+
+		var ports []cni.PortMapping
+		if err := json.Unmarshal(data, &ports); err != nil {
+			return fmt.Errorf("failed to parse port mappings %v: %w", ports, err)
+		}
+		ns.PortMappings = ports
 
 		return err
 	})

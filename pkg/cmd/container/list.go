@@ -168,7 +168,11 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 		if err != nil {
 			return nil, err
 		}
-		ports, err := portutil.LoadPortMappings(dataStore, options.GOptions.Namespace, c.ID())
+		containerLabels, err := c.Labels(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ports, err := portutil.LoadPortMappings(dataStore, options.GOptions.Namespace, c.ID(), containerLabels[labels.Ports])
 		if err != nil {
 			return nil, err
 		}

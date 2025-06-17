@@ -209,7 +209,8 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath, brid
 		}
 	}
 
-	ports, err := portutil.LoadPortMappings(o.dataStore, namespace, o.state.ID)
+	portsJSON := o.state.Annotations[labels.Ports]
+	ports, err := portutil.LoadPortMappings(o.dataStore, namespace, o.state.ID, portsJSON)
 	if err != nil {
 		return nil, err
 	}

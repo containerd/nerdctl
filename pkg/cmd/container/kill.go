@@ -128,7 +128,11 @@ func cleanupNetwork(ctx context.Context, container containerd.Container, globalO
 		if err != nil {
 			return err
 		}
-		ports, err := portutil.LoadPortMappings(dataStore, globalOpts.Namespace, container.ID())
+		containerLabels, err := container.Labels(ctx)
+		if err != nil {
+			return err
+		}
+		ports, err := portutil.LoadPortMappings(dataStore, globalOpts.Namespace, container.ID(), containerLabels[labels.Ports])
 		if err != nil {
 			return fmt.Errorf("no oci spec: %q", err)
 		}

@@ -17,6 +17,7 @@
 package portutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/networkstore"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
@@ -146,13 +148,26 @@ func GeneratePortMappingsConfig(dataStore, namespace, id string, portMappings []
 	return ns.Acquire(portMappings)
 }
 
-func LoadPortMappings(dataStore, namespace, id string) ([]cni.PortMapping, error) {
+func LoadPortMappings(dataStore, namespace, id, portsJSON string) ([]cni.PortMapping, error) {
+	var ports []cni.PortMapping
+
 	ns, err := networkstore.New(dataStore, namespace, id)
 	if err != nil {
-		return []cni.PortMapping{}, err
+		return ports, err
 	}
 	if err = ns.Load(); err != nil {
-		return []cni.PortMapping{}, err
+		return ports, err
 	}
-	return ns.PortMappings, nil
+	if len(ns.PortMappings) != 0 {
+		return ns.PortMappings, nil
+	}
+
+	if portsJSON == "" {
+		return ports, nil
+	}
+	if err := json.Unmarshal([]byte(portsJSON), &ports); err != nil {
+		return ports, fmt.Errorf("failed to parse label %q=%q: %s", labels.Ports, portsJSON, err.Error())
+	}
+	log.L.Warnf("container %s is using legacy port mapping configuration. To ensure compatibility with the new port mapping logic, please recreate this container. For more details, see: https://github.com/containerd/nerdctl/pull/4290", id[:12])
+	return ports, nil
 }

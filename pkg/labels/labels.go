@@ -57,6 +57,10 @@ const (
 	// Currently, the length of the slice must be 1.
 	Networks = Prefix + "networks"
 
+	// DEPRECATED : https://github.com/containerd/nerdctl/pull/4290
+	// Ports is a JSON-marshalled string of []cni.PortMapping .
+	Ports = Prefix + "ports"
+
 	// IPAddress is the static IP address of the container assigned by the user
 	IPAddress = Prefix + "ip"
 

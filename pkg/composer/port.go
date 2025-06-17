@@ -22,6 +22,7 @@ import (
 	"io"
 
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/portutil"
 )
 
@@ -51,7 +52,11 @@ func (c *Composer) Port(ctx context.Context, writer io.Writer, po PortOptions) e
 			po.Index, len(containers), po.ServiceName)
 	}
 	container := containers[po.Index-1]
-	ports, err := portutil.LoadPortMappings(po.DataStore, po.Namespace, container.ID())
+	containerLabels, err := container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+	ports, err := portutil.LoadPortMappings(po.DataStore, po.Namespace, container.ID(), containerLabels[labels.Ports])
 	if err != nil {
 		return err
 	}
