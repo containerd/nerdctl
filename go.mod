@@ -40,7 +40,7 @@ require (
 	github.com/fatih/color v1.18.0 //gomodjail:unconfined
 	github.com/fluent/fluent-logger-golang v1.10.0
 	github.com/fsnotify/fsnotify v1.9.0 //gomodjail:unconfined
-	github.com/go-viper/mapstructure/v2 v2.2.1
+	github.com/go-viper/mapstructure/v2 v2.3.0
 	github.com/ipfs/go-cid v0.5.0
 	github.com/klauspost/compress v1.18.0
 	github.com/mattn/go-isatty v0.0.20 //gomodjail:unconfined
