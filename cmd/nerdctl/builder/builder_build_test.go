@@ -19,7 +19,9 @@ package builder
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -851,8 +853,9 @@ RUN curl -I http://google.com
 func TestBuildAttestation(t *testing.T) {
 	nerdtest.Setup()
 
-	const testSBOMFileName = "sbom.spdx.json"
-	const testProvenanceFileName = "provenance.json"
+	// Using regex patterns to match SBOM and provenance files with optional platform suffix
+	const testSBOMFilePattern = `sbom\.spdx(?:\.[a-z0-9_]+)?\.json`
+	const testProvenanceFilePattern = `provenance(?:\.[a-z0-9_]+)?\.json`
 
 	dockerfile := fmt.Sprintf(`FROM %s`, testutil.CommonImage)
 
@@ -892,7 +895,17 @@ func TestBuildAttestation(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: func(stdout, info string, t *testing.T) {
-							data.Temp().Exists("dir-for-bom", testSBOMFileName)
+							files, err := os.ReadDir(data.Temp().Path("dir-for-bom"))
+							assert.NilError(t, err, "failed to read directory")
+
+							found := false
+							for _, file := range files {
+								if !file.IsDir() && regexp.MustCompile(testSBOMFilePattern).MatchString(file.Name()) {
+									found = true
+									break
+								}
+							}
+							assert.Assert(t, found, "no SBOM file matching pattern %s found", testSBOMFilePattern)
 						},
 					}
 				},
@@ -914,7 +927,17 @@ func TestBuildAttestation(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: func(stdout, info string, t *testing.T) {
-							data.Temp().Exists("dir-for-prov", testProvenanceFileName)
+							files, err := os.ReadDir(data.Temp().Path("dir-for-prov"))
+							assert.NilError(t, err, "failed to read directory")
+
+							found := false
+							for _, file := range files {
+								if !file.IsDir() && regexp.MustCompile(testProvenanceFilePattern).MatchString(file.Name()) {
+									found = true
+									break
+								}
+							}
+							assert.Assert(t, found, "no provenance file matching pattern %s found", testProvenanceFilePattern)
 						},
 					}
 				},
@@ -937,8 +960,28 @@ func TestBuildAttestation(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						Output: func(stdout, info string, t *testing.T) {
-							data.Temp().Exists("dir-for-attest", testSBOMFileName)
-							data.Temp().Exists("dir-for-attest", testProvenanceFileName)
+							// Check if any file in the directory matches the SBOM file pattern
+							files, err := os.ReadDir(data.Temp().Path("dir-for-attest"))
+							assert.NilError(t, err, "failed to read directory")
+
+							sbomFound := false
+							for _, file := range files {
+								if !file.IsDir() && regexp.MustCompile(testSBOMFilePattern).MatchString(file.Name()) {
+									sbomFound = true
+									break
+								}
+							}
+							assert.Assert(t, sbomFound, "no SBOM file matching pattern %s found", testSBOMFilePattern)
+
+							// Check if any file in the directory matches the provenance file pattern
+							provenanceFound := false
+							for _, file := range files {
+								if !file.IsDir() && regexp.MustCompile(testProvenanceFilePattern).MatchString(file.Name()) {
+									provenanceFound = true
+									break
+								}
+							}
+							assert.Assert(t, provenanceFound, "no provenance file matching pattern %s found", testProvenanceFilePattern)
 						},
 					}
 				},
