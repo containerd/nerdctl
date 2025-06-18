@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 )
 
 func TestFileStoreBasics(t *testing.T) {
@@ -60,16 +62,16 @@ func TestFileStoreBasics(t *testing.T) {
 
 	// Invalid keys
 	_, err = tempStore.Get("..")
-	assert.ErrorIs(t, err, ErrInvalidArgument, "unsupported characters or patterns should return ErrInvalidArgument")
+	assert.ErrorIs(t, err, filesystem.ErrInvalidPath, "unsupported characters or patterns should return filesystem.ErrInvalidPath")
 
 	err = tempStore.Set([]byte("foo"), "..")
-	assert.ErrorIs(t, err, ErrInvalidArgument, "unsupported characters or patterns should return ErrInvalidArgument")
+	assert.ErrorIs(t, err, filesystem.ErrInvalidPath, "unsupported characters or patterns should return filesystem.ErrInvalidPath")
 
 	err = tempStore.Delete("..")
-	assert.ErrorIs(t, err, ErrInvalidArgument, "unsupported characters or patterns should return ErrInvalidArgument")
+	assert.ErrorIs(t, err, filesystem.ErrInvalidPath, "unsupported characters or patterns should return filesystem.ErrInvalidPath")
 
 	_, err = tempStore.List("..")
-	assert.ErrorIs(t, err, ErrInvalidArgument, "unsupported characters or patterns should return ErrInvalidArgument")
+	assert.ErrorIs(t, err, filesystem.ErrInvalidPath, "unsupported characters or patterns should return filesystem.ErrInvalidPath")
 
 	// Writing, reading, listing, deleting
 	err = tempStore.Set([]byte("foo"), "something")
