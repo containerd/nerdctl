@@ -29,6 +29,8 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 )
 
 func TestBuildKitFile(t *testing.T) {
@@ -55,7 +57,7 @@ func TestBuildKitFile(t *testing.T) {
 		{
 			name: "only Dockerfile is present",
 			prepare: func(t *testing.T) error {
-				return os.WriteFile(filepath.Join(tmp, DefaultDockerfileName), []byte{}, 0644)
+				return filesystem.WriteFile(filepath.Join(tmp, DefaultDockerfileName), []byte{}, 0644)
 			},
 			args:       args{".", ""},
 			wantAbsDir: tmp,
@@ -65,7 +67,7 @@ func TestBuildKitFile(t *testing.T) {
 		{
 			name: "only Containerfile is present",
 			prepare: func(t *testing.T) error {
-				return os.WriteFile(filepath.Join(tmp, "Containerfile"), []byte{}, 0644)
+				return filesystem.WriteFile(filepath.Join(tmp, "Containerfile"), []byte{}, 0644)
 			},
 			args:       args{".", ""},
 			wantAbsDir: tmp,
@@ -75,11 +77,11 @@ func TestBuildKitFile(t *testing.T) {
 		{
 			name: "both Dockerfile and Containerfile are present",
 			prepare: func(t *testing.T) error {
-				var err = os.WriteFile(filepath.Join(tmp, "Dockerfile"), []byte{}, 0644)
+				var err = filesystem.WriteFile(filepath.Join(tmp, "Dockerfile"), []byte{}, 0644)
 				if err != nil {
 					return err
 				}
-				return os.WriteFile(filepath.Join(tmp, "Containerfile"), []byte{}, 0644)
+				return filesystem.WriteFile(filepath.Join(tmp, "Containerfile"), []byte{}, 0644)
 			},
 			args:       args{".", ""},
 			wantAbsDir: tmp,
@@ -89,11 +91,11 @@ func TestBuildKitFile(t *testing.T) {
 		{
 			name: "Dockerfile and Containerfile have different contents",
 			prepare: func(t *testing.T) error {
-				var err = os.WriteFile(filepath.Join(tmp, "Dockerfile"), []byte{'d'}, 0644)
+				var err = filesystem.WriteFile(filepath.Join(tmp, "Dockerfile"), []byte{'d'}, 0644)
 				if err != nil {
 					return err
 				}
-				return os.WriteFile(filepath.Join(tmp, "Containerfile"), []byte{'c'}, 0644)
+				return filesystem.WriteFile(filepath.Join(tmp, "Containerfile"), []byte{'c'}, 0644)
 			},
 			args:       args{".", ""},
 			wantAbsDir: tmp,
@@ -103,7 +105,7 @@ func TestBuildKitFile(t *testing.T) {
 		{
 			name: "Custom file is specfied",
 			prepare: func(t *testing.T) error {
-				return os.WriteFile(filepath.Join(tmp, "CustomFile"), []byte{}, 0644)
+				return filesystem.WriteFile(filepath.Join(tmp, "CustomFile"), []byte{}, 0644)
 			},
 			args:       args{".", "CustomFile"},
 			wantAbsDir: tmp,
@@ -113,7 +115,7 @@ func TestBuildKitFile(t *testing.T) {
 		{
 			name: "Absolute path is specified along with custom file",
 			prepare: func(t *testing.T) error {
-				return os.WriteFile(filepath.Join(tmp, "CustomFile"), []byte{}, 0644)
+				return filesystem.WriteFile(filepath.Join(tmp, "CustomFile"), []byte{}, 0644)
 			},
 			args:       args{tmp, "CustomFile"},
 			wantAbsDir: tmp,
@@ -123,7 +125,7 @@ func TestBuildKitFile(t *testing.T) {
 		{
 			name: "Absolute path is specified along with Docker file",
 			prepare: func(t *testing.T) error {
-				return os.WriteFile(filepath.Join(tmp, "Dockerfile"), []byte{}, 0644)
+				return filesystem.WriteFile(filepath.Join(tmp, "Dockerfile"), []byte{}, 0644)
 			},
 			args:       args{tmp, "."},
 			wantAbsDir: tmp,
@@ -133,7 +135,7 @@ func TestBuildKitFile(t *testing.T) {
 		{
 			name: "Absolute path is specified with Container file in the path",
 			prepare: func(t *testing.T) error {
-				return os.WriteFile(filepath.Join(tmp, ContainerfileName), []byte{}, 0644)
+				return filesystem.WriteFile(filepath.Join(tmp, ContainerfileName), []byte{}, 0644)
 			},
 			args:       args{tmp, "."},
 			wantAbsDir: tmp,

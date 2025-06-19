@@ -26,6 +26,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
@@ -234,7 +235,7 @@ func (ba *BasicAuth) Params(base *testutil.Base) []string {
 		encryptedPass, _ := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
 		tmpDir, _ := os.MkdirTemp(base.T.TempDir(), "htpasswd")
 		ba.HtFile = filepath.Join(tmpDir, "htpasswd")
-		_ = os.WriteFile(ba.HtFile, []byte(fmt.Sprintf(`%s:%s`, ba.Username, string(encryptedPass[:]))), 0600)
+		_ = filesystem.WriteFile(ba.HtFile, []byte(fmt.Sprintf(`%s:%s`, ba.Username, string(encryptedPass[:]))), 0600)
 	}
 	ret := []string{
 		"--env", "REGISTRY_AUTH=htpasswd",

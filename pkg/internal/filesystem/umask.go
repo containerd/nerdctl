@@ -16,12 +16,34 @@
 
 package filesystem
 
-import "errors"
+import (
+	"math"
+	"sync"
+)
 
 var (
-	ErrLockFail          = errors.New("failed to acquire lock")
-	ErrUnlockFail        = errors.New("failed to release lock")
-	ErrLockIsNil         = errors.New("nil lock")
-	ErrInvalidPath       = errors.New("invalid path")
-	ErrFilesystemFailure = errors.New("filesystem error")
+	mu    sync.Mutex
+	cMask = -1
 )
+
+// GetUmask retrieves the current umask.
+func GetUmask() uint32 {
+	if cMask != -1 {
+		return uint32(cMask)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	cMask = umask(0)
+
+	// FIXME: one day... we will get rid of 32 bits arm...
+	cMask64 := int64(cMask)
+	if cMask64 > math.MaxUint32 || cMask < 0 {
+		panic("currently set user umask is out of range")
+	}
+
+	_ = umask(cMask)
+
+	return uint32(cMask)
+}

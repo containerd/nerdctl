@@ -67,7 +67,7 @@ func commonlock(path string, mode lockType) (file *os.File, err error) {
 
 	file, err = os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
-		file, err = os.OpenFile(path, os.O_RDONLY|os.O_CREATE, lockPermission)
+		file, err = os.OpenFile(path, os.O_RDONLY|os.O_CREATE, privateFilePermission)
 	}
 
 	if err != nil {

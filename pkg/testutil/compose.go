@@ -24,6 +24,8 @@ import (
 
 	"github.com/compose-spec/compose-go/v2/loader"
 	compose "github.com/compose-spec/compose-go/v2/types"
+
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 )
 
 type ComposeDir struct {
@@ -33,7 +35,7 @@ type ComposeDir struct {
 }
 
 func (cd *ComposeDir) WriteFile(name, content string) {
-	if err := os.WriteFile(filepath.Join(cd.dir, name), []byte(content), 0644); err != nil {
+	if err := filesystem.WriteFile(filepath.Join(cd.dir, name), []byte(content), 0644); err != nil {
 		cd.t.Fatal(err)
 	}
 }

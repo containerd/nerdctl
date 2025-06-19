@@ -65,7 +65,7 @@ Data volume
 
 Can be overridden with `nerdctl --cni-netconfpath=<NETCONFPATH>` flag and environment variable `$NETCONFPATH`.
 
-At the top-level of <NETCONFPATH>, network (files) are shared accross all namespaces.
+At the top-level of <NETCONFPATH>, network (files) are shared across all namespaces.
 Sub-folders inside <NETCONFPATH> are only available to the namespace bearing the same name,
 and its networks definitions are private.
 

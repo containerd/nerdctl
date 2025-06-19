@@ -16,12 +16,6 @@
 
 package filesystem
 
-import "errors"
-
-var (
-	ErrLockFail          = errors.New("failed to acquire lock")
-	ErrUnlockFail        = errors.New("failed to release lock")
-	ErrLockIsNil         = errors.New("nil lock")
-	ErrInvalidPath       = errors.New("invalid path")
-	ErrFilesystemFailure = errors.New("filesystem error")
-)
+func umask(_ int) int {
+	return 0
+}

@@ -16,7 +16,14 @@
 
 package filesystem
 
+import "io"
+
 const (
-	lockPermission         = 0o600
 	pathComponentMaxLength = 255
+	privateFilePermission  = 0o600
+)
+
+var (
+	// Lightweight indirection to ease testing
+	ioCopy = io.Copy
 )
