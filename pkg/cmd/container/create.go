@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -47,6 +48,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/v2/pkg/flagutil"
+	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/idgen"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/load"
@@ -332,6 +334,15 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
 	cOpts = append(cOpts, rtCOpts...)
+
+	// Generate health check config based on CLI flags and image.
+	healthcheckConfig, err := withHealthcheck(options, ensuredImage)
+	if err != nil {
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
+	}
+	if healthcheckConfig != "" {
+		internalLabels.healthcheck = healthcheckConfig
+	}
 
 	lCOpts, err := withContainerLabels(options.Label, options.LabelFile, ensuredImage)
 	if err != nil {
@@ -706,6 +717,8 @@ type internalLabels struct {
 	deviceMapping []dockercompat.DeviceMapping
 
 	user string
+
+	healthcheck string
 }
 
 // WithInternalLabels sets the internal labels for a container.
@@ -829,7 +842,67 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 		m[labels.User] = internalLabels.user
 	}
 
+	if len(internalLabels.healthcheck) > 0 {
+		m[labels.HealthCheck] = internalLabels.healthcheck
+	}
+
 	return containerd.WithAdditionalContainerLabels(m), nil
+}
+
+func withHealthcheck(options types.ContainerCreateOptions, ensuredImage *imgutil.EnsuredImage) (string, error) {
+	// If explicitly disabled
+	if options.NoHealthcheck {
+		hc := &healthcheck.Healthcheck{
+			Test: []string{"NONE"},
+		}
+		hcJSON, err := hc.ToJSONString()
+		if err != nil {
+			return "", fmt.Errorf("failed to serialize disabled healthcheck config: %w", err)
+		}
+		return hcJSON, nil
+	}
+
+	// Start with health checks in image if present
+	hc := &healthcheck.Healthcheck{}
+	if ensuredImage != nil && ensuredImage.ImageConfig.Labels != nil {
+		if label := ensuredImage.ImageConfig.Labels[labels.HealthCheck]; label != "" {
+			parsed, err := healthcheck.HealthCheckFromJSON(label)
+			if err != nil {
+				return "", fmt.Errorf("failed to parse healthcheck label in image: %w", err)
+			}
+			hc = parsed
+		}
+	}
+
+	// Apply CLI overrides
+	if options.HealthCmd != "" {
+		hc.Test = []string{"CMD-SHELL", options.HealthCmd}
+	}
+	if options.HealthInterval != 0 {
+		hc.Interval = options.HealthInterval
+	}
+	if options.HealthTimeout != 0 {
+		hc.Timeout = options.HealthTimeout
+	}
+	if options.HealthRetries != 0 {
+		hc.Retries = options.HealthRetries
+	}
+	if options.HealthStartPeriod != 0 {
+		hc.StartPeriod = options.HealthStartPeriod
+	}
+	if options.HealthStartInterval != 0 {
+		hc.StartInterval = options.HealthStartInterval
+	}
+
+	// If no healthcheck config is set (via CLI or image), return empty string so we skip adding to container config.
+	if reflect.DeepEqual(hc, &healthcheck.Healthcheck{}) {
+		return "", nil
+	}
+	hcJSON, err := hc.ToJSONString()
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize healthcheck config: %w", err)
+	}
+	return hcJSON, nil
 }
 
 // loadNetOpts loads network options into InternalLabels.
