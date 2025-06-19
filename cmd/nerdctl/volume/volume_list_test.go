@@ -281,6 +281,27 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 		},
 		{
+			Description: "Retrieving name=.*volume1.*",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("volume", "ls", "--quiet", "--filter", "name=.*"+data.Labels().Get("vol1")+".*")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 1, "expected at least 1 line"+info)
+						volNames := map[string]struct{}{
+							data.Labels().Get("vol1"): {},
+						}
+						for _, name := range lines {
+							_, ok := volNames[name]
+							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name)+info)
+						}
+					},
+				}
+			},
+		},
+		{
 			Description: "Retrieving name=volume1 and name=volume2",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("volume", "ls", "--quiet", "--filter", "name="+data.Labels().Get("vol1"), "--filter", "name="+data.Labels().Get("vol2"))
