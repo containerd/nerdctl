@@ -16,14 +16,35 @@
 
 package filesystem
 
-import "io"
+import (
+	"io"
+	"os"
+	"path/filepath"
+)
 
 const (
+	// Max size of path components
 	pathComponentMaxLength = 255
-	privateFilePermission  = 0o600
+	privateFilePermission  = os.FileMode(0o600)
+	privateDirPermission   = os.FileMode(0o700)
 )
 
 var (
 	// Lightweight indirection to ease testing
 	ioCopy = io.Copy
+
+	// Location (under XDG data home) used for markers and backups
+	filesystemOpsPath = "filesystem-ops"
+	// Suffix for markers and backup files
+	markerSuffix = "in-progress"
+	backupSuffix = "backup"
+
+	// holdLocation points to where markers and backup files will be held. This should NOT be let to /tmp,
+	// but instead be explicitly configured with SetFilesystemOpsDirectory.
+	holdLocation = os.TempDir()
 )
+
+func SetFilesystemOpsDirectory(path string) error {
+	holdLocation = filepath.Join(path, filesystemOpsPath)
+	return os.MkdirAll(holdLocation, privateDirPermission)
+}
