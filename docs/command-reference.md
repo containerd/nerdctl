@@ -767,6 +767,7 @@ Flags:
 - :whale: `-c, --change`: Apply Dockerfile instruction to the created image (supported directives: [CMD, ENTRYPOINT])
 - :whale: `-p, --pause`: Pause container during commit (default: true)
 - :nerd_face: `--compression`: Commit compression algorithm (supported values: zstd or gzip) (default: gzip) (zstd is generally better for compression ratio but might not be as widely supported)
+- :nerd_face: `--format`: Format of the committed image (supported values: docker or oci) (default: docker) (docker uses Docker Schema2 media types for compatibility, oci uses OCI image format media types)
 
 ## Image management
 
