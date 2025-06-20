@@ -50,6 +50,7 @@ func Commit(ctx context.Context, client *containerd.Client, rawRef string, req s
 		Pause:       options.Pause,
 		Changes:     changes,
 		Compression: options.Compression,
+		MediaType:   options.MediaType,
 	}
 
 	walker := &containerwalker.ContainerWalker{

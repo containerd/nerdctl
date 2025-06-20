@@ -63,6 +63,7 @@ type Opts struct {
 	Pause       bool
 	Changes     Changes
 	Compression types.CompressionType
+	MediaType   types.MediaTypeFormat
 }
 
 var (
@@ -192,7 +193,7 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 		return emptyDigest, fmt.Errorf("failed to apply diff: %w", err)
 	}
 
-	commitManifestDesc, configDigest, err := writeContentsForImage(ctx, snName, baseImg, imageConfig, diffLayerDesc)
+	commitManifestDesc, configDigest, err := writeContentsForImage(ctx, snName, baseImg, imageConfig, diffLayerDesc, opts)
 	if err != nil {
 		return emptyDigest, err
 	}
@@ -287,14 +288,25 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 }
 
 // writeContentsForImage will commit oci image config and manifest into containerd's content store.
-func writeContentsForImage(ctx context.Context, snName string, baseImg containerd.Image, newConfig ocispec.Image, diffLayerDesc ocispec.Descriptor) (ocispec.Descriptor, digest.Digest, error) {
+func writeContentsForImage(ctx context.Context, snName string, baseImg containerd.Image, newConfig ocispec.Image, diffLayerDesc ocispec.Descriptor, opts *Opts) (ocispec.Descriptor, digest.Digest, error) {
 	newConfigJSON, err := json.Marshal(newConfig)
 	if err != nil {
 		return ocispec.Descriptor{}, emptyDigest, err
 	}
 
+	// Select media types based on format choice
+	var configMediaType, manifestMediaType string
+	if opts.MediaType == types.MediaTypeOCI {
+		configMediaType = ocispec.MediaTypeImageConfig
+		manifestMediaType = ocispec.MediaTypeImageManifest
+	} else {
+		// Default to Docker Schema2 for compatibility
+		configMediaType = images.MediaTypeDockerSchema2Config
+		manifestMediaType = images.MediaTypeDockerSchema2Manifest
+	}
+
 	configDesc := ocispec.Descriptor{
-		MediaType: images.MediaTypeDockerSchema2Config,
+		MediaType: configMediaType,
 		Digest:    digest.FromBytes(newConfigJSON),
 		Size:      int64(len(newConfigJSON)),
 	}
@@ -310,7 +322,7 @@ func writeContentsForImage(ctx context.Context, snName string, baseImg container
 		MediaType string `json:"mediaType,omitempty"`
 		ocispec.Manifest
 	}{
-		MediaType: images.MediaTypeDockerSchema2Manifest,
+		MediaType: manifestMediaType,
 		Manifest: ocispec.Manifest{
 			Versioned: specs.Versioned{
 				SchemaVersion: 2,
@@ -326,7 +338,7 @@ func writeContentsForImage(ctx context.Context, snName string, baseImg container
 	}
 
 	newMfstDesc := ocispec.Descriptor{
-		MediaType: images.MediaTypeDockerSchema2Manifest,
+		MediaType: manifestMediaType,
 		Digest:    digest.FromBytes(newMfstJSON),
 		Size:      int64(len(newMfstJSON)),
 	}
@@ -357,14 +369,32 @@ func writeContentsForImage(ctx context.Context, snName string, baseImg container
 }
 
 // createDiff creates a layer diff into containerd's content store.
-func createDiff(ctx context.Context, name string, sn snapshots.Snapshotter, cs content.Store, comparer diff.Comparer, compression types.CompressionType) (ocispec.Descriptor, digest.Digest, error) {
-	opts := make([]diff.Opt, 0)
-	mediaType := images.MediaTypeDockerSchema2LayerGzip
-	if compression == types.Zstd {
-		opts = append(opts, diff.WithMediaType(ocispec.MediaTypeImageLayerZstd))
-		mediaType = images.MediaTypeDockerSchema2LayerZstd
+func createDiff(ctx context.Context, name string, sn snapshots.Snapshotter, cs content.Store, comparer diff.Comparer, compression types.CompressionType, opts *Opts) (ocispec.Descriptor, digest.Digest, error) {
+	diffOpts := make([]diff.Opt, 0)
+	var mediaType string
+
+	// Select media type based on format and compression
+	if opts.MediaType == types.MediaTypeOCI {
+		// Use OCI media types
+		if compression == types.Zstd {
+			diffOpts = append(diffOpts, diff.WithMediaType(ocispec.MediaTypeImageLayerZstd))
+			mediaType = ocispec.MediaTypeImageLayerZstd
+		} else {
+			diffOpts = append(diffOpts, diff.WithMediaType(ocispec.MediaTypeImageLayerGzip))
+			mediaType = ocispec.MediaTypeImageLayerGzip
+		}
+	} else {
+		// Use Docker Schema2 media types for compatibility
+		if compression == types.Zstd {
+			diffOpts = append(diffOpts, diff.WithMediaType(ocispec.MediaTypeImageLayerZstd))
+			mediaType = images.MediaTypeDockerSchema2LayerZstd
+		} else {
+			diffOpts = append(diffOpts, diff.WithMediaType(ocispec.MediaTypeImageLayerGzip))
+			mediaType = images.MediaTypeDockerSchema2LayerGzip
+		}
 	}
-	newDesc, err := rootfs.CreateDiff(ctx, name, sn, comparer, opts...)
+
+	newDesc, err := rootfs.CreateDiff(ctx, name, sn, comparer, diffOpts...)
 	if err != nil {
 		return ocispec.Descriptor{}, digest.Digest(""), err
 	}
