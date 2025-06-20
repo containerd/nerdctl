@@ -209,7 +209,7 @@ func baseTestRunPort(t *testing.T, nginxImage string, nginxIndexHTMLSnippet stri
 				return
 			}
 
-			resp, err := nettestutil.HTTPGet(connectURL, 30, false)
+			resp, err := nettestutil.HTTPGet(connectURL, 5, false)
 			if tc.err != "" {
 				assert.ErrorContains(t, err, tc.err)
 				return

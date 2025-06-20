@@ -48,7 +48,7 @@ func HTTPGet(urlStr string, attempts int, insecure bool) (*http.Response, error)
 		if err == nil {
 			return resp, nil
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 	}
 	return nil, fmt.Errorf("error after %d attempts: %w", attempts, err)
 }

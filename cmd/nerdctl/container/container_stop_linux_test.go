@@ -66,14 +66,14 @@ func TestStopStart(t *testing.T) {
 		return nil
 	}
 
-	assert.NilError(t, check(30))
+	assert.NilError(t, check(5))
 	base.Cmd("stop", testContainerName).AssertOK()
 	base.Cmd("exec", testContainerName, "ps").AssertFail()
 	if check(1) == nil {
 		t.Fatal("expected to get an error")
 	}
 	base.Cmd("start", testContainerName).AssertOK()
-	assert.NilError(t, check(30))
+	assert.NilError(t, check(5))
 }
 
 func TestStopWithStopSignal(t *testing.T) {
