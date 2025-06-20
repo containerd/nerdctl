@@ -133,22 +133,3 @@ func GetPidFilePathByID(id string) (string, error) {
 
 	return pidPath, nil
 }
-
-func IsBypass4netnsEnabled(annotationsMap map[string]string) (enabled, bindEnabled bool, err error) {
-	if b4nn, ok := annotationsMap[annotations.Bypass4netns]; ok {
-		enabled, err = strconv.ParseBool(b4nn)
-		if err != nil {
-			return
-		}
-		bindEnabled = enabled
-		if s, ok := annotationsMap[annotations.Bypass4netnsIgnoreBind]; ok {
-			var bindDisabled bool
-			bindDisabled, err = strconv.ParseBool(s)
-			if err != nil {
-				return
-			}
-			bindEnabled = !bindDisabled
-		}
-	}
-	return
-}
