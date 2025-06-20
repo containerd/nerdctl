@@ -652,7 +652,7 @@ func TestPortBindingWithCustomHost(t *testing.T) {
 					Errors:   []error{},
 					Output: expect.All(
 						func(stdout string, info string, t *testing.T) {
-							resp, err := nettestutil.HTTPGet(address, 30, false)
+							resp, err := nettestutil.HTTPGet(address, 5, false)
 							assert.NilError(t, err)
 
 							respBody, err := io.ReadAll(resp.Body)

@@ -155,7 +155,7 @@ func baseTestRunPort(t *testing.T, nginxImage string, nginxIndexHTMLSnippet stri
 			hostPort:         "7000-7005",
 			containerPort:    "80-85",
 			connectURLPort:   7001,
-			err:              "error after 30 attempts",
+			err:              "error after 5 attempts",
 			runShouldSuccess: true,
 		},
 		{
@@ -209,7 +209,7 @@ func baseTestRunPort(t *testing.T, nginxImage string, nginxIndexHTMLSnippet stri
 				return
 			}
 
-			resp, err := nettestutil.HTTPGet(connectURL, 30, false)
+			resp, err := nettestutil.HTTPGet(connectURL, 5, false)
 			if tc.err != "" {
 				assert.ErrorContains(t, err, tc.err)
 				return

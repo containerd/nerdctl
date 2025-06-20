@@ -28,13 +28,13 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
 )
 
 func TestImageEncryptJWE(t *testing.T) {
 	nerdtest.Setup()
 
-	var registry *testregistry.RegistryServer
+	var reg *registry.Server
 
 	const remoteImageKey = "remoteImageKey"
 
@@ -44,12 +44,14 @@ func TestImageEncryptJWE(t *testing.T) {
 			require.Not(nerdtest.Docker),
 			// This test needs to rmi the common image
 			nerdtest.Private,
+			nerdtest.Registry,
 		),
 		Cleanup: func(data test.Data, helpers test.Helpers) {
-			if registry != nil {
-				registry.Cleanup(nil)
+			if reg != nil {
+				reg.Cleanup(data, helpers)
 				helpers.Anyhow("rmi", "-f", data.Labels().Get(remoteImageKey))
 			}
+
 			helpers.Anyhow("rmi", "-f", data.Identifier("decrypted"))
 		},
 		Setup: func(data test.Data, helpers test.Helpers) {
@@ -57,10 +59,11 @@ func TestImageEncryptJWE(t *testing.T) {
 			data.Labels().Set("private", pri)
 			data.Labels().Set("public", pub)
 
-			base := testutil.NewBase(t)
-			registry = testregistry.NewWithNoAuth(base, 0, false)
+			reg = nerdtest.RegistryWithNoAuth(data, helpers, 0, false)
+			reg.Setup(data, helpers)
+
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
-			encryptImageRef := fmt.Sprintf("127.0.0.1:%d/%s:encrypted", registry.Port, data.Identifier())
+			encryptImageRef := fmt.Sprintf("127.0.0.1:%d/%s:encrypted", reg.Port, data.Identifier())
 			helpers.Ensure("image", "encrypt", "--recipient=jwe:"+pub, testutil.CommonImage, encryptImageRef)
 			inspector := helpers.Capture("image", "inspect", "--mode=native", "--format={{len .Index.Manifests}}", encryptImageRef)
 			assert.Equal(t, inspector, "1\n")

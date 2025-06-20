@@ -74,7 +74,7 @@ func ComposeUp(t *testing.T, base *testutil.Base, dockerComposeYAML string, opts
 	base.Cmd("network", "inspect", fmt.Sprintf("%s_default", projectName)).AssertOK()
 
 	checkWordpress := func() error {
-		resp, err := nettestutil.HTTPGet("http://127.0.0.1:8080", 10, false)
+		resp, err := nettestutil.HTTPGet("http://127.0.0.1:8080", 5, false)
 		if err != nil {
 			return err
 		}
