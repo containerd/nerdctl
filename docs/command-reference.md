@@ -321,6 +321,16 @@ Metadata flags:
 - :whale: :blue_square: `--cidfile`: Write the container ID to the file
 - :nerd_face: `--pidfile`: file path to write the task's pid. The CLI syntax conforms to Podman convention.
 
+Health check flags:
+
+- :whale: :blue_square: `--health-cmd`: Command to run to check container health
+- :whale: :blue_square: `--health-interval`: Time between running the check (e.g., 30s, 1m)
+- :whale: :blue_square: `--health-timeout`: Time to wait before considering the check failed (e.g., 5s)
+- :whale: :blue_square: `--health-retries`: Number of failures before container is considered unhealthy
+- :whale: :blue_square: `--health-start-period`: Start period for the container to initialize before starting health-retries countdown
+- :whale: :blue_square: `--health-start-interval`: Interval between checks during the start period
+- :whale: :blue_square: `--no-healthcheck`: Disable any health checks defined by image or CLI
+
 Logging flags:
 
 - :whale: `--log-driver=(json-file|journald|fluentd|syslog|none)`: Logging driver for the container (default `json-file`).
@@ -428,7 +438,7 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--device-cgroup-rule`, `--disable-content-trust`, `--expose`, `--health-*`, `--isolation`, `--no-healthcheck`,
+    `--device-cgroup-rule`, `--disable-content-trust`, `--expose`, `--isolation`,
     `--link*`, `--publish-all`, `--storage-opt`, `--volume-driver`
 
 ### :whale: :blue_square: nerdctl exec
