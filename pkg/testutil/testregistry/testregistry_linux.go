@@ -155,7 +155,7 @@ acl:
 			return cmd.Error
 		}
 		joined := net.JoinHostPort(hostIP.String(), strconv.Itoa(port))
-		_, err = nettestutil.HTTPGet(fmt.Sprintf("%s://%s/auth", scheme, joined), 30, true)
+		_, err = nettestutil.HTTPGet(fmt.Sprintf("%s://%s/auth", scheme, joined), 5, true)
 		return err
 	}()
 
@@ -340,7 +340,7 @@ func NewRegistry(base *testutil.Base, ca *testca.CA, port int, auth Auth, boundC
 			return "", cmd.Error
 		}
 
-		if _, err = nettestutil.HTTPGet(fmt.Sprintf("%s://%s:%s/v2", scheme, hostIP.String(), strconv.Itoa(port)), 30, true); err != nil {
+		if _, err = nettestutil.HTTPGet(fmt.Sprintf("%s://%s:%s/v2", scheme, hostIP.String(), strconv.Itoa(port)), 5, true); err != nil {
 			return "", err
 		}
 

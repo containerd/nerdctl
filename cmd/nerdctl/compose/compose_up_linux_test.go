@@ -100,7 +100,7 @@ COPY index.html /usr/share/nginx/html/index.html
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--build").AssertOK()
 	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
 
-	resp, err := nettestutil.HTTPGet("http://127.0.0.1:8080", 50, false)
+	resp, err := nettestutil.HTTPGet("http://127.0.0.1:8080", 5, false)
 	assert.NilError(t, err)
 	respBody, err := io.ReadAll(resp.Body)
 	assert.NilError(t, err)

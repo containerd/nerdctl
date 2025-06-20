@@ -123,7 +123,7 @@ func NewDockerRegistry(data test.Data, helpers test.Helpers, currentCA *testca.C
 			scheme,
 			net.JoinHostPort(hostIP.String(), strconv.Itoa(port)),
 		),
-			10,
+			5,
 			true)
 		assert.NilError(helpers.T(), err, fmt.Errorf("failed starting docker registry in a timely manner: %w", err))
 	}

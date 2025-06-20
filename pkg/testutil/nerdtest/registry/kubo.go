@@ -72,7 +72,7 @@ func NewKuboRegistry(data test.Data, helpers test.Helpers, t *testing.T, current
 			scheme,
 			net.JoinHostPort(hostIP.String(), strconv.Itoa(port)),
 		),
-			30,
+			5,
 			true)
 		logs := helpers.Capture("logs", containerName)
 		assert.NilError(t, err, fmt.Errorf("failed starting kubo registry in a timely manner: %w - logs: %s", err, logs))
