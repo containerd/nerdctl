@@ -33,7 +33,6 @@ import (
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 	"github.com/containerd/log"
 
-	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/logging/jsonfile"
 	"github.com/containerd/nerdctl/v2/pkg/logging/tail"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
@@ -73,7 +72,8 @@ func (jsonLogger *JSONLogger) Init(dataStore, ns, id string) error {
 		return err
 	}
 	if _, err := os.Stat(jsonFilePath); errors.Is(err, os.ErrNotExist) {
-		if writeErr := filesystem.WriteFile(jsonFilePath, []byte{}, 0600); writeErr != nil {
+		// nolint:forbidigo
+		if writeErr := os.WriteFile(jsonFilePath, []byte{}, 0600); writeErr != nil {
 			return writeErr
 		}
 	}
