@@ -304,6 +304,42 @@ func TestContainerListWithFilter(t *testing.T) {
 		return nil
 	})
 
+	// should support regexp
+	base.Cmd("ps", "--filter", "name=.*"+testContainerA.name+".*").AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+		}
+
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+
+		containerName, _ := tab.ReadRow(lines[1], "NAMES")
+		assert.Equal(t, containerName, testContainerA.name)
+		return nil
+	})
+
+	// fully anchored regexp
+	base.Cmd("ps", "--filter", "name=^"+testContainerA.name+"$").AssertOutWithFunc(func(stdout string) error {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(lines) < 2 {
+			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+		}
+
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		err := tab.ParseHeader(lines[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse header: %v", err)
+		}
+
+		containerName, _ := tab.ReadRow(lines[1], "NAMES")
+		assert.Equal(t, containerName, testContainerA.name)
+		return nil
+	})
+
 	base.Cmd("ps", "-q", "--filter", "name="+testContainerA.name+testContainerA.name).AssertOutWithFunc(func(stdout string) error {
 		lines := strings.Split(strings.TrimSpace(stdout), "\n")
 		if len(lines) > 0 {

@@ -19,6 +19,7 @@ package container
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -164,11 +165,15 @@ func (cl *containerFilterContext) foldIDFilter(_ context.Context, filter, value 
 }
 
 func (cl *containerFilterContext) foldNameFilter(_ context.Context, filter, value string) error {
+	re, err := regexp.Compile(value)
+	if err != nil {
+		return err
+	}
 	cl.nameFilterFuncs = append(cl.nameFilterFuncs, func(name string) bool {
 		if value == "" {
 			return true
 		}
-		return strings.Contains(name, value)
+		return re.MatchString(name)
 	})
 	return nil
 }

@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -147,21 +148,21 @@ func getNetworkFilterFuncs(filters []string) ([]func(*map[string]string) bool, [
 
 	for _, filter := range filters {
 		if strings.HasPrefix(filter, "name") || strings.HasPrefix(filter, "label") {
-			subs := strings.SplitN(filter, "=", 2)
-			if len(subs) < 2 {
+			filter, value, ok := strings.Cut(filter, "=")
+			if !ok {
 				continue
 			}
-			switch subs[0] {
+			switch filter {
 			case "name":
+				re, err := regexp.Compile(value)
+				if err != nil {
+					return nil, nil, err
+				}
 				nameFilterFuncs = append(nameFilterFuncs, func(name string) bool {
-					return strings.Contains(name, subs[1])
+					return re.MatchString(name)
 				})
 			case "label":
-				v, k, hasValue := "", subs[1], false
-				if subs := strings.SplitN(subs[1], "=", 2); len(subs) == 2 {
-					hasValue = true
-					k, v = subs[0], subs[1]
-				}
+				k, v, hasValue := strings.Cut(value, "=")
 				labelFilterFuncs = append(labelFilterFuncs, func(labels *map[string]string) bool {
 					if labels == nil {
 						return false

@@ -89,6 +89,28 @@ func TestNetworkLsFilter(t *testing.T) {
 				}
 			},
 		},
+		{
+			Description: "filter name regexp",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("network", "ls", "--quiet", "--filter", "name=.*"+data.Labels().Get("net2")+".*")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, info string, t *testing.T) {
+						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 1, info)
+						netNames := map[string]struct{}{
+							data.Labels().Get("netID2")[:12]: {},
+						}
+
+						for _, name := range lines {
+							_, ok := netNames[name]
+							assert.Assert(t, ok, info)
+						}
+					},
+				}
+			},
+		},
 	}
 
 	testCase.Run(t)

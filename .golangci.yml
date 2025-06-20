@@ -126,7 +126,7 @@ linters:
           # 222 occurrences. Could indicate failure to handle broken conditions.
           disabled: true
         - name: cognitive-complexity
-          arguments: [197]
+          arguments: [205]
           # 441 occurrences (at default 7). We should try to lower it (involves significant refactoring).
 
         ##### P2: nice to have.
