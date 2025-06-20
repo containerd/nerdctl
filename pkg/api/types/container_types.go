@@ -385,6 +385,8 @@ type ContainerCommitOptions struct {
 	Pause bool
 	// Compression is set commit compression algorithm
 	Compression CompressionType
+	// MediaType format of the committed image (docker or oci)
+	MediaType MediaTypeFormat
 }
 
 type CompressionType string
@@ -392,6 +394,15 @@ type CompressionType string
 const (
 	Zstd CompressionType = "zstd"
 	Gzip CompressionType = "gzip"
+)
+
+type MediaTypeFormat string
+
+const (
+	// MediaTypeDocker uses Docker Schema2 media types for compatibility
+	MediaTypeDocker MediaTypeFormat = "docker"
+	// MediaTypeOCI uses OCI Image Format media types
+	MediaTypeOCI MediaTypeFormat = "oci"
 )
 
 // ContainerDiffOptions specifies options for `nerdctl (container) diff`.

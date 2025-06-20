@@ -32,6 +32,7 @@ func CommitCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "commit [flags] CONTAINER REPOSITORY[:TAG]",
 		Short:             "Create a new image from a container's changes",
+		Long:              "Create a new image from a container's changes. Use --format to choose between docker (default) or oci image format.",
 		Args:              helpers.IsExactArgs(2),
 		RunE:              commitAction,
 		ValidArgsFunction: commitShellComplete,
@@ -43,6 +44,7 @@ func CommitCommand() *cobra.Command {
 	cmd.Flags().StringArrayP("change", "c", nil, "Apply Dockerfile instruction to the created image (supported directives: [CMD, ENTRYPOINT])")
 	cmd.Flags().BoolP("pause", "p", true, "Pause container during commit")
 	cmd.Flags().StringP("compression", "", "gzip", "commit compression algorithm (zstd or gzip)")
+	cmd.Flags().String("format", "docker", "Format of the committed image (docker or oci)")
 	return cmd
 }
 
@@ -76,6 +78,15 @@ func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 	if com != string(types.Zstd) && com != string(types.Gzip) {
 		return types.ContainerCommitOptions{}, errors.New("--compression param only supports zstd or gzip")
 	}
+
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return types.ContainerCommitOptions{}, err
+	}
+	if format != string(types.MediaTypeDocker) && format != string(types.MediaTypeOCI) {
+		return types.ContainerCommitOptions{}, errors.New("--format param only supports docker or oci")
+	}
+
 	return types.ContainerCommitOptions{
 		Stdout:      cmd.OutOrStdout(),
 		GOptions:    globalOptions,
@@ -84,6 +95,7 @@ func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 		Pause:       pause,
 		Change:      change,
 		Compression: types.CompressionType(com),
+		MediaType:   types.MediaTypeFormat(format),
 	}, nil
 }
 
