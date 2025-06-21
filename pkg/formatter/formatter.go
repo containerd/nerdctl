@@ -33,9 +33,7 @@ import (
 	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/errdefs"
-	"github.com/containerd/log"
-
-	"github.com/containerd/nerdctl/v2/pkg/portutil"
+	"github.com/containerd/go-cni"
 )
 
 func ContainerStatus(ctx context.Context, c containerd.Container) string {
@@ -112,11 +110,7 @@ func Ellipsis(str string, maxDisplayWidth int) string {
 	return str[:maxDisplayWidth-1] + "…"
 }
 
-func FormatPorts(labelMap map[string]string) string {
-	ports, err := portutil.ParsePortsLabel(labelMap)
-	if err != nil {
-		log.L.Error(err.Error())
-	}
+func FormatPorts(ports []cni.PortMapping) string {
 	if len(ports) == 0 {
 		return ""
 	}

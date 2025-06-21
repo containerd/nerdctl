@@ -88,11 +88,18 @@ func portAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
+	if err != nil {
+		return err
+	}
+
 	po := composer.PortOptions{
 		ServiceName: args[0],
 		Index:       index,
 		Port:        port,
 		Protocol:    protocol,
+		DataStore:   dataStore,
+		Namespace:   globalOptions.Namespace,
 	}
 
 	return c.Port(ctx, cmd.OutOrStdout(), po)
