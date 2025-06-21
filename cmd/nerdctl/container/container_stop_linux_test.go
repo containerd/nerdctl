@@ -19,6 +19,7 @@ package container
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -198,4 +199,32 @@ func TestStopWithTimeout(t *testing.T) {
 
 	// The container should get the SIGKILL before the 10s default timeout
 	assert.Assert(t, elapsed < 10*time.Second, "Container did not respect --timeout flag")
+}
+
+func TestStopCleanupFIFOs(t *testing.T) {
+	t.Parallel()
+
+	base := testutil.NewBase(t)
+	testContainerName := testutil.Identifier(t)
+
+	// Stop the container after 2 seconds
+	go func() {
+		time.Sleep(2 * time.Second)
+		base.Cmd("stop", testContainerName).Run()
+	}()
+
+	// Start a container that is automatically removed after it exits
+	base.Cmd("run", "--rm", "--name", testContainerName, testutil.NginxAlpineImage).AssertOK()
+
+	fifoDir := "/run/containerd/fifo"
+	entries, err := os.ReadDir(fifoDir)
+	assert.NilError(t, err, "failed to read fifo directory")
+
+	if len(entries) != 0 {
+		for _, entry := range entries {
+			t.Logf("Leaked FIFO file: %s", entry.Name())
+		}
+	}
+	// The FIFO directory should be empty after the container be stopped
+	assert.Assert(t, len(entries) == 0, "Expected no FIFO files under %s, but found %d", fifoDir, len(entries))
 }
