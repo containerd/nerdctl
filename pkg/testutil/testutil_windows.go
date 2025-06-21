@@ -53,7 +53,6 @@ const (
 )
 
 var (
-	GolangImage = mirrorOf("fixme-test-using-this-image-is-disabled-on-windows")
 	AlpineImage = mirrorOf("fixme-test-using-this-image-is-disabled-on-windows")
 
 	hypervContainer     bool
