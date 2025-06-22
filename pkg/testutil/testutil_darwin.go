@@ -28,8 +28,8 @@ const (
 )
 
 var (
-	BusyboxImage     = "ghcr.io/containerd/busybox:1.36"
-	AlpineImage      = mirrorOf("alpine:3.13")
-	NginxAlpineImage = mirrorOf("nginx:1.19-alpine")
-	GolangImage      = mirrorOf("golang:1.18")
+	BusyboxImage     = "there-is-no-test-on-darwin"
+	AlpineImage      = "there-is-no-test-on-darwin"
+	NginxAlpineImage = "there-is-no-test-on-darwin"
+	GolangImage      = "there-is-no-test-on-darwin"
 )
