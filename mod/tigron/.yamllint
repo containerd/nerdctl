@@ -2,6 +2,9 @@
 
 extends: default
 
+ignore:
+  - _
+
 rules:
   indentation:
     spaces: 2

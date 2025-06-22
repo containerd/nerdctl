@@ -25,15 +25,16 @@ import (
 	"github.com/containerd/containerd/v2/core/images/converter"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/features"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 )
 
 // EnsureImage pull the specified image from IPFS.
 func EnsureImage(ctx context.Context, client *containerd.Client, scheme, ref, ipfsPath string, options types.ImagePullOptions) (*imgutil.EnsuredImage, error) {
-	return nil, ErrNotImplemented
+	return nil, features.ErrIPFSSupportMissing
 }
 
 // Push pushes the specified image to IPFS.
 func Push(ctx context.Context, client *containerd.Client, rawRef string, layerConvert converter.ConvertFunc, allPlatforms bool, platform []string, ensureImage bool, ipfsPath string) (string, error) {
-	return "", ErrNotImplemented
+	return "", features.ErrIPFSSupportMissing
 }

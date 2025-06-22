@@ -20,8 +20,10 @@ package ipfs
 
 import (
 	"net/http"
+
+	"github.com/containerd/nerdctl/v2/pkg/features"
 )
 
 func NewRegistry(options RegistryOptions) (http.Handler, error) {
-	return nil, ErrNotImplemented
+	return nil, features.ErrIPFSSupportMissing
 }

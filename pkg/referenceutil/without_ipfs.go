@@ -1,3 +1,5 @@
+//go:build no_ipfs
+
 /*
    Copyright The containerd Authors.
 
@@ -14,12 +16,10 @@
    limitations under the License.
 */
 
-package ipfs
+package referenceutil
 
-import (
-	"fmt"
+import "github.com/containerd/nerdctl/v2/pkg/features"
 
-	"github.com/containerd/errdefs"
-)
-
-var ErrNotImplemented = fmt.Errorf("%w: ipfs is disabled by the distributor of this build", errdefs.ErrNotImplemented)
+func decodeCid(v string) (string, error) {
+	return "", features.ErrIPFSSupportMissing
+}
