@@ -19,6 +19,7 @@ package image
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
@@ -102,6 +103,10 @@ func TestImageConvertNydusVerify(t *testing.T) {
 
 	var reg *registry.Server
 
+	// It is unclear what is problematic here, but we use the kernel version to discriminate against EL
+	// See: https://github.com/containerd/nerdctl/issues/4332
+	testutil.RequireKernelVersion(t, ">= 6.0.0-0")
+
 	testCase := &test.Case{
 		Require: require.All(
 			require.Linux,
@@ -116,6 +121,7 @@ func TestImageConvertNydusVerify(t *testing.T) {
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 			reg = nerdtest.RegistryWithNoAuth(data, helpers, 0, false)
 			reg.Setup(data, helpers)
+
 			data.Labels().Set(remoteImageKey, fmt.Sprintf("%s:%d/nydusd-image:test", "localhost", reg.Port))
 			helpers.Ensure("image", "convert", "--nydus", "--oci", testutil.CommonImage, data.Identifier("converted-image"))
 			helpers.Ensure("tag", data.Identifier("converted-image"), data.Labels().Get(remoteImageKey))
@@ -129,8 +135,10 @@ func TestImageConvertNydusVerify(t *testing.T) {
 			}
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			return helpers.Custom("nydusify",
+			cmd := helpers.Custom("nydusify",
 				"check",
+				"--work-dir",
+				data.Temp().Dir("nydusify-temp"),
 				"--source",
 				testutil.CommonImage,
 				"--target",
@@ -138,6 +146,8 @@ func TestImageConvertNydusVerify(t *testing.T) {
 				"--source-insecure",
 				"--target-insecure",
 			)
+			cmd.WithTimeout(30 * time.Second)
+			return cmd
 		},
 		Expected: test.Expects(0, nil, nil),
 	}
