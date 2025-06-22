@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"go.yaml.in/yaml/v3"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/yaml.v3"
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"

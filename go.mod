@@ -62,13 +62,13 @@ require (
 	github.com/vishvananda/netns v0.0.5 //gomodjail:unconfined
 	github.com/yuchanns/srslog v1.1.0
 	go.uber.org/mock v0.5.2
+	go.yaml.in/yaml/v3 v3.0.3
 	golang.org/x/crypto v0.39.0
 	golang.org/x/net v0.41.0
 	golang.org/x/sync v0.15.0 //gomodjail:unconfined
 	golang.org/x/sys v0.33.0 //gomodjail:unconfined
 	golang.org/x/term v0.32.0 //gomodjail:unconfined
 	golang.org/x/text v0.26.0
-	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
 	tags.cncf.io/container-device-interface v1.0.1 //gomodjail:unconfined
 )
@@ -117,6 +117,7 @@ require (
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.1 // indirect
 	github.com/sasha-s/go-deadlock v0.3.5 // indirect
 	//gomodjail:unconfined
 	github.com/sirupsen/logrus v1.9.3 // indirect
@@ -141,11 +142,10 @@ require (
 	google.golang.org/grpc v1.72.2 // indirect
 	//gomodjail:unconfined
 	google.golang.org/protobuf v1.36.6 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 	tags.cncf.io/container-device-interface/specs-go v1.0.0 // indirect
 )
-
-require github.com/santhosh-tekuri/jsonschema/v6 v6.0.1 // indirect
 
 replace github.com/containerd/nerdctl/mod/tigron v0.0.0 => ./mod/tigron
