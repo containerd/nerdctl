@@ -235,7 +235,7 @@ func TestIssue2993(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errors.New("is already used by ID")},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(containersDirs), 1)
@@ -282,7 +282,7 @@ func TestIssue2993(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(containersDirs), 0)
@@ -363,10 +363,10 @@ func TestUsernsMappingCreateCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							assert.NilError(t, err, "Failed to get container host UID")
-							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"), info)
+							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"))
 						},
 					}
 				},

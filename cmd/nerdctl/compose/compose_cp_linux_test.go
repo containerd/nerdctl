@@ -77,7 +77,7 @@ services:
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						copied := data.Temp().Load("test-file2")
 						assert.Equal(t, copied, testFileContent)
 					},

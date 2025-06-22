@@ -61,7 +61,7 @@ func TestLoadStdinFromPipe(t *testing.T) {
 			return &test.Expected{
 				Output: expect.All(
 					expect.Contains(fmt.Sprintf("Loaded image: %s:latest", identifier)),
-					func(stdout string, info string, t *testing.T) {
+					func(stdout string, t *testing.T) {
 						assert.Assert(t, strings.Contains(helpers.Capture("images"), identifier))
 					},
 				),

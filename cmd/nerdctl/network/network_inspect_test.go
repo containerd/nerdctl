@@ -70,11 +70,11 @@ func TestNetworkInspect(t *testing.T) {
 			Description: "none",
 			Require:     nerdtest.NerdctlNeedsFixing("no issue opened"),
 			Command:     test.Command("network", "inspect", "none"),
-			Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
+			Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
 				var dc []dockercompat.Network
 				err := json.Unmarshal([]byte(stdout), &dc)
-				assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+				assert.NilError(t, err, "Unable to unmarshal output\n")
+				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 				assert.Equal(t, dc[0].Name, "none")
 			}),
 		},
@@ -82,11 +82,11 @@ func TestNetworkInspect(t *testing.T) {
 			Description: "host",
 			Require:     nerdtest.NerdctlNeedsFixing("no issue opened"),
 			Command:     test.Command("network", "inspect", "host"),
-			Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
+			Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
 				var dc []dockercompat.Network
 				err := json.Unmarshal([]byte(stdout), &dc)
-				assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+				assert.NilError(t, err, "Unable to unmarshal output\n")
+				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 				assert.Equal(t, dc[0].Name, "host")
 			}),
 		},
@@ -94,11 +94,11 @@ func TestNetworkInspect(t *testing.T) {
 			Description: "bridge",
 			Require:     require.Not(require.Windows),
 			Command:     test.Command("network", "inspect", "bridge"),
-			Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
+			Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
 				var dc []dockercompat.Network
 				err := json.Unmarshal([]byte(stdout), &dc)
-				assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+				assert.NilError(t, err, "Unable to unmarshal output\n")
+				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 				assert.Equal(t, dc[0].Name, "bridge")
 			}),
 		},
@@ -106,11 +106,11 @@ func TestNetworkInspect(t *testing.T) {
 			Description: "nat",
 			Require:     require.Windows,
 			Command:     test.Command("network", "inspect", "nat"),
-			Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
+			Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
 				var dc []dockercompat.Network
 				err := json.Unmarshal([]byte(stdout), &dc)
-				assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+				assert.NilError(t, err, "Unable to unmarshal output\n")
+				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 				assert.Equal(t, dc[0].Name, "nat")
 			}),
 		},
@@ -123,11 +123,11 @@ func TestNetworkInspect(t *testing.T) {
 				helpers.Anyhow("network", "remove", "custom")
 			},
 			Command: test.Command("network", "inspect", "custom"),
-			Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
+			Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
 				var dc []dockercompat.Network
 				err := json.Unmarshal([]byte(stdout), &dc)
-				assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+				assert.NilError(t, err, "Unable to unmarshal output\n")
+				assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 				assert.Equal(t, dc[0].Name, "custom")
 			}),
 		},
@@ -140,11 +140,11 @@ func TestNetworkInspect(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var dc []dockercompat.Network
 						err := json.Unmarshal([]byte(stdout), &dc)
-						assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+						assert.NilError(t, err, "Unable to unmarshal output\n")
+						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 						assert.Equal(t, dc[0].Name, data.Labels().Get("basenet"))
 					},
 				}
@@ -161,11 +161,11 @@ func TestNetworkInspect(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var dc []dockercompat.Network
 						err := json.Unmarshal([]byte(stdout), &dc)
-						assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+						assert.NilError(t, err, "Unable to unmarshal output\n")
+						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 						assert.Equal(t, dc[0].Name, data.Labels().Get("basenet"))
 					},
 				}
@@ -189,11 +189,11 @@ func TestNetworkInspect(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var dc []dockercompat.Network
 						err := json.Unmarshal([]byte(stdout), &dc)
-						assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+						assert.NilError(t, err, "Unable to unmarshal output\n")
+						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 						assert.Equal(t, dc[0].Name, data.Labels().Get("netname"))
 					},
 				}
@@ -216,20 +216,20 @@ func TestNetworkInspect(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var dc []dockercompat.Network
 
 						err := json.Unmarshal([]byte(stdout), &dc)
-						assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+						assert.NilError(t, err, "Unable to unmarshal output\n")
+						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 						got := dc[0]
 
-						assert.Equal(t, got.Name, data.Identifier(), info)
-						assert.Equal(t, got.Labels["tag"], "testNetwork", info)
-						assert.Equal(t, len(got.IPAM.Config), 1, info)
-						assert.Equal(t, got.IPAM.Config[0].Subnet, testSubnet, info)
-						assert.Equal(t, got.IPAM.Config[0].Gateway, testGateway, info)
-						assert.Equal(t, got.IPAM.Config[0].IPRange, testIPRange, info)
+						assert.Equal(t, got.Name, data.Identifier())
+						assert.Equal(t, got.Labels["tag"], "testNetwork")
+						assert.Equal(t, len(got.IPAM.Config), 1)
+						assert.Equal(t, got.IPAM.Config[0].Subnet, testSubnet)
+						assert.Equal(t, got.IPAM.Config[0].Gateway, testGateway)
+						assert.Equal(t, got.IPAM.Config[0].IPRange, testIPRange)
 					},
 				}
 			},
@@ -249,7 +249,7 @@ func TestNetworkInspect(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						// Note: some functions need to be tested without the automatic --namespace nerdctl-test argument, so we need
 						// to retrieve the binary name.
 						// Note that we know this works already, so no need to assert err.
@@ -308,11 +308,11 @@ func TestNetworkInspect(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var dc []dockercompat.Network
 						err := json.Unmarshal([]byte(stdout), &dc)
-						assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+						assert.NilError(t, err, "Unable to unmarshal output\n")
+						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 						assert.Equal(t, dc[0].Name, data.Identifier("nginx-network-1"))
 						// Assert only the "running" containers on the same network are returned.
 						assert.Equal(t, 1, len(dc[0].Containers), "Expected a single container as per configuration, but got multiple.")
@@ -341,8 +341,8 @@ func TestNetworkInspect(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: expect.JSON([]dockercompat.Network{}, func(dc []dockercompat.Network, info string, t tig.T) {
-						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+					Output: expect.JSON([]dockercompat.Network{}, func(dc []dockercompat.Network, t tig.T) {
+						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 						assert.Equal(t, dc[0].Name, data.Identifier("network-1"))
 						assert.Equal(t, 1, len(dc[0].Containers), "Expected a single container as per configuration, but got multiple.")
 						assert.Equal(t, data.Identifier(), dc[0].Containers[data.Labels().Get("containerID")].Name)
@@ -368,8 +368,8 @@ func TestNetworkInspect(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: expect.JSON([]dockercompat.Network{}, func(dc []dockercompat.Network, info string, t tig.T) {
-						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+					Output: expect.JSON([]dockercompat.Network{}, func(dc []dockercompat.Network, t tig.T) {
+						assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 						assert.Equal(t, dc[0].Name, data.Identifier("some-network"))
 						assert.Equal(t, 0, len(dc[0].Containers), "Expected no containers as per configuration, but got multiple.")
 					}),

@@ -52,16 +52,16 @@ func TestNetworkLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 1, info)
+						assert.Assert(t, len(lines) >= 1, "expected at least one line\n")
 						netNames := map[string]struct{}{
 							data.Labels().Get("netID1")[:12]: {},
 						}
 
 						for _, name := range lines {
 							_, ok := netNames[name]
-							assert.Assert(t, ok, info)
+							assert.Assert(t, ok, "expected to find name\n")
 						}
 					},
 				}
@@ -74,16 +74,16 @@ func TestNetworkLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 1, info)
+						assert.Assert(t, len(lines) >= 1, "expected at least one line\n")
 						netNames := map[string]struct{}{
 							data.Labels().Get("netID2")[:12]: {},
 						}
 
 						for _, name := range lines {
 							_, ok := netNames[name]
-							assert.Assert(t, ok, info)
+							assert.Assert(t, ok, "expected to find name\n")
 						}
 					},
 				}
@@ -96,16 +96,16 @@ func TestNetworkLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 1, info)
+						assert.Assert(t, len(lines) >= 1)
 						netNames := map[string]struct{}{
 							data.Labels().Get("netID2")[:12]: {},
 						}
 
 						for _, name := range lines {
 							_, ok := netNames[name]
-							assert.Assert(t, ok, info)
+							assert.Assert(t, ok)
 						}
 					},
 				}

@@ -45,14 +45,14 @@ func TestImageInspectSimpleCases(t *testing.T) {
 			{
 				Description: "Contains some stuff",
 				Command:     test.Command("image", "inspect", testutil.CommonImage),
-				Expected: test.Expects(0, nil, func(stdout string, info string, t *testing.T) {
+				Expected: test.Expects(0, nil, func(stdout string, t *testing.T) {
 					var dc []dockercompat.Image
 					err := json.Unmarshal([]byte(stdout), &dc)
-					assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-					assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
-					assert.Assert(t, len(dc[0].RootFS.Layers) > 0, info)
-					assert.Assert(t, dc[0].Architecture != "", info)
-					assert.Assert(t, dc[0].Size > 0, info)
+					assert.NilError(t, err, "Unable to unmarshal output\n")
+					assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
+					assert.Assert(t, len(dc[0].RootFS.Layers) > 0, "there should be at least one rootfs layer\n")
+					assert.Assert(t, dc[0].Architecture != "", "architecture should be set\n")
+					assert.Assert(t, dc[0].Size > 0, "size should be > 0 \n")
 				}),
 			},
 			{
@@ -115,11 +115,11 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							var dc []dockercompat.Image
 							err := json.Unmarshal([]byte(stdout), &dc)
-							assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-							assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+							assert.NilError(t, err, "Unable to unmarshal output\n")
+							assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 							reference := dc[0].ID
 							sha := strings.TrimPrefix(dc[0].RepoDigests[0], "busybox@sha256:")
 
@@ -140,11 +140,11 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							var dc []dockercompat.Image
 							err := json.Unmarshal([]byte(stdout), &dc)
-							assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-							assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+							assert.NilError(t, err, "Unable to unmarshal output\n")
+							assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 							reference := dc[0].ID
 							sha := strings.TrimPrefix(dc[0].RepoDigests[0], "busybox@sha256:")
 
@@ -173,11 +173,11 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							var dc []dockercompat.Image
 							err := json.Unmarshal([]byte(stdout), &dc)
-							assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-							assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+							assert.NilError(t, err, "Unable to unmarshal output\n")
+							assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 							sha := strings.TrimPrefix(dc[0].RepoDigests[0], "busybox@sha256:")
 
 							for _, id := range []string{"doesnotexist", "doesnotexist:either", "busybox:bogustag"} {
@@ -196,11 +196,11 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 				Command:     test.Command("image", "inspect", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							var dc []dockercompat.Image
 							err := json.Unmarshal([]byte(stdout), &dc)
-							assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-							assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n"+info)
+							assert.NilError(t, err, "Unable to unmarshal output\n")
+							assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
 
 							for _, id := range []string{"∞∞∞∞∞∞∞∞∞∞", "busybox:∞∞∞∞∞∞∞∞∞∞"} {
 								cmd := helpers.Command("image", "inspect", id)
@@ -218,11 +218,11 @@ func TestImageInspectDifferentValidReferencesForTheSameImage(t *testing.T) {
 				Command:     test.Command("image", "inspect", "busybox", "busybox"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							var dc []dockercompat.Image
 							err := json.Unmarshal([]byte(stdout), &dc)
-							assert.NilError(t, err, "Unable to unmarshal output\n"+info)
-							assert.Equal(t, 2, len(dc), "Unexpectedly did not get 2 results\n"+info)
+							assert.NilError(t, err, "Unable to unmarshal output\n")
+							assert.Equal(t, 2, len(dc), "Unexpectedly did not get 2 results\n")
 							reference := nerdtest.InspectImage(helpers, "busybox")
 							assert.Equal(t, dc[0].ID, reference.ID)
 							assert.Equal(t, dc[1].ID, reference.ID)

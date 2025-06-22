@@ -100,14 +100,13 @@ CMD ["echo", "test-nerdctl-build-context-oci-layout"]`
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
-				Output: func(stdout string, info string, t *testing.T) {
+				Output: func(stdout string, t *testing.T) {
 					assert.Assert(
 						t,
 						strings.Contains(
 							helpers.Capture("run", "--rm", data.Identifier("child")),
 							"test-nerdctl-build-context-oci-layout",
 						),
-						info,
 					)
 				},
 			}

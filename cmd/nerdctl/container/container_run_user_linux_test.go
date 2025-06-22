@@ -222,12 +222,12 @@ func TestUsernsMappingRunCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							if err != nil {
 								t.Fatalf("Failed to get container host UID: %v", err)
 							}
-							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"), info)
+							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"))
 						},
 					}
 				},
@@ -249,12 +249,12 @@ func TestUsernsMappingRunCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							if err != nil {
 								t.Fatalf("Failed to get container host UID: %v", err)
 							}
-							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"), info)
+							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"))
 						},
 					}
 				},
@@ -295,12 +295,12 @@ func TestUsernsMappingRunCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							if err != nil {
 								t.Fatalf("Failed to get container host UID: %v", err)
 							}
-							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"), info)
+							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"))
 						},
 					}
 				},
@@ -322,12 +322,12 @@ func TestUsernsMappingRunCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							if err != nil {
 								t.Fatalf("Failed to get container host UID: %v", err)
 							}
-							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"), info)
+							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"))
 						},
 					}
 				},
@@ -367,12 +367,12 @@ func TestUsernsMappingRunCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							if err != nil {
 								t.Fatalf("Failed to get container host UID: %v", err)
 							}
-							assert.Assert(t, actualHostUID == "0", info)
+							assert.Assert(t, actualHostUID == "0")
 						},
 					}
 				},

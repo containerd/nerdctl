@@ -94,7 +94,7 @@ services:
 		return &test.Expected{
 			ExitCode: 0,
 			Errors:   nil,
-			Output: func(stdout, info string, t *testing.T) {
+			Output: func(stdout string, t *testing.T) {
 				assert.Equal(t, data.Temp().Load("foo", "test"), "hi\n")
 			},
 		}

@@ -56,9 +56,9 @@ func TestVolumeLsSize(t *testing.T) {
 		Command: test.Command("volume", "ls", "--size"),
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
-				Output: func(stdout string, info string, t *testing.T) {
+				Output: func(stdout string, t *testing.T) {
 					var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-					assert.Assert(t, len(lines) >= 4, "expected at least 4 lines"+info)
+					assert.Assert(t, len(lines) >= 4, "expected at least 4 lines")
 					volSizes := map[string]string{
 						data.Identifier("1"):     "100.0 KiB",
 						data.Identifier("2"):     "200.0 KiB",
@@ -68,7 +68,7 @@ func TestVolumeLsSize(t *testing.T) {
 					var numMatches = 0
 					var tab = tabutil.NewReader("VOLUME NAME\tDIRECTORY\tSIZE")
 					var err = tab.ParseHeader(lines[0])
-					assert.NilError(t, err, info)
+					assert.NilError(t, err, "ParseHeader should not fail\n")
 
 					for _, line := range lines {
 						name, _ := tab.ReadRow(line, "VOLUME NAME")
@@ -77,10 +77,10 @@ func TestVolumeLsSize(t *testing.T) {
 						if !ok {
 							continue
 						}
-						assert.Assert(t, size == expectSize, fmt.Sprintf("expected size %s for volume %s, got %s", expectSize, name, size)+info)
+						assert.Assert(t, size == expectSize, fmt.Sprintf("expected size %s for volume %s, got %s", expectSize, name, size))
 						numMatches++
 					}
-					assert.Assert(t, numMatches == len(volSizes), fmt.Sprintf("expected %d volumes, got: %d", len(volSizes), numMatches)+info)
+					assert.Assert(t, numMatches == len(volSizes), fmt.Sprintf("expected %d volumes, got: %d", len(volSizes), numMatches))
 				},
 			}
 		},
@@ -145,9 +145,9 @@ func TestVolumeLsFilter(t *testing.T) {
 			Command:     test.Command("volume", "ls", "--quiet"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 4, "expected at least 4 lines"+info)
+						assert.Assert(t, len(lines) >= 4, "expected at least 4 lines")
 						volNames := map[string]struct{}{
 							data.Labels().Get("vol1"): {},
 							data.Labels().Get("vol2"): {},
@@ -174,9 +174,9 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines"+info)
+						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines")
 						volNames := map[string]struct{}{
 							data.Labels().Get("vol1"): {},
 							data.Labels().Get("vol2"): {},
@@ -184,7 +184,7 @@ func TestVolumeLsFilter(t *testing.T) {
 						}
 						for _, name := range lines {
 							_, ok := volNames[name]
-							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name)+info)
+							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name))
 						}
 					},
 				}
@@ -197,15 +197,15 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 1, "expected at least 1 lines"+info)
+						assert.Assert(t, len(lines) >= 1, "expected at least 1 lines")
 						volNames := map[string]struct{}{
 							data.Labels().Get("vol2"): {},
 						}
 						for _, name := range lines {
 							_, ok := volNames[name]
-							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name)+info)
+							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name))
 						}
 					},
 				}
@@ -218,8 +218,8 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
-						assert.Assert(t, strings.TrimSpace(stdout) == "", "expected no result"+info)
+					Output: func(stdout string, t *testing.T) {
+						assert.Assert(t, strings.TrimSpace(stdout) == "", "expected no result")
 					},
 				}
 			},
@@ -231,8 +231,8 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
-						assert.Assert(t, strings.TrimSpace(stdout) == "", "expected no result"+info)
+					Output: func(stdout string, t *testing.T) {
+						assert.Assert(t, strings.TrimSpace(stdout) == "", "expected no result")
 					},
 				}
 			},
@@ -244,16 +244,16 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines"+info)
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines")
 						volNames := map[string]struct{}{
 							data.Labels().Get("vol1"): {},
 							data.Labels().Get("vol2"): {},
 						}
 						for _, name := range lines {
 							_, ok := volNames[name]
-							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name)+info)
+							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name))
 						}
 					},
 				}
@@ -266,15 +266,15 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 1, "expected at least 1 line"+info)
+						assert.Assert(t, len(lines) >= 1, "expected at least 1 line")
 						volNames := map[string]struct{}{
 							data.Labels().Get("vol1"): {},
 						}
 						for _, name := range lines {
 							_, ok := volNames[name]
-							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name)+info)
+							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name))
 						}
 					},
 				}
@@ -287,15 +287,15 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 1, "expected at least 1 line"+info)
+						assert.Assert(t, len(lines) >= 1, "expected at least 1 line")
 						volNames := map[string]struct{}{
 							data.Labels().Get("vol1"): {},
 						}
 						for _, name := range lines {
 							_, ok := volNames[name]
-							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name)+info)
+							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name))
 						}
 					},
 				}
@@ -308,16 +308,16 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines"+info)
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines")
 						volNames := map[string]struct{}{
 							data.Labels().Get("vol1"): {},
 							data.Labels().Get("vol2"): {},
 						}
 						for _, name := range lines {
 							_, ok := volNames[name]
-							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name)+info)
+							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name))
 						}
 					},
 				}
@@ -331,9 +331,9 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines"+info)
+						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines")
 						volNames := map[string]struct{}{
 							data.Labels().Get("vol2"): {},
 							data.Labels().Get("vol4"): {},
@@ -348,7 +348,7 @@ func TestVolumeLsFilter(t *testing.T) {
 								continue
 							}
 							_, ok := volNames[name]
-							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name)+info)
+							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name))
 						}
 					},
 				}
@@ -362,9 +362,9 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines"+info)
+						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines")
 						volNames := map[string]struct{}{
 							data.Labels().Get("vol2"): {},
 							data.Labels().Get("vol4"): {},
@@ -379,7 +379,7 @@ func TestVolumeLsFilter(t *testing.T) {
 								continue
 							}
 							_, ok := volNames[name]
-							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name)+info)
+							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name))
 						}
 					},
 				}
@@ -393,9 +393,9 @@ func TestVolumeLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines"+info)
+						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines")
 						volNames := map[string]struct{}{
 							data.Labels().Get("vol1"): {},
 							data.Labels().Get("vol3"): {},
@@ -410,7 +410,7 @@ func TestVolumeLsFilter(t *testing.T) {
 								continue
 							}
 							_, ok := volNames[name]
-							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name)+info)
+							assert.Assert(t, ok, fmt.Sprintf("unexpected volume %s found", name))
 						}
 					},
 				}

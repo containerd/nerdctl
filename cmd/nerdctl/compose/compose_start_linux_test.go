@@ -61,12 +61,12 @@ services:
 		return &test.Expected{
 			ExitCode: 0,
 			Errors:   nil,
-			Output: func(stdout, info string, t *testing.T) {
+			Output: func(stdout string, t *testing.T) {
 				svc0 := helpers.Capture("compose", "-f", data.Temp().Path("compose.yaml"), "ps", "svc0")
 				svc1 := helpers.Capture("compose", "-f", data.Temp().Path("compose.yaml"), "ps", "svc1")
 				comp := expect.Match(regexp.MustCompile("Up|running"))
-				comp(svc0, "", t)
-				comp(svc1, "", t)
+				comp(svc0, t)
+				comp(svc1, t)
 			},
 		}
 	}

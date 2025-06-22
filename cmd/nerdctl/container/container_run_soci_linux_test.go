@@ -44,7 +44,7 @@ func TestRunSoci(t *testing.T) {
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Custom("mount").Run(&test.Expected{
 			ExitCode: 0,
-			Output: func(stdout, info string, t *testing.T) {
+			Output: func(stdout string, t *testing.T) {
 				data.Labels().Set("beforeCount", strconv.Itoa(strings.Count(stdout, "fuse.rawBridge")))
 			},
 		})
@@ -60,12 +60,12 @@ func TestRunSoci(t *testing.T) {
 
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
-			Output: func(stdout, info string, t *testing.T) {
+			Output: func(stdout string, t *testing.T) {
 				var afterCount int
 				beforeCount, _ := strconv.Atoi(data.Labels().Get("beforeCount"))
 
 				helpers.Custom("mount").Run(&test.Expected{
-					Output: func(stdout, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						afterCount = strings.Count(stdout, "fuse.rawBridge")
 					},
 				})

@@ -48,7 +48,7 @@ func TestSaveContent(t *testing.T) {
 		},
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
-				Output: func(stdout string, info string, t *testing.T) {
+				Output: func(stdout string, t *testing.T) {
 					rootfsPath := filepath.Join(data.Temp().Path(), "rootfs")
 					err := testhelpers.ExtractDockerArchive(filepath.Join(data.Temp().Path(), "out.tar"), rootfsPath)
 					assert.NilError(t, err)
@@ -188,7 +188,7 @@ func TestSaveMultipleImagesWithSameIDAndLoad(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						assert.Equal(t, strings.Count(stdout, data.Labels().Get("id")), 2)
 					},
 				}

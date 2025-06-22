@@ -50,16 +50,16 @@ func TestImages(t *testing.T) {
 				Command:     test.Command("images"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							lines := strings.Split(strings.TrimSpace(stdout), "\n")
-							assert.Assert(t, len(lines) >= 2, info)
+							assert.Assert(t, len(lines) >= 2, "there should be at least two lines\n")
 							header := "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE"
 							if nerdtest.IsDocker() {
 								header = "REPOSITORY\tTAG\tIMAGE ID\tCREATED\tSIZE"
 							}
 							tab := tabutil.NewReader(header)
 							err := tab.ParseHeader(lines[0])
-							assert.NilError(t, err, info)
+							assert.NilError(t, err, "ParseHeader should not fail\n")
 							found := false
 							for _, line := range lines[1:] {
 								repo, _ := tab.ReadRow(line, "REPOSITORY")
@@ -69,7 +69,7 @@ func TestImages(t *testing.T) {
 									break
 								}
 							}
-							assert.Assert(t, found, info)
+							assert.Assert(t, found, "we should have found an image\n")
 						},
 					}
 				},
@@ -81,12 +81,12 @@ func TestImages(t *testing.T) {
 					return &test.Expected{
 						Output: expect.All(
 							expect.Contains(testutil.CommonImage),
-							func(stdout string, info string, t *testing.T) {
+							func(stdout string, t *testing.T) {
 								lines := strings.Split(strings.TrimSpace(stdout), "\n")
-								assert.Assert(t, len(lines) >= 2, info)
+								assert.Assert(t, len(lines) >= 2, "there should be at least two lines\n")
 								tab := tabutil.NewReader("NAME\tIMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE")
 								err := tab.ParseHeader(lines[0])
-								assert.NilError(t, err, info)
+								assert.NilError(t, err, "ParseHeader should not fail\n")
 								found := false
 								for _, line := range lines[1:] {
 									name, _ := tab.ReadRow(line, "NAME")
@@ -96,7 +96,7 @@ func TestImages(t *testing.T) {
 									}
 								}
 
-								assert.Assert(t, found, info)
+								assert.Assert(t, found, "we should have found an image\n")
 							},
 						),
 					}
@@ -107,12 +107,12 @@ func TestImages(t *testing.T) {
 				Command:     test.Command("images", "--format", "'{{json .CreatedAt}}'"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							lines := strings.Split(strings.TrimSpace(stdout), "\n")
-							assert.Assert(t, len(lines) >= 2, info)
+							assert.Assert(t, len(lines) >= 2, "there should be at least two lines\n")
 							createdTimes := lines
 							slices.Reverse(createdTimes)
-							assert.Assert(t, slices.IsSorted(createdTimes), info)
+							assert.Assert(t, slices.IsSorted(createdTimes), "created times should be sorted\n")
 						},
 					}
 				},
@@ -337,7 +337,7 @@ func TestImagesKubeWithKubeHideDupe(t *testing.T) {
 				Command:     test.Command("--kube-hide-dupe", "images"),
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t *testing.T) {
 							var imageID string
 							var skipLine int
 							lines := strings.Split(strings.TrimSpace(stdout), "\n")
@@ -347,7 +347,7 @@ func TestImagesKubeWithKubeHideDupe(t *testing.T) {
 							}
 							tab := tabutil.NewReader(header)
 							err := tab.ParseHeader(lines[0])
-							assert.NilError(t, err, info)
+							assert.NilError(t, err, "ParseHeader should not fail\n")
 							found := true
 							for i, line := range lines[1:] {
 								repo, _ := tab.ReadRow(line, "REPOSITORY")
@@ -368,7 +368,7 @@ func TestImagesKubeWithKubeHideDupe(t *testing.T) {
 									break
 								}
 							}
-							assert.Assert(t, found, info)
+							assert.Assert(t, found, "We should have found the image\n")
 						},
 					}
 				},

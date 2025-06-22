@@ -78,12 +78,12 @@ volumes:
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						wp := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "wordpress")
 						db := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "db")
 						comp := expect.Match(regexp.MustCompile("Up|running"))
-						comp(wp, "", t)
-						comp(db, "", t)
+						comp(wp, t)
+						comp(db, t)
 					},
 				}
 			},
@@ -97,11 +97,11 @@ volumes:
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						wp := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "wordpress")
 						db := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "db")
-						expect.DoesNotContain("wordpress")(wp, "", t)
-						expect.Match(regexp.MustCompile("Up|running"))(db, "", t)
+						expect.DoesNotContain("wordpress")(wp, t)
+						expect.Match(regexp.MustCompile("Up|running"))(db, t)
 					},
 				}
 			},
@@ -114,9 +114,9 @@ volumes:
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout, info string, t *testing.T) {
+					Output: func(stdout string, t *testing.T) {
 						db := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "db")
-						expect.DoesNotContain("db")(db, "", t)
+						expect.DoesNotContain("db")(db, t)
 					},
 				}
 			},

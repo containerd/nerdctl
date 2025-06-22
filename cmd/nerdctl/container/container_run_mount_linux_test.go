@@ -307,7 +307,7 @@ func TestRunBindMountTmpfs(t *testing.T) {
 }
 
 func mountExistsWithOpt(mountPoint, mountOpt string) test.Comparator {
-	return func(stdout, info string, t *testing.T) {
+	return func(stdout string, t *testing.T) {
 		lines := strings.Split(strings.TrimSpace(stdout), "\n")
 		mountOutput := []string{}
 		for _, line := range lines {

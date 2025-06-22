@@ -121,7 +121,7 @@ func TestZstdCommit(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.JSON([]native.Image{}, func(images []native.Image, s string, t tig.T) {
+					Output: expect.JSON([]native.Image{}, func(images []native.Image, t tig.T) {
 						assert.Equal(t, len(images), 1)
 						assert.Equal(helpers.T(), images[0].Manifest.Layers[len(images[0].Manifest.Layers)-1].MediaType, "application/vnd.docker.image.rootfs.diff.tar.zstd")
 					}),
