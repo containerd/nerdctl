@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -153,7 +154,7 @@ func TestRestartWithSignal(t *testing.T) {
 			Output: expect.All(
 				// Check that we saw SIGUSR1 inside the container
 				expect.Contains(nerdtest.SignalCaught),
-				func(stdout string, t *testing.T) {
+				func(stdout string, t tig.T) {
 					// Ensure the container was restarted
 					nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 					// Check the new pid is different

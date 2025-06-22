@@ -28,6 +28,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -64,7 +65,7 @@ func TestAttach(t *testing.T) {
 		cmd.Run(&test.Expected{
 			ExitCode: 0,
 			Errors:   []error{errors.New("read detach keys")},
-			Output: func(stdout string, t *testing.T) {
+			Output: func(stdout string, t tig.T) {
 				assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 			},
 		})
@@ -93,7 +94,7 @@ func TestAttach(t *testing.T) {
 			Errors:   []error{errors.New("read detach keys")},
 			Output: expect.All(
 				expect.Contains("markmark"),
-				func(stdout string, t *testing.T) {
+				func(stdout string, t tig.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
 			),
@@ -125,7 +126,7 @@ func TestAttachDetachKeys(t *testing.T) {
 		cmd.Run(&test.Expected{
 			ExitCode: 0,
 			Errors:   []error{errors.New("read detach keys")},
-			Output: func(stdout string, t *testing.T) {
+			Output: func(stdout string, t tig.T) {
 				assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 			},
 		})
@@ -153,7 +154,7 @@ func TestAttachDetachKeys(t *testing.T) {
 			Errors:   []error{errors.New("read detach keys")},
 			Output: expect.All(
 				expect.Contains("markmark"),
-				func(stdout string, t *testing.T) {
+				func(stdout string, t tig.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
 			),
@@ -182,7 +183,7 @@ func TestAttachForAutoRemovedContainer(t *testing.T) {
 		cmd.Run(&test.Expected{
 			ExitCode: 0,
 			Errors:   []error{errors.New("read detach keys")},
-			Output: func(stdout string, t *testing.T) {
+			Output: func(stdout string, t tig.T) {
 				assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 			},
 		})
@@ -202,7 +203,7 @@ func TestAttachForAutoRemovedContainer(t *testing.T) {
 			ExitCode: 42,
 			Output: expect.All(
 				expect.Contains("markmark"),
-				func(stdout string, t *testing.T) {
+				func(stdout string, t tig.T) {
 					assert.Assert(t, !strings.Contains(helpers.Capture("ps", "-a"), data.Identifier()))
 				},
 			),
@@ -226,7 +227,7 @@ func TestAttachNoStdin(t *testing.T) {
 		cmd.Feed(bytes.NewReader([]byte{16, 17})) // Ctrl-p, Ctrl-q to detach (https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
 		cmd.Run(&test.Expected{
 			ExitCode: 0,
-			Output: func(stdout string, t *testing.T) {
+			Output: func(stdout string, t tig.T) {
 				assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "{{.State.Running}}", data.Identifier()), "true"))
 			},
 		})
@@ -243,7 +244,7 @@ func TestAttachNoStdin(t *testing.T) {
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
 			ExitCode: 0, // Since it's a normal exit and not detach.
-			Output: func(stdout string, t *testing.T) {
+			Output: func(stdout string, t tig.T) {
 				logs := helpers.Capture("logs", data.Identifier())
 				assert.Assert(t, !strings.Contains(logs, "should-not-appear"))
 			},

@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -189,7 +190,7 @@ bar
 				cmd := helpers.Custom("journalctl", "-xe")
 				cmd.Run(&test.Expected{
 					ExitCode: expect.ExitCodeNoCheck,
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						if stdout != "" {
 							works = true
 						}
@@ -456,7 +457,7 @@ func TestLogsTailFollowRotate(t *testing.T) {
 		return cmd
 	}
 
-	testCase.Expected = test.Expects(expect.ExitCodeTimeout, nil, func(stdout string, t *testing.T) {
+	testCase.Expected = test.Expects(expect.ExitCodeTimeout, nil, func(stdout string, t tig.T) {
 		tailLogs := strings.Split(strings.TrimSpace(stdout), "\n")
 		for _, line := range tailLogs {
 			if line != "" {
@@ -603,7 +604,7 @@ func TestLogsWithStartContainer(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						finalLogsCount := strings.Count(stdout, "foo")
 						initialFooCount, _ := strconv.Atoi(data.Labels().Get("initialFooCount"))
 						assert.Assert(t, finalLogsCount > initialFooCount, "Expected 'foo' count to increase after restart")

@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -61,7 +62,7 @@ func TestLoadStdinFromPipe(t *testing.T) {
 			return &test.Expected{
 				Output: expect.All(
 					expect.Contains(fmt.Sprintf("Loaded image: %s:latest", identifier)),
-					func(stdout string, t *testing.T) {
+					func(stdout string, t tig.T) {
 						assert.Assert(t, strings.Contains(helpers.Capture("images"), identifier))
 					},
 				),

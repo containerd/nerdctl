@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -60,7 +61,7 @@ func TestSystemPrune(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						volumes := helpers.Capture("volume", "ls")
 						networks := helpers.Capture("network", "ls")
 						images := helpers.Capture("images")

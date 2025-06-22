@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
@@ -342,7 +343,7 @@ COPY %s /`, testFileName)
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							// Expecting testFileName to exist inside the output target directory
 							assert.Equal(t, data.Temp().Load(testFileName), testContent, "file content is identical")
 						},
@@ -356,7 +357,7 @@ COPY %s /`, testFileName)
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							assert.Equal(t, data.Temp().Load(testFileName), testContent, "file content is identical")
 						},
 					}
@@ -894,7 +895,7 @@ func TestBuildAttestation(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							files, err := os.ReadDir(data.Temp().Path("dir-for-bom"))
 							assert.NilError(t, err, "failed to read directory")
 
@@ -926,7 +927,7 @@ func TestBuildAttestation(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							files, err := os.ReadDir(data.Temp().Path("dir-for-prov"))
 							assert.NilError(t, err, "failed to read directory")
 
@@ -959,7 +960,7 @@ func TestBuildAttestation(t *testing.T) {
 				},
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							// Check if any file in the directory matches the SBOM file pattern
 							files, err := os.ReadDir(data.Temp().Path("dir-for-attest"))
 							assert.NilError(t, err, "failed to read directory")

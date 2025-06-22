@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -77,7 +78,7 @@ func TestContainerHealthCheckBasic(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(stdout string, t *testing.T) {
+					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state to be present")
@@ -150,7 +151,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(stdout string, t *testing.T) {
+					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -185,7 +186,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(stdout string, t *testing.T) {
+					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -214,7 +215,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(stdout string, t *testing.T) {
+					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -242,7 +243,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(stdout string, t *testing.T) {
+					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -267,7 +268,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(stdout string, t *testing.T) {
+					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						assert.Assert(t, inspect.State.Health == nil, "expected health to be nil with --no-healthcheck")
 					}),
@@ -290,7 +291,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(_ string, t *testing.T) {
+					Output: expect.All(func(_ string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -320,7 +321,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(stdout string, t *testing.T) {
+					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -350,7 +351,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(stdout string, t *testing.T) {
+					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -382,7 +383,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(_ string, t *testing.T) {
+					Output: expect.All(func(_ string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -417,7 +418,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(_ string, t *testing.T) {
+					Output: expect.All(func(_ string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -444,7 +445,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(_ string, t *testing.T) {
+					Output: expect.All(func(_ string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -480,7 +481,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(stdout string, t *testing.T) {
+					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -512,7 +513,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(stdout string, t *testing.T) {
+					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")
@@ -540,7 +541,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: expect.All(func(stdout string, t *testing.T) {
+					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
 						assert.Assert(t, h != nil, "expected health state")

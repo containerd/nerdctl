@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/containerd/v2/core/mount"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -307,7 +308,7 @@ func TestRunBindMountTmpfs(t *testing.T) {
 }
 
 func mountExistsWithOpt(mountPoint, mountOpt string) test.Comparator {
-	return func(stdout string, t *testing.T) {
+	return func(stdout string, t tig.T) {
 		lines := strings.Split(strings.TrimSpace(stdout), "\n")
 		mountOutput := []string{}
 		for _, line := range lines {

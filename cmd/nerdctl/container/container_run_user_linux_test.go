@@ -24,6 +24,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -222,10 +223,11 @@ func TestUsernsMappingRunCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							if err != nil {
-								t.Fatalf("Failed to get container host UID: %v", err)
+								t.Log(fmt.Sprintf("Failed to get container host UID: %v", err))
+								t.FailNow()
 							}
 							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"))
 						},
@@ -249,10 +251,11 @@ func TestUsernsMappingRunCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							if err != nil {
-								t.Fatalf("Failed to get container host UID: %v", err)
+								t.Log(fmt.Sprintf("Failed to get container host UID: %v", err))
+								t.FailNow()
 							}
 							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"))
 						},
@@ -295,10 +298,11 @@ func TestUsernsMappingRunCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							if err != nil {
-								t.Fatalf("Failed to get container host UID: %v", err)
+								t.Log(fmt.Sprintf("Failed to get container host UID: %v", err))
+								t.FailNow()
 							}
 							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"))
 						},
@@ -322,10 +326,11 @@ func TestUsernsMappingRunCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							if err != nil {
-								t.Fatalf("Failed to get container host UID: %v", err)
+								t.Log(fmt.Sprintf("Failed to get container host UID: %v", err))
+								t.FailNow()
 							}
 							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"))
 						},
@@ -367,10 +372,11 @@ func TestUsernsMappingRunCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							if err != nil {
-								t.Fatalf("Failed to get container host UID: %v", err)
+								t.Log(fmt.Sprintf("Failed to get container host UID: %v", err))
+								t.FailNow()
 							}
 							assert.Assert(t, actualHostUID == "0")
 						},

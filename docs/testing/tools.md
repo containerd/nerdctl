@@ -88,7 +88,7 @@ import (
 )
 
 func MyComparator(compare string) test.Comparator {
-	return func(stdout string, t *testing.T) {
+	return func(stdout string, t tig.T) {
 		t.Helper()
 		assert.Assert(t, stdout == compare)
 	}
@@ -138,7 +138,7 @@ func TestMyThing(t *testing.T) {
 					errors.New("foobla"),
 					errdefs.ErrNotFound,
 				},
-				Output: func(stdout string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					assert.Assert(t, stdout == data.Labels().Get("sometestdata"))
 				},
 			}
@@ -251,7 +251,7 @@ func TestMyThing(t *testing.T) {
 					errors.New("foobla"),
 					errdefs.ErrNotFound,
 				},
-				Output: func(stdout string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					assert.Assert(t, stdout == data.Labels().Get("sometestdata"))
 				},
 			}
@@ -340,7 +340,7 @@ func TestMyThing(t *testing.T) {
 					errors.New("foobla"),
 					errdefs.ErrNotFound,
 				},
-				Output: func(stdout string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					assert.Assert(t, stdout == data.Labels().Get("sometestdata"))
 				},
 			}

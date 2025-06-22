@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
@@ -34,7 +35,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
-func testInfoComparator(stdout string, t *testing.T) {
+func testInfoComparator(stdout string, t tig.T) {
 	var dinf dockercompat.Info
 	err := json.Unmarshal([]byte(stdout), &dinf)
 	assert.NilError(t, err, "failed to unmarshal stdout")

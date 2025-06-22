@@ -26,6 +26,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
 	"github.com/containerd/nerdctl/mod/tigron/internal/formatter"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
 // Case describes an entire test-case, including data, setup and cleanup routines, command and
@@ -63,7 +64,7 @@ type Case struct {
 
 	// Private
 	helpers Helpers
-	t       *testing.T
+	t       tig.T
 	parent  *Case
 }
 
@@ -151,7 +152,7 @@ func (test *Case) Run(t *testing.T) {
 		if test.Require != nil {
 			shouldRun, message := test.Require.Check(test.Data, test.helpers)
 			if !shouldRun {
-				test.t.Skipf("test skipped as: %s", message)
+				test.t.Skip("test skipped as: " + message)
 			}
 
 			if test.Require.Setup != nil {
@@ -180,7 +181,7 @@ func (test *Case) Run(t *testing.T) {
 
 		// Set parallel unless asked not to
 		if !test.NoParallel {
-			test.t.Parallel()
+			subT.Parallel()
 		}
 
 		// Execute cleanups now
@@ -197,7 +198,7 @@ func (test *Case) Run(t *testing.T) {
 			}
 
 			// Register the cleanups, in reverse
-			test.t.Cleanup(func() {
+			subT.Cleanup(func() {
 				test.t.Helper()
 				test.t.Log(
 					"\n\n" + formatter.Table(
@@ -263,14 +264,14 @@ func (test *Case) Run(t *testing.T) {
 
 		if len(test.SubTests) > 0 {
 			// Now go for the subtests
-			test.t.Logf("\n%s️ %q: into subtests prep", subinDecorator, test.t.Name())
+			test.t.Log(fmt.Sprintf("\n%s️ %q: into subtests prep", subinDecorator, test.t.Name()))
 
 			for _, subTest := range test.SubTests {
 				subTest.parent = test
-				subTest.Run(test.t)
+				subTest.Run(subT)
 			}
 
-			test.t.Logf("\n%s️ %q: done with subtests prep", suboutDecorator, test.t.Name())
+			test.t.Log(fmt.Sprintf("\n%s️ %q: done with subtests prep", suboutDecorator, test.t.Name()))
 		}
 	}
 

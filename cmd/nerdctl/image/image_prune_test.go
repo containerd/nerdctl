@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -84,10 +85,10 @@ func TestImagePrune(t *testing.T) {
 				identifier := data.Identifier()
 				return &test.Expected{
 					Output: expect.All(
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							assert.Assert(t, !strings.Contains(stdout, identifier))
 						},
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							imgList := helpers.Capture("images")
 							assert.Assert(t, !strings.Contains(imgList, "<none>"), imgList)
 							assert.Assert(t, strings.Contains(imgList, identifier))
@@ -129,10 +130,10 @@ func TestImagePrune(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					Output: expect.All(
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							assert.Assert(t, !strings.Contains(stdout, data.Identifier()))
 						},
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							imgList := helpers.Capture("images")
 							assert.Assert(t, strings.Contains(imgList, data.Identifier()))
 							assert.Assert(t, !strings.Contains(imgList, "<none>"), imgList)
@@ -169,14 +170,14 @@ LABEL version=0.1`, testutil.CommonImage)
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					Output: expect.All(
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							assert.Assert(t, !strings.Contains(stdout, data.Identifier()))
 						},
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							imgList := helpers.Capture("images")
 							assert.Assert(t, strings.Contains(imgList, data.Identifier()))
 						},
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							prune := helpers.Capture("image", "prune", "--force", "--all", "--filter", "label=foo=bar")
 							assert.Assert(t, strings.Contains(prune, data.Identifier()))
 							imgList := helpers.Capture("images")
@@ -210,7 +211,7 @@ CMD ["echo", "nerdctl-test-image-prune-until"]`, testutil.CommonImage)
 				return &test.Expected{
 					Output: expect.All(
 						expect.DoesNotContain(data.Labels().Get("imageID")),
-						func(stdout string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							imgList := helpers.Capture("images")
 							assert.Assert(t, strings.Contains(imgList, data.Labels().Get("imageID")))
 						},
@@ -229,7 +230,7 @@ CMD ["echo", "nerdctl-test-image-prune-until"]`, testutil.CommonImage)
 						return &test.Expected{
 							Output: expect.All(
 								expect.Contains(data.Labels().Get("imageID")),
-								func(stdout string, t *testing.T) {
+								func(stdout string, t tig.T) {
 									imgList := helpers.Capture("images")
 									assert.Assert(t, !strings.Contains(imgList, data.Labels().Get("imageID")), imgList)
 								},

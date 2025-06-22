@@ -27,6 +27,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
@@ -688,7 +689,7 @@ func TestContainerListStatusFilter(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						assert.Assert(t, strings.Contains(stdout, data.Labels().Get("cID")), "No container found with status created")
 					},
 				}

@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -39,7 +40,7 @@ func pushToIPFS(helpers test.Helpers, name string, opts ...string) string {
 	cmd := helpers.Command("push", "ipfs://"+name)
 	cmd.WithArgs(opts...)
 	cmd.Run(&test.Expected{
-		Output: func(stdout string, t *testing.T) {
+		Output: func(stdout string, t tig.T) {
 			lines := strings.Split(stdout, "\n")
 			assert.Equal(t, len(lines) >= 2, true)
 			ipfsCID = lines[len(lines)-2]

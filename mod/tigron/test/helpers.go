@@ -17,9 +17,8 @@
 package test
 
 import (
-	"testing"
-
 	"github.com/containerd/nerdctl/mod/tigron/internal"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
 // This is the implementation of Helpers
@@ -27,7 +26,7 @@ import (
 type helpersInternal struct {
 	cmdInternal CustomizableCommand
 
-	t *testing.T
+	t tig.T
 }
 
 // Ensure will run a command and make sure it is successful.
@@ -60,8 +59,7 @@ func (help *helpersInternal) Capture(args ...string) string {
 
 	help.t.Helper()
 	help.Command(args...).Run(&Expected{
-		//nolint:thelper
-		Output: func(stdout string, _ *testing.T) {
+		Output: func(stdout string, _ tig.T) {
 			ret = stdout
 		},
 	})
@@ -104,6 +102,6 @@ func (help *helpersInternal) Write(key ConfigKey, value ConfigValue) {
 	help.cmdInternal.write(key, value)
 }
 
-func (help *helpersInternal) T() *testing.T {
+func (help *helpersInternal) T() tig.T {
 	return help.t
 }

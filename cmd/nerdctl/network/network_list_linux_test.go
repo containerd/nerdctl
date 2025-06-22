@@ -23,6 +23,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -52,7 +53,7 @@ func TestNetworkLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 1, "expected at least one line\n")
 						netNames := map[string]struct{}{
@@ -74,7 +75,7 @@ func TestNetworkLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 1, "expected at least one line\n")
 						netNames := map[string]struct{}{
@@ -96,7 +97,7 @@ func TestNetworkLsFilter(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						var lines = strings.Split(strings.TrimSpace(stdout), "\n")
 						assert.Assert(t, len(lines) >= 1)
 						netNames := map[string]struct{}{

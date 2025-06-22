@@ -18,10 +18,10 @@ package nerdtest
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"path/filepath"
 	"strings"
-	"testing"
 	"time"
 
 	"gotest.tools/v3/assert"
@@ -113,7 +113,7 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 		helpers.Command("container", "inspect", con).
 			Run(&test.Expected{
 				ExitCode: expect.ExitCodeNoCheck,
-				Output: func(stdout string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					var dc []dockercompat.Container
 					err := json.Unmarshal([]byte(stdout), &dc)
 					if err != nil || len(dc) == 0 {
@@ -133,7 +133,8 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 		helpers.T().Log(ins)
 		helpers.T().Log(lgs)
 		helpers.T().Log(ps)
-		helpers.T().Fatalf("container %s still not running after %d retries", con, maxRetry)
+		helpers.T().Log(fmt.Sprintf("container %s still not running after %d retries", con, maxRetry))
+		helpers.T().FailNow()
 	}
 }
 

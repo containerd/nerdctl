@@ -22,7 +22,6 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"testing"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -31,6 +30,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 	"github.com/containerd/nerdctl/mod/tigron/utils/testca"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
@@ -95,7 +95,7 @@ func ensureContainerStarted(helpers test.Helpers, con string) {
 		helpers.Command("container", "inspect", con).
 			Run(&test.Expected{
 				ExitCode: expect.ExitCodeNoCheck,
-				Output: func(stdout string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					var dc []dockercompat.Container
 					err := json.Unmarshal([]byte(stdout), &dc)
 					if err != nil || len(dc) == 0 {
@@ -115,7 +115,8 @@ func ensureContainerStarted(helpers test.Helpers, con string) {
 		helpers.T().Log(ins)
 		helpers.T().Log(lgs)
 		helpers.T().Log(ps)
-		helpers.T().Fatalf("container %s still not running after %d retries", con, 5)
+		helpers.T().Log(fmt.Sprintf("container %s still not running after %d retries", con, 5))
+		helpers.T().FailNow()
 	}
 }
 
@@ -178,7 +179,7 @@ func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *testca.Cert,
 		helpers.Ensure("rm", "-f", containerName)
 		errPortRelease := portlock.Release(port)
 		if errPortRelease != nil {
-			helpers.T().Error(errPortRelease.Error())
+			helpers.T().Log(fmt.Sprintf("Failed to release port %d: %s", port, errPortRelease))
 		}
 	}
 
@@ -218,7 +219,7 @@ func NewCesantaAuthServer(data test.Data, helpers test.Helpers, ca *testca.Cert,
 		Setup:   setup,
 		Cleanup: cleanup,
 		Logs: func(data test.Data, helpers test.Helpers) {
-			helpers.T().Error(helpers.Err("logs", containerName))
+			helpers.T().Log(helpers.Err("logs", containerName))
 		},
 	}
 }
