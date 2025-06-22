@@ -352,14 +352,7 @@ func (x *hostsStore) updateAllHosts() (err error) {
 			return err
 		}
 
-		// Because the file is mounted, we cannot do atomic writes here as that would change inode.
-		// The practical implications of this are that a partial / interrupted write would leave the hosts file with
-		// an invalid entry and/or missing entries. At worse, this would lead to a container losing localhost network
-		// capabilities.
-		// Proper consistency requires that we would have a rollback mechanism in case of recoverable failure,
-		// and a disaster management / cleanup mechanism, presumably at the top-level of the operation.
-		// nolint:forbidigo
-		err = os.WriteFile(loc, buf.Bytes(), 0o644)
+		err = filesystem.WriteFile(loc, buf.Bytes(), 0o644)
 		if err != nil {
 			log.L.WithError(err).Errorf("failed to write hosts file for %q", entry)
 		}

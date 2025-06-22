@@ -39,6 +39,7 @@ import (
 
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
@@ -196,11 +197,11 @@ func BuildKitFile(dir, inputfile string) (absDir string, file string, err error)
 		_, cErr := os.Lstat(filepath.Join(absDir, ContainerfileName))
 		if dErr == nil && cErr == nil {
 			// both files exist, prefer Dockerfile.
-			dockerfile, err := os.ReadFile(filepath.Join(absDir, DefaultDockerfileName))
+			dockerfile, err := filesystem.ReadFile(filepath.Join(absDir, DefaultDockerfileName))
 			if err != nil {
 				return "", "", err
 			}
-			containerfile, err := os.ReadFile(filepath.Join(absDir, ContainerfileName))
+			containerfile, err := filesystem.ReadFile(filepath.Join(absDir, ContainerfileName))
 			if err != nil {
 				return "", "", err
 			}

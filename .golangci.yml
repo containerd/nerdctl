@@ -48,6 +48,9 @@ linters:
         - pattern: ^os\.WriteFile.*$
           pkg: github.com/containerd/nerdctl/v2/pkg
           msg: os.WriteFile is neither atomic nor durable - use nerdctl filesystem.WriteFile instead
+        - pattern: ^os\.ReadFile.*$
+          pkg: github.com/containerd/nerdctl/v2/pkg
+          msg: use filesystem.ReadFile instead of os.ReadFile
     staticcheck:
       checks:
         # Below is the default set

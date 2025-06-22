@@ -142,7 +142,7 @@ func LoadLogConfig(dataStore, ns, id string) (LogConfig, error) {
 	logConfig := LogConfig{}
 
 	logConfigFilePath := LogConfigFilePath(dataStore, ns, id)
-	logConfigData, err := os.ReadFile(logConfigFilePath)
+	logConfigData, err := filesystem.ReadFile(logConfigFilePath)
 	if err != nil {
 		return logConfig, fmt.Errorf("failed to read log config file %q: %w", logConfigFilePath, err)
 	}

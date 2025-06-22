@@ -26,6 +26,8 @@ import (
 	"github.com/moby/sys/userns"
 
 	"github.com/containerd/log"
+
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 )
 
 var (
@@ -55,7 +57,7 @@ func hostSupports() bool {
 			return
 		}
 		var buf []byte
-		buf, err = os.ReadFile("/sys/module/apparmor/parameters/enabled")
+		buf, err = filesystem.ReadFile("/sys/module/apparmor/parameters/enabled")
 		appArmorSupported = err == nil && len(buf) == 2 && string(buf) == "Y\n"
 	})
 	return appArmorSupported
@@ -88,7 +90,7 @@ var (
 // Related: https://gitlab.com/apparmor/apparmor/-/blob/v3.0.3/libraries/libapparmor/src/kernel.c#L311
 func CanApplyExistingProfile() bool {
 	paramEnabledOnce.Do(func() {
-		buf, err := os.ReadFile("/sys/module/apparmor/parameters/enabled")
+		buf, err := filesystem.ReadFile("/sys/module/apparmor/parameters/enabled")
 		paramEnabled = err == nil && len(buf) == 2 && string(buf) == "Y\n"
 	})
 	return paramEnabled
@@ -132,7 +134,7 @@ func Profiles() ([]Profile, error) {
 	res := make([]Profile, len(ents))
 	for i, ent := range ents {
 		namePath := filepath.Join(profilesPath, ent.Name(), "name")
-		b, err := os.ReadFile(namePath)
+		b, err := filesystem.ReadFile(namePath)
 		if err != nil {
 			log.L.WithError(err).Warnf("failed to read %q", namePath)
 			continue

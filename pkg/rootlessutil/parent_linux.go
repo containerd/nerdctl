@@ -27,6 +27,8 @@ import (
 	"syscall"
 
 	"github.com/containerd/log"
+
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 )
 
 func IsRootlessParent() bool {
@@ -55,7 +57,7 @@ func RootlessKitChildPid(stateDir string) (int, error) {
 		return 0, err
 	}
 
-	pidFileBytes, err := os.ReadFile(pidFilePath)
+	pidFileBytes, err := filesystem.ReadFile(pidFilePath)
 	if err != nil {
 		return 0, err
 	}

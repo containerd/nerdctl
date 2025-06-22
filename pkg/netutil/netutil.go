@@ -37,6 +37,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
 	subnetutil "github.com/containerd/nerdctl/v2/pkg/netutil/subnet"
@@ -481,7 +482,7 @@ func cniLoad(fileNames []string) (configList []*NetworkConfig, err error) {
 
 	for _, fileName = range fileNames {
 		var bytes []byte
-		bytes, err = os.ReadFile(fileName)
+		bytes, err = filesystem.ReadFile(fileName)
 		if err != nil {
 			return nil, fmt.Errorf("error reading %s: %w", fileName, err)
 		}

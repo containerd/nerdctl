@@ -686,7 +686,7 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 		return nil, nil, err
 	}
 
-	content, err := os.ReadFile("/etc/hosts")
+	content, err := filesystem.ReadFile("/etc/hosts")
 	if err != nil {
 		return nil, nil, err
 	}

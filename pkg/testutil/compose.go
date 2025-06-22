@@ -75,7 +75,7 @@ func LoadProject(fileName, projectName string, envMap map[string]string) (*compo
 	if envMap == nil {
 		envMap = make(map[string]string)
 	}
-	b, err := os.ReadFile(fileName)
+	b, err := filesystem.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}

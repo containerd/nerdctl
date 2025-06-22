@@ -467,7 +467,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 }
 
 func getDigestFromMetaFile(path string) (string, error) {
-	data, err := os.ReadFile(path)
+	data, err := filesystem.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
