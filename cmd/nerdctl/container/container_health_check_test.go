@@ -50,6 +50,7 @@ func TestContainerHealthCheckBasic(t *testing.T) {
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("run", "-d", "--name", data.Identifier(),
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -67,6 +68,7 @@ func TestContainerHealthCheckBasic(t *testing.T) {
 					"--health-interval", "45s",
 					"--health-timeout", "30s",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -95,6 +97,7 @@ func TestContainerHealthCheckBasic(t *testing.T) {
 					"--health-cmd", "echo healthy",
 					"--health-interval", "3s",
 					testutil.CommonImage, "sleep", "2")
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 				helpers.Ensure("stop", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -140,6 +143,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					"--health-timeout", "2s",
 					"--health-interval", "1s",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -170,6 +174,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					"--health-interval", "1s",
 					"--health-retries", "2",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -204,6 +209,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					"--health-start-period", "5s",
 					"--health-retries", "2",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -232,6 +238,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					"--health-interval", "1s",
 					"--health-retries", "1",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -257,6 +264,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("run", "-d", "--name", data.Identifier(),
 					"--no-healthcheck", testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -280,6 +288,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 				helpers.Ensure("run", "-d", "--name", data.Identifier(),
 					"--health-cmd", "echo shell-format", "--health-interval", "1s",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -310,6 +319,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					"--health-interval", "1s",
 					"--health-timeout", "1s",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -340,6 +350,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					"--health-interval", "1s",
 					"--health-timeout", "1s",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -368,6 +379,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					"--health-cmd", "yes X | head -c 60000",
 					"--health-interval", "1s", "--health-timeout", "2s",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -403,6 +415,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					"--health-interval", "1s",
 					"--health-retries", "1",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -434,6 +447,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					"--health-cmd", "yes X | head -c 1048576", // 1MB output
 					"--health-interval", "1s", "--health-timeout", "2s",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -466,6 +480,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					"--health-timeout", "10s",
 					"--health-retries", "3",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -497,6 +512,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					"--health-cmd", "ls /foo || exit 1", "--health-retries", "2",
 					"--health-start-period", "30s", // long enough to stay in "starting"
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -528,6 +544,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 				helpers.Ensure("run", "-d", "--name", data.Identifier(),
 					"--health-cmd", "ls || exit 1", "--health-retries", "2",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
