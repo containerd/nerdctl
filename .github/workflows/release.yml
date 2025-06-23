@@ -33,6 +33,8 @@ jobs:
         go-version: "1.24"
         check-latest: true
     - name: "Compile binaries"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: make artifacts
     - name: "SHA256SUMS"
       run: |
