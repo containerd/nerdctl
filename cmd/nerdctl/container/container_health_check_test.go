@@ -17,7 +17,9 @@
 package container
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -83,6 +85,8 @@ func TestContainerHealthCheckBasic(t *testing.T) {
 					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state to be present")
 						assert.Equal(t, healthcheck.Healthy, h.Status)
 						assert.Equal(t, 0, h.FailingStreak)
@@ -158,6 +162,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.FailingStreak, 1)
 						assert.Assert(t, len(inspect.State.Health.Log) > 0, "expected health log to have entries")
@@ -194,6 +200,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Unhealthy)
 						assert.Equal(t, h.FailingStreak, 2)
@@ -224,6 +232,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Starting)
 						assert.Equal(t, h.FailingStreak, 0)
@@ -253,6 +263,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Unhealthy)
 						assert.Equal(t, h.FailingStreak, 1)
@@ -303,6 +315,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(_ string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Healthy)
 						assert.Assert(t, len(h.Log) > 0)
@@ -334,6 +348,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Healthy)
 						assert.Assert(t, h.FailingStreak == 0)
@@ -365,6 +381,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Healthy)
 						assert.Equal(t, h.FailingStreak, 0)
@@ -398,11 +416,13 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(_ string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Healthy)
 						assert.Assert(t, len(h.Log) >= 3, "expected at least 3 health log entries")
 						for _, log := range h.Log {
-							assert.Assert(t, len(log.Output) >= 1024, "each output should be >= 1024 bytes")
+							assert.Assert(t, len(log.Output) >= 1024, fmt.Sprintf("each output should be >= 1024 bytes, was: %s", log.Output))
 						}
 					}),
 				}
@@ -434,6 +454,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(_ string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Unhealthy)
 						assert.Assert(t, len(h.Log) <= 5, "expected health log to contain at most 5 entries")
@@ -462,6 +484,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(_ string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Healthy)
 						assert.Equal(t, h.FailingStreak, 0)
@@ -499,6 +523,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Unhealthy)
 						assert.Assert(t, h.FailingStreak >= 3)
@@ -532,6 +558,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Starting)
 						assert.Equal(t, h.FailingStreak, 0, "failing streak should not increase during start period")
@@ -561,6 +589,8 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 					Output: expect.All(func(stdout string, t tig.T) {
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Healthy, "expected healthy status even during start-period")
 						assert.Equal(t, h.FailingStreak, 0)

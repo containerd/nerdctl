@@ -121,7 +121,7 @@ linters:
           arguments: [7]
         - name: function-length
           # 155 occurrences (at default 0, 75). Really long functions should really be broken up in most cases.
-          arguments: [0, 450]
+          arguments: [0, 500]
         - name: cyclomatic
           # 204 occurrences (at default 10)
           arguments: [100]
