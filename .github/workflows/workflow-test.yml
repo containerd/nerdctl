@@ -102,7 +102,7 @@ jobs:
             canary: true
 
     with:
-      timeout: 45
+      timeout: 60
       runner: ${{ matrix.runner }}
       target: ${{ matrix.target }}
       binary: ${{ matrix.binary && matrix.binary || 'nerdctl' }}
