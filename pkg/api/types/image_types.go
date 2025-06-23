@@ -67,7 +67,16 @@ type ImageConvertOptions struct {
 	// Format the output using the given Go template, e.g, 'json'
 	Format string
 
-	// #region estargz flags
+	// Embed image format options
+	EstargzOptions
+	ZstdOptions
+	ZstdChunkedOptions
+	NydusOptions
+	OverlaybdOptions
+}
+
+// EstargzOptions contains eStargz conversion options
+type EstargzOptions struct {
 	// Estargz convert legacy tar(.gz) layers to eStargz for lazy pulling. Should be used in conjunction with '--oci'
 	Estargz bool
 	// EstargzRecordIn read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)
@@ -82,16 +91,18 @@ type ImageConvertOptions struct {
 	EstargzExternalToc bool
 	// EstargzKeepDiffID convert to esgz without changing diffID (cannot be used in conjunction with '--estargz-record-in'. must be specified with '--estargz-external-toc')
 	EstargzKeepDiffID bool
-	// #endregion
+}
 
-	// #region zstd flags
+// ZstdOptions contains zstd conversion options
+type ZstdOptions struct {
 	// Zstd convert legacy tar(.gz) layers to zstd. Should be used in conjunction with '--oci'
 	Zstd bool
 	// ZstdCompressionLevel zstd compression level
 	ZstdCompressionLevel int
-	// #endregion
+}
 
-	// #region zstd:chunked flags
+// ZstdChunkedOptions contains zstd:chunked conversion options
+type ZstdChunkedOptions struct {
 	// ZstdChunked convert legacy tar(.gz) layers to zstd:chunked for lazy pulling. Should be used in conjunction with '--oci'
 	ZstdChunked bool
 	// ZstdChunkedCompressionLevel zstd compression level
@@ -100,9 +111,10 @@ type ImageConvertOptions struct {
 	ZstdChunkedChunkSize int
 	// ZstdChunkedRecordIn read 'ctr-remote optimize --record-out=<FILE>' record file (EXPERIMENTAL)
 	ZstdChunkedRecordIn string
-	// #endregion
+}
 
-	// #region nydus flags
+// NydusOptions contains nydus conversion options
+type NydusOptions struct {
 	// Nydus convert legacy tar(.gz) layers to nydus for lazy pulling. Should be used in conjunction with '--oci'
 	Nydus bool
 	// NydusBuilderPath the nydus-image binary path, if unset, search in PATH environment
@@ -113,17 +125,16 @@ type ImageConvertOptions struct {
 	NydusPrefetchPatterns string
 	// NydusCompressor nydus blob compression algorithm, possible values: `none`, `lz4_block`, `zstd`, default is `lz4_block`
 	NydusCompressor string
-	// #endregion
+}
 
-	// #region overlaybd flags
+// OverlaybdOptions contains overlaybd conversion options
+type OverlaybdOptions struct {
 	// Overlaybd convert tar.gz layers to overlaybd layers
 	Overlaybd bool
 	// OverlayFsType filesystem type for overlaybd
 	OverlayFsType string
 	// OverlaydbDBStr database config string for overlaybd
 	OverlaydbDBStr string
-	// #endregion
-
 }
 
 // ImageCryptOptions specifies options for `nerdctl image encrypt` and `nerdctl image decrypt`.
