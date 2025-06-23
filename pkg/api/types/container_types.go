@@ -140,7 +140,7 @@ type ContainerCreateOptions struct {
 	OomKillDisable bool
 	// OomScoreAdjChanged specifies whether the OOM preferences has been changed
 	OomScoreAdjChanged bool
-	// OomScoreAdj specifies the tune container’s OOM preferences (-1000 to 1000, rootless: 100 to 1000)
+	// OomScoreAdj specifies the tune container's OOM preferences (-1000 to 1000, rootless: 100 to 1000)
 	OomScoreAdj int
 	// PidsLimit specifies the tune container pids limit
 	PidsLimit int64
@@ -394,6 +394,8 @@ type ContainerCommitOptions struct {
 	Pause bool
 	// Compression is set commit compression algorithm
 	Compression CompressionType
+	// Format specifies the image format for the committed image (docker or oci)
+	Format ImageFormat
 }
 
 type CompressionType string
@@ -401,6 +403,15 @@ type CompressionType string
 const (
 	Zstd CompressionType = "zstd"
 	Gzip CompressionType = "gzip"
+)
+
+type ImageFormat string
+
+const (
+	// ImageFormatDocker uses Docker Schema2 media types for compatibility
+	ImageFormatDocker ImageFormat = "docker"
+	// ImageFormatOCI uses OCI Image Format media types
+	ImageFormatOCI ImageFormat = "oci"
 )
 
 // ContainerDiffOptions specifies options for `nerdctl (container) diff`.
