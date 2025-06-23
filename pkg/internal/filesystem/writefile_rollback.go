@@ -61,6 +61,11 @@ func WriteFileWithRollback(filename string, data []byte, perm os.FileMode) (roll
 		}
 	}
 
+	// Make sure no leftover backup file is here
+	// Note: this happens after a successful write. Generally not a problem, except if the file is then deleted,
+	// then written to again, and that second write would fail.
+	_ = backupRemove(filename)
+
 	// Create the marker. Failure to do so is a hard error.
 	if err = markerCreate(filename, markerData); err != nil {
 		return nil, err
@@ -68,8 +73,10 @@ func WriteFileWithRollback(filename string, data []byte, perm os.FileMode) (roll
 
 	// If the file exists, we need to back it up.
 	if markerData == "" {
-		// Back it up now.
+		// Back it up now. Remove on failure.
 		if err = backupSave(filename); err != nil {
+			_ = backupRemove(filename)
+			_ = markerRemove(filename)
 			return nil, err
 		}
 	}

@@ -54,6 +54,7 @@ func ensureRecovery(filename string) (err error) {
 		if err = backupRestore(filename); err != nil {
 			return err
 		}
+		_ = backupRemove(filename)
 	} else {
 		// We do not see a backup.
 		// Do we have a final destination then?
@@ -99,6 +100,10 @@ func backupRestore(path string) error {
 	}
 
 	return err
+}
+
+func backupRemove(path string) error {
+	return os.Remove(backupLocation(path))
 }
 
 // backupExists checks if a backup file exists for file located at `path`.
@@ -190,15 +195,15 @@ func internalCopy(sourcePath, destinationPath string) (err error) {
 		return err
 	}
 
+	defer func() {
+		err = errors.Join(err, source.Close())
+	}()
+
 	// Read file length
 	srcInfo, err := source.Stat()
 	if err != nil {
 		return err
 	}
-
-	defer func() {
-		err = errors.Join(err, source.Close())
-	}()
 
 	return fileWrite(source, srcInfo.Size(), destinationPath, privateFilePermission, srcInfo.ModTime())
 }
@@ -219,11 +224,6 @@ func fileWrite(source io.Reader, size int64, destinationPath string, perm os.Fil
 		// Close if need be.
 		if mustClose {
 			err = errors.Join(err, destination.Close())
-		}
-
-		// Remove destination if we failed anywhere. Ignore removal failures.
-		if err != nil {
-			_ = os.Remove(destinationPath)
 		}
 	}()
 
