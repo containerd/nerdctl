@@ -44,6 +44,10 @@ func CommitCommand() *cobra.Command {
 	cmd.Flags().BoolP("pause", "p", true, "Pause container during commit")
 	cmd.Flags().StringP("compression", "", "gzip", "commit compression algorithm (zstd or gzip)")
 	cmd.Flags().String("format", "docker", "Format of the committed image (docker or oci)")
+	cmd.Flags().Bool("estargz", false, "Convert the committed layer to eStargz for lazy pulling")
+	cmd.Flags().Int("estargz-compression-level", 9, "eStargz compression level (1-9)")
+	cmd.Flags().Int("estargz-chunk-size", 0, "eStargz chunk size")
+	cmd.Flags().Int("estargz-min-chunk-size", 0, "The minimal number of bytes of data must be written in one gzip stream")
 	return cmd
 }
 
@@ -86,6 +90,23 @@ func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 		return types.ContainerCommitOptions{}, errors.New("--format param only supports docker or oci")
 	}
 
+	estargz, err := cmd.Flags().GetBool("estargz")
+	if err != nil {
+		return types.ContainerCommitOptions{}, err
+	}
+	estargzCompressionLevel, err := cmd.Flags().GetInt("estargz-compression-level")
+	if err != nil {
+		return types.ContainerCommitOptions{}, err
+	}
+	estargzChunkSize, err := cmd.Flags().GetInt("estargz-chunk-size")
+	if err != nil {
+		return types.ContainerCommitOptions{}, err
+	}
+	estargzMinChunkSize, err := cmd.Flags().GetInt("estargz-min-chunk-size")
+	if err != nil {
+		return types.ContainerCommitOptions{}, err
+	}
+
 	return types.ContainerCommitOptions{
 		Stdout:      cmd.OutOrStdout(),
 		GOptions:    globalOptions,
@@ -95,6 +116,12 @@ func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 		Change:      change,
 		Compression: types.CompressionType(com),
 		Format:      types.ImageFormat(format),
+		EstargzOptions: types.EstargzOptions{
+			Estargz:                 estargz,
+			EstargzCompressionLevel: estargzCompressionLevel,
+			EstargzChunkSize:        estargzChunkSize,
+			EstargzMinChunkSize:     estargzMinChunkSize,
+		},
 	}, nil
 }
 
