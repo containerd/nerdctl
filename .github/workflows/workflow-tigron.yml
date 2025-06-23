@@ -58,16 +58,20 @@ jobs:
             brew install yamllint shellcheck
           fi
           echo "::endgroup::"
-      - if: ${{ env.GO_VERSION != '' && env.RUNNER_OS == 'Linux' && matrix.goos == '' }}
+      - if: ${{ env.GO_VERSION != '' && matrix.goos == '' }}
         name: "lint"
         env:
           NO_COLOR: true
         run: |
-          echo "::group:: lint"
-          cd mod/tigron
-          export LINT_COMMIT_RANGE="$(jq -r '.after + "..HEAD"' ${GITHUB_EVENT_PATH})"
-          make lint
-          echo "::endgroup::"
+          if [ "$RUNNER_OS" == Linux ]; then
+            echo "::group:: lint"
+            cd mod/tigron
+            export LINT_COMMIT_RANGE="$(jq -r '.after + "..HEAD"' ${GITHUB_EVENT_PATH})"
+            make lint
+            echo "::endgroup::"
+          else
+            echo "Lint is disabled on $RUNNER_OS"
+          fi
       - if: ${{ env.GO_VERSION != '' }}
         name: "test-unit"
         run: |

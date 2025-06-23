@@ -182,7 +182,7 @@ lint-licenses-all:
 		&& GOOS=linux make lint-licenses \
 		&& GOOS=windows make lint-licenses \
 		&& GOOS=freebsd make lint-licenses \
-		&& GOOS=darwin make lint-go
+		&& GOOS=darwin make lint-licenses
 	$(call footer, $@)
 
 ##########################
@@ -200,7 +200,7 @@ fix-go-all:
 		&& GOOS=linux make fix-go \
 		&& GOOS=windows make fix-go \
 		&& GOOS=freebsd make fix-go \
-		&& GOOS=darwin make lint-go
+		&& GOOS=darwin make fix-go
 	$(call footer, $@)
 
 fix-mod:
