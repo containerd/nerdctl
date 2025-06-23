@@ -81,6 +81,8 @@ jobs:
           docker run --privileged --rm tonistiigi/binfmt --install linux/arm/v7
       - if: ${{ inputs.canary }}
         name: "Init (canary): prepare updated test image"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           . ./hack/build-integration-canary.sh
           canary::build::integration
