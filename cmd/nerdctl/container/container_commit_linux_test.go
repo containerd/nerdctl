@@ -19,6 +19,7 @@ package container
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
@@ -55,6 +56,20 @@ func TestKubeCommitSave(t *testing.T) {
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		helpers.Ensure("commit", data.Labels().Get("containerID"), data.Identifier("testcommitsave"))
+		// Wait for the image to show up
+		for range 5 {
+			found := false
+			cmd := helpers.Command("images", data.Identifier("testcommitsave"), "--format", "json")
+			cmd.Run(&test.Expected{
+				Output: func(stdout string, t tig.T) {
+					found = strings.TrimSpace(stdout) != ""
+				},
+			})
+			if found {
+				break
+			}
+			time.Sleep(1 * time.Second)
+		}
 		return helpers.Command("save", data.Identifier("testcommitsave"))
 	}
 
