@@ -19,7 +19,7 @@ package types
 import (
 	"io"
 
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // ImageListOptions specifies options for `nerdctl image list`.
@@ -124,6 +124,12 @@ type ImageConvertOptions struct {
 	OverlaydbDBStr string
 	// #endregion
 
+	// #region soci flags
+	// Soci convert image to SOCI format.eiifc
+	Soci bool
+	// SociOptions contains SOCI-specific options
+	SociOptions SociOptions
+	// #endregion
 }
 
 // ImageCryptOptions specifies options for `nerdctl image encrypt` and `nerdctl image decrypt`.
@@ -200,7 +206,7 @@ type ImagePullOptions struct {
 	// If nil, it will unpack automatically if only 1 platform is specified.
 	Unpack *bool
 	// Content for specific platforms. Empty if `--all-platforms` is true
-	OCISpecPlatform []v1.Platform
+	OCISpecPlatform []ocispec.Platform
 	// Pull mode
 	Mode string
 	// Suppress verbose output

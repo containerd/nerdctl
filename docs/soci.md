@@ -45,3 +45,18 @@ For images that already have SOCI indices, see https://gallery.ecr.aws/soci-work
 nerdctl push --snapshotter=soci --soci-span-size=2097152 --soci-min-layer-size=20971520 public.ecr.aws/my-registry/my-repo:latest
 ```
 --soci-span-size and --soci-min-layer-size are two properties to customize the SOCI index. See [Command Reference](https://github.com/containerd/nerdctl/blob/377b2077bb616194a8ef1e19ccde32aa1ffd6c84/docs/command-reference.md?plain=1#L773) for further details.
+
+
+## Enable SOCI for `nerdctl image convert`
+
+| :zap: Requirement | nerdctl >= 2.2.0 |
+| ----------------- | ---------------- |
+
+| :zap: Requirement | soci-snapshotter >= 0.10.0 |
+| ----------------- | ---------------- |
+
+- Convert an image to generate SOCI Index artifacts v2. Running the `nerdctl image convert` with the `--soci` flag and a `srcImg` and `dstImg`, `nerdctl` will create the SOCI v2 indices and the new image will be present in the `dstImg` address.
+```console
+nerdctl image convert --soci --soci-span-size=2097152 --soci-min-layer-size=20971520 public.ecr.aws/my-registry/my-repo:latest public.ecr.aws/my-registry/my-repo:soci
+```
+--soci-span-size and --soci-min-layer-size are two properties to customize the SOCI index. See [Command Reference](https://github.com/containerd/nerdctl/blob/377b2077bb616194a8ef1e19ccde32aa1ffd6c84/docs/command-reference.md?plain=1#L773) for further details.
