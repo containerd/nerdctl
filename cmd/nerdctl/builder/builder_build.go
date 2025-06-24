@@ -19,7 +19,6 @@ package builder
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -263,13 +262,6 @@ func GetBuildkitHost(cmd *cobra.Command, namespace string) (string, error) {
 		return buildkitHost, nil
 	}
 
-	if buildkitHost := os.Getenv("BUILDKIT_HOST"); buildkitHost != "" {
-		if err := buildkitutil.PingBKDaemon(buildkitHost); err != nil {
-			return "", err
-		}
-		return buildkitHost, nil
-
-	}
 	return buildkitutil.GetBuildkitHost(namespace)
 }
 
