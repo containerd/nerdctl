@@ -37,6 +37,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -156,7 +157,7 @@ func TestRunExitCode(t *testing.T) {
 			Output: expect.All(
 				expect.Match(regexp.MustCompile("Exited [(]123[)][A-Za-z0-9 ]+"+data.Identifier("exit123"))),
 				expect.Match(regexp.MustCompile("Exited [(]0[)][A-Za-z0-9 ]+"+data.Identifier("exit0"))),
-				func(stdout, info string, t *testing.T) {
+				func(stdout string, t tig.T) {
 					assert.Equal(t, nerdtest.InspectContainer(helpers, data.Identifier("exit0")).State.Status, "exited")
 					assert.Equal(t, nerdtest.InspectContainer(helpers, data.Identifier("exit123")).State.Status, "exited")
 				},
@@ -953,7 +954,7 @@ func TestRunHealthcheckFlags(t *testing.T) {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeSuccess,
 					Output: expect.All(
-						func(stdout, info string, t *testing.T) {
+						func(stdout string, t tig.T) {
 							inspect := nerdtest.InspectContainer(helpers, tc.name)
 							hc := inspect.Config.Healthcheck
 							if tc.expectTest == nil {
@@ -1013,7 +1014,7 @@ HEALTHCHECK --interval=30s --timeout=10s CMD wget -q --spider http://localhost:8
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: expect.ExitCodeSuccess,
-						Output: expect.All(func(stdout, _ string, t *testing.T) {
+						Output: expect.All(func(stdout string, t tig.T) {
 							inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 							hc := inspect.Config.Healthcheck
 							assert.Assert(t, hc != nil, "expected healthcheck config to be present")
@@ -1040,7 +1041,7 @@ HEALTHCHECK --interval=30s --timeout=10s CMD wget -q --spider http://localhost:8
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: expect.ExitCodeSuccess,
-						Output: expect.All(func(stdout, _ string, t *testing.T) {
+						Output: expect.All(func(stdout string, t tig.T) {
 							inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 							hc := inspect.Config.Healthcheck
 							assert.Assert(t, hc != nil, "expected healthcheck config to be present")

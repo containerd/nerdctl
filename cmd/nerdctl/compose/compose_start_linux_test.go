@@ -23,6 +23,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -61,12 +62,12 @@ services:
 		return &test.Expected{
 			ExitCode: 0,
 			Errors:   nil,
-			Output: func(stdout, info string, t *testing.T) {
+			Output: func(stdout string, t tig.T) {
 				svc0 := helpers.Capture("compose", "-f", data.Temp().Path("compose.yaml"), "ps", "svc0")
 				svc1 := helpers.Capture("compose", "-f", data.Temp().Path("compose.yaml"), "ps", "svc1")
 				comp := expect.Match(regexp.MustCompile("Up|running"))
-				comp(svc0, "", t)
-				comp(svc1, "", t)
+				comp(svc0, t)
+				comp(svc1, t)
 			},
 		}
 	}

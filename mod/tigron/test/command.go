@@ -23,13 +23,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/containerd/nerdctl/mod/tigron/internal"
 	"github.com/containerd/nerdctl/mod/tigron/internal/assertive"
 	"github.com/containerd/nerdctl/mod/tigron/internal/com"
 	"github.com/containerd/nerdctl/mod/tigron/internal/formatter"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
 const (
@@ -59,7 +59,7 @@ type CustomizableCommand interface {
 	// default it pass any that is defined by WithEnv
 	WithBlacklist(env []string)
 	// T returns the current testing object
-	T() *testing.T
+	T() tig.T
 
 	// withEnv *copies* the passed map to the environment of the command to be executed
 	// Note that this will override any variable defined in the embedding environment
@@ -69,7 +69,7 @@ type CustomizableCommand interface {
 	withTempDir(path string)
 	// WithConfig allows passing custom config properties from the test to the base command
 	withConfig(config Config)
-	withT(t *testing.T)
+	withT(t tig.T)
 	// Clear does a clone, but will clear binary and arguments while retaining the env, or any other
 	// custom properties Gotcha: if genericCommand is embedded with a custom Run and an overridden
 	// clear to return the embedding type the result will be the embedding command, no longer the
@@ -102,7 +102,7 @@ type GenericCommand struct {
 	TempDir string
 	Env     map[string]string
 
-	t *testing.T
+	t tig.T
 
 	cmd   *com.Command
 	async bool
@@ -294,7 +294,6 @@ func (gc *GenericCommand) Run(expect *Expected) {
 		if expect.Output != nil {
 			expect.Output(
 				result.Stdout,
-				"",
 				gc.t,
 			)
 		}
@@ -338,7 +337,7 @@ func (gc *GenericCommand) Clone() TestableCommand {
 	return &clone
 }
 
-func (gc *GenericCommand) T() *testing.T {
+func (gc *GenericCommand) T() tig.T {
 	return gc.t
 }
 
@@ -362,7 +361,7 @@ func (gc *GenericCommand) clear() TestableCommand {
 	return &comcopy
 }
 
-func (gc *GenericCommand) withT(t *testing.T) {
+func (gc *GenericCommand) withT(t tig.T) {
 	t.Helper()
 	gc.t = t
 }

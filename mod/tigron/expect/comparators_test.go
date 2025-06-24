@@ -33,10 +33,10 @@ func TestExpect(t *testing.T) {
 	// TODO: write more tests once we can mock t in Comparator signature
 	t.Parallel()
 
-	expect.Contains("b")("a b c", "contains works", t)
-	expect.DoesNotContain("d")("a b c", "does not contain works", t)
-	expect.Equals("a b c")("a b c", "equals work", t)
-	expect.Match(regexp.MustCompile("[a-z ]+"))("a b c", "match works", t)
+	expect.Contains("b")("a b c", t)
+	expect.DoesNotContain("d")("a b c", t)
+	expect.Equals("a b c")("a b c", t)
+	expect.Match(regexp.MustCompile("[a-z ]+"))("a b c", t)
 
 	expect.All(
 		expect.Contains("b"),
@@ -45,7 +45,7 @@ func TestExpect(t *testing.T) {
 		expect.DoesNotContain("d", "e"),
 		expect.Equals("a b c"),
 		expect.Match(regexp.MustCompile("[a-z ]+")),
-	)("a b c", "all", t)
+	)("a b c", t)
 
 	type foo struct {
 		Foo map[string]string `json:"foo"`
@@ -59,9 +59,9 @@ func TestExpect(t *testing.T) {
 
 	assertive.ErrorIsNil(t, err)
 
-	expect.JSON(&foo{}, nil)(string(data), "json, no verifier", t)
+	expect.JSON(&foo{}, nil)(string(data), t)
 
-	expect.JSON(&foo{}, func(obj *foo, info string, t tig.T) {
-		assertive.IsEqual(t, obj.Foo["foo"], "bar", info)
-	})(string(data), "json, with verifier", t)
+	expect.JSON(&foo{}, func(obj *foo, t tig.T) {
+		assertive.IsEqual(t, obj.Foo["foo"], "bar")
+	})(string(data), t)
 }

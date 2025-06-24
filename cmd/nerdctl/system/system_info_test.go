@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
@@ -34,12 +35,12 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
-func testInfoComparator(stdout string, info string, t *testing.T) {
+func testInfoComparator(stdout string, t tig.T) {
 	var dinf dockercompat.Info
 	err := json.Unmarshal([]byte(stdout), &dinf)
-	assert.NilError(t, err, "failed to unmarshal stdout"+info)
+	assert.NilError(t, err, "failed to unmarshal stdout")
 	unameM := infoutil.UnameM()
-	assert.Assert(t, dinf.Architecture == unameM, fmt.Sprintf("expected info.Architecture to be %q, got %q", unameM, dinf.Architecture)+info)
+	assert.Assert(t, dinf.Architecture == unameM, fmt.Sprintf("expected info.Architecture to be %q, got %q", unameM, dinf.Architecture))
 }
 
 func TestInfo(t *testing.T) {

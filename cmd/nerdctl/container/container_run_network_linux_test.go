@@ -40,6 +40,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -423,7 +424,7 @@ func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errdefs.ErrInvalidArgument},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						getAddrHash := func(addr string) string {
 							const addrHashLen = 8
 
@@ -599,7 +600,6 @@ func TestSharedNetworkSetup(t *testing.T) {
 						Description: "Test network is shared",
 						Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 							return helpers.Command("exec", data.Labels().Get("container2"), "wget", "-qO-", "http://127.0.0.1:80")
-
 						},
 						Expected: test.Expects(0, nil, expect.Contains(testutil.NginxAlpineIndexHTMLSnippet)),
 					},
@@ -939,7 +939,7 @@ func TestHostNetworkHostName(t *testing.T) {
 		Require: require.Not(require.Windows),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Custom("cat", "/etc/hostname").Run(&test.Expected{
-				Output: func(stdout, info string, t *testing.T) {
+				Output: func(stdout string, t tig.T) {
 					data.Labels().Set("hostHostname", stdout)
 				},
 			})

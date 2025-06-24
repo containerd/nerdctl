@@ -34,6 +34,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -235,7 +236,7 @@ func TestIssue2993(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errors.New("is already used by ID")},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(containersDirs), 1)
@@ -282,7 +283,7 @@ func TestIssue2993(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
 						assert.NilError(t, err)
 						assert.Equal(t, len(containersDirs), 0)
@@ -363,10 +364,10 @@ func TestUsernsMappingCreateCmd(t *testing.T) {
 				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 					return &test.Expected{
 						ExitCode: 0,
-						Output: func(stdout string, info string, t *testing.T) {
+						Output: func(stdout string, t tig.T) {
 							actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 							assert.NilError(t, err, "Failed to get container host UID")
-							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"), info)
+							assert.Assert(t, actualHostUID == data.Labels().Get("expectedHostUID"))
 						},
 					}
 				},

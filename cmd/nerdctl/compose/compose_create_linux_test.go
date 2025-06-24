@@ -25,6 +25,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -64,7 +65,7 @@ services:
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "ps", "svc0", "-a")
 			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout, info string, t *testing.T) {
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t tig.T) {
 				assert.Assert(t,
 					strings.Contains(stdout, "created") || strings.Contains(stdout, "Created"),
 					"stdout should contain `created`")
@@ -121,7 +122,7 @@ services:
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "ps", "svc0", "-a")
 			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout, info string, t *testing.T) {
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t tig.T) {
 				assert.Assert(t,
 					strings.Contains(stdout, "created") || strings.Contains(stdout, "Created"),
 					"stdout should contain `created`")
@@ -133,7 +134,7 @@ services:
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "ps", "svc1", "-a")
 			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout, info string, t *testing.T) {
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t tig.T) {
 				assert.Assert(t,
 					strings.Contains(stdout, "created") || strings.Contains(stdout, "Created"),
 					"stdout should contain `created`")

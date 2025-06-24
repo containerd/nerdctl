@@ -17,15 +17,16 @@
 package nerdtest
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"testing"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -49,7 +50,7 @@ func isTargetNerdish() bool {
 	return !strings.HasPrefix(filepath.Base(testutil.GetTarget()), "docker")
 }
 
-func newNerdCommand(conf test.Config, t *testing.T) *nerdCommand {
+func newNerdCommand(conf test.Config, t tig.T) *nerdCommand {
 	// Decide what binary we are running
 	var err error
 	var binary string
@@ -57,7 +58,8 @@ func newNerdCommand(conf test.Config, t *testing.T) *nerdCommand {
 
 	binary, err = exec.LookPath(trgt)
 	if err != nil {
-		t.Fatalf("unable to find binary %q: %v", trgt, err)
+		t.Log(fmt.Sprintf("unable to find binary %q: %v", trgt, err))
+		t.FailNow()
 	}
 
 	if isTargetNerdish() {
@@ -69,7 +71,8 @@ func newNerdCommand(conf test.Config, t *testing.T) *nerdCommand {
 		}
 	} else {
 		if err = exec.Command(binary, "compose", "version").Run(); err != nil {
-			t.Fatalf("docker does not support compose: %v", err)
+			t.Log(fmt.Sprintf("docker does not support compose: %v", err))
+			t.FailNow()
 		}
 	}
 

@@ -24,6 +24,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -113,7 +114,7 @@ services:
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
 			ExitCode: 0,
-			Output: func(stdout, info string, t *testing.T) {
+			Output: func(stdout string, t tig.T) {
 				assert.Assert(t, data.Labels().Get("hash") != stdout, "hash should be different")
 			},
 		}

@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -63,7 +64,7 @@ func TestRemove(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errors.New("image is being used")},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
 							Output: expect.Contains(repoName),
 						})
@@ -83,7 +84,7 @@ func TestRemove(t *testing.T) {
 			Command: test.Command("rmi", "-f", testutil.CommonImage),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
 							Output: expect.DoesNotContain(repoName),
 						})
@@ -108,7 +109,7 @@ func TestRemove(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errors.New("image is being used")},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
 							Output: expect.Contains(repoName),
 						})
@@ -140,7 +141,7 @@ func TestRemove(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
 							Output: expect.Contains("<none>"),
 						})
@@ -162,7 +163,7 @@ func TestRemove(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errors.New("image is being used")},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
 							Output: expect.Contains(repoName),
 						})
@@ -184,7 +185,7 @@ func TestRemove(t *testing.T) {
 			Command: test.Command("rmi", "-f", testutil.CommonImage),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
 							// a created container with removed image doesn't impact other `rmi` command
 							Output: expect.DoesNotContain(repoName, nginxRepoName),
@@ -212,7 +213,7 @@ func TestRemove(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errors.New("image is being used")},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
 							Output: expect.Contains(repoName),
 						})
@@ -246,7 +247,7 @@ func TestRemove(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
 							Output: expect.Contains("<none>"),
 						})
@@ -272,7 +273,7 @@ func TestRemove(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 1,
 					Errors:   []error{errors.New("image is being used")},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
 							Output: expect.Contains(repoName),
 						})
@@ -293,7 +294,7 @@ func TestRemove(t *testing.T) {
 			Command: test.Command("rmi", "-f", testutil.CommonImage),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
 							Output: expect.DoesNotContain(repoName),
 						})
@@ -336,10 +337,10 @@ func TestIssue3016(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("images", data.Labels().Get(tagIDKey)).Run(&test.Expected{
 							ExitCode: 0,
-							Output: func(stdout string, info string, t *testing.T) {
+							Output: func(stdout string, t tig.T) {
 								assert.Equal(t, len(strings.Split(stdout, "\n")), 2)
 							},
 						})
@@ -378,17 +379,17 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("--kube-hide-dupe", "images").Run(&test.Expected{
-							Output: func(stdout string, info string, t *testing.T) {
+							Output: func(stdout string, t tig.T) {
 								lines := strings.Split(strings.TrimSpace(stdout), "\n")
-								assert.Assert(t, len(lines) == numTags+1, info)
+								assert.Assert(t, len(lines) == numTags+1)
 							},
 						})
 						helpers.Command("images").Run(&test.Expected{
-							Output: func(stdout string, info string, t *testing.T) {
+							Output: func(stdout string, t tig.T) {
 								lines := strings.Split(strings.TrimSpace(stdout), "\n")
-								assert.Assert(t, len(lines) == numNoTags+1, info)
+								assert.Assert(t, len(lines) == numNoTags+1)
 							},
 						})
 					},
@@ -410,17 +411,17 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Errors:   []error{},
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("--kube-hide-dupe", "images").Run(&test.Expected{
-							Output: func(stdout string, info string, t *testing.T) {
+							Output: func(stdout string, t tig.T) {
 								lines := strings.Split(strings.TrimSpace(stdout), "\n")
-								assert.Assert(t, len(lines) == numTags+1, info)
+								assert.Assert(t, len(lines) == numTags+1)
 							},
 						})
 						helpers.Command("images").Run(&test.Expected{
-							Output: func(stdout string, info string, t *testing.T) {
+							Output: func(stdout string, t tig.T) {
 								lines := strings.Split(strings.TrimSpace(stdout), "\n")
-								assert.Assert(t, len(lines) == numNoTags+2, info)
+								assert.Assert(t, len(lines) == numNoTags+2)
 							},
 						})
 					},
@@ -440,17 +441,17 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("--kube-hide-dupe", "images").Run(&test.Expected{
-							Output: func(stdout string, info string, t *testing.T) {
+							Output: func(stdout string, t tig.T) {
 								lines := strings.Split(strings.TrimSpace(stdout), "\n")
-								assert.Assert(t, len(lines) == numTags, info)
+								assert.Assert(t, len(lines) == numTags)
 							},
 						})
 						helpers.Command("images").Run(&test.Expected{
-							Output: func(stdout string, info string, t *testing.T) {
+							Output: func(stdout string, t tig.T) {
 								lines := strings.Split(strings.TrimSpace(stdout), "\n")
-								assert.Assert(t, len(lines) == numNoTags, info)
+								assert.Assert(t, len(lines) == numNoTags)
 							},
 						})
 					},
@@ -469,7 +470,7 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						helpers.Command("--kube-hide-dupe", "rmi", stdout[0:12]).Run(&test.Expected{
 							ExitCode: 1,
 							Errors:   []error{errors.New("multiple IDs found with provided prefix: ")},
@@ -478,9 +479,9 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 							ExitCode: 0,
 						})
 						helpers.Command("images").Run(&test.Expected{
-							Output: func(stdout string, info string, t *testing.T) {
+							Output: func(stdout string, t tig.T) {
 								lines := strings.Split(strings.TrimSpace(stdout), "\n")
-								assert.Assert(t, len(lines) == numNoTags, info)
+								assert.Assert(t, len(lines) == numNoTags)
 							},
 						})
 					},
@@ -499,7 +500,7 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: func(stdout string, info string, t *testing.T) {
+					Output: func(stdout string, t tig.T) {
 						imgID := strings.Split(stdout, "\n")
 						helpers.Command("--kube-hide-dupe", "rmi", imgID[0]).Run(&test.Expected{
 							ExitCode: 1,
@@ -509,9 +510,9 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 							ExitCode: 0,
 						})
 						helpers.Command("images").Run(&test.Expected{
-							Output: func(stdout string, info string, t *testing.T) {
+							Output: func(stdout string, t tig.T) {
 								lines := strings.Split(strings.TrimSpace(stdout), "\n")
-								assert.Assert(t, len(lines) == numNoTags, info)
+								assert.Assert(t, len(lines) == numNoTags)
 							},
 						})
 					},

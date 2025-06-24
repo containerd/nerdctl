@@ -25,6 +25,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -94,7 +95,7 @@ services:
 		return &test.Expected{
 			ExitCode: 0,
 			Errors:   nil,
-			Output: func(stdout, info string, t *testing.T) {
+			Output: func(stdout string, t tig.T) {
 				assert.Equal(t, data.Temp().Load("foo", "test"), "hi\n")
 			},
 		}

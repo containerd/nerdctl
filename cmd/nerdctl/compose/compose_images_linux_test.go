@@ -106,7 +106,7 @@ volumes:
 				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images", "--format", "json")
 			},
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
-				expect.JSON([]composeContainerPrintable{}, func(printables []composeContainerPrintable, s string, t tig.T) {
+				expect.JSON([]composeContainerPrintable{}, func(printables []composeContainerPrintable, t tig.T) {
 					assert.Equal(t, len(printables), 2)
 				}),
 				expect.Contains(`"ContainerName":"wordpress"`, `"ContainerName":"db"`),
@@ -118,7 +118,7 @@ volumes:
 				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images", "--format", "json", "wordpress")
 			},
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
-				expect.JSON([]composeContainerPrintable{}, func(printables []composeContainerPrintable, s string, t tig.T) {
+				expect.JSON([]composeContainerPrintable{}, func(printables []composeContainerPrintable, t tig.T) {
 					assert.Equal(t, len(printables), 1)
 				}),
 				expect.Contains(`"ContainerName":"wordpress"`),

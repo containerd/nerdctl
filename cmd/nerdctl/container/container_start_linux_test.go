@@ -27,6 +27,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -67,7 +68,7 @@ func TestStartDetachKeys(t *testing.T) {
 			ExitCode: 0,
 			Errors:   []error{errors.New("detach keys")},
 			Output: expect.All(
-				func(stdout string, info string, t *testing.T) {
+				func(stdout string, t tig.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
 				},
 			),

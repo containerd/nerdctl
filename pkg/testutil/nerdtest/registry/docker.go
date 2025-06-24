@@ -135,7 +135,7 @@ func NewDockerRegistry(data test.Data, helpers test.Helpers, currentCA *testca.C
 		Cleanup: cleanup,
 		Setup:   setup,
 		Logs: func(data test.Data, helpers test.Helpers) {
-			helpers.T().Error(helpers.Err("logs", containerName))
+			helpers.T().Log(helpers.Err("logs", containerName))
 		},
 		HostsDir: hostsDir,
 	}

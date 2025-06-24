@@ -51,7 +51,8 @@ func testContainerRmIptablesExecutor(data test.Data, helpers test.Helpers) test.
 	if rootlessutil.IsRootless() {
 		// In rootless mode, we need to enter the rootlesskit network namespace
 		if netns, err := rootlessutil.DetachedNetNS(); err != nil {
-			t.Fatalf("Failed to get detached network namespace: %v", err)
+			t.Log(fmt.Sprintf("Failed to get detached network namespace: %v", err))
+			t.FailNow()
 		} else {
 			if netns != "" {
 				// Use containerd-rootless-setuptool.sh to enter the RootlessKit namespace
@@ -85,7 +86,8 @@ func TestContainerRmIptables(t *testing.T) {
 				// Get a free port using portlock
 				port, err := portlock.Acquire(0)
 				if err != nil {
-					helpers.T().Fatalf("Failed to acquire port: %v", err)
+					helpers.T().Log(fmt.Sprintf("Failed to acquire port: %v", err))
+					helpers.T().FailNow()
 				}
 				data.Labels().Set("port", strconv.Itoa(port))
 
