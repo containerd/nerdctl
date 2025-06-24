@@ -179,3 +179,11 @@ jobs:
           else
             docker run -t --rm --privileged -e GITHUB_STEP_SUMMARY="$GITHUB_STEP_SUMMARY" -v "$GITHUB_STEP_SUMMARY":"$GITHUB_STEP_SUMMARY" -e WORKAROUND_ISSUE_622=${WORKAROUND_ISSUE_622:-} "${args[@]}" -test.only-flaky=true -test.target=${{ inputs.binary }}
           fi
+
+      - name: Logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: "System logs"
+          path: ~/debug-logs.tar.gz
+          retention-days: 1
