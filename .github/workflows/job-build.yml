@@ -70,6 +70,8 @@ jobs:
             local goarm="${3:-}"
             local result
 
+            GOOS="$goos" GOARCH="$goarch" GOARM="$goarm" go build ./examples/...
+
             github::timer::begin
 
             GOOS="$goos" GOARCH="$goarch" GOARM="$goarm" make binaries \
