@@ -350,7 +350,7 @@ RUN curl -o nydus-static.tgz -fsSL --proto '=https' --tlsv1.2 "https://github.co
   tar xzf nydus-static.tgz && \
   mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /usr/bin/ && \
   rm nydus-static.tgz
-CMD ["./hack/test-integration.sh"]
+CMD ["./hack/testing/integration.sh"]
 
 FROM test-integration AS test-integration-rootless
 # Install SSH for creating systemd user session.
@@ -373,7 +373,7 @@ RUN systemctl disable test-integration-ipfs-offline
 VOLUME /home/rootless/.local/share
 COPY ./Dockerfile.d/test-integration-rootless.sh /
 RUN chmod a+rx /test-integration-rootless.sh
-CMD ["/test-integration-rootless.sh", "./hack/test-integration.sh"]
+CMD ["/test-integration-rootless.sh", "./hack/testing/integration.sh"]
 
 # test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns
 FROM test-integration-rootless AS test-integration-rootless-port-slirp4netns

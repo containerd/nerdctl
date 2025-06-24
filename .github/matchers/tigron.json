@@ -1,0 +1,17 @@
+{
+  "problemMatcher": [
+    {
+      "owner": "tigron",
+      "pattern": [
+        {
+          "regexp": "^([^:]+):(\\d+):(\\d+):\\s+(error|warning):\\s+(.*)$",
+          "severity": 1,
+          "file": 2,
+          "line": 3,
+          "column": 4,
+          "message": 5
+        }
+      ]
+    }
+  ]
+}

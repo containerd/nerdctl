@@ -104,18 +104,18 @@ jobs:
           set -eux
           if [ "$TARGET" = "rootless" ]; then
             echo "rootless"
-            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false
+            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/testing/integration.sh -test.only-flaky=false
           else
             echo "rootful"
-            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
+            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/testing/integration.sh -test.only-flaky=false
           fi
       - name: "Run: integration tests (flaky)"
         run: |
           set -eux
           if [ "$TARGET" = "rootless" ]; then
             echo "rootless"
-            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true
+            docker run -t -v /dev:/dev --rm --privileged test-integration /test-integration-rootless.sh ./hack/testing/integration.sh -test.only-flaky=true
           else
             echo "rootful"
-            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=true
+            docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/testing/integration.sh -test.only-flaky=true
           fi

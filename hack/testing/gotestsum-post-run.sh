@@ -14,13 +14,18 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+# DEPRECATED: favor post-processing inside integration.sh rather than using a post-run hook.
+# Reasons are:
+# - post-run hook do not work on windows
+# - post-run hook is limited to a single run of gotestsum, while it is desirable to process multiple runs together
+
 # shellcheck disable=SC2034,SC2015
 set -o errexit -o errtrace -o functrace -o nounset -o pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]:-$PWD}")" 2>/dev/null 1>&2 && pwd)"
 readonly root
 
 # shellcheck source=/dev/null
-. "$root"/action-helpers.sh
+. "$root"/../github/action-helpers.sh
 
 GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
 
@@ -42,27 +47,3 @@ GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
   gotestsum tool slowest --threshold 15s --jsonfile "$GOTESTSUM_JSONFILE"
   echo '```'
 } >> "$GITHUB_STEP_SUMMARY"
-
-if [[ "$(id -u)" = "0" ]]; then
-  { systemctl --no-pager list-units || echo "failed retrieving units list"; } > ~/systemctl-list.log
-  for unit in apparmor containerd stargz-snapshotter test-integration-ipfs-offline test-integration-buildkit-nerdctl-test test-integration-soci-snapshotter; do
-    { journalctl --no-pager -u "$unit"  || echo "failed retrieving $unit logs"; } > ~/"$unit"-rootful.log
-  done
-  {
-    find /var/lib -iname "*.log" -exec echo "{}" \; 2>/dev/null;
-    find ~/ -iname "*.log" -exec echo "{}" \; 2>/dev/null;
-  } | tar -cf ~/debug-logs.tar.gz --files-from=/dev/stdin || {
-    echo "failed tarring $?"
-  }
-else
-  { systemctl --user --no-pager list-units || echo "failed retrieving units list"; }  > ~/systemctl-list.log
-  for unit in apparmor containerd stargz-snapshotter test-integration-ipfs-offline test-integration-buildkit-nerdctl-test test-integration-soci-snapshotter; do
-    { journalctl --user --no-pager -u "$unit"  || echo "failed retrieving $unit logs"; } > ~/"$unit"-rootless.log
-  done
-  {
-    find ~/.local/share/nerdctl -iname "*.log" -exec echo "{}" \; 2>/dev/null
-    find ~/ -iname "*.log" -exec echo "{}" \; 2>/dev/null;
-  } | tar -cf ~/debug-logs.tar.gz --files-from=/dev/stdin || {
-    echo "failed tarring $?"
-  }
-fi

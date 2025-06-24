@@ -20,6 +20,8 @@ import (
 	"errors"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
@@ -31,6 +33,10 @@ import (
 
 func TestMain(m *testing.M) {
 	testutil.M(m)
+}
+
+func TestBlanketFailure(t *testing.T) {
+	assert.Assert(t, false, "This is a blanket failure to test logs capture and reporting")
 }
 
 // TestUnknownCommand tests https://github.com/containerd/nerdctl/issues/487
