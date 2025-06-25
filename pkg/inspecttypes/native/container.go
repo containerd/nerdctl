@@ -21,6 +21,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
+	"github.com/containerd/go-cni"
 )
 
 // Container corresponds to a containerd-native container object.
@@ -43,6 +44,7 @@ type NetNS struct {
 	// Zero means unset.
 	PrimaryInterface int            `json:"PrimaryInterface,omitempty"`
 	Interfaces       []NetInterface `json:"Interfaces,omitempty"`
+	PortMappings     []cni.PortMapping
 }
 
 // NetInterface wraps net.Interface for JSON marshallability.

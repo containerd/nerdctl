@@ -29,6 +29,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/v2/pkg/portutil"
 )
 
 func PortCommand() *cobra.Command {
@@ -81,13 +82,26 @@ func portAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
+	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
+	if err != nil {
+		return err
+	}
+
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			return containerutil.PrintHostPort(ctx, cmd.OutOrStdout(), found.Container, argPort, argProto)
+			containerLabels, err := found.Container.Labels(ctx)
+			if err != nil {
+				return err
+			}
+			ports, err := portutil.LoadPortMappings(dataStore, globalOptions.Namespace, found.Container.ID(), containerLabels)
+			if err != nil {
+				return err
+			}
+			return containerutil.PrintHostPort(ctx, cmd.OutOrStdout(), found.Container, argPort, argProto, ports)
 		},
 	}
 	req := args[0]

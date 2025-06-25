@@ -25,19 +25,28 @@ import (
 	"github.com/containerd/containerd/v2/core/snapshots"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerinspector"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/portutil"
 )
 
 // Inspect prints detailed information for each container in `containers`.
 func Inspect(ctx context.Context, client *containerd.Client, containers []string, options types.ContainerInspectOptions) ([]any, error) {
+	dataStore, err := clientutil.DataStore(options.GOptions.DataRoot, options.GOptions.Address)
+	if err != nil {
+		return []any{}, err
+	}
+
 	f := &containerInspector{
 		mode:        options.Mode,
 		size:        options.Size,
 		snapshotter: containerdutil.SnapshotService(client, options.GOptions.Snapshotter),
+		dataStore:   dataStore,
+		namespace:   options.GOptions.Namespace,
 	}
 
 	walker := &containerwalker.ContainerWalker{
@@ -45,7 +54,7 @@ func Inspect(ctx context.Context, client *containerd.Client, containers []string
 		OnFound: f.Handler,
 	}
 
-	err := walker.WalkAll(ctx, containers, true)
+	err = walker.WalkAll(ctx, containers, true)
 	if err != nil {
 		return []any{}, err
 	}
@@ -58,6 +67,8 @@ type containerInspector struct {
 	size        bool
 	snapshotter snapshots.Snapshotter
 	entries     []interface{}
+	dataStore   string
+	namespace   string
 }
 
 func (x *containerInspector) Handler(ctx context.Context, found containerwalker.Found) error {
@@ -68,6 +79,19 @@ func (x *containerInspector) Handler(ctx context.Context, found containerwalker.
 	if err != nil {
 		return err
 	}
+
+	containerLabels, err := found.Container.Labels(ctx)
+	if err != nil {
+		return err
+	}
+	ports, err := portutil.LoadPortMappings(x.dataStore, x.namespace, n.ID, containerLabels)
+	if err != nil {
+		return err
+	}
+	if n.Process != nil && n.Process.NetNS != nil && len(ports) > 0 {
+		n.Process.NetNS.PortMappings = ports
+	}
+
 	switch x.mode {
 	case "native":
 		x.entries = append(x.entries, n)

@@ -29,9 +29,9 @@ import (
 	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/go-cni"
-	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
@@ -183,9 +183,9 @@ func psAction(cmd *cobra.Command, args []string) error {
 			var p composeContainerPrintable
 			var err error
 			if format == "json" {
-				p, err = composeContainerPrintableJSON(ctx, container)
+				p, err = composeContainerPrintableJSON(ctx, container, globalOptions)
 			} else {
-				p, err = composeContainerPrintableTab(ctx, container)
+				p, err = composeContainerPrintableTab(ctx, container, globalOptions)
 			}
 			if err != nil {
 				return err
@@ -234,7 +234,7 @@ func psAction(cmd *cobra.Command, args []string) error {
 
 // composeContainerPrintableTab constructs composeContainerPrintable with fields
 // only for console output.
-func composeContainerPrintableTab(ctx context.Context, container containerd.Container) (composeContainerPrintable, error) {
+func composeContainerPrintableTab(ctx context.Context, container containerd.Container, gOptions types.GlobalCommandOptions) (composeContainerPrintable, error) {
 	info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
 	if err != nil {
 		return composeContainerPrintable{}, err
@@ -251,6 +251,18 @@ func composeContainerPrintableTab(ctx context.Context, container containerd.Cont
 	if err != nil {
 		return composeContainerPrintable{}, err
 	}
+	dataStore, err := clientutil.DataStore(gOptions.DataRoot, gOptions.Address)
+	if err != nil {
+		return composeContainerPrintable{}, err
+	}
+	containerLabels, err := container.Labels(ctx)
+	if err != nil {
+		return composeContainerPrintable{}, err
+	}
+	ports, err := portutil.LoadPortMappings(dataStore, gOptions.Namespace, info.ID, containerLabels)
+	if err != nil {
+		return composeContainerPrintable{}, err
+	}
 
 	return composeContainerPrintable{
 		Name:    info.Labels[labels.Name],
@@ -258,13 +270,13 @@ func composeContainerPrintableTab(ctx context.Context, container containerd.Cont
 		Command: formatter.InspectContainerCommandTrunc(spec),
 		Service: info.Labels[labels.ComposeService],
 		State:   status,
-		Ports:   formatter.FormatPorts(info.Labels),
+		Ports:   formatter.FormatPorts(ports),
 	}, nil
 }
 
 // composeContainerPrintableJSON constructs composeContainerPrintable with fields
 // only for json output and compatible docker output.
-func composeContainerPrintableJSON(ctx context.Context, container containerd.Container) (composeContainerPrintable, error) {
+func composeContainerPrintableJSON(ctx context.Context, container containerd.Container, gOptions types.GlobalCommandOptions) (composeContainerPrintable, error) {
 	info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
 	if err != nil {
 		return composeContainerPrintable{}, err
@@ -294,6 +306,18 @@ func composeContainerPrintableJSON(ctx context.Context, container containerd.Con
 	if err != nil {
 		return composeContainerPrintable{}, err
 	}
+	dataStore, err := clientutil.DataStore(gOptions.DataRoot, gOptions.Address)
+	if err != nil {
+		return composeContainerPrintable{}, err
+	}
+	containerLabels, err := container.Labels(ctx)
+	if err != nil {
+		return composeContainerPrintable{}, err
+	}
+	portMappings, err := portutil.LoadPortMappings(dataStore, gOptions.Namespace, info.ID, containerLabels)
+	if err != nil {
+		return composeContainerPrintable{}, err
+	}
 
 	return composeContainerPrintable{
 		ID:         container.ID(),
@@ -305,7 +329,7 @@ func composeContainerPrintableJSON(ctx context.Context, container containerd.Con
 		State:      state,
 		Health:     "",
 		ExitCode:   exitCode,
-		Publishers: formatPublishers(info.Labels),
+		Publishers: formatPublishers(portMappings),
 	}, nil
 }
 
@@ -321,7 +345,7 @@ type PortPublisher struct {
 
 // formatPublishers parses and returns docker-compatible []PortPublisher from
 // label map. If an error happens, an empty slice is returned.
-func formatPublishers(labelMap map[string]string) []PortPublisher {
+func formatPublishers(portMappings []cni.PortMapping) []PortPublisher {
 	mapper := func(pm cni.PortMapping) PortPublisher {
 		return PortPublisher{
 			URL:           pm.HostIP,
@@ -332,12 +356,8 @@ func formatPublishers(labelMap map[string]string) []PortPublisher {
 	}
 
 	var dockerPorts []PortPublisher
-	if portMappings, err := portutil.ParsePortsLabel(labelMap); err == nil {
-		for _, p := range portMappings {
-			dockerPorts = append(dockerPorts, mapper(p))
-		}
-	} else {
-		log.L.Error(err.Error())
+	for _, p := range portMappings {
+		dockerPorts = append(dockerPorts, mapper(p))
 	}
 	return dockerPorts
 }

@@ -28,6 +28,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/netutil/networkstore"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
@@ -139,16 +140,35 @@ func ParseFlagP(s string) ([]cni.PortMapping, error) {
 	return mr, nil
 }
 
-// ParsePortsLabel parses JSON-marshalled string from label map
-// (under `labels.Ports` key) and returns []cni.PortMapping.
-func ParsePortsLabel(labelMap map[string]string) ([]cni.PortMapping, error) {
-	portsJSON := labelMap[labels.Ports]
-	if portsJSON == "" {
-		return []cni.PortMapping{}, nil
+func GeneratePortMappingsConfig(dataStore, namespace, id string, portMappings []cni.PortMapping) error {
+	ns, err := networkstore.New(dataStore, namespace, id)
+	if err != nil {
+		return err
 	}
+	return ns.Acquire(portMappings)
+}
+
+func LoadPortMappings(dataStore, namespace, id string, containerLabels map[string]string) ([]cni.PortMapping, error) {
 	var ports []cni.PortMapping
-	if err := json.Unmarshal([]byte(portsJSON), &ports); err != nil {
-		return nil, fmt.Errorf("failed to parse label %q=%q: %s", labels.Ports, portsJSON, err.Error())
+
+	ns, err := networkstore.New(dataStore, namespace, id)
+	if err != nil {
+		return ports, err
 	}
+	if err = ns.Load(); err != nil {
+		return ports, err
+	}
+	if len(ns.PortMappings) != 0 {
+		return ns.PortMappings, nil
+	}
+
+	portsJSON := containerLabels[labels.Ports]
+	if portsJSON == "" {
+		return ports, nil
+	}
+	if err := json.Unmarshal([]byte(portsJSON), &ports); err != nil {
+		return ports, fmt.Errorf("failed to parse label %q=%q: %s", labels.Ports, portsJSON, err.Error())
+	}
+	log.L.Warnf("container %s (%s) is using legacy port mapping configuration. To ensure compatibility with the new port mapping logic, please recreate this container. For more details, see: https://github.com/containerd/nerdctl/pull/4290", containerLabels[labels.Name], id[:12])
 	return ports, nil
 }

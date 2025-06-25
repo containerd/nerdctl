@@ -33,6 +33,7 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/go-cni"
 
 	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
@@ -413,11 +414,17 @@ func TestNetworkSettingsFromNative(t *testing.T) {
 						Addrs:        []string{"10.0.4.30/24"},
 					},
 				},
+				PortMappings: []cni.PortMapping{
+					{
+						HostPort:      8075,
+						ContainerPort: 77,
+						Protocol:      "tcp",
+						HostIP:        "127.0.0.1",
+					},
+				},
 			},
 			s: &specs.Spec{
-				Annotations: map[string]string{
-					"nerdctl/ports": "[{\"HostPort\":8075,\"ContainerPort\":77,\"Protocol\":\"tcp\",\"HostIP\":\"127.0.0.1\"}]",
-				},
+				Annotations: map[string]string{},
 			},
 			expected: &NetworkSettings{
 				Ports: &nat.PortMap{

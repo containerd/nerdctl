@@ -20,7 +20,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposePort(t *testing.T) {
@@ -74,4 +78,43 @@ services:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "port", "svc0", "9999").AssertFail()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "port", "--protocol", "udp", "svc0", "10000").AssertFail()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "port", "--protocol", "tcp", "svc0", "10001").AssertFail()
+}
+
+// TestComposeMultiplePorts tests whether it is possible to allocate a large
+// number of ports. (https://github.com/containerd/nerdctl/issues/4027)
+func TestComposeMultiplePorts(t *testing.T) {
+	var dockerComposeYAML = fmt.Sprintf(`
+services:
+  svc0:
+    image: %s
+    command: "sleep infinity"
+    ports:
+    - '32000-32060:32000-32060'
+`, testutil.AlpineImage)
+
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		compYamlPath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		data.Labels().Set("composeYaml", compYamlPath)
+
+		helpers.Ensure("compose", "-f", compYamlPath, "up", "-d")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Issue #4027 - Allocate a large number of ports.",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "port", "svc0", "32000")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("0.0.0.0:32000")),
+		},
+	}
+
+	testCase.Run(t)
 }

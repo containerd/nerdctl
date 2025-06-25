@@ -39,6 +39,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
+	"github.com/containerd/nerdctl/v2/pkg/portutil"
 	"github.com/containerd/nerdctl/v2/pkg/store"
 )
 
@@ -191,6 +192,18 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		}
 
 		netOpts, err := containerutil.NetworkOptionsFromSpec(spec)
+		if err != nil {
+			retErr = err
+			return
+		}
+
+		portSlice, err := portutil.LoadPortMappings(dataStore, globalOptions.Namespace, id, containerLabels)
+		if err != nil {
+			retErr = err
+			return
+		}
+		netOpts.PortMappings = portSlice
+
 		if err == nil {
 			networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts, client)
 			if err != nil {
