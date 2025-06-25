@@ -47,21 +47,22 @@ func writeHealthLog(ctx context.Context, container containerd.Container, result 
 		return fmt.Errorf("failed to marshal health log: %w", err)
 	}
 
-	// Ensure file exists before writing
-	if err := ensureHealthLogFile(stateDir); err != nil {
-		return err
-	}
-
 	// Write the latest result to the file
 	logPath := filepath.Join(stateDir, HealthLogFilename)
-	return filesystem.WithAppendLock(logPath, func(file *os.File) error {
-		if _, err := file.Seek(0, io.SeekEnd); err != nil {
+	return filesystem.WithLock(stateDir, func() error {
+		file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY, 0o600)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		if _, err = file.Seek(0, io.SeekEnd); err != nil {
 			return fmt.Errorf("seek error: %w", err)
 		}
-		if _, err := file.Write(append([]byte(data), '\n')); err != nil {
+		if _, err = file.Write(append([]byte(data), '\n')); err != nil {
 			return fmt.Errorf("failed to write health log: %w", err)
 		}
-		return nil
+
+		return file.Sync()
 	})
 }
 
@@ -180,23 +181,6 @@ func readHealthStateFromLabels(ctx context.Context, container containerd.Contain
 	}
 
 	return state, nil
-}
-
-// ensureHealthLogFile creates the health.json file if it doesn't exist.
-func ensureHealthLogFile(stateDir string) error {
-	healthLogPath := filepath.Join(stateDir, HealthLogFilename)
-
-	// Ensure container state directory exists
-	if _, err := os.Stat(stateDir); os.IsNotExist(err) {
-		return fmt.Errorf("container state directory does not exist: %s", stateDir)
-	}
-
-	// Create health.json if it doesn't exist
-	if _, err := os.Stat(healthLogPath); os.IsNotExist(err) {
-		return filesystem.WriteFile(healthLogPath, []byte{}, 0600)
-	}
-
-	return nil
 }
 
 // getContainerStateDir returns the container's state directory from labels.

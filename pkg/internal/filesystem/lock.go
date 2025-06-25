@@ -37,7 +37,7 @@ import (
 // If Lock returns nil, no other process will be able to place a read or write lock on the file until
 // this process exits, closes f, or calls Unlock on it.
 func Lock(path string) (file *os.File, err error) {
-	return commonlock(path, writeLock, false)
+	return commonlock(path, writeLock)
 }
 
 // ReadOnlyLock places an advisory read lock on the file, blocking until it can be locked.
@@ -45,10 +45,10 @@ func Lock(path string) (file *os.File, err error) {
 // If ReadOnlyLock returns nil, no other process will be able to place a write lock on
 // the file until this process exits, closes f, or calls Unlock on it.
 func ReadOnlyLock(path string) (file *os.File, err error) {
-	return commonlock(path, readLock, false)
+	return commonlock(path, readLock)
 }
 
-func commonlock(path string, mode lockType, appendMode bool) (file *os.File, err error) {
+func commonlock(path string, mode lockType) (file *os.File, err error) {
 	defer func() {
 		if err != nil {
 			err = errors.Join(ErrLockFail, err, file.Close())
@@ -65,21 +65,12 @@ func commonlock(path string, mode lockType, appendMode bool) (file *os.File, err
 		}
 	}
 
-	// For append mode, open with specific flags
-	if appendMode {
-		file, err = os.OpenFile(path, os.O_WRONLY, privateFilePermission)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// Preserve the original behavior for non-append operations
-		file, err = os.Open(path)
-		if errors.Is(err, os.ErrNotExist) {
-			file, err = os.OpenFile(path, os.O_RDONLY|os.O_CREATE, privateFilePermission)
-		}
-		if err != nil {
-			return nil, err
-		}
+	file, err = os.Open(path)
+	if errors.Is(err, os.ErrNotExist) {
+		file, err = os.OpenFile(path, os.O_RDONLY|os.O_CREATE, privateFilePermission)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	if err = platformSpecificLock(file, mode); err != nil {
@@ -130,18 +121,4 @@ func WithReadOnlyLock(path string, function func() error) (err error) {
 	}()
 
 	return function()
-}
-
-// WithAppendLock executes the function with a file opened in append mode
-func WithAppendLock(path string, function func(file *os.File) error) (err error) {
-	file, err := commonlock(path, writeLock, true)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		err = errors.Join(Unlock(file), err)
-	}()
-
-	return function(file)
 }
