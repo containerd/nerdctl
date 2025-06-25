@@ -91,6 +91,14 @@ func Match(reg *regexp.Regexp) test.Comparator {
 	}
 }
 
+// DoesNotMatch returns a comparator verifying the output does not match the provided regexp.
+func DoesNotMatch(reg *regexp.Regexp) test.Comparator {
+	return func(stdout string, t tig.T) {
+		t.Helper()
+		assertive.DoesNotMatch(assertive.WithFailLater(t), stdout, reg, "Inspecting output (!match)")
+	}
+}
+
 // JSON allows to verify that the output can be marshalled into T, and optionally can be further verified by a provided
 // method.
 func JSON[T any](obj T, verifier func(T, tig.T)) test.Comparator {
