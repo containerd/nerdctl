@@ -19,13 +19,14 @@ package image
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
 )
 
 func TestImageConvert(t *testing.T) {
@@ -100,7 +101,11 @@ func TestImageConvertNydusVerify(t *testing.T) {
 
 	const remoteImageKey = "remoteImageKey"
 
-	var registry *testregistry.RegistryServer
+	var reg *registry.Server
+
+	// It is unclear what is problematic here, but we use the kernel version to discriminate against EL
+	// See: https://github.com/containerd/nerdctl/issues/4332
+	testutil.RequireKernelVersion(t, ">= 6.0.0-0")
 
 	testCase := &test.Case{
 		Require: require.All(
@@ -110,26 +115,30 @@ func TestImageConvertNydusVerify(t *testing.T) {
 			require.Binary("nydusd"),
 			require.Not(nerdtest.Docker),
 			nerdtest.Rootful,
+			nerdtest.Registry,
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
-			base := testutil.NewBase(t)
-			registry = testregistry.NewWithNoAuth(base, 0, false)
-			data.Labels().Set(remoteImageKey, fmt.Sprintf("%s:%d/nydusd-image:test", "localhost", registry.Port))
+			reg = nerdtest.RegistryWithNoAuth(data, helpers, 0, false)
+			reg.Setup(data, helpers)
+
+			data.Labels().Set(remoteImageKey, fmt.Sprintf("%s:%d/nydusd-image:test", "localhost", reg.Port))
 			helpers.Ensure("image", "convert", "--nydus", "--oci", testutil.CommonImage, data.Identifier("converted-image"))
 			helpers.Ensure("tag", data.Identifier("converted-image"), data.Labels().Get(remoteImageKey))
 			helpers.Ensure("push", data.Labels().Get(remoteImageKey))
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
-			if registry != nil {
-				registry.Cleanup(nil)
+			if reg != nil {
+				reg.Cleanup(data, helpers)
 				helpers.Anyhow("rmi", "-f", data.Labels().Get(remoteImageKey))
 			}
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			return helpers.Custom("nydusify",
+			cmd := helpers.Custom("nydusify",
 				"check",
+				"--work-dir",
+				data.Temp().Dir("nydusify-temp"),
 				"--source",
 				testutil.CommonImage,
 				"--target",
@@ -137,6 +146,8 @@ func TestImageConvertNydusVerify(t *testing.T) {
 				"--source-insecure",
 				"--target-insecure",
 			)
+			cmd.WithTimeout(30 * time.Second)
+			return cmd
 		},
 		Expected: test.Expects(0, nil, nil),
 	}

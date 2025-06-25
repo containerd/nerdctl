@@ -248,7 +248,7 @@ func TestRunPortWithNoHostPort(t *testing.T) {
 				return
 			}
 			connectURL := fmt.Sprintf("http://%s:%s", "127.0.0.1", paramsMap["portNumber"])
-			resp, err := nettestutil.HTTPGet(connectURL, 30, false)
+			resp, err := nettestutil.HTTPGet(connectURL, 5, false)
 			assert.NilError(t, err)
 			respBody, err := io.ReadAll(resp.Body)
 			assert.NilError(t, err)
@@ -333,7 +333,7 @@ func TestUniqueHostPortAssignement(t *testing.T) {
 
 			// Make HTTP GET request to container 1
 			connectURL1 := fmt.Sprintf("http://%s:%s", "127.0.0.1", port1)
-			resp1, err := nettestutil.HTTPGet(connectURL1, 30, false)
+			resp1, err := nettestutil.HTTPGet(connectURL1, 5, false)
 			assert.NilError(t, err)
 			respBody1, err := io.ReadAll(resp1.Body)
 			assert.NilError(t, err)
@@ -341,7 +341,7 @@ func TestUniqueHostPortAssignement(t *testing.T) {
 
 			// Make HTTP GET request to container 2
 			connectURL2 := fmt.Sprintf("http://%s:%s", "127.0.0.1", port2)
-			resp2, err := nettestutil.HTTPGet(connectURL2, 30, false)
+			resp2, err := nettestutil.HTTPGet(connectURL2, 5, false)
 			assert.NilError(t, err)
 			respBody2, err := io.ReadAll(resp2.Body)
 			assert.NilError(t, err)

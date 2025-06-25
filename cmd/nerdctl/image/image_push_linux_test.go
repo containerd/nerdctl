@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -31,33 +30,43 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
 )
 
 func TestPush(t *testing.T) {
 	nerdtest.Setup()
 
-	var registryNoAuthHTTPRandom, registryNoAuthHTTPDefault, registryTokenAuthHTTPSRandom *testregistry.RegistryServer
+	var registryNoAuthHTTPRandom, registryNoAuthHTTPDefault, registryTokenAuthHTTPSRandom *registry.Server
+	var tokenServer *registry.TokenAuthServer
 
 	testCase := &test.Case{
-		Require: require.Linux,
+		Require: require.All(
+			require.Linux,
+			nerdtest.Registry,
+		),
 
 		Setup: func(data test.Data, helpers test.Helpers) {
-			base := testutil.NewBase(t)
-			registryNoAuthHTTPRandom = testregistry.NewWithNoAuth(base, 0, false)
-			registryNoAuthHTTPDefault = testregistry.NewWithNoAuth(base, 80, false)
-			registryTokenAuthHTTPSRandom = testregistry.NewWithTokenAuth(base, "admin", "badmin", 0, true)
+			registryNoAuthHTTPRandom = nerdtest.RegistryWithNoAuth(data, helpers, 0, false)
+			registryNoAuthHTTPRandom.Setup(data, helpers)
+			registryNoAuthHTTPDefault = nerdtest.RegistryWithNoAuth(data, helpers, 80, false)
+			registryNoAuthHTTPDefault.Setup(data, helpers)
+			registryTokenAuthHTTPSRandom, tokenServer = nerdtest.RegistryWithTokenAuth(data, helpers, "admin", "badmin", 0, true)
+			tokenServer.Setup(data, helpers)
+			registryTokenAuthHTTPSRandom.Setup(data, helpers)
 		},
 
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			if registryNoAuthHTTPRandom != nil {
-				registryNoAuthHTTPRandom.Cleanup(nil)
+				registryNoAuthHTTPRandom.Cleanup(data, helpers)
 			}
 			if registryNoAuthHTTPDefault != nil {
-				registryNoAuthHTTPDefault.Cleanup(nil)
+				registryNoAuthHTTPDefault.Cleanup(data, helpers)
 			}
 			if registryTokenAuthHTTPSRandom != nil {
-				registryTokenAuthHTTPSRandom.Cleanup(nil)
+				registryTokenAuthHTTPSRandom.Cleanup(data, helpers)
+			}
+			if tokenServer != nil {
+				tokenServer.Cleanup(data, helpers)
 			}
 		},
 
@@ -66,8 +75,8 @@ func TestPush(t *testing.T) {
 				Description: "plain http",
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
-					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+					testImageRef := fmt.Sprintf("%s:%d/%s",
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier())
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 				},
@@ -86,8 +95,8 @@ func TestPush(t *testing.T) {
 				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
-					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+					testImageRef := fmt.Sprintf("%s:%d/%s",
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier())
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 				},
@@ -105,8 +114,8 @@ func TestPush(t *testing.T) {
 				Description: "plain http with localhost",
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
-					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						"127.0.0.1", registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+					testImageRef := fmt.Sprintf("%s:%d/%s",
+						"127.0.0.1", registryNoAuthHTTPRandom.Port, data.Identifier())
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 				},
@@ -120,8 +129,8 @@ func TestPush(t *testing.T) {
 				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
-					testImageRef := fmt.Sprintf("%s/%s:%s",
-						registryNoAuthHTTPDefault.IP.String(), data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+					testImageRef := fmt.Sprintf("%s/%s",
+						registryNoAuthHTTPDefault.IP.String(), data.Identifier())
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 				},
@@ -140,8 +149,8 @@ func TestPush(t *testing.T) {
 				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
-					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+					testImageRef := fmt.Sprintf("%s:%d/%s",
+						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, data.Identifier())
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 					helpers.Ensure("--insecure-registry", "login", "-u", "admin", "-p", "badmin",
@@ -163,8 +172,8 @@ func TestPush(t *testing.T) {
 				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
-					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, data.Identifier(), strings.Split(testutil.CommonImage, ":")[1])
+					testImageRef := fmt.Sprintf("%s:%d/%s",
+						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, data.Identifier())
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
 					helpers.Ensure("--hosts-dir", registryTokenAuthHTTPSRandom.HostsDir, "login", "-u", "admin", "-p", "badmin",
@@ -186,8 +195,8 @@ func TestPush(t *testing.T) {
 				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.NonDistBlobImage)
-					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.NonDistBlobImage, ":")[1])
+					testImageRef := fmt.Sprintf("%s:%d/%s",
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier())
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.NonDistBlobImage, testImageRef)
 				},
@@ -206,7 +215,7 @@ func TestPush(t *testing.T) {
 							resp, err := http.Get(blobURL)
 							assert.Assert(t, err, "error making http request")
 							if resp.Body != nil {
-								resp.Body.Close()
+								_ = resp.Body.Close()
 							}
 							assert.Equal(t, resp.StatusCode, http.StatusNotFound, "non-distributable blob should not be available")
 						},
@@ -218,8 +227,8 @@ func TestPush(t *testing.T) {
 				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.NonDistBlobImage)
-					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.NonDistBlobImage, ":")[1])
+					testImageRef := fmt.Sprintf("%s:%d/%s",
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier())
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.NonDistBlobImage, testImageRef)
 				},
@@ -238,7 +247,7 @@ func TestPush(t *testing.T) {
 							resp, err := http.Get(blobURL)
 							assert.Assert(t, err, "error making http request")
 							if resp.Body != nil {
-								resp.Body.Close()
+								_ = resp.Body.Close()
 							}
 							assert.Equal(t, resp.StatusCode, http.StatusOK, "non-distributable blob should be available")
 						},
@@ -253,8 +262,8 @@ func TestPush(t *testing.T) {
 				),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					helpers.Ensure("pull", "--quiet", testutil.UbuntuImage)
-					testImageRef := fmt.Sprintf("%s:%d/%s:%s",
-						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier(), strings.Split(testutil.UbuntuImage, ":")[1])
+					testImageRef := fmt.Sprintf("%s:%d/%s",
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier())
 					data.Labels().Set("testImageRef", testImageRef)
 					helpers.Ensure("tag", testutil.UbuntuImage, testImageRef)
 				},

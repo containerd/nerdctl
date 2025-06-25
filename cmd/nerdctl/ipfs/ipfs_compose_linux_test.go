@@ -256,7 +256,7 @@ COPY index.html /usr/share/nginx/html/index.html
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
 			Output: func(stdout string, t tig.T) {
-				resp, err := nettestutil.HTTPGet("http://127.0.0.1:8081", 10, false)
+				resp, err := nettestutil.HTTPGet("http://127.0.0.1:8081", 5, false)
 				assert.NilError(t, err)
 				respBody, err := io.ReadAll(resp.Body)
 				assert.NilError(t, err)
