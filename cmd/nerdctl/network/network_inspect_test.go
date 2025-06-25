@@ -20,8 +20,10 @@ import (
 	"encoding/json"
 	"errors"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"gotest.tools/v3/assert"
 
@@ -290,6 +292,13 @@ func TestNetworkInspect(t *testing.T) {
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier("nginx-network-1"))
 				helpers.Ensure("network", "create", data.Identifier("nginx-network-2"))
+
+				// See https://github.com/containerd/nerdctl/issues/4322
+				// Maybe network create on windows is asynchronous?
+				if runtime.GOOS == "windows" {
+					time.Sleep(time.Second)
+				}
+
 				helpers.Ensure("create", "--name", data.Identifier("nginx-container-1"), "--network", data.Identifier("nginx-network-1"), testutil.NginxAlpineImage)
 				helpers.Ensure("create", "--name", data.Identifier("nginx-container-2"), "--network", data.Identifier("nginx-network-1"), testutil.NginxAlpineImage)
 				helpers.Ensure("create", "--name", data.Identifier("nginx-container-on-diff-network"), "--network", data.Identifier("nginx-network-2"), testutil.NginxAlpineImage)
@@ -327,6 +336,12 @@ func TestNetworkInspect(t *testing.T) {
 				helpers.Ensure("network", "create", data.Identifier("network-1"))
 				helpers.Ensure("network", "create", data.Identifier("network-2"))
 
+				// See https://github.com/containerd/nerdctl/issues/4322
+				// Maybe network create on windows is asynchronous?
+				if runtime.GOOS == "windows" {
+					time.Sleep(time.Second)
+				}
+
 				containerID := helpers.Capture("run", "-d", "--name", data.Identifier(), "--network", data.Identifier("network-1"), "--network", data.Identifier("network-2"), testutil.CommonImage, "sleep", nerdtest.Infinity)
 
 				data.Labels().Set("containerID", strings.Trim(containerID, "\n"))
@@ -355,6 +370,12 @@ func TestNetworkInspect(t *testing.T) {
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier("some-network"))
 				helpers.Ensure("network", "create", data.Identifier("some-network-as-well"))
+
+				// See https://github.com/containerd/nerdctl/issues/4322
+				// Maybe network create on windows is asynchronous?
+				if runtime.GOOS == "windows" {
+					time.Sleep(time.Second)
+				}
 
 				helpers.Ensure("run", "-d", "--name", data.Identifier(), "--network", data.Identifier("some-network-as-well"), testutil.CommonImage, "sleep", nerdtest.Infinity)
 			},
