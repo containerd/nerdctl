@@ -29,11 +29,14 @@ import (
 	"gotest.tools/v3/icmd"
 
 	"github.com/containerd/log"
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 )
 
@@ -375,10 +378,10 @@ services:
 }
 
 func TestComposeUpWithExternalNetwork(t *testing.T) {
-	containerName1 := testutil.Identifier(t) + "-1"
-	containerName2 := testutil.Identifier(t) + "-2"
-	networkName := testutil.Identifier(t) + "-network"
-	var dockerComposeYaml1 = fmt.Sprintf(`
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var dockerComposeYaml1 = fmt.Sprintf(`
 services:
   %s:
     image: %s
@@ -390,8 +393,8 @@ services:
 networks:
   %s:
     external: true
-`, containerName1, testutil.NginxAlpineImage, containerName1, networkName, networkName)
-	var dockerComposeYaml2 = fmt.Sprintf(`
+`, data.Identifier("con-1"), testutil.NginxAlpineImage, data.Identifier("con-1"), data.Identifier("network"), data.Identifier("network"))
+		var dockerComposeYaml2 = fmt.Sprintf(`
 services:
   %s:
     image: %s
@@ -403,26 +406,34 @@ services:
 networks:
   %s:
     external: true
-`, containerName2, testutil.NginxAlpineImage, containerName2, networkName, networkName)
-	comp1 := testutil.NewComposeDir(t, dockerComposeYaml1)
-	defer comp1.CleanUp()
-	comp2 := testutil.NewComposeDir(t, dockerComposeYaml2)
-	defer comp2.CleanUp()
-	base := testutil.NewBase(t)
-	// Create the test network
-	base.Cmd("network", "create", networkName).AssertOK()
-	defer base.Cmd("network", "rm", networkName).Run()
-	// Run the first compose
-	base.ComposeCmd("-f", comp1.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp1.YAMLFullPath(), "down", "-v").Run()
-	// Run the second compose
-	base.ComposeCmd("-f", comp2.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp2.YAMLFullPath(), "down", "-v").Run()
-	// Down the second compose
-	base.ComposeCmd("-f", comp2.YAMLFullPath(), "down", "-v").AssertOK()
-	// Run the second compose again
-	base.ComposeCmd("-f", comp2.YAMLFullPath(), "up", "-d").AssertOK()
-	base.Cmd("exec", containerName1, "wget", "-qO-", "http://"+containerName2).AssertOutContains(testutil.NginxAlpineIndexHTMLSnippet)
+`, data.Identifier("con-2"), testutil.NginxAlpineImage, data.Identifier("con-2"), data.Identifier("network"), data.Identifier("network"))
+		tmp := data.Temp()
+
+		tmp.Save(dockerComposeYaml1, "project-1", "compose.yaml")
+		tmp.Save(dockerComposeYaml2, "project-2", "compose.yaml")
+
+		helpers.Ensure("network", "create", data.Identifier("network"))
+		helpers.Ensure("compose", "-f", tmp.Path("project-1", "compose.yaml"), "up", "-d")
+		helpers.Ensure("compose", "-f", tmp.Path("project-2", "compose.yaml"), "up", "-d")
+		helpers.Ensure("compose", "-f", tmp.Path("project-2", "compose.yaml"), "down", "-v")
+		helpers.Ensure("compose", "-f", tmp.Path("project-2", "compose.yaml"), "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier("con-2"))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		helpers.Ensure("exec", data.Identifier("con-1"), "cat", "/etc/hosts")
+		return helpers.Command("exec", data.Identifier("con-1"), "wget", "-qO-", "http://"+data.Identifier("con-2"))
+	}
+
+	testCase.Expected = test.Expects(0, nil, expect.Contains(testutil.NginxAlpineIndexHTMLSnippet))
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("project-1", "compose.yaml"), "down", "-v")
+		helpers.Anyhow("compose", "-f", data.Temp().Path("project-2", "compose.yaml"), "down", "-v")
+		helpers.Anyhow("network", "rm", data.Identifier("network"))
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpWithBypass4netns(t *testing.T) {
