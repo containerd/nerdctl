@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -152,14 +153,19 @@ CMD ["echo", "nerdctl-builder-debug-test-string"]`, testutil.CommonImage)
 					// FIXME: this test should be rewritten to dynamically retrieve the ids, and use images
 					// available on all platforms
 					oldImage := testutil.BusyboxImage
-					oldImageSha := "7b3ccabffc97de872a30dfd234fd972a66d247c8cfc69b0550f276481852627c"
+					parsedOldImage, err := referenceutil.Parse(oldImage)
+					assert.NilError(helpers.T(), err)
+					oldImageSha := parsedOldImage.Digest.String()
+
 					newImage := testutil.AlpineImage
-					newImageSha := "ec14c7992a97fc11425907e908340c6c3d6ff602f5f13d899e6b7027c9b4133a"
+					parsedNewImage, err := referenceutil.Parse(newImage)
+					assert.NilError(helpers.T(), err)
+					newImageSha := parsedNewImage.Digest.String()
 
 					helpers.Ensure("pull", "--quiet", oldImage)
-					helpers.Ensure("tag", oldImage, newImage)
+					helpers.Ensure("tag", oldImage, parsedNewImage.Domain+"/"+parsedNewImage.Path+":"+parsedNewImage.Tag)
 
-					dockerfile := fmt.Sprintf(`FROM %s`, newImage)
+					dockerfile := fmt.Sprintf(`FROM %s`, parsedNewImage.Domain+"/"+parsedNewImage.Path+":"+parsedNewImage.Tag)
 					data.Temp().Save(dockerfile, "Dockerfile")
 					data.Labels().Set("oldImageSha", oldImageSha)
 					data.Labels().Set("newImageSha", newImageSha)
