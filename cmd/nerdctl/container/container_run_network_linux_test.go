@@ -36,7 +36,6 @@ import (
 
 	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/containerd/v2/pkg/netns"
-	"github.com/containerd/errdefs"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
@@ -409,21 +408,21 @@ func TestRunPort(t *testing.T) {
 	baseTestRunPort(t, testutil.NginxAlpineImage, testutil.NginxAlpineIndexHTMLSnippet, true)
 }
 
-func TestRunWithInvalidPortThenCleanUp(t *testing.T) {
+func TestRunWithManyPortsThenCleanUp(t *testing.T) {
 	testCase := nerdtest.Setup()
 	// docker does not set label restriction to 4096 bytes
 	testCase.Require = require.Not(nerdtest.Docker)
 
 	testCase.SubTests = []*test.Case{
 		{
-			Description: "Run a container with invalid ports, and then clean up.",
+			Description: "Run a container with many ports, and then clean up.",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--data-root", data.Temp().Path(), "--rm", "-p", "22200-22299:22200-22299", testutil.CommonImage)
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 1,
-					Errors:   []error{errdefs.ErrInvalidArgument},
+					ExitCode: 0,
+					Errors:   []error{},
 					Output: func(stdout string, t tig.T) {
 						getAddrHash := func(addr string) string {
 							const addrHashLen = 8

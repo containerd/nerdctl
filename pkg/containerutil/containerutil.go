@@ -42,6 +42,7 @@ import (
 	"github.com/containerd/containerd/v2/pkg/cio"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/errdefs"
+	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
@@ -50,7 +51,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/labels/k8slabels"
-	"github.com/containerd/nerdctl/v2/pkg/portutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/signalutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
@@ -59,16 +59,7 @@ import (
 
 // PrintHostPort writes to `writer` the public (HostIP:HostPort) of a given `containerPort/protocol` in a container.
 // if `containerPort < 0`, it writes all public ports of the container.
-func PrintHostPort(ctx context.Context, writer io.Writer, container containerd.Container, containerPort int, proto string) error {
-	l, err := container.Labels(ctx)
-	if err != nil {
-		return err
-	}
-	ports, err := portutil.ParsePortsLabel(l)
-	if err != nil {
-		return err
-	}
-
+func PrintHostPort(ctx context.Context, writer io.Writer, container containerd.Container, containerPort int, proto string, ports []cni.PortMapping) error {
 	if containerPort < 0 {
 		for _, p := range ports {
 			fmt.Fprintf(writer, "%d/%s -> %s:%d\n", p.ContainerPort, p.Protocol, p.HostIP, p.HostPort)

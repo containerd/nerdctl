@@ -45,6 +45,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
 	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
+	"github.com/containerd/nerdctl/v2/pkg/portutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/store"
 )
@@ -208,11 +209,11 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath, brid
 		}
 	}
 
-	if portsJSON := o.state.Annotations[labels.Ports]; portsJSON != "" {
-		if err := json.Unmarshal([]byte(portsJSON), &o.ports); err != nil {
-			return nil, err
-		}
+	ports, err := portutil.LoadPortMappings(o.dataStore, namespace, o.state.ID, o.state.Annotations)
+	if err != nil {
+		return nil, err
 	}
+	o.ports = ports
 
 	if ipAddress, ok := o.state.Annotations[labels.IPAddress]; ok {
 		o.containerIP = ipAddress

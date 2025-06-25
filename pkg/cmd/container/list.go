@@ -32,11 +32,13 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/portutil"
 )
 
 // List prints containers according to `options`.
@@ -162,6 +164,18 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 		} else {
 			return nil, fmt.Errorf("can't get container %s status", c.ID())
 		}
+		dataStore, err := clientutil.DataStore(options.GOptions.DataRoot, options.GOptions.Address)
+		if err != nil {
+			return nil, err
+		}
+		containerLabels, err := c.Labels(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ports, err := portutil.LoadPortMappings(dataStore, options.GOptions.Namespace, c.ID(), containerLabels)
+		if err != nil {
+			return nil, err
+		}
 		li := ListItem{
 			Command:   formatter.InspectContainerCommand(spec, options.Truncate, true),
 			CreatedAt: info.CreatedAt,
@@ -169,7 +183,7 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 			Image:     info.Image,
 			Platform:  info.Labels[labels.Platform],
 			Names:     containerutil.GetContainerName(info.Labels),
-			Ports:     formatter.FormatPorts(info.Labels),
+			Ports:     formatter.FormatPorts(ports),
 			Status:    status,
 			Runtime:   info.Runtime.Name,
 			Labels:    formatter.FormatLabels(info.Labels),

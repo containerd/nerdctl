@@ -33,6 +33,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
@@ -122,14 +123,18 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 // cleanupNetwork removes cni network setup, specifically the forwards
 func cleanupNetwork(ctx context.Context, container containerd.Container, globalOpts types.GlobalCommandOptions) error {
 	return rootlessutil.WithDetachedNetNSIfAny(func() error {
-		// retrieve info to get current active port mappings
-		info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
+		// retrieve current active port mappings
+		dataStore, err := clientutil.DataStore(globalOpts.DataRoot, globalOpts.Address)
 		if err != nil {
 			return err
 		}
-		ports, portErr := portutil.ParsePortsLabel(info.Labels)
-		if portErr != nil {
-			return fmt.Errorf("no oci spec: %q", portErr)
+		containerLabels, err := container.Labels(ctx)
+		if err != nil {
+			return err
+		}
+		ports, err := portutil.LoadPortMappings(dataStore, globalOpts.Namespace, container.ID(), containerLabels)
+		if err != nil {
+			return fmt.Errorf("no oci spec: %q", err)
 		}
 		portMappings := []cni.NamespaceOpts{
 			cni.WithCapabilityPortMap(ports),
