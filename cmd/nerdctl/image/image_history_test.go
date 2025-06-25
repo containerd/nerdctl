@@ -44,6 +44,43 @@ type historyObj struct {
 	Comment      string
 }
 
+const createdAt1 = "2021-03-31T10:21:21-07:00"
+const createdAt2 = "2021-03-31T10:21:23-07:00"
+
+// Expected content of the common image on arm64
+var (
+	createdAtTime, _ = time.Parse(time.RFC3339, createdAt2)
+	expectedHistory  = []historyObj{
+		{
+			CreatedBy:    "/bin/sh -c #(nop)  CMD [\"/bin/sh\"]",
+			Size:         "0B",
+			CreatedAt:    createdAt2,
+			Snapshot:     "<missing>",
+			Comment:      "",
+			CreatedSince: formatter.TimeSinceInHuman(createdAtTime),
+		},
+		{
+			CreatedBy:    "/bin/sh -c #(nop) ADD file:3b16ffee2b26d8af5…",
+			Size:         "5.947MB",
+			CreatedAt:    createdAt1,
+			Snapshot:     "sha256:56bf55b8eed1f0b4794a30386e4d1d3da949c…",
+			Comment:      "",
+			CreatedSince: formatter.TimeSinceInHuman(createdAtTime),
+		},
+	}
+	expectedHistoryNoTrunc = []historyObj{
+		{
+			Snapshot: "<missing>",
+			Size:     "0",
+		},
+		{
+			Snapshot:  "sha256:56bf55b8eed1f0b4794a30386e4d1d3da949c25bcb5155e898097cd75dc77c2a",
+			CreatedBy: "/bin/sh -c #(nop) ADD file:3b16ffee2b26d8af5db152fcc582aaccd9e1ec9e3343874e9969a205550fe07d in / ",
+			Size:      "5947392",
+		},
+	}
+)
+
 func decode(stdout string) ([]historyObj, error) {
 	dec := json.NewDecoder(strings.NewReader(stdout))
 	object := []historyObj{}
@@ -96,35 +133,35 @@ func TestImageHistory(t *testing.T) {
 					assert.NilError(t, err, "decode should not fail")
 					assert.Equal(t, len(history), 2, "history should be 2 in length")
 
-					localTimeL1, _ := time.Parse(time.RFC3339, "2021-03-31T10:21:23-07:00")
-					localTimeL2, _ := time.Parse(time.RFC3339, "2021-03-31T10:21:21-07:00")
-					compTime1, _ := time.Parse(time.RFC3339, history[0].CreatedAt)
-					compTime2, _ := time.Parse(time.RFC3339, history[1].CreatedAt)
-					assert.Equal(t, compTime1.UTC().String(), localTimeL1.UTC().String())
-					assert.Equal(t, history[0].CreatedBy, "/bin/sh -c #(nop)  CMD [\"/bin/sh\"]")
-					assert.Equal(t, compTime2.UTC().String(), localTimeL2.UTC().String())
-					assert.Equal(t, history[1].CreatedBy, "/bin/sh -c #(nop) ADD file:3b16ffee2b26d8af5…")
+					h0Time, _ := time.Parse(time.RFC3339, history[0].CreatedAt)
+					h1Time, _ := time.Parse(time.RFC3339, history[1].CreatedAt)
+					comp0Time, _ := time.Parse(time.RFC3339, expectedHistory[0].CreatedAt)
+					comp1Time, _ := time.Parse(time.RFC3339, expectedHistory[1].CreatedAt)
 
-					assert.Equal(t, history[0].Size, "0B")
-					assert.Equal(t, history[0].CreatedSince, formatter.TimeSinceInHuman(compTime1))
-					assert.Equal(t, history[0].Snapshot, "<missing>")
-					assert.Equal(t, history[0].Comment, "")
+					assert.Equal(t, h0Time.UTC().String(), comp0Time.UTC().String())
+					assert.Equal(t, history[0].CreatedBy, expectedHistory[0].CreatedBy)
+					assert.Equal(t, history[0].Size, expectedHistory[0].Size)
+					assert.Equal(t, history[0].CreatedSince, expectedHistory[0].CreatedSince)
+					assert.Equal(t, history[0].Snapshot, expectedHistory[0].Snapshot)
+					assert.Equal(t, history[0].Comment, expectedHistory[0].Comment)
 
-					assert.Equal(t, history[1].Size, "5.947MB")
-					assert.Equal(t, history[1].CreatedSince, formatter.TimeSinceInHuman(compTime2))
-					assert.Equal(t, history[1].Snapshot, "sha256:56bf55b8eed1f0b4794a30386e4d1d3da949c…")
-					assert.Equal(t, history[1].Comment, "")
+					assert.Equal(t, h1Time.UTC().String(), comp1Time.UTC().String())
+					assert.Equal(t, history[1].CreatedBy, expectedHistory[1].CreatedBy)
+					assert.Equal(t, history[1].Size, expectedHistory[1].Size)
+					assert.Equal(t, history[1].CreatedSince, expectedHistory[1].CreatedSince)
+					assert.Equal(t, history[1].Snapshot, expectedHistory[1].Snapshot)
+					assert.Equal(t, history[1].Comment, expectedHistory[1].Comment)
 				}),
 			},
 			{
-				Description: "no human - dates and sizes and not prettyfied",
+				Description: "no human - dates and sizes are not prettyfied",
 				Command:     test.Command("image", "history", "--human=false", "--format=json", testutil.CommonImage),
 				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 					history, err := decode(stdout)
 					assert.NilError(t, err, "decode should not fail")
-					assert.Equal(t, history[0].Size, "0")
+					assert.Equal(t, history[0].Size, expectedHistoryNoTrunc[0].Size)
 					assert.Equal(t, history[0].CreatedSince, history[0].CreatedAt)
-					assert.Equal(t, history[1].Size, "5947392")
+					assert.Equal(t, history[1].Size, expectedHistoryNoTrunc[1].Size)
 					assert.Equal(t, history[1].CreatedSince, history[1].CreatedAt)
 				}),
 			},
@@ -134,22 +171,22 @@ func TestImageHistory(t *testing.T) {
 				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 					history, err := decode(stdout)
 					assert.NilError(t, err, "decode should not fail")
-					assert.Equal(t, history[1].Snapshot, "sha256:56bf55b8eed1f0b4794a30386e4d1d3da949c25bcb5155e898097cd75dc77c2a")
-					assert.Equal(t, history[1].CreatedBy, "/bin/sh -c #(nop) ADD file:3b16ffee2b26d8af5db152fcc582aaccd9e1ec9e3343874e9969a205550fe07d in / ")
+					assert.Equal(t, history[1].Snapshot, expectedHistoryNoTrunc[1].Snapshot)
+					assert.Equal(t, history[1].CreatedBy, expectedHistoryNoTrunc[1].CreatedBy)
 				}),
 			},
 			{
 				Description: "Quiet has no effect with format, so, go no-json, no-trunc",
 				Command:     test.Command("image", "history", "--human=false", "--no-trunc", "--quiet", testutil.CommonImage),
 				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
-					assert.Equal(t, stdout, "<missing>\nsha256:56bf55b8eed1f0b4794a30386e4d1d3da949c25bcb5155e898097cd75dc77c2a\n")
+					assert.Equal(t, stdout, expectedHistoryNoTrunc[0].Snapshot+"\n"+expectedHistoryNoTrunc[1].Snapshot+"\n")
 				}),
 			},
 			{
 				Description: "With quiet, trunc has no effect",
 				Command:     test.Command("image", "history", "--human=false", "--no-trunc", "--quiet", testutil.CommonImage),
 				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
-					assert.Equal(t, stdout, "<missing>\nsha256:56bf55b8eed1f0b4794a30386e4d1d3da949c25bcb5155e898097cd75dc77c2a\n")
+					assert.Equal(t, stdout, expectedHistoryNoTrunc[0].Snapshot+"\n"+expectedHistoryNoTrunc[1].Snapshot+"\n")
 				}),
 			},
 		},
