@@ -207,7 +207,7 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 				helpers.Ensure("run", "-d", "--name", data.Identifier(),
 					"--health-cmd", "exit 1",
 					"--health-interval", "1s",
-					"--health-start-period", "5s",
+					"--health-start-period", "60s",
 					"--health-retries", "2",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
 				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
