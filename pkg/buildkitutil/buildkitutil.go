@@ -60,6 +60,13 @@ func BuildctlBaseArgs(buildkitHost string) []string {
 }
 
 func GetBuildkitHost(namespace string) (string, error) {
+	if buildkitHost := os.Getenv("BUILDKIT_HOST"); buildkitHost != "" {
+		if _, err := pingBKDaemon(buildkitHost); err != nil {
+			return "", err
+		}
+		return buildkitHost, nil
+	}
+
 	paths, err := getBuildkitHostCandidates(namespace)
 	if err != nil {
 		return "", err
