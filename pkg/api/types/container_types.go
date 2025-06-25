@@ -396,6 +396,8 @@ type ContainerCommitOptions struct {
 	Compression CompressionType
 	// Format specifies the image format for the committed image (docker or oci)
 	Format ImageFormat
+	// Embed EstargzOptions for eStargz conversion options
+	EstargzOptions
 }
 
 type CompressionType string

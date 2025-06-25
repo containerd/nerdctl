@@ -237,37 +237,6 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 	return types.ImageConvertOptions{
 		GOptions: globalOptions,
 		Format:   format,
-		// #region estargz flags
-		Estargz:                 estargz,
-		EstargzRecordIn:         estargzRecordIn,
-		EstargzCompressionLevel: estargzCompressionLevel,
-		EstargzChunkSize:        estargzChunkSize,
-		EstargzMinChunkSize:     estargzMinChunkSize,
-		EstargzExternalToc:      estargzExternalTOC,
-		EstargzKeepDiffID:       estargzKeepDiffID,
-		// #endregion
-		// #region zstd flags
-		Zstd:                 zstd,
-		ZstdCompressionLevel: zstdCompressionLevel,
-		// #endregion
-		// #region zstd:chunked flags
-		ZstdChunked:                 zstdchunked,
-		ZstdChunkedCompressionLevel: zstdChunkedCompressionLevel,
-		ZstdChunkedChunkSize:        zstdChunkedChunkSize,
-		ZstdChunkedRecordIn:         zstdChunkedRecordIn,
-		// #endregion
-		// #region nydus flags
-		Nydus:                 nydus,
-		NydusBuilderPath:      nydusBuilderPath,
-		NydusWorkDir:          nydusWorkDir,
-		NydusPrefetchPatterns: nydusPrefetchPatterns,
-		NydusCompressor:       nydusCompressor,
-		// #endregion
-		// #region overlaybd flags
-		Overlaybd:      overlaybd,
-		OverlayFsType:  overlaybdFsType,
-		OverlaydbDBStr: overlaybdDbstr,
-		// #endregion
 		// #region generic flags
 		Uncompress: uncompress,
 		Oci:        oci,
@@ -276,6 +245,38 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 		Platforms:    platforms,
 		AllPlatforms: allPlatforms,
 		// #endregion
+		// Embed image format options
+		EstargzOptions: types.EstargzOptions{
+			Estargz:                 estargz,
+			EstargzRecordIn:         estargzRecordIn,
+			EstargzCompressionLevel: estargzCompressionLevel,
+			EstargzChunkSize:        estargzChunkSize,
+			EstargzMinChunkSize:     estargzMinChunkSize,
+			EstargzExternalToc:      estargzExternalTOC,
+			EstargzKeepDiffID:       estargzKeepDiffID,
+		},
+		ZstdOptions: types.ZstdOptions{
+			Zstd:                 zstd,
+			ZstdCompressionLevel: zstdCompressionLevel,
+		},
+		ZstdChunkedOptions: types.ZstdChunkedOptions{
+			ZstdChunked:                 zstdchunked,
+			ZstdChunkedCompressionLevel: zstdChunkedCompressionLevel,
+			ZstdChunkedChunkSize:        zstdChunkedChunkSize,
+			ZstdChunkedRecordIn:         zstdChunkedRecordIn,
+		},
+		NydusOptions: types.NydusOptions{
+			Nydus:                 nydus,
+			NydusBuilderPath:      nydusBuilderPath,
+			NydusWorkDir:          nydusWorkDir,
+			NydusPrefetchPatterns: nydusPrefetchPatterns,
+			NydusCompressor:       nydusCompressor,
+		},
+		OverlaybdOptions: types.OverlaybdOptions{
+			Overlaybd:      overlaybd,
+			OverlayFsType:  overlaybdFsType,
+			OverlaydbDBStr: overlaybdDbstr,
+		},
 		Stdout: cmd.OutOrStdout(),
 	}, nil
 }
