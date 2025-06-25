@@ -539,7 +539,7 @@ func createAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	netFlags, err := loadNetworkFlags(cmd)
+	netFlags, err := loadNetworkFlags(cmd, createOpt.GOptions)
 	if err != nil {
 		return fmt.Errorf("failed to load networking flags: %w", err)
 	}
