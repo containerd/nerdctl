@@ -40,7 +40,6 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
-	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
@@ -747,13 +746,6 @@ func Identifier(t testing.TB) string {
 		s = "nerdctl-" + digest.SHA256.FromString(t.Name()).Encoded()
 	}
 	return s
-}
-
-// ImageRepo returns the image repo that can be used to, e.g, validate output
-// from `nerdctl images`.
-func ImageRepo(s string) string {
-	repo, _ := imgutil.ParseRepoTag(s)
-	return repo
 }
 
 // RegisterBuildCacheCleanup adds a 'builder prune --all --force' cleanup function
