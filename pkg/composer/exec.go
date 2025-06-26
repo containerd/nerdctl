@@ -49,6 +49,11 @@ type ExecOptions struct {
 // Exec executes a given command on a running container specified by
 // `ServiceName` (and `Index` if it has multiple instances).
 func (c *Composer) Exec(ctx context.Context, eo ExecOptions) error {
+	// Exec does not need to lock and should allow concurrency.
+	if err := Unlock(); err != nil {
+		return err
+	}
+
 	containers, err := c.Containers(ctx, eo.ServiceName)
 	if err != nil {
 		return fmt.Errorf("fail to get containers for service %s: %w", eo.ServiceName, err)
