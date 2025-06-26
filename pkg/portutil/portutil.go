@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/labels"
-	"github.com/containerd/nerdctl/v2/pkg/netutil/networkstore"
+	"github.com/containerd/nerdctl/v2/pkg/portutil/portstore"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
@@ -141,25 +141,25 @@ func ParseFlagP(s string) ([]cni.PortMapping, error) {
 }
 
 func GeneratePortMappingsConfig(dataStore, namespace, id string, portMappings []cni.PortMapping) error {
-	ns, err := networkstore.New(dataStore, namespace, id)
+	ps, err := portstore.New(dataStore, namespace, id)
 	if err != nil {
 		return err
 	}
-	return ns.Acquire(portMappings)
+	return ps.Acquire(portMappings)
 }
 
 func LoadPortMappings(dataStore, namespace, id string, containerLabels map[string]string) ([]cni.PortMapping, error) {
 	var ports []cni.PortMapping
 
-	ns, err := networkstore.New(dataStore, namespace, id)
+	ps, err := portstore.New(dataStore, namespace, id)
 	if err != nil {
 		return ports, err
 	}
-	if err = ns.Load(); err != nil {
+	if err = ps.Load(); err != nil {
 		return ports, err
 	}
-	if len(ns.PortMappings) != 0 {
-		return ns.PortMappings, nil
+	if len(ps.PortMappings) != 0 {
+		return ps.PortMappings, nil
 	}
 
 	portsJSON := containerLabels[labels.Ports]

@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package networkstore
+package portstore
 
 import (
 	"encoding/json"
@@ -32,12 +32,12 @@ const (
 	portsFileName         = "ports.json"
 )
 
-var ErrNetworkStore = errors.New("network-store error")
+var ErrPortStore = errors.New("port-store error")
 
-func New(dataStore, namespace, containerID string) (ns *NetworkStore, err error) {
+func New(dataStore, namespace, containerID string) (ns *PortStore, err error) {
 	defer func() {
 		if err != nil {
-			err = errors.Join(ErrNetworkStore, err)
+			err = errors.Join(ErrPortStore, err)
 		}
 	}()
 
@@ -50,21 +50,21 @@ func New(dataStore, namespace, containerID string) (ns *NetworkStore, err error)
 		return nil, err
 	}
 
-	return &NetworkStore{
+	return &PortStore{
 		safeStore: st,
 	}, nil
 }
 
-type NetworkStore struct {
+type PortStore struct {
 	safeStore store.Store
 
 	PortMappings []cni.PortMapping
 }
 
-func (ns *NetworkStore) Acquire(portMappings []cni.PortMapping) (err error) {
+func (ps *PortStore) Acquire(portMappings []cni.PortMapping) (err error) {
 	defer func() {
 		if err != nil {
-			err = errors.Join(ErrNetworkStore, err)
+			err = errors.Join(ErrPortStore, err)
 		}
 	}()
 
@@ -73,25 +73,25 @@ func (ns *NetworkStore) Acquire(portMappings []cni.PortMapping) (err error) {
 		return fmt.Errorf("failed to marshal port mappings to JSON: %w", err)
 	}
 
-	return ns.safeStore.WithLock(func() error {
-		return ns.safeStore.Set(portsJSON, portsFileName)
+	return ps.safeStore.WithLock(func() error {
+		return ps.safeStore.Set(portsJSON, portsFileName)
 	})
 }
 
-func (ns *NetworkStore) Load() (err error) {
+func (ps *PortStore) Load() (err error) {
 	defer func() {
 		if err != nil {
-			err = errors.Join(ErrNetworkStore, err)
+			err = errors.Join(ErrPortStore, err)
 		}
 	}()
 
-	return ns.safeStore.WithLock(func() error {
-		doesExist, err := ns.safeStore.Exists(portsFileName)
+	return ps.safeStore.WithLock(func() error {
+		doesExist, err := ps.safeStore.Exists(portsFileName)
 		if err != nil || !doesExist {
 			return err
 		}
 
-		data, err := ns.safeStore.Get(portsFileName)
+		data, err := ps.safeStore.Get(portsFileName)
 		if err != nil {
 			if errors.Is(err, store.ErrNotFound) {
 				err = nil
@@ -103,7 +103,7 @@ func (ns *NetworkStore) Load() (err error) {
 		if err := json.Unmarshal(data, &ports); err != nil {
 			return fmt.Errorf("failed to parse port mappings %v: %w", ports, err)
 		}
-		ns.PortMappings = ports
+		ps.PortMappings = ports
 
 		return err
 	})
