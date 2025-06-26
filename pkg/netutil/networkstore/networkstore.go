@@ -29,7 +29,7 @@ import (
 
 const (
 	containersDirBaseName = "containers"
-	networkConfigName     = "network-config.json"
+	portsFileName         = "ports.json"
 )
 
 var ErrNetworkStore = errors.New("network-store error")
@@ -74,7 +74,7 @@ func (ns *NetworkStore) Acquire(portMappings []cni.PortMapping) (err error) {
 	}
 
 	return ns.safeStore.WithLock(func() error {
-		return ns.safeStore.Set(portsJSON, networkConfigName)
+		return ns.safeStore.Set(portsJSON, portsFileName)
 	})
 }
 
@@ -86,12 +86,12 @@ func (ns *NetworkStore) Load() (err error) {
 	}()
 
 	return ns.safeStore.WithLock(func() error {
-		doesExist, err := ns.safeStore.Exists(networkConfigName)
+		doesExist, err := ns.safeStore.Exists(portsFileName)
 		if err != nil || !doesExist {
 			return err
 		}
 
-		data, err := ns.safeStore.Get(networkConfigName)
+		data, err := ns.safeStore.Get(portsFileName)
 		if err != nil {
 			if errors.Is(err, store.ErrNotFound) {
 				err = nil

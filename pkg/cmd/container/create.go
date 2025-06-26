@@ -392,7 +392,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 
 	err = portutil.GeneratePortMappingsConfig(dataStore, options.GOptions.Namespace, id, netLabelOpts.PortMappings)
 	if err != nil {
-		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("Error writing to network-config.json: %v", err)
+		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("Error writing to ports.json: %v", err)
 	}
 
 	opts = append(opts, propagateInternalContainerdLabelsToOCIAnnotations(),
