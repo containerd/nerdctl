@@ -19,6 +19,8 @@ package issues
 import (
 	"testing"
 
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
@@ -57,4 +59,20 @@ func TestIssue108(t *testing.T) {
 	}
 
 	testCase.Run(t)
+}
+
+func TestFail(t *testing.T) {
+	assert.Assert(t, false, "boo")
+}
+
+func TestSkip(t *testing.T) {
+	t.Skip("skip this test is likely to fail")
+}
+
+func TestFlaky(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.IsFlaky("glndkjnf")
+	testCase.Run(t)
+
+	assert.Assert(t, true, "boo")
 }

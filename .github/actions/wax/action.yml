@@ -1,0 +1,49 @@
+name: "Wax: commenting component"
+
+description: "A simple reporter adding or updating a comment on PRs."
+
+inputs:
+  body:
+    default: "Body of the comment"
+    description: "Body of the comment"
+  github-token:
+    description: "Auth token"
+
+runs:
+  using: composite
+  steps:
+    - name: Commenting
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{inputs.github-token}}
+        script: |
+          let comments = await github.rest.issues.listComments({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          })
+          
+          let found = 0
+          let body = ""
+          comments.data.forEach(function(comment){
+            if (comment.user.login === context.repo.login) {
+              found = comment.id
+              body = comment.body
+            }
+          })
+          
+          if (found === 0){
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "${{ inputs.body }}\n"
+            })
+          }else{
+            github.rest.issues.updateComment({
+              comment_id: found,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body + "\n${{ inputs.body }}\n"
+            })
+          }

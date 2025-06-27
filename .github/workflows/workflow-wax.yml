@@ -1,0 +1,82 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  test-wax:
+    name: "wax-test${{ inputs.hack }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+          - runner: macos-15
+    runs-on: "${{ matrix.runner }}"
+    outputs:
+      artifact: ${{ steps.artifact-upload.outputs.artifact-url }}
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 1
+      - name: "Init: install go"
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5  # v5.5.0
+        with:
+          go-version: 1.24
+          check-latest: true
+      - name: Setup
+        run: |
+          make -f ./mod/wax/Makefile install-dev-tools
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          mkdir -p ~/report
+      - name: Test
+        run: |
+          cd ./mod/wax
+          # Source helpers
+          . ./scripts/collector.sh
+          # Run and capture exit code
+          gotestsum --format=testname --packages=./cmd/wax --rerun-fails=2 --jsonfile=$HOME/report/gotestsum.log || ret=$?
+          # Collect logs and metadata
+          collect::logs ~/report
+          collect::metadata \
+            "runner=${{ matrix.runner }}" \
+            "attempt=$GITHUB_RUN_ATTEMPT" \
+            "sha=$GITHUB_SHA" \
+            "id=$GITHUB_RUN_ID" \
+            "number=$GITHUB_RUN_NUMBER" \
+              > ~/report/metadata.json
+          exit "$ret"
+      - name: "Wrap: upload artifact"
+        id: artifact-upload
+        if: ${{ failure() || success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          path: ~/report/*
+          retention-days: 1
+          name: wax-${{ matrix.runner }}
+
+  reporter:
+    if: ${{ failure() || success() }}
+    name: "reporter${{ inputs.hack }}"
+    needs:
+      - test-wax
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v4
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ~/report
+      - name: Process
+        run: |
+          # git show --name-only --pretty=""
+          ls -lAR ~/report || true
+          exit 1
