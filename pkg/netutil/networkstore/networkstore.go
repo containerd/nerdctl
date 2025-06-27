@@ -55,26 +55,30 @@ func New(dataStore, namespace, containerID string) (ns *NetworkStore, err error)
 	}, nil
 }
 
+type NetworkConfig struct {
+	PortMappings []cni.PortMapping `json:"portMappings,omitempty"`
+}
+
 type NetworkStore struct {
 	safeStore store.Store
 
-	PortMappings []cni.PortMapping
+	NetConf NetworkConfig
 }
 
-func (ns *NetworkStore) Acquire(portMappings []cni.PortMapping) (err error) {
+func (ns *NetworkStore) Acquire(netConf NetworkConfig) (err error) {
 	defer func() {
 		if err != nil {
 			err = errors.Join(ErrNetworkStore, err)
 		}
 	}()
 
-	portsJSON, err := json.Marshal(portMappings)
+	netConfJSON, err := json.Marshal(netConf)
 	if err != nil {
-		return fmt.Errorf("failed to marshal port mappings to JSON: %w", err)
+		return fmt.Errorf("failed to marshal network config to JSON: %w", err)
 	}
 
 	return ns.safeStore.WithLock(func() error {
-		return ns.safeStore.Set(portsJSON, networkConfigName)
+		return ns.safeStore.Set(netConfJSON, networkConfigName)
 	})
 }
 
@@ -99,11 +103,11 @@ func (ns *NetworkStore) Load() (err error) {
 			return err
 		}
 
-		var ports []cni.PortMapping
-		if err := json.Unmarshal(data, &ports); err != nil {
-			return fmt.Errorf("failed to parse port mappings %v: %w", ports, err)
+		var netConf NetworkConfig
+		if err := json.Unmarshal(data, &netConf); err != nil {
+			return fmt.Errorf("failed to parse network config %v: %w", netConf, err)
 		}
-		ns.PortMappings = ports
+		ns.NetConf = netConf
 
 		return err
 	})

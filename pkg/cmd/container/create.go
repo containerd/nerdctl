@@ -59,6 +59,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/maputil"
 	"github.com/containerd/nerdctl/v2/pkg/mountutil"
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
+	"github.com/containerd/nerdctl/v2/pkg/netutil/networkstore"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/portutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
@@ -390,7 +391,10 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	cOpts = append(cOpts, ilOpt)
 
-	err = portutil.GeneratePortMappingsConfig(dataStore, options.GOptions.Namespace, id, netLabelOpts.PortMappings)
+	netConf := networkstore.NetworkConfig{
+		PortMappings: netLabelOpts.PortMappings,
+	}
+	err = portutil.StoreNetworkConfig(dataStore, options.GOptions.Namespace, id, netConf)
 	if err != nil {
 		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), fmt.Errorf("Error writing to network-config.json: %v", err)
 	}

@@ -140,12 +140,12 @@ func ParseFlagP(s string) ([]cni.PortMapping, error) {
 	return mr, nil
 }
 
-func GeneratePortMappingsConfig(dataStore, namespace, id string, portMappings []cni.PortMapping) error {
+func StoreNetworkConfig(dataStore, namespace, id string, netConf networkstore.NetworkConfig) error {
 	ns, err := networkstore.New(dataStore, namespace, id)
 	if err != nil {
 		return err
 	}
-	return ns.Acquire(portMappings)
+	return ns.Acquire(netConf)
 }
 
 func LoadPortMappings(dataStore, namespace, id string, containerLabels map[string]string) ([]cni.PortMapping, error) {
@@ -158,8 +158,8 @@ func LoadPortMappings(dataStore, namespace, id string, containerLabels map[strin
 	if err = ns.Load(); err != nil {
 		return ports, err
 	}
-	if len(ns.PortMappings) != 0 {
-		return ns.PortMappings, nil
+	if len(ns.NetConf.PortMappings) != 0 {
+		return ns.NetConf.PortMappings, nil
 	}
 
 	portsJSON := containerLabels[labels.Ports]
