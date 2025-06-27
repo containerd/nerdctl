@@ -99,3 +99,12 @@ jobs:
           build linux s390x
 
           [ ! "$failure" ] || exit 1
+
+      - if: ${{ env.GO_VERSION != '' }}
+        name: "Run: make binaries with custom BUILDTAGS"
+        run: |
+          set -eux
+          # no_ipfs: make sure it does not incur any IPFS-related dependency
+          go mod vendor
+          rm -rf vendor/github.com/ipfs vendor/github.com/multiformats
+          BUILDTAGS=no_ipfs make binaries

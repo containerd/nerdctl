@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/distribution/reference"
-	"github.com/ipfs/go-cid"
 	"github.com/opencontainers/go-digest"
 )
 
@@ -108,9 +107,9 @@ func Parse(rawRef string) (*ImageReference, error) {
 		// before parsing the image reference specified in its OCI image manifest.
 		return nil, ErrLoadOCIArchiveRequired
 	}
-	if decodedCID, err := cid.Decode(rawRef); err == nil {
+	if decodedCID, err := decodeCid(rawRef); err == nil {
 		ir.Protocol = IPFSProtocol
-		rawRef = decodedCID.String()
+		rawRef = decodedCID
 		ir.Path = rawRef
 		return ir, nil
 	}
