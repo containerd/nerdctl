@@ -1,3 +1,5 @@
+//go:build !no_ipfs
+
 /*
    Copyright The containerd Authors.
 
@@ -14,21 +16,14 @@
    limitations under the License.
 */
 
-package ipfs
+package referenceutil
 
-import (
-	"time"
-)
+import "github.com/ipfs/go-cid"
 
-// RegistryOptions represents options to configure the registry.
-type RegistryOptions struct {
-
-	// Times to retry query on IPFS. Zero or lower value means no retry.
-	ReadRetryNum int
-
-	// ReadTimeout is timeout duration of a read request to IPFS. Zero means no timeout.
-	ReadTimeout time.Duration
-
-	// IpfsPath is the IPFS_PATH value to be used for ipfs command.
-	IpfsPath string
+func decodeCid(v string) (string, error) {
+	c, err := cid.Decode(v)
+	if err != nil {
+		return "", err
+	}
+	return c.String(), nil
 }

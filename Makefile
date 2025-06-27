@@ -46,6 +46,13 @@ LINT_COMMIT_RANGE ?= main..HEAD
 GO_BUILD_LDFLAGS ?= -s -w
 GO_BUILD_FLAGS ?=
 
+# BUILDTAGS variable names correspond to containerd
+ifdef BUILDTAGS
+    GO_BUILDTAGS = ${BUILDTAGS}
+endif
+GO_BUILDTAGS ?=
+GO_TAGS=$(if $(GO_BUILDTAGS),-tags "$(strip $(GO_BUILDTAGS))",)
+
 ##########################
 # Helpers
 ##########################
@@ -54,7 +61,7 @@ ifdef VERBOSE
 	VERBOSE_FLAG_LONG := --verbose
 endif
 
-export GO_BUILD=CGO_ENABLED=0 GOOS=$(GOOS) $(GO) -C $(MAKEFILE_DIR) build -ldflags "$(GO_BUILD_LDFLAGS) $(VERBOSE_FLAG) -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
+export GO_BUILD=CGO_ENABLED=0 GOOS=$(GOOS) $(GO) -C $(MAKEFILE_DIR) build $(GO_TAGS) -ldflags "$(GO_BUILD_LDFLAGS) $(VERBOSE_FLAG) -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
 
 ifndef NO_COLOR
     NC := \033[0m
