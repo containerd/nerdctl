@@ -1,3 +1,5 @@
+//go:build !no_ipfs
+
 /*
    Copyright The containerd Authors.
 
