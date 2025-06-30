@@ -145,6 +145,18 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 	if err != nil {
 		return types.GlobalCommandOptions{}, err
 	}
+	dns, err := cmd.Flags().GetStringSlice("global-dns")
+	if err != nil {
+		return types.GlobalCommandOptions{}, err
+	}
+	dnsOpts, err := cmd.Flags().GetStringSlice("global-dns-opts")
+	if err != nil {
+		return types.GlobalCommandOptions{}, err
+	}
+	dnsSearch, err := cmd.Flags().GetStringSlice("global-dns-search")
+	if err != nil {
+		return types.GlobalCommandOptions{}, err
+	}
 
 	// Point to dataRoot for filesystem-helpers implementing rollback / backups.
 	err = pkg.InitFS(dataRoot)
@@ -169,6 +181,9 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		BridgeIP:         bridgeIP,
 		KubeHideDupe:     kubeHideDupe,
 		CDISpecDirs:      cdiSpecDirs,
+		DNS:              dns,
+		DNSOpts:          dnsOpts,
+		DNSSearch:        dnsSearch,
 	}, nil
 }
 
