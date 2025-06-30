@@ -48,6 +48,9 @@ func CommitCommand() *cobra.Command {
 	cmd.Flags().Int("estargz-compression-level", 9, "eStargz compression level (1-9)")
 	cmd.Flags().Int("estargz-chunk-size", 0, "eStargz chunk size")
 	cmd.Flags().Int("estargz-min-chunk-size", 0, "The minimal number of bytes of data must be written in one gzip stream")
+	cmd.Flags().Bool("zstdchunked", false, "Convert the committed layer to zstd:chunked for lazy pulling")
+	cmd.Flags().Int("zstdchunked-compression-level", 3, "zstd:chunked compression level")
+	cmd.Flags().Int("zstdchunked-chunk-size", 0, "zstd:chunked chunk size")
 	return cmd
 }
 
@@ -107,6 +110,24 @@ func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 		return types.ContainerCommitOptions{}, err
 	}
 
+	zstdchunked, err := cmd.Flags().GetBool("zstdchunked")
+	if err != nil {
+		return types.ContainerCommitOptions{}, err
+	}
+	zstdchunkedCompressionLevel, err := cmd.Flags().GetInt("zstdchunked-compression-level")
+	if err != nil {
+		return types.ContainerCommitOptions{}, err
+	}
+	zstdchunkedChunkSize, err := cmd.Flags().GetInt("zstdchunked-chunk-size")
+	if err != nil {
+		return types.ContainerCommitOptions{}, err
+	}
+
+	// estargz and zstdchunked are mutually exclusive
+	if estargz && zstdchunked {
+		return types.ContainerCommitOptions{}, errors.New("options --estargz and --zstdchunked lead to conflict, only one of them can be used")
+	}
+
 	return types.ContainerCommitOptions{
 		Stdout:      cmd.OutOrStdout(),
 		GOptions:    globalOptions,
@@ -121,6 +142,11 @@ func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 			EstargzCompressionLevel: estargzCompressionLevel,
 			EstargzChunkSize:        estargzChunkSize,
 			EstargzMinChunkSize:     estargzMinChunkSize,
+		},
+		ZstdChunkedOptions: types.ZstdChunkedOptions{
+			ZstdChunked:                 zstdchunked,
+			ZstdChunkedCompressionLevel: zstdchunkedCompressionLevel,
+			ZstdChunkedChunkSize:        zstdchunkedChunkSize,
 		},
 	}, nil
 }
