@@ -1,3 +1,5 @@
+//go:build no_ipfs
+
 /*
    Copyright The containerd Authors.
 
@@ -17,18 +19,9 @@
 package ipfs
 
 import (
-	"time"
+	"net/http"
 )
 
-// RegistryOptions represents options to configure the registry.
-type RegistryOptions struct {
-
-	// Times to retry query on IPFS. Zero or lower value means no retry.
-	ReadRetryNum int
-
-	// ReadTimeout is timeout duration of a read request to IPFS. Zero means no timeout.
-	ReadTimeout time.Duration
-
-	// IpfsPath is the IPFS_PATH value to be used for ipfs command.
-	IpfsPath string
+func NewRegistry(options RegistryOptions) (http.Handler, error) {
+	return nil, ErrNotImplemented
 }
