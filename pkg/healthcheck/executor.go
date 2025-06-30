@@ -89,8 +89,9 @@ func probeHealthCheck(ctx context.Context, task containerd.Task, hc *Healthcheck
 	select {
 	case <-time.After(hc.Timeout):
 		_ = process.Kill(ctx, syscall.SIGKILL)
-		go func() { <-exitStatusC }()
-
+		<-exitStatusC
+		process.IO().Wait()
+		process.IO().Close()
 		msg := fmt.Sprintf("Health check exceeded timeout (%v)", hc.Timeout)
 		if out := outputBuf.String(); len(out) > 0 {
 			msg = fmt.Sprintf("Health check exceeded timeout (%v): %s", hc.Timeout, out)
@@ -105,6 +106,8 @@ func probeHealthCheck(ctx context.Context, task containerd.Task, hc *Healthcheck
 		}, nil
 
 	case exitStatus := <-exitStatusC:
+		process.IO().Wait()
+		process.IO().Close()
 		code, _, _ := exitStatus.Result()
 		return &HealthcheckResult{
 			ExitCode: int(code),
