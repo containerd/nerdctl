@@ -117,3 +117,8 @@ github::timer::format() {
   [[ "$m" == 0 ]] || printf "%d minutes " "$m"
   printf '%d seconds' "$s"
 }
+
+#          echo "::error title=ErrorReport::MEH .github/workflows/job-test-in-host.yml${{steps.artifact-upload.outputs.artifact-url}}"
+#          echo "::notice title=NoticeReport::SHEESH ${{steps.artifact-upload.outputs.artifact-url}}"
+#          echo "::error file=cmd/nerdctl/main_test_test.go,line=1,endLine=10,title=AgainErrorReport::FOO ${{steps.artifact-upload.outputs.artifact-url}}"
+#          echo "::error file=cmd/nerdctl/main_test.go,line=38,endLine=41,title=AgainErrorReport::BLA ${{steps.artifact-upload.outputs.artifact-url}}"

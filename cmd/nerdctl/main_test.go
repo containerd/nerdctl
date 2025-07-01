@@ -33,6 +33,11 @@ func TestMain(m *testing.M) {
 	testutil.M(m)
 }
 
+func TestWax(t *testing.T) {
+	t.Log("This test is voluntarily failing")
+	t.FailNow()
+}
+
 // TestUnknownCommand tests https://github.com/containerd/nerdctl/issues/487
 func TestUnknownCommand(t *testing.T) {
 	testCase := nerdtest.Setup()

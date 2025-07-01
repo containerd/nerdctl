@@ -147,3 +147,33 @@ jobs:
       containerd-service-sha: 1941362cbaa89dd591b99c32b050d82c583d3cd2e5fa63085d7017457ec5fca8
       linux-cni-version: v1.7.1
       linux-cni-sha: 1a28a0506bfe5bcdc981caf1a49eeab7e72da8321f1119b7be85f22621013098
+
+  reporter:
+    if: ${{ failure() || success() }}
+    name: "reporter${{ inputs.hack }}"
+    needs:
+      - test-integration-host
+      - test-integration-container
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: "Init: install go"
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5  # v5.5.0
+        with:
+          go-version: 1.24
+          check-latest: true
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ~/report
+      - name: Process
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd ./mod/wax
+          go build -o ../../wax ./cmd/wax
+          cd -
+          ./wax ~/report
