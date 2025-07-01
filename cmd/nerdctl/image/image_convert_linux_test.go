@@ -102,7 +102,7 @@ func TestImageConvert(t *testing.T) {
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("image", "convert", "--soci",
 						"--soci-span-size", "2097152",
-						"--soci-min-layer-size", "20971520",
+						"--soci-min-layer-size", "0",
 						testutil.CommonImage, data.Identifier("converted-image"))
 				},
 				Expected: test.Expects(0, nil, nil),

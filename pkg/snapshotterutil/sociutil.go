@@ -27,14 +27,37 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+
 	"github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
+// setupSociCommand creates and sets up a SOCI command with common configuration
+func setupSociCommand(gOpts types.GlobalCommandOptions) (*exec.Cmd, error) {
+	sociExecutable, err := exec.LookPath("soci")
+	if err != nil {
+		log.L.WithError(err).Error("soci executable not found in path $PATH")
+		log.L.Info("you might consider installing soci from: https://github.com/awslabs/soci-snapshotter/blob/main/docs/install.md")
+		return nil, err
+	}
+
+	sociCmd := exec.Command(sociExecutable)
+	sociCmd.Env = os.Environ()
+
+	// #region for global flags.
+	if gOpts.Address != "" {
+		sociCmd.Args = append(sociCmd.Args, "--address", gOpts.Address)
+	}
+	if gOpts.Namespace != "" {
+		sociCmd.Args = append(sociCmd.Args, "--namespace", gOpts.Namespace)
+	}
+
+	return sociCmd, nil
+}
+
 // CheckSociVersion checks if the SOCI binary version is at least the required version
-// This function can be used by both production code and tests
 func CheckSociVersion(requiredVersion string) error {
 	sociExecutable, err := exec.LookPath("soci")
 	if err != nil {
@@ -59,47 +82,25 @@ func CheckSociVersion(requiredVersion string) error {
 	}
 
 	// Extract version number
-	installedVersion := matches[1]
+	installedVersionStr := matches[1]
 
-	// Compare versions using semver
-	v1, err := semver.NewVersion(installedVersion)
+	// Parse versions using semver package
+	installedVersion, err := semver.NewVersion(installedVersionStr)
 	if err != nil {
-		return fmt.Errorf("failed to parse installed version %s: %v", installedVersion, err)
+		return fmt.Errorf("failed to parse installed SOCI version: %w", err)
 	}
 
-	v2, err := semver.NewVersion(requiredVersion)
+	reqVersion, err := semver.NewVersion(requiredVersion)
 	if err != nil {
-		return fmt.Errorf("failed to parse minimum required version %s: %v", requiredVersion, err)
+		return fmt.Errorf("failed to parse required SOCI version: %w", err)
 	}
 
-	if v1.LessThan(v2) {
-		return fmt.Errorf("SOCI version %s is lower than the required version %s for the convert operation", installedVersion, requiredVersion)
+	// Compare versions
+	if installedVersion.LessThan(reqVersion) {
+		return fmt.Errorf("SOCI version %s is lower than the required version %s for the convert operation", installedVersion.String(), reqVersion.String())
 	}
 
 	return nil
-}
-
-// setupSociCommand creates and sets up a SOCI command with common configuration
-func setupSociCommand(gOpts types.GlobalCommandOptions) (*exec.Cmd, error) {
-	sociExecutable, err := exec.LookPath("soci")
-	if err != nil {
-		log.L.WithError(err).Error("soci executable not found in path $PATH")
-		log.L.Info("you might consider installing soci from: https://github.com/awslabs/soci-snapshotter/blob/main/docs/install.md")
-		return nil, err
-	}
-
-	sociCmd := exec.Command(sociExecutable)
-	sociCmd.Env = os.Environ()
-
-	// #region for global flags.
-	if gOpts.Address != "" {
-		sociCmd.Args = append(sociCmd.Args, "--address", gOpts.Address)
-	}
-	if gOpts.Namespace != "" {
-		sociCmd.Args = append(sociCmd.Args, "--namespace", gOpts.Namespace)
-	}
-
-	return sociCmd, nil
 }
 
 // ConvertSociIndexV2 converts an image to SOCI format and returns the converted image reference with digest
