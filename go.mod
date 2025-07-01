@@ -7,7 +7,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/Microsoft/hcsshim v0.13.0
-	github.com/compose-spec/compose-go/v2 v2.6.5 //gomodjail:unconfined
+	github.com/compose-spec/compose-go/v2 v2.7.1 //gomodjail:unconfined
 	github.com/containerd/accelerated-container-image v1.3.0
 	github.com/containerd/cgroups/v3 v3.0.5 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
