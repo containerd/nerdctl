@@ -134,6 +134,10 @@ func execActionWithContainer(ctx context.Context, client *containerd.Client, con
 		return nil
 	}
 	status := <-statusC
+
+	process.IO().Wait()
+	process.IO().Close()
+
 	code, _, err := status.Result()
 	if err != nil {
 		return err
