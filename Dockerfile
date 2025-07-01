@@ -329,7 +329,9 @@ COPY --from=ghcr.io/sigstore/cosign/cosign:v2.2.3@sha256:8fc9cad121611e8479f65f7
 ARG SOCI_SNAPSHOTTER_VERSION
 RUN fname="soci-snapshotter-${SOCI_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
   curl -o "${fname}" -fsSL --proto '=https' --tlsv1.2 "https://github.com/awslabs/soci-snapshotter/releases/download/v${SOCI_SNAPSHOTTER_VERSION}/${fname}" && \
-  tar -C /usr/local/bin -xvf "${fname}" soci soci-snapshotter-grpc
+  tar -C /usr/local/bin -xvf "${fname}" soci soci-snapshotter-grpc && \
+  mkdir -p /etc/soci-snapshotter-grpc && \
+  touch /etc/soci-snapshotter-grpc/config.toml
 # enable offline ipfs for integration test
 COPY --from=build-kubo /out/${TARGETARCH:-amd64}/* /usr/local/bin/
 COPY ./Dockerfile.d/test-integration-etc_containerd-stargz-grpc_config.toml /etc/containerd-stargz-grpc/config.toml
