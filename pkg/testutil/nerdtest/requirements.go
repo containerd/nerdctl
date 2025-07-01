@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/snapshotterutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 )
@@ -416,44 +417,12 @@ var RemapIDs = &test.Requirement{
 func SociVersion(minVersion string) *test.Requirement {
 	return &test.Requirement{
 		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
-			sociExecutable, err := exec.LookPath("soci")
+			// Use the common CheckSociVersion function from snapshotterutil
+			err := snapshotterutil.CheckSociVersion(minVersion)
 			if err != nil {
-				return false, fmt.Sprintf("soci executable not found in path $PATH: %v", err)
+				return false, err.Error()
 			}
-
-			cmd := exec.Command(sociExecutable, "--version")
-			output, err := cmd.Output()
-			if err != nil {
-				return false, fmt.Sprintf("failed to get soci version: %v", err)
-			}
-
-			// Parse version from output
-			// Example output format: "soci version v0.9.0 737f61a3db40c386f997c1f126344158aa3ad43c"
-			versionStr := strings.TrimSpace(string(output))
-			parts := strings.Fields(versionStr)
-			if len(parts) < 3 {
-				return false, fmt.Sprintf("unexpected soci version output format: %s", versionStr)
-			}
-
-			// Extract version number without 'v' prefix
-			installedVersion := strings.TrimPrefix(parts[2], "v")
-
-			// Compare versions
-			v1, err := semver.NewVersion(installedVersion)
-			if err != nil {
-				return false, fmt.Sprintf("failed to parse installed version %s: %v", installedVersion, err)
-			}
-
-			v2, err := semver.NewVersion(minVersion)
-			if err != nil {
-				return false, fmt.Sprintf("failed to parse minimum required version %s: %v", minVersion, err)
-			}
-
-			if v1.LessThan(v2) {
-				return false, fmt.Sprintf("installed soci version %s is older than required version %s", installedVersion, minVersion)
-			}
-
-			return true, fmt.Sprintf("soci version %s meets minimum requirement %s", installedVersion, minVersion)
+			return true, fmt.Sprintf("soci version meets minimum requirement %s", minVersion)
 		},
 	}
 }

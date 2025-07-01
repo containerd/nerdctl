@@ -22,14 +22,62 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
+
+// CheckSociVersion checks if the SOCI binary version is at least the required version
+// This function can be used by both production code and tests
+func CheckSociVersion(requiredVersion string) error {
+	sociExecutable, err := exec.LookPath("soci")
+	if err != nil {
+		log.L.WithError(err).Error("soci executable not found in path $PATH")
+		log.L.Info("you might consider installing soci from: https://github.com/awslabs/soci-snapshotter/blob/main/docs/install.md")
+		return err
+	}
+
+	cmd := exec.Command(sociExecutable, "--version")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to get SOCI version: %w", err)
+	}
+
+	// Parse the version string
+	versionStr := string(output)
+	// Handle format like "soci version v0.10.0 8bbfe951bbb411798ee85dbd908544df4a1619a8.m"
+	re := regexp.MustCompile(`v?(\d+\.\d+\.\d+)`)
+	matches := re.FindStringSubmatch(versionStr)
+	if len(matches) < 2 {
+		return fmt.Errorf("failed to parse SOCI version from output: %s", versionStr)
+	}
+
+	// Extract version number
+	installedVersion := matches[1]
+
+	// Compare versions using semver
+	v1, err := semver.NewVersion(installedVersion)
+	if err != nil {
+		return fmt.Errorf("failed to parse installed version %s: %v", installedVersion, err)
+	}
+
+	v2, err := semver.NewVersion(requiredVersion)
+	if err != nil {
+		return fmt.Errorf("failed to parse minimum required version %s: %v", requiredVersion, err)
+	}
+
+	if v1.LessThan(v2) {
+		return fmt.Errorf("SOCI version %s is lower than the required version %s for the convert operation", installedVersion, requiredVersion)
+	}
+
+	return nil
+}
 
 // setupSociCommand creates and sets up a SOCI command with common configuration
 func setupSociCommand(gOpts types.GlobalCommandOptions) (*exec.Cmd, error) {
@@ -56,6 +104,11 @@ func setupSociCommand(gOpts types.GlobalCommandOptions) (*exec.Cmd, error) {
 
 // ConvertSociIndexV2 converts an image to SOCI format and returns the converted image reference with digest
 func ConvertSociIndexV2(ctx context.Context, client *client.Client, srcRef string, destRef string, gOpts types.GlobalCommandOptions, platforms []string, sOpts types.SociOptions) (string, error) {
+	// Check if SOCI version is at least 0.10.0 which is required for the convert operation
+	if err := CheckSociVersion("0.10.0"); err != nil {
+		return "", err
+	}
+
 	sociCmd, err := setupSociCommand(gOpts)
 	if err != nil {
 		return "", err
