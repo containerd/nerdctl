@@ -31,7 +31,6 @@ import (
 
 const (
 	snapshotterNameOverlaybd = "overlaybd"
-	snapshotterNameNydus     = "nydus"
 	snapshotterNameSoci      = "soci"
 	snapshotterNameCvmfs     = "cvmfs-snapshotter"
 )
@@ -39,7 +38,6 @@ const (
 // remote snapshotters explicitly handled by nerdctl
 var builtinRemoteSnapshotterOpts = map[string]snapshotterOpts{
 	snapshotterNameOverlaybd: &remoteSnapshotterOpts{snapshotter: "overlaybd"},
-	snapshotterNameNydus:     &remoteSnapshotterOpts{snapshotter: "nydus"},
 	snapshotterNameSoci:      &remoteSnapshotterOpts{snapshotter: "soci", extraLabels: sociExtraLabels},
 	snapshotterNameCvmfs:     &remoteSnapshotterOpts{snapshotter: "cvmfs-snapshotter"},
 }
