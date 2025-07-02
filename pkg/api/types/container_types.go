@@ -398,6 +398,8 @@ type ContainerCommitOptions struct {
 	Format ImageFormat
 	// Embed EstargzOptions for eStargz conversion options
 	EstargzOptions
+	// Embed ZstdChunkedOptions for zstd:chunked conversion options
+	ZstdChunkedOptions
 }
 
 type CompressionType string

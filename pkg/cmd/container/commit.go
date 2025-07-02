@@ -44,14 +44,15 @@ func Commit(ctx context.Context, client *containerd.Client, rawRef string, req s
 	}
 
 	opts := &commit.Opts{
-		Author:         options.Author,
-		Message:        options.Message,
-		Ref:            parsedReference.String(),
-		Pause:          options.Pause,
-		Changes:        changes,
-		Compression:    options.Compression,
-		Format:         options.Format,
-		EstargzOptions: options.EstargzOptions,
+		Author:             options.Author,
+		Message:            options.Message,
+		Ref:                parsedReference.String(),
+		Pause:              options.Pause,
+		Changes:            changes,
+		Compression:        options.Compression,
+		Format:             options.Format,
+		EstargzOptions:     options.EstargzOptions,
+		ZstdChunkedOptions: options.ZstdChunkedOptions,
 	}
 
 	walker := &containerwalker.ContainerWalker{

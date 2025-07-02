@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/identity"
 	"github.com/opencontainers/image-spec/specs-go"
@@ -45,6 +46,7 @@ import (
 	"github.com/containerd/platforms"
 	"github.com/containerd/stargz-snapshotter/estargz"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
+	zstdchunkedconvert "github.com/containerd/stargz-snapshotter/nativeconverter/zstdchunked"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -67,6 +69,7 @@ type Opts struct {
 	Compression types.CompressionType
 	Format      types.ImageFormat
 	types.EstargzOptions
+	types.ZstdChunkedOptions
 }
 
 var (
@@ -181,6 +184,9 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 	// Sync filesystem to make sure that all the data writes in container could be persisted to disk.
 	Sync()
 
+	if opts.ZstdChunked {
+		opts.Compression = types.Zstd
+	}
 	diffLayerDesc, diffID, err := createDiff(ctx, id, sn, client.ContentStore(), differ, opts.Compression, opts)
 	if err != nil {
 		return emptyDigest, fmt.Errorf("failed to export layer: %w", err)
@@ -475,6 +481,44 @@ func createDiff(ctx context.Context, name string, sn snapshots.Snapshotter, cs c
 				Size:        esgzDesc.Size,
 				Annotations: esgzDesc.Annotations,
 			}, esgzDiffID, nil
+		}
+	}
+
+	// Convert to zstd:chunked if requested
+	if opts.ZstdChunked {
+		log.G(ctx).Infof("Converting diff layer to zstd:chunked format")
+
+		esgzOpts := []estargz.Option{
+			estargz.WithChunkSize(opts.ZstdChunkedChunkSize),
+		}
+
+		convertFunc := zstdchunkedconvert.LayerConvertFuncWithCompressionLevel(zstd.EncoderLevelFromZstd(opts.ZstdChunkedCompressionLevel), esgzOpts...)
+
+		zstdchunkedDesc, err := convertFunc(ctx, cs, newDesc)
+		if err != nil {
+			return ocispec.Descriptor{}, digest.Digest(""), fmt.Errorf("failed to convert diff layer to zstd:chunked: %w", err)
+		} else if zstdchunkedDesc != nil {
+			zstdchunkedDesc.MediaType = mediaType
+			zstdchunkedInfo, err := cs.Info(ctx, zstdchunkedDesc.Digest)
+			if err != nil {
+				return ocispec.Descriptor{}, digest.Digest(""), err
+			}
+
+			zstdchunkedDiffIDStr, ok := zstdchunkedInfo.Labels["containerd.io/uncompressed"]
+			if !ok {
+				return ocispec.Descriptor{}, digest.Digest(""), fmt.Errorf("invalid differ response with no diffID")
+			}
+
+			zstdchunkedDiffID, err := digest.Parse(zstdchunkedDiffIDStr)
+			if err != nil {
+				return ocispec.Descriptor{}, digest.Digest(""), err
+			}
+			return ocispec.Descriptor{
+				MediaType:   zstdchunkedDesc.MediaType,
+				Digest:      zstdchunkedDesc.Digest,
+				Size:        zstdchunkedDesc.Size,
+				Annotations: zstdchunkedDesc.Annotations,
+			}, zstdchunkedDiffID, nil
 		}
 	}
 

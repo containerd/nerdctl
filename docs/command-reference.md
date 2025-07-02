@@ -782,6 +782,10 @@ Flags:
 - :nerd_face: `--estargz-compression-level`: eStargz compression level (1-9) (default: 9)
 - :nerd_face: `--estargz-chunk-size`: eStargz chunk size
 - :nerd_face: `--estargz-min-chunk-size`: The minimal number of bytes of data must be written in one gzip stream
+- :nerd_face: `--zstdchunked`: Convert the committed layer to zstd:chunked for lazy pulling
+support zstdchunked convert
+- :nerd_face: `--zstdchunked-compression-level`: zstd:chunked compression level (default: 3)
+- :nerd_face: `--zstdchunked-chunk-size`: zstd:chunked chunk size
 
 ## Image management
 
