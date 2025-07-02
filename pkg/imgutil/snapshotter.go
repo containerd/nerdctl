@@ -23,7 +23,6 @@ import (
 	"github.com/containerd/containerd/v2/core/images"
 	ctdsnapshotters "github.com/containerd/containerd/v2/pkg/snapshotters"
 	"github.com/containerd/log"
-	"github.com/containerd/stargz-snapshotter/fs/source"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
@@ -32,19 +31,14 @@ import (
 
 const (
 	snapshotterNameOverlaybd = "overlaybd"
-	snapshotterNameStargz    = "stargz"
 	snapshotterNameNydus     = "nydus"
 	snapshotterNameSoci      = "soci"
 	snapshotterNameCvmfs     = "cvmfs-snapshotter"
-
-	// prefetch size for stargz
-	prefetchSize = 10 * 1024 * 1024
 )
 
 // remote snapshotters explicitly handled by nerdctl
 var builtinRemoteSnapshotterOpts = map[string]snapshotterOpts{
 	snapshotterNameOverlaybd: &remoteSnapshotterOpts{snapshotter: "overlaybd"},
-	snapshotterNameStargz:    &remoteSnapshotterOpts{snapshotter: "stargz", extraLabels: stargzExtraLabels},
 	snapshotterNameNydus:     &remoteSnapshotterOpts{snapshotter: "nydus"},
 	snapshotterNameSoci:      &remoteSnapshotterOpts{snapshotter: "soci", extraLabels: sociExtraLabels},
 	snapshotterNameCvmfs:     &remoteSnapshotterOpts{snapshotter: "cvmfs-snapshotter"},
@@ -109,10 +103,6 @@ func (dsn *defaultSnapshotterOpts) apply(config *pull.Config, _ref string, rFlag
 // defaultSnapshotterOpts is not a remote snapshotter
 func (dsn *defaultSnapshotterOpts) isRemote() bool {
 	return false
-}
-
-func stargzExtraLabels(f func(images.Handler) images.Handler, rFlags types.RemoteSnapshotterFlags) func(images.Handler) images.Handler {
-	return source.AppendExtraLabelsHandler(prefetchSize, f)
 }
 
 func sociExtraLabels(f func(images.Handler) images.Handler, rFlags types.RemoteSnapshotterFlags) func(images.Handler) images.Handler {

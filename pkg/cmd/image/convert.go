@@ -22,10 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
-	"github.com/klauspost/compress/zstd"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	overlaybdconvert "github.com/containerd/accelerated-container-image/pkg/convertor"
@@ -36,11 +34,6 @@ import (
 	"github.com/containerd/containerd/v2/core/images/converter/uncompress"
 	"github.com/containerd/log"
 	nydusconvert "github.com/containerd/nydus-snapshotter/pkg/converter"
-	"github.com/containerd/stargz-snapshotter/estargz"
-	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
-	estargzexternaltocconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz/externaltoc"
-	zstdchunkedconvert "github.com/containerd/stargz-snapshotter/nativeconverter/zstdchunked"
-	"github.com/containerd/stargz-snapshotter/recorder"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -113,7 +106,7 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 		var convertType string
 		switch {
 		case estargz:
-			convertFunc, finalize, err = getESGZConverter(options)
+			convertFunc, finalize, err = getEstargzConvertFunc(options)
 			if err != nil {
 				return err
 			}
@@ -125,7 +118,7 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 			}
 			convertType = "zstd"
 		case zstdchunked:
-			convertFunc, err = getZstdchunkedConverter(options)
+			convertFunc, err = getZstdChunkedConvertFunc(options)
 			if err != nil {
 				return err
 			}
@@ -217,87 +210,8 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 	return printConvertedImage(options.Stdout, options, res)
 }
 
-func getESGZConverter(options types.ImageConvertOptions) (convertFunc converter.ConvertFunc, finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error), _ error) {
-	if options.EstargzExternalToc && !options.GOptions.Experimental {
-		return nil, nil, fmt.Errorf("estargz-external-toc requires experimental mode to be enabled")
-	}
-	if options.EstargzKeepDiffID && !options.GOptions.Experimental {
-		return nil, nil, fmt.Errorf("option --estargz-keep-diff-id must be specified with --estargz-external-toc")
-	}
-	if options.EstargzExternalToc {
-		if !options.EstargzKeepDiffID {
-			esgzOpts, err := getESGZConvertOpts(options)
-			if err != nil {
-				return nil, nil, err
-			}
-			convertFunc, finalize = estargzexternaltocconvert.LayerConvertFunc(esgzOpts, options.EstargzCompressionLevel)
-		} else {
-			convertFunc, finalize = estargzexternaltocconvert.LayerConvertLossLessFunc(estargzexternaltocconvert.LayerConvertLossLessConfig{
-				CompressionLevel: options.EstargzCompressionLevel,
-				ChunkSize:        options.EstargzChunkSize,
-				MinChunkSize:     options.EstargzMinChunkSize,
-			})
-		}
-	} else {
-		esgzOpts, err := getESGZConvertOpts(options)
-		if err != nil {
-			return nil, nil, err
-		}
-		convertFunc = estargzconvert.LayerConvertFunc(esgzOpts...)
-	}
-	return convertFunc, finalize, nil
-}
-
-func getESGZConvertOpts(options types.ImageConvertOptions) ([]estargz.Option, error) {
-
-	esgzOpts := []estargz.Option{
-		estargz.WithCompressionLevel(options.EstargzCompressionLevel),
-		estargz.WithChunkSize(options.EstargzChunkSize),
-		estargz.WithMinChunkSize(options.EstargzMinChunkSize),
-	}
-
-	if options.EstargzRecordIn != "" {
-		if !options.GOptions.Experimental {
-			return nil, fmt.Errorf("estargz-record-in requires experimental mode to be enabled")
-		}
-
-		log.L.Warn("--estargz-record-in flag is experimental and subject to change")
-		paths, err := readPathsFromRecordFile(options.EstargzRecordIn)
-		if err != nil {
-			return nil, err
-		}
-		esgzOpts = append(esgzOpts, estargz.WithPrioritizedFiles(paths))
-		var ignored []string
-		esgzOpts = append(esgzOpts, estargz.WithAllowPrioritizeNotFound(&ignored))
-	}
-	return esgzOpts, nil
-}
-
 func getZstdConverter(options types.ImageConvertOptions) (converter.ConvertFunc, error) {
 	return converterutil.ZstdLayerConvertFunc(options)
-}
-
-func getZstdchunkedConverter(options types.ImageConvertOptions) (converter.ConvertFunc, error) {
-
-	esgzOpts := []estargz.Option{
-		estargz.WithChunkSize(options.ZstdChunkedChunkSize),
-	}
-
-	if options.ZstdChunkedRecordIn != "" {
-		if !options.GOptions.Experimental {
-			return nil, fmt.Errorf("zstdchunked-record-in requires experimental mode to be enabled")
-		}
-
-		log.L.Warn("--zstdchunked-record-in flag is experimental and subject to change")
-		paths, err := readPathsFromRecordFile(options.ZstdChunkedRecordIn)
-		if err != nil {
-			return nil, err
-		}
-		esgzOpts = append(esgzOpts, estargz.WithPrioritizedFiles(paths))
-		var ignored []string
-		esgzOpts = append(esgzOpts, estargz.WithAllowPrioritizeNotFound(&ignored))
-	}
-	return zstdchunkedconvert.LayerConvertFuncWithCompressionLevel(zstd.EncoderLevelFromZstd(options.ZstdChunkedCompressionLevel), esgzOpts...), nil
 }
 
 func getNydusConvertOpts(options types.ImageConvertOptions) (*nydusconvert.PackOption, error) {
@@ -327,28 +241,6 @@ func getOBDConvertOpts(options types.ImageConvertOptions) ([]overlaybdconvert.Op
 		overlaybdconvert.WithDbstr(options.OverlaydbDBStr),
 	}
 	return obdOpts, nil
-}
-
-func readPathsFromRecordFile(filename string) ([]string, error) {
-	r, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-	dec := json.NewDecoder(r)
-	var paths []string
-	added := make(map[string]struct{})
-	for dec.More() {
-		var e recorder.Entry
-		if err := dec.Decode(&e); err != nil {
-			return nil, err
-		}
-		if _, ok := added[e.Path]; !ok {
-			paths = append(paths, e.Path)
-			added[e.Path] = struct{}{}
-		}
-	}
-	return paths, nil
 }
 
 func printConvertedImage(stdout io.Writer, options types.ImageConvertOptions, img converterutil.ConvertedImageInfo) error {

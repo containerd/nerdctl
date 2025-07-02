@@ -20,3 +20,4 @@ BUILDTAGS=no_ipfs make
 
 The following build tags are supported:
 * `no_ipfs` (since v2.1.3): Disable IPFS
+* `no_stargz` (since v2.1.3): Disable stargz snapshotter support
