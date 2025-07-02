@@ -18,7 +18,14 @@ To specify build tags, set the `BUILDTAGS` variable as follows:
 BUILDTAGS=no_ipfs make
 ```
 
+Multiple build tags can be combined by separating them with spaces:
+
+```bash
+BUILDTAGS="no_ipfs no_stargz no_nydus" make
+```
+
 The following build tags are supported:
 * `no_ipfs` (since v2.1.3): Disable IPFS
 * `no_stargz` (since v2.1.3): Disable stargz snapshotter support
 * `no_nydus` (since v2.1.3): Disable nydus snapshotter support
+* `no_overlaybd` (since v2.1.3): Disable overlaybd snapshotter support

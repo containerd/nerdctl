@@ -26,7 +26,6 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	overlaybdconvert "github.com/containerd/accelerated-container-image/pkg/convertor"
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/images"
@@ -122,14 +121,10 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 			}
 			convertType = "zstdchunked"
 		case overlaybd:
-			obdOpts, err := getOBDConvertOpts(options)
+			convertOpts, err = addOverlayBDConverterOpts(ctx, client, srcRef, options, convertOpts)
 			if err != nil {
 				return err
 			}
-			obdOpts = append(obdOpts, overlaybdconvert.WithClient(client))
-			obdOpts = append(obdOpts, overlaybdconvert.WithImageRef(srcRef))
-			convertFunc = overlaybdconvert.IndexConvertFunc(obdOpts...)
-			convertOpts = append(convertOpts, converter.WithIndexConvertFunc(convertFunc))
 			convertType = "overlaybd"
 		case nydus:
 			convertOpts, err = addNydusConverterOpts(ctx, client, options, convertOpts, platMC)
@@ -192,14 +187,6 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 
 func getZstdConverter(options types.ImageConvertOptions) (converter.ConvertFunc, error) {
 	return converterutil.ZstdLayerConvertFunc(options)
-}
-
-func getOBDConvertOpts(options types.ImageConvertOptions) ([]overlaybdconvert.Option, error) {
-	obdOpts := []overlaybdconvert.Option{
-		overlaybdconvert.WithFsType(options.OverlayFsType),
-		overlaybdconvert.WithDbstr(options.OverlaydbDBStr),
-	}
-	return obdOpts, nil
 }
 
 func printConvertedImage(stdout io.Writer, options types.ImageConvertOptions, img converterutil.ConvertedImageInfo) error {

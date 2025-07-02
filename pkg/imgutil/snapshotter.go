@@ -30,16 +30,14 @@ import (
 )
 
 const (
-	snapshotterNameOverlaybd = "overlaybd"
-	snapshotterNameSoci      = "soci"
-	snapshotterNameCvmfs     = "cvmfs-snapshotter"
+	snapshotterNameSoci  = "soci"
+	snapshotterNameCvmfs = "cvmfs-snapshotter"
 )
 
 // remote snapshotters explicitly handled by nerdctl
 var builtinRemoteSnapshotterOpts = map[string]snapshotterOpts{
-	snapshotterNameOverlaybd: &remoteSnapshotterOpts{snapshotter: "overlaybd"},
-	snapshotterNameSoci:      &remoteSnapshotterOpts{snapshotter: "soci", extraLabels: sociExtraLabels},
-	snapshotterNameCvmfs:     &remoteSnapshotterOpts{snapshotter: "cvmfs-snapshotter"},
+	snapshotterNameSoci:  &remoteSnapshotterOpts{snapshotter: "soci", extraLabels: sociExtraLabels},
+	snapshotterNameCvmfs: &remoteSnapshotterOpts{snapshotter: "cvmfs-snapshotter"},
 }
 
 // snapshotterOpts is used to update pull config
