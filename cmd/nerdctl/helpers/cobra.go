@@ -283,3 +283,10 @@ func AddPersistentBoolFlag(cmd *cobra.Command, name string, aliases, nonPersiste
 		}
 	}
 }
+
+// HiddenPersistentStringArrayFlag creates a persistent string slice flag and hides it.
+// Used mainly to pass global config values to individual commands.
+func HiddenPersistentStringArrayFlag(cmd *cobra.Command, name string, value []string, usage string) {
+	cmd.PersistentFlags().StringSlice(name, value, usage)
+	cmd.PersistentFlags().MarkHidden(name)
+}

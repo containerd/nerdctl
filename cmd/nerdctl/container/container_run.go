@@ -376,7 +376,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return errors.New("flags -d and -a cannot be specified together")
 	}
 
-	netFlags, err := loadNetworkFlags(cmd)
+	netFlags, err := loadNetworkFlags(cmd, createOpt.GOptions)
 	if err != nil {
 		return fmt.Errorf("failed to load networking flags: %w", err)
 	}
