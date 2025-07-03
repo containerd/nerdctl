@@ -32,7 +32,7 @@ import (
 
 func SaveCommand() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:               "save",
+		Use:               "save [flags] IMAGE [IMAGE...]",
 		Args:              cobra.MinimumNArgs(1),
 		Short:             "Save one or more images to a tar archive (streamed to STDOUT by default)",
 		Long:              "The archive implements both Docker Image Spec v1.2 and OCI Image Spec v1.0.",
