@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/snapshotterutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 )
@@ -409,6 +410,21 @@ var RemapIDs = &test.Requirement{
 		}
 		return false, "snapshotter does not support ID remapping"
 	},
+}
+
+// SociVersion returns a requirement that checks if the installed SOCI version
+// meets the minimum required version
+func SociVersion(minVersion string) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+			// Use the common CheckSociVersion function from snapshotterutil
+			err := snapshotterutil.CheckSociVersion(minVersion)
+			if err != nil {
+				return false, err.Error()
+			}
+			return true, fmt.Sprintf("soci version meets minimum requirement %s", minVersion)
+		},
+	}
 }
 
 func ContainerdVersion(v string) *test.Requirement {
