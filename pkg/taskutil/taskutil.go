@@ -43,7 +43,7 @@ import (
 
 // NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
 func NewTask(ctx context.Context, client *containerd.Client, container containerd.Container,
-	attachStreamOpt []string, flagI, flagT, flagD bool, con console.Console, logURI, detachKeys, namespace string, detachC chan<- struct{}) (containerd.Task, error) {
+	attachStreamOpt []string, isInteractive, isTerminal, isDetach bool, con console.Console, logURI, detachKeys, namespace string, detachC chan<- struct{}) (containerd.Task, error) {
 
 	var t containerd.Task
 	closer := func() {
@@ -67,9 +67,9 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 	if len(attachStreamOpt) != 0 {
 		log.G(ctx).Debug("attaching output instead of using the log-uri")
 		// when attaching a TTY we use writee for stdio and binary for log persistence
-		if flagT {
+		if isTerminal {
 			var in io.Reader
-			if flagI {
+			if isInteractive {
 				// FIXME: check IsTerminal on Windows too
 				if runtime.GOOS != "windows" && !term.IsTerminal(0) {
 					return nil, errors.New("the input device is not a TTY")
@@ -86,7 +86,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			ioCreator = cioutil.NewContainerIO(namespace, logURI, false, streams.stdIn, streams.stdOut, streams.stdErr)
 		}
 
-	} else if flagT && flagD {
+	} else if isTerminal && isDetach {
 		u, err := url.Parse(logURI)
 		if err != nil {
 			return nil, err
@@ -113,12 +113,12 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		ioCreator = cio.TerminalBinaryIO(parsedPath, map[string]string{
 			args[0]: args[1],
 		})
-	} else if flagT && !flagD {
+	} else if isTerminal && !isDetach {
 		if con == nil {
-			return nil, errors.New("got nil con with flagT=true")
+			return nil, errors.New("got nil con with isTerminal=true")
 		}
 		var in io.Reader
-		if flagI {
+		if isInteractive {
 			// FIXME: check IsTerminal on Windows too
 			if runtime.GOOS != "windows" && !term.IsTerminal(0) {
 				return nil, errors.New("the input device is not a TTY")
@@ -130,7 +130,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			}
 		}
 		ioCreator = cioutil.NewContainerIO(namespace, logURI, true, in, os.Stdout, os.Stderr)
-	} else if flagD && logURI != "" && logURI != "none" {
+	} else if isDetach && logURI != "" && logURI != "none" {
 		u, err := url.Parse(logURI)
 		if err != nil {
 			return nil, err
@@ -138,7 +138,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		ioCreator = cio.LogURI(u)
 	} else {
 		var in io.Reader
-		if flagI {
+		if isInteractive {
 			if sv, err := infoutil.ServerSemVer(ctx, client); err != nil {
 				log.G(ctx).Warn(err)
 			} else if sv.LessThan(semver.MustParse("1.6.0-0")) {
