@@ -311,3 +311,21 @@ type SociOptions struct {
 	// Minimum layer size to build zTOC for. Smaller layers won't have zTOC and not lazy pulled. Default is 10 MiB.
 	MinLayerSize int64
 }
+
+// ImageSquashOptions specifies options for `nerdctl image squash`.
+type ImageSquashOptions struct {
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+
+	// Author (e.g., "nerdctl contributor <nerdctl-dev@example.com>")
+	Author string
+	// Commit message
+	Message string
+	// SourceImageRef is the image to be squashed
+	SourceImageRef string
+	// TargetImageName is the name of the squashed image
+	TargetImageName string
+
+	// SquashLayerLastN is the number of layers to squash
+	SquashLayerLastN int
+}
