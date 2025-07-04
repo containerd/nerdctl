@@ -69,6 +69,17 @@ func PushCommand() *cobra.Command {
 
 	cmd.Flags().Bool(allowNonDistFlag, false, "Allow pushing images with non-distributable blobs")
 
+	// #region connection limit flags
+	cmd.Flags().Int("max-conns-per-host", 5, "Maximum number of connections per registry host")
+	cmd.Flags().Int("max-idle-conns", 50, "Maximum number of idle connections")
+	cmd.Flags().Int("request-timeout", 300, "Request timeout in seconds")
+	// #endregion
+
+	// #region retry flags
+	cmd.Flags().Int("max-retries", 3, "Maximum number of retry attempts for 503 errors")
+	cmd.Flags().Int("retry-initial-delay", 1000, "Initial delay before first retry in milliseconds")
+	// #endregion
+
 	return cmd
 }
 
@@ -113,6 +124,26 @@ func pushOptions(cmd *cobra.Command) (types.ImagePushOptions, error) {
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
+	maxConnsPerHost, err := cmd.Flags().GetInt("max-conns-per-host")
+	if err != nil {
+		return types.ImagePushOptions{}, err
+	}
+	maxIdleConns, err := cmd.Flags().GetInt("max-idle-conns")
+	if err != nil {
+		return types.ImagePushOptions{}, err
+	}
+	requestTimeout, err := cmd.Flags().GetInt("request-timeout")
+	if err != nil {
+		return types.ImagePushOptions{}, err
+	}
+	maxRetries, err := cmd.Flags().GetInt("max-retries")
+	if err != nil {
+		return types.ImagePushOptions{}, err
+	}
+	retryInitialDelay, err := cmd.Flags().GetInt("retry-initial-delay")
+	if err != nil {
+		return types.ImagePushOptions{}, err
+	}
 	return types.ImagePushOptions{
 		GOptions:                       globalOptions,
 		SignOptions:                    signOptions,
@@ -124,6 +155,11 @@ func pushOptions(cmd *cobra.Command) (types.ImagePushOptions, error) {
 		IpfsAddress:                    ipfsAddress,
 		Quiet:                          quiet,
 		AllowNondistributableArtifacts: allowNonDist,
+		MaxConnsPerHost:                maxConnsPerHost,
+		MaxIdleConns:                   maxIdleConns,
+		RequestTimeout:                 requestTimeout,
+		MaxRetries:                     maxRetries,
+		RetryInitialDelay:              retryInitialDelay,
 		Stdout:                         cmd.OutOrStdout(),
 	}, nil
 }

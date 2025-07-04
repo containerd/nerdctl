@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -113,6 +114,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return err
 	}
 	ref := parsedReference.String()
+	refDomain := parsedReference.Domain
 
 	platMC, err := platformutil.NewMatchComparer(options.AllPlatforms, options.Platforms)
 	if err != nil {
@@ -168,6 +170,76 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 			if err := pushImageWithLocal(ctx, client, parsedReference, pushRef, ref, options, platMC); err != nil {
 				return err
 			}
+		}
+	}
+
+	// In order to push images where most layers are the same but the
+	// repository name is different, it is necessary to refresh the
+	// PushTracker. Otherwise, the MANIFEST_BLOB_UNKNOWN error will occur due
+	// to the registry not creating the corresponding layer link file,
+	// resulting in the failure of the entire image push.
+	pushTracker := docker.NewInMemoryTracker()
+
+	pushFunc := func(r remotes.Resolver) error {
+		return push.Push(ctx, client, r, pushTracker, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
+	}
+
+	var dOpts []dockerconfigresolver.Opt
+	if options.GOptions.InsecureRegistry {
+		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
+		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
+	}
+	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
+
+	// Configure connection limits to prevent registry overload (503 errors)
+	if options.MaxConnsPerHost > 0 {
+		dOpts = append(dOpts, dockerconfigresolver.WithMaxConnsPerHost(options.MaxConnsPerHost))
+	}
+	if options.MaxIdleConns > 0 {
+		dOpts = append(dOpts, dockerconfigresolver.WithMaxIdleConns(options.MaxIdleConns))
+	}
+	if options.RequestTimeout > 0 {
+		dOpts = append(dOpts, dockerconfigresolver.WithRequestTimeout(time.Duration(options.RequestTimeout)*time.Second))
+	}
+	if options.MaxRetries > 0 {
+		dOpts = append(dOpts, dockerconfigresolver.WithMaxRetries(options.MaxRetries))
+	}
+	if options.RetryInitialDelay > 0 {
+		dOpts = append(dOpts, dockerconfigresolver.WithRetryInitialDelay(time.Duration(options.RetryInitialDelay)*time.Millisecond))
+	}
+	// Use the local push tracker for this operation
+	dOpts = append(dOpts, dockerconfigresolver.WithTracker(pushTracker))
+
+	if options.GOptions.InsecureRegistry {
+		log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
+		dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
+		// Apply same connection limits for HTTP fallback
+		if options.MaxConnsPerHost > 0 {
+			dOpts = append(dOpts, dockerconfigresolver.WithMaxConnsPerHost(options.MaxConnsPerHost))
+		}
+		if options.MaxIdleConns > 0 {
+			dOpts = append(dOpts, dockerconfigresolver.WithMaxIdleConns(options.MaxIdleConns))
+		}
+		if options.RequestTimeout > 0 {
+			dOpts = append(dOpts, dockerconfigresolver.WithRequestTimeout(time.Duration(options.RequestTimeout)*time.Second))
+		}
+		if options.MaxRetries > 0 {
+			dOpts = append(dOpts, dockerconfigresolver.WithMaxRetries(options.MaxRetries))
+		}
+		if options.RetryInitialDelay > 0 {
+			dOpts = append(dOpts, dockerconfigresolver.WithRetryInitialDelay(time.Duration(options.RetryInitialDelay)*time.Millisecond))
+		}
+	}
+
+	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
+	if err != nil {
+		return err
+	}
+
+	if err = pushFunc(resolver); err != nil {
+		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused"
+		if !errors.Is(err, http.ErrSchemeMismatch) && !errutil.IsErrConnectionRefused(err) {
+			return err
 		}
 	}
 
