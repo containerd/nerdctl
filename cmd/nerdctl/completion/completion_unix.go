@@ -38,6 +38,47 @@ func IPAMDrivers(cmd *cobra.Command, args []string, toComplete string) ([]string
 	return []string{"default", "host-local", "dhcp"}, cobra.ShellCompDirectiveNoFileComp
 }
 
+func NetworkOptions(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	driver, _ := cmd.Flags().GetString("driver")
+	if driver == "" {
+		driver = "bridge"
+	}
+
+	var candidates []string
+	switch driver {
+	case "bridge":
+		candidates = []string{
+			"mtu=",
+			"com.docker.network.driver.mtu=",
+			"com.docker.network.bridge.name=",
+			"com.docker.network.bridge.enable_ip_masquerade=",
+			"com.docker.network.bridge.enable_icc=",
+			"com.docker.network.bridge.host_binding_ipv4=",
+			"com.docker.network.container_iface_prefix=",
+		}
+	case "macvlan":
+		candidates = []string{
+			"mtu=",
+			"mode=",
+			"macvlan_mode=",
+			"parent=",
+		}
+	case "ipvlan":
+		candidates = []string{
+			"mtu=",
+			"mode=",
+			"ipvlan_mode=",
+			"parent=",
+		}
+	default:
+		candidates = []string{
+			"mtu=",
+			"parent=",
+		}
+	}
+	return candidates, cobra.ShellCompDirectiveNoSpace
+}
+
 func NamespaceNames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {

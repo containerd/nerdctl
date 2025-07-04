@@ -38,3 +38,23 @@ func NetworkDrivers(cmd *cobra.Command, args []string, toComplete string) ([]str
 func IPAMDrivers(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return []string{"default"}, cobra.ShellCompDirectiveNoFileComp
 }
+
+func NetworkOptions(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	driver, _ := cmd.Flags().GetString("driver")
+	if driver == "" {
+		driver = "nat"
+	}
+
+	var candidates []string
+	switch driver {
+	case "nat":
+		candidates = []string{
+			"mtu=",
+		}
+	default:
+		candidates = []string{
+			"mtu=",
+		}
+	}
+	return candidates, cobra.ShellCompDirectiveNoSpace
+}

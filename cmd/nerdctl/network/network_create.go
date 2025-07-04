@@ -42,6 +42,7 @@ func createCommand() *cobra.Command {
 	cmd.Flags().StringP("driver", "d", DefaultNetworkDriver, "Driver to manage the Network")
 	cmd.RegisterFlagCompletionFunc("driver", completion.NetworkDrivers)
 	cmd.Flags().StringArrayP("opt", "o", nil, "Set driver specific options")
+	cmd.RegisterFlagCompletionFunc("opt", completion.NetworkOptions)
 	cmd.Flags().String("ipam-driver", "default", "IP Address helpers.Management Driver")
 	cmd.RegisterFlagCompletionFunc("ipam-driver", completion.IPAMDrivers)
 	cmd.Flags().StringArray("ipam-opt", nil, "Set IPAM driver specific options")
