@@ -62,27 +62,27 @@ func execOptions(cmd *cobra.Command) (types.ContainerExecOptions, error) {
 		return types.ContainerExecOptions{}, err
 	}
 
-	flagI, err := cmd.Flags().GetBool("interactive")
+	isInteractive, err := cmd.Flags().GetBool("interactive")
 	if err != nil {
 		return types.ContainerExecOptions{}, err
 	}
-	flagT, err := cmd.Flags().GetBool("tty")
+	isTerminal, err := cmd.Flags().GetBool("tty")
 	if err != nil {
 		return types.ContainerExecOptions{}, err
 	}
-	flagD, err := cmd.Flags().GetBool("detach")
+	isDetach, err := cmd.Flags().GetBool("detach")
 	if err != nil {
 		return types.ContainerExecOptions{}, err
 	}
 
-	if flagI {
-		if flagD {
+	if isInteractive {
+		if isDetach {
 			return types.ContainerExecOptions{}, errors.New("currently flag -i and -d cannot be specified together (FIXME)")
 		}
 	}
 
-	if flagT {
-		if flagD {
+	if isTerminal {
+		if isDetach {
 			return types.ContainerExecOptions{}, errors.New("currently flag -t and -d cannot be specified together (FIXME)")
 		}
 	}
@@ -111,9 +111,9 @@ func execOptions(cmd *cobra.Command) (types.ContainerExecOptions, error) {
 
 	return types.ContainerExecOptions{
 		GOptions:    globalOptions,
-		TTY:         flagT,
-		Interactive: flagI,
-		Detach:      flagD,
+		TTY:         isTerminal,
+		Interactive: isInteractive,
+		Detach:      isDetach,
 		Workdir:     workdir,
 		Env:         env,
 		EnvFile:     envFile,

@@ -204,7 +204,7 @@ func GenerateSharingPIDOpts(ctx context.Context, targetCon containerd.Container)
 }
 
 // Start starts `container` with `attach` flag. If `attach` is true, it will attach to the container's stdio.
-func Start(ctx context.Context, container containerd.Container, flagA bool, flagI bool, client *containerd.Client, detachKeys string) (err error) {
+func Start(ctx context.Context, container containerd.Container, isAttach bool, isInteractive bool, client *containerd.Client, detachKeys string) (err error) {
 	// defer the storage of start error in the dedicated label
 	defer func() {
 		if err != nil {
@@ -232,9 +232,9 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, flag
 	if err != nil {
 		return err
 	}
-	flagT := process.Process.Terminal
+	isTerminal := process.Process.Terminal
 	var con console.Console
-	if (flagI || flagA) && flagT {
+	if (isInteractive || isAttach) && isTerminal {
 		con, err = consoleutil.Current()
 		if err != nil {
 			return err
@@ -270,12 +270,12 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, flag
 	}
 	detachC := make(chan struct{})
 	attachStreamOpt := []string{}
-	if flagA {
-		// In start, flagA attaches only STDOUT/STDERR
+	if isAttach {
+		// In start, isAttach attaches only STDOUT/STDERR
 		// source: https://github.com/containerd/nerdctl/blob/main/docs/command-reference.md#whale-nerdctl-start
 		attachStreamOpt = []string{"STDOUT", "STDERR"}
 	}
-	task, err := taskutil.NewTask(ctx, client, container, attachStreamOpt, flagI, flagT, true, con, logURI, detachKeys, namespace, detachC)
+	task, err := taskutil.NewTask(ctx, client, container, attachStreamOpt, isInteractive, isTerminal, true, con, logURI, detachKeys, namespace, detachC)
 	if err != nil {
 		return err
 	}
@@ -283,10 +283,10 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, flag
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
-	if !flagA {
+	if !isAttach {
 		return nil
 	}
-	if flagA && flagT {
+	if isAttach && isTerminal {
 		if err := consoleutil.HandleConsoleResize(ctx, task, con); err != nil {
 			log.G(ctx).WithError(err).Error("console resize")
 		}
