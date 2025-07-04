@@ -104,7 +104,12 @@ jobs:
         name: "Run: make binaries with custom BUILDTAGS"
         run: |
           set -eux
-          # no_ipfs: make sure it does not incur any IPFS-related dependency
+          # Disabling all optional features and ensuring this does not incur any of the related dependencies
           go mod vendor
-          rm -rf vendor/github.com/ipfs vendor/github.com/multiformats
-          BUILDTAGS=no_ipfs make binaries
+          rm -rf \
+            vendor/github.com/ipfs \
+            vendor/github.com/multiformats \
+            vendor/github.com/containerd/nydus-snapshotter \
+            vendor/github.com/containerd/stargz-snapshotter \
+            vendor/github.com/containerd/accelerated-container-image
+          BUILDTAGS=no_ipfs,no_nydus,no_esgz,no_obd make binaries

@@ -27,6 +27,9 @@ DOCKER ?= docker
 GO ?= go
 GOOS ?= $(shell $(GO) env GOOS)
 GOARCH ?= $(shell $(GO) env GOARCH)
+# The following tags can be used to disable some features:
+# BUILDTAGS ?= no_nydus no_esgz no_obd no_ipfs
+BUILDTAGS ?=
 ifeq ($(GOOS),windows)
 	BIN_EXT := .exe
 endif
@@ -46,9 +49,6 @@ LINT_COMMIT_RANGE ?= main..HEAD
 GO_BUILD_LDFLAGS ?= -s -w
 GO_BUILD_FLAGS ?=
 
-BUILDTAGS ?=
-GO_TAGS=$(if $(BUILDTAGS),-tags "$(strip $(BUILDTAGS))",)
-
 ##########################
 # Helpers
 ##########################
@@ -57,7 +57,7 @@ ifdef VERBOSE
 	VERBOSE_FLAG_LONG := --verbose
 endif
 
-export GO_BUILD=CGO_ENABLED=0 GOOS=$(GOOS) $(GO) -C $(MAKEFILE_DIR) build $(GO_TAGS) -ldflags "$(GO_BUILD_LDFLAGS) $(VERBOSE_FLAG) -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
+export GO_BUILD=CGO_ENABLED=0 GOOS=$(GOOS) $(GO) -C $(MAKEFILE_DIR) build -tags "$(BUILDTAGS)" -ldflags "$(GO_BUILD_LDFLAGS) $(VERBOSE_FLAG) -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
 
 ifndef NO_COLOR
     NC := \033[0m
@@ -131,7 +131,7 @@ clean:
 lint-go:
 	$(call title, $@: $(GOOS))
 	@cd $(MAKEFILE_DIR) \
-		&& golangci-lint run $(VERBOSE_FLAG_LONG) ./...
+		&& golangci-lint run --build-tags "$(BUILDTAGS)" $(VERBOSE_FLAG_LONG) ./...
 	$(call footer, $@)
 
 lint-go-all:
@@ -140,7 +140,8 @@ lint-go-all:
 		&& GOOS=linux make lint-go \
 		&& GOOS=windows make lint-go \
 		&& GOOS=freebsd make lint-go \
-		&& GOOS=darwin make lint-go
+		&& GOOS=darwin make lint-go \
+		&& GOOS=linux BUILDTAGS=no_nydus,no_esgz,no_obd,no_ipfs make lint-go
 	$(call footer, $@)
 
 lint-yaml:
@@ -194,7 +195,7 @@ lint-licenses-all:
 fix-go:
 	$(call title, $@: $(GOOS))
 	@cd $(MAKEFILE_DIR) \
-		&& golangci-lint run --fix
+		&& golangci-lint run --build-tags "$(BUILDTAGS)" --fix
 	$(call footer, $@)
 
 fix-go-all:
@@ -203,7 +204,8 @@ fix-go-all:
 		&& GOOS=linux make fix-go \
 		&& GOOS=windows make fix-go \
 		&& GOOS=freebsd make fix-go \
-		&& GOOS=darwin make fix-go
+		&& GOOS=darwin make fix-go \
+		&& GOOS=linux BUILDTAGS=no_nydus,no_esgz,no_obd,no_ipfs make fix-go
 	$(call footer, $@)
 
 fix-mod:
