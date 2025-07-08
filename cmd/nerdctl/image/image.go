@@ -48,6 +48,7 @@ func Command() *cobra.Command {
 		encryptCommand(),
 		decryptCommand(),
 		pruneCommand(),
+		squashCommand(),
 	)
 	return cmd
 }
