@@ -34,9 +34,17 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 )
 
+func ZstdConvertOpt(options types.ZstdOptions) (converter.Opt, error) {
+	convertFunc, err := ZstdLayerConvertFunc(options)
+	if err != nil {
+		return nil, err
+	}
+	return converter.WithLayerConvertFunc(convertFunc), nil
+}
+
 // ZstdLayerConvertFunc converts legacy tar.gz layers into zstd layers with
 // the specified compression level.
-func ZstdLayerConvertFunc(options types.ImageConvertOptions) (converter.ConvertFunc, error) {
+func ZstdLayerConvertFunc(options types.ZstdOptions) (converter.ConvertFunc, error) {
 	return func(ctx context.Context, cs content.Store, desc ocispec.Descriptor) (*ocispec.Descriptor, error) {
 		if !images.IsLayerType(desc.MediaType) {
 			// No conversion. No need to return an error here.
