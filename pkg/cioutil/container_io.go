@@ -85,7 +85,9 @@ func (c *ncio) Close() error {
 
 		select {
 		case err := <-done:
-			return err
+			if err != nil {
+				lastErr = fmt.Errorf("faied to run cmd.wait: %w", err)
+			}
 		case <-time.After(binaryIOProcTermTimeout):
 
 			err := c.cmd.Process.Kill()
