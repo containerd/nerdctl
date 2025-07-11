@@ -435,6 +435,12 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	statusC, err := task.Wait(ctx)
+	if err != nil {
+		return err
+	}
+
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
@@ -454,10 +460,6 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	statusC, err := task.Wait(ctx)
-	if err != nil {
-		return err
-	}
 	select {
 	// io.Wait() would return when either 1) the user detaches from the container OR 2) the container is about to exit.
 	//
