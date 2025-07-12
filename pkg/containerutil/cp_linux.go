@@ -129,7 +129,7 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 		}
 
 		var cleanup func() error
-		root, cleanup, err = mountSnapshotForContainer(ctx, client, conInfo, options.GOptions.Snapshotter)
+		root, cleanup, err = MountSnapshotForContainer(ctx, client, conInfo, options.GOptions.Snapshotter)
 		if cleanup != nil {
 			defer func() {
 				err = errors.Join(err, cleanup())
@@ -321,7 +321,7 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 	return nil
 }
 
-func mountSnapshotForContainer(ctx context.Context, client *containerd.Client, conInfo containers.Container, snapshotter string) (string, func() error, error) {
+func MountSnapshotForContainer(ctx context.Context, client *containerd.Client, conInfo containers.Container, snapshotter string) (string, func() error, error) {
 	snapKey := conInfo.SnapshotKey
 	resp, err := client.SnapshotService(snapshotter).Mounts(ctx, snapKey)
 	if err != nil {
