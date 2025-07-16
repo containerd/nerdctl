@@ -51,6 +51,8 @@ It does not necessarily mean that the corresponding features are missing in cont
   - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
   - [:nerd_face: nerdctl image encrypt](#nerd_face-nerdctl-image-encrypt)
   - [:nerd_face: nerdctl image decrypt](#nerd_face-nerdctl-image-decrypt)
+- [Manifest management](#manifest-management)
+  - [:whale: nerdctl manifest inspect](#whale-nerdctl-manifest-inspect)
 - [Registry](#registry)
   - [:whale: nerdctl login](#whale-nerdctl-login)
   - [:whale: nerdctl logout](#whale-nerdctl-logout)
@@ -1034,6 +1036,31 @@ Flags:
 - `--gpg-version=<VERSION>`      : The GPG version ("v1" or "v2"), default will make an educated guess
 - `--platform=<PLATFORM>`        : Convert content for a specific platform
 - `--all-platforms`              : Convert content for all platforms (default: false)
+
+## Manifest management
+
+### :whale: nerdctl manifest inspect
+
+Display the contents of a manifest list or manifest.
+
+Usage: `nerdctl manifest inspect [OPTIONS] MANIFEST`
+
+#### Input formats
+
+You can specify the manifest to inspect using one of the following formats:
+- **Image name with tag**: `alpine:3.22.1`
+- **Image name with digest**: `alpine@sha256:eafc1edb577d2e9b458664a15f23ea1c370214193226069eb22921169fc7e43f`
+
+Flags:
+
+- `--verbose` : Verbose output, show additional info including layers and platform
+- `--insecure`: Allow communication with an insecure registry
+Example:
+
+```bash
+nerdctl manifest inspect alpine:3.22.1
+nerdctl manifest inspect alpine@sha256:eafc1edb577d2e9b458664a15f23ea1c370214193226069eb22921169fc7e43f
+```
 
 ## Registry
 
