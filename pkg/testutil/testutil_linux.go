@@ -17,23 +17,23 @@
 package testutil
 
 var (
-	AlpineImage         = getImage("alpine")
-	BusyboxImage        = getImage("busybox")
-	DockerAuthImage     = getImage("docker_auth")
-	FluentdImage        = getImage("fluentd")
-	GolangImage         = getImage("golang")
-	KuboImage           = getImage("kubo")
-	MariaDBImage        = getImage("mariadb")
-	NginxAlpineImage    = getImage("nginx")
-	RegistryImageStable = getImage("registry")
-	SystemdImage        = getImage("stargz")
-	WordpressImage      = getImage("wordpress")
+	AlpineImage         = GetTestImage("alpine")
+	BusyboxImage        = GetTestImage("busybox")
+	DockerAuthImage     = GetTestImage("docker_auth")
+	FluentdImage        = GetTestImage("fluentd")
+	GolangImage         = GetTestImage("golang")
+	KuboImage           = GetTestImage("kubo")
+	MariaDBImage        = GetTestImage("mariadb")
+	NginxAlpineImage    = GetTestImage("nginx")
+	RegistryImageStable = GetTestImage("registry")
+	SystemdImage        = GetTestImage("stargz")
+	WordpressImage      = GetTestImage("wordpress")
 
 	CommonImage = AlpineImage
 
-	FedoraESGZImage = getImage("fedora_esgz") // eStargz
-	FfmpegSociImage = getImage("ffmpeg_soci") // SOCI
-	UbuntuImage     = getImage("ubuntu")      // Large enough for testing soci index creation
+	FedoraESGZImage = GetTestImage("fedora_esgz") // eStargz
+	FfmpegSociImage = GetTestImage("ffmpeg_soci") // SOCI
+	UbuntuImage     = GetTestImage("ubuntu")      // Large enough for testing soci index creation
 )
 
 const (
