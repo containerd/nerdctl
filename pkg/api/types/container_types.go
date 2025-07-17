@@ -400,6 +400,8 @@ type ContainerCommitOptions struct {
 	EstargzOptions
 	// Embed ZstdChunkedOptions for zstd:chunked conversion options
 	ZstdChunkedOptions
+	// DevboxOptions for devbox specific options
+	DevboxOptions
 }
 
 type CompressionType string

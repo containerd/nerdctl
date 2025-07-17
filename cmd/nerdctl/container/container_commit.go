@@ -51,6 +51,7 @@ func CommitCommand() *cobra.Command {
 	cmd.Flags().Bool("zstdchunked", false, "Convert the committed layer to zstd:chunked for lazy pulling")
 	cmd.Flags().Int("zstdchunked-compression-level", 3, "zstd:chunked compression level")
 	cmd.Flags().Int("zstdchunked-chunk-size", 0, "zstd:chunked chunk size")
+	cmd.Flags().Bool("devbox-remove-layer", false, "Remove the top layer of the base image when committing a devbox container")
 	return cmd
 }
 
@@ -128,6 +129,11 @@ func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 		return types.ContainerCommitOptions{}, errors.New("options --estargz and --zstdchunked lead to conflict, only one of them can be used")
 	}
 
+	removeBaseImageTopLayer, err := cmd.Flags().GetBool("devbox-remove-layer")
+	if err != nil {
+		return types.ContainerCommitOptions{}, err
+	}
+
 	return types.ContainerCommitOptions{
 		Stdout:      cmd.OutOrStdout(),
 		GOptions:    globalOptions,
@@ -147,6 +153,9 @@ func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 			ZstdChunked:                 zstdchunked,
 			ZstdChunkedCompressionLevel: zstdchunkedCompressionLevel,
 			ZstdChunkedChunkSize:        zstdchunkedChunkSize,
+		},
+		DevboxOptions: types.DevboxOptions{
+			RemoveBaseImageTopLayer: removeBaseImageTopLayer,
 		},
 	}, nil
 }

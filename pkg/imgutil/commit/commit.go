@@ -70,6 +70,7 @@ type Opts struct {
 	Format      types.ImageFormat
 	types.EstargzOptions
 	types.ZstdChunkedOptions
+	types.DevboxOptions
 }
 
 var (
@@ -273,6 +274,11 @@ func generateCommitImageConfig(ctx context.Context, container containerd.Contain
 		log.G(ctx).Warnf("assuming os=%q", os)
 	}
 	log.G(ctx).Debugf("generateCommitImageConfig(): arch=%q, os=%q", arch, os)
+	// remove last diiffID
+	if opts.DevboxOptions.RemoveBaseImageTopLayer && len(baseConfig.RootFS.DiffIDs) > 0 {
+		baseConfig.RootFS.DiffIDs = baseConfig.RootFS.DiffIDs[:len(baseConfig.RootFS.DiffIDs)-1]
+		baseConfig.History = baseConfig.History[:len(baseConfig.History)-1]
+	}
 	return ocispec.Image{
 		Platform: ocispec.Platform{
 			Architecture: arch,
@@ -328,6 +334,10 @@ func writeContentsForImage(ctx context.Context, snName string, baseImg container
 	baseMfst, _, err := imgutil.ReadManifest(ctx, baseImg)
 	if err != nil {
 		return ocispec.Descriptor{}, emptyDigest, err
+	}
+	// remove last layer
+	if opts.DevboxOptions.RemoveBaseImageTopLayer && len(baseMfst.Layers) > 0 {
+		baseMfst.Layers = baseMfst.Layers[:len(baseMfst.Layers)-1]
 	}
 	layers := append(baseMfst.Layers, diffLayerDesc)
 

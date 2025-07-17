@@ -53,6 +53,7 @@ func Commit(ctx context.Context, client *containerd.Client, rawRef string, req s
 		Format:             options.Format,
 		EstargzOptions:     options.EstargzOptions,
 		ZstdChunkedOptions: options.ZstdChunkedOptions,
+		DevboxOptions:      options.DevboxOptions,
 	}
 
 	walker := &containerwalker.ContainerWalker{

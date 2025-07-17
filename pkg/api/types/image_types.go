@@ -76,6 +76,11 @@ type ImageConvertOptions struct {
 	SociConvertOptions
 }
 
+type DevboxOptions struct {
+	// RemoveBaseImageTopLayer remove the top layer of the base image
+	RemoveBaseImageTopLayer bool
+}
+
 // EstargzOptions contains eStargz conversion options
 type EstargzOptions struct {
 	// Estargz convert legacy tar(.gz) layers to eStargz for lazy pulling. Should be used in conjunction with '--oci'
