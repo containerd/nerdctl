@@ -44,6 +44,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/pull"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
@@ -301,20 +302,29 @@ func ReadIndex(ctx context.Context, img containerd.Image) (*ocispec.Index, *ocis
 	return &idx, &desc, nil
 }
 
+// readManifestBlob is a helper to read and unmarshal a manifest blob.
+func readManifestBlob(ctx context.Context, cs content.Store, desc ocispec.Descriptor) (*ocispec.Manifest, error) {
+	b, err := content.ReadBlob(ctx, cs, desc)
+	if err != nil {
+		return nil, err
+	}
+	var mani ocispec.Manifest
+	if err := json.Unmarshal(b, &mani); err != nil {
+		return nil, err
+	}
+	return &mani, nil
+}
+
 // ReadManifest returns the manifest for img.platform, or nil if no manifest was found.
 func ReadManifest(ctx context.Context, img containerd.Image) (*ocispec.Manifest, *ocispec.Descriptor, error) {
 	cs := img.ContentStore()
 	targetDesc := img.Target()
 	if images.IsManifestType(targetDesc.MediaType) {
-		b, err := content.ReadBlob(ctx, img.ContentStore(), targetDesc)
+		mani, err := readManifestBlob(ctx, cs, targetDesc)
 		if err != nil {
 			return nil, &targetDesc, err
 		}
-		var mani ocispec.Manifest
-		if err := json.Unmarshal(b, &mani); err != nil {
-			return nil, &targetDesc, err
-		}
-		return &mani, &targetDesc, nil
+		return mani, &targetDesc, nil
 	}
 	if images.IsIndexType(targetDesc.MediaType) {
 		idx, _, err := ReadIndex(ctx, img)
@@ -325,24 +335,53 @@ func ReadManifest(ctx context.Context, img containerd.Image) (*ocispec.Manifest,
 		if err != nil {
 			return nil, nil, err
 		}
-		// We can't access the private `img.platform` variable.
-		// So, we find the manifest object by comparing the config desc.
 		for _, maniDesc := range idx.Manifests {
-			maniDesc := maniDesc
-			// ignore non-nil err
-			if b, err := content.ReadBlob(ctx, cs, maniDesc); err == nil {
-				var mani ocispec.Manifest
-				if err := json.Unmarshal(b, &mani); err != nil {
-					return nil, nil, err
-				}
-				if reflect.DeepEqual(configDesc, mani.Config) {
-					return &mani, &maniDesc, nil
-				}
+			mani, err := readManifestBlob(ctx, cs, maniDesc)
+			if err == nil && reflect.DeepEqual(configDesc, mani.Config) {
+				return mani, &maniDesc, nil
 			}
 		}
 	}
 	// no manifest was found
 	return nil, nil, nil
+}
+
+// ReadManifests returns all manifests for img.platform, or nil if no manifest was found.
+func ReadManifests(ctx context.Context, img containerd.Image) ([]native.ManifestEntry, error) {
+	cs := img.ContentStore()
+	targetDesc := img.Target()
+	if images.IsManifestType(targetDesc.MediaType) {
+		mani, err := readManifestBlob(ctx, cs, targetDesc)
+		entry := native.ManifestEntry{
+			Manifest:     mani,
+			ManifestDesc: &targetDesc,
+		}
+		if err != nil {
+			entry.Manifest = nil
+			return []native.ManifestEntry{entry}, err
+		}
+		return []native.ManifestEntry{entry}, nil
+	}
+	if images.IsIndexType(targetDesc.MediaType) {
+		idx, _, err := ReadIndex(ctx, img)
+		if err != nil {
+			return nil, err
+		}
+		var manifestEntries []native.ManifestEntry
+		for _, maniDesc := range idx.Manifests {
+			mani, err := readManifestBlob(ctx, cs, maniDesc)
+			entry := native.ManifestEntry{
+				Manifest:     mani,
+				ManifestDesc: &maniDesc,
+			}
+			if err == nil {
+				manifestEntries = append(manifestEntries, entry)
+			}
+		}
+		return manifestEntries, nil
+	}
+	// no manifest was found
+	return nil, nil
 }
 
 // ReadImageConfig reads the config spec (`application/vnd.oci.image.config.v1+json`) for img.platform from content store.

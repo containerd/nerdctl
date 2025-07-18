@@ -7,6 +7,10 @@ alpine:
   tag: "3.13-org"
   digest: "sha256:ec14c7992a97fc11425907e908340c6c3d6ff602f5f13d899e6b7027c9b4133a"
   variants: ["linux/amd64", "linux/arm64"]
+  platformDigests:
+    linux/amd64:
+      config: "sha256:49f356fa4513676c5e22e3a8404aad6c7262cc7aaed15341458265320786c58c"
+      manifest: "sha256:e103c1b4bf019dc290bcc7aca538dc2bf7a9d0fc836e186f5fa34945c5168310"
 
 busybox:
   ref: "ghcr.io/containerd/busybox"
