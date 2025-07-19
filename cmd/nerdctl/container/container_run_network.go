@@ -17,7 +17,9 @@
 package container
 
 import (
+	"fmt"
 	"net"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -108,6 +110,15 @@ func loadNetworkFlags(cmd *cobra.Command, globalOpts types.GlobalCommandOptions)
 		dnsSlice, err = cmd.Flags().GetStringSlice("dns")
 		if err != nil {
 			return netOpts, err
+		}
+		if len(dnsSlice) == 0 {
+			return netOpts, fmt.Errorf("--dns flag be specified but no DNS servers ")
+		}
+		for _, dns := range dnsSlice {
+			if ip := net.ParseIP(strings.TrimSpace(dns)); ip != nil {
+				continue
+			}
+			return netOpts, fmt.Errorf("IP address is not correctly formatted: %q with --dns flag", dns)
 		}
 	} else {
 		dnsSlice = globalOpts.DNS
