@@ -37,6 +37,8 @@ jobs:
           fetch-depth: 100
       - if: ${{ matrix.canary }}
         name: "Init (canary): retrieve GO_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           latest_go="$(. ./hack/provisioning/version/fetch.sh; go::canary::for::go-setup)"
           printf "GO_VERSION=%s\n" "$latest_go" >> "$GITHUB_ENV"
