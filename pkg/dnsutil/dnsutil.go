@@ -18,6 +18,9 @@ package dnsutil
 
 import (
 	"context"
+	"fmt"
+	"net"
+	"strings"
 
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
@@ -38,4 +41,15 @@ func GetSlirp4netnsDNS() ([]string, error) {
 		}
 	}
 	return dns, nil
+}
+
+// ValidateIPAddress validates if the given value is a correctly formatted
+// IP address, and returns the value in normalized form. Leading and trailing
+// whitespace is allowed, but it does not allow IPv6 addresses surrounded by
+// square brackets ("[::1]"). Refer to [net.ParseIP] for accepted formats.
+func ValidateIPAddress(val string) (string, error) {
+	if ip := net.ParseIP(strings.TrimSpace(val)); ip != nil {
+		return ip.String(), nil
+	}
+	return "", fmt.Errorf("ip address is not correctly formatted: %q", val)
 }
