@@ -312,6 +312,10 @@ func readIndex(ctx context.Context, provider content.Provider, snapshotter snaps
 
 	// Iterate over manifest descriptors and read them all
 	for _, manifestDescriptor := range index.Manifests {
+		if isAttestationManifestDescriptor(manifestDescriptor) {
+			continue
+		}
+
 		manifest, err := readManifest(ctx, provider, snapshotter, manifestDescriptor)
 		if err != nil {
 			continue
@@ -418,4 +422,10 @@ func (x *imagePrinter) printImageSinglePlatform(desc ocispec.Descriptor, img ima
 		}
 	}
 	return nil
+}
+
+func isAttestationManifestDescriptor(desc ocispec.Descriptor) bool {
+	const MANIFEST_REFERENCE_TYPE = "vnd.docker.reference.type"
+	const ATTESTATION_MANIFEST = "attestation-manifest"
+	return desc.Annotations[MANIFEST_REFERENCE_TYPE] == ATTESTATION_MANIFEST
 }
