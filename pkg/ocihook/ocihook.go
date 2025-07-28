@@ -37,10 +37,10 @@ import (
 	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/bypass4netnsutil"
 	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
-	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/netutil/nettype"
@@ -48,19 +48,6 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/portutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/store"
-)
-
-const (
-	// NetworkNamespace is the network namespace path to be passed to the CNI plugins.
-	// When this annotation is set from the runtime spec.State payload, it takes
-	// precedence over the PID based resolution (/proc/<pid>/ns/net) where pid is
-	// spec.State.Pid.
-	// This is mostly used for VM based runtime, where the spec.State PID does not
-	// necessarily lives in the created container networking namespace.
-	//
-	// On Windows, this label will contain the UUID of a namespace managed by
-	// the Host Compute Network Service (HCN) API.
-	NetworkNamespace = labels.Prefix + "network-namespace"
 )
 
 func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetconfPath, bridgeIP string) error {
@@ -73,7 +60,11 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 		return err
 	}
 
-	containerStateDir := state.Annotations[labels.StateDir]
+	containerAnnotations, err := annotations.NewFromState(&state)
+	if err != nil {
+		return err
+	}
+	containerStateDir := containerAnnotations.StateDir
 	if containerStateDir == "" {
 		return errors.New("state dir must be set")
 	}
@@ -117,32 +108,26 @@ func Run(stdin io.Reader, stderr io.Writer, event, dataStore, cniPath, cniNetcon
 	}
 	defer filesystem.Unlock(lock)
 
-	opts, err := newHandlerOpts(&state, dataStore, cniPath, cniNetconfPath, bridgeIP)
+	opts, err := newHandlerOpts(&state, containerAnnotations, dataStore, cniPath, cniNetconfPath, bridgeIP)
 	if err != nil {
 		return err
 	}
 
 	switch event {
 	case "createRuntime":
-		return onCreateRuntime(opts)
+		return onCreateRuntime(opts, containerAnnotations)
 	case "postStop":
-		return onPostStop(opts)
+		return onPostStop(opts, containerAnnotations)
 	default:
 		return fmt.Errorf("unexpected event %q", event)
 	}
 }
 
-func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath, bridgeIP string) (*handlerOpts, error) {
+func newHandlerOpts(state *specs.State, containerAnnotations *annotations.Annotations, dataStore, cniPath, cniNetconfPath, bridgeIP string) (*handlerOpts, error) {
 	o := &handlerOpts{
 		state:     state,
 		dataStore: dataStore,
 	}
-
-	extraHosts, err := getExtraHosts(state)
-	if err != nil {
-		return nil, err
-	}
-	o.extraHosts = extraHosts
 
 	hs, err := loadSpec(o.state.Bundle)
 	if err != nil {
@@ -153,7 +138,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath, brid
 		o.rootfs = filepath.Join(o.state.Bundle, o.rootfs)
 	}
 
-	namespace := o.state.Annotations[labels.Namespace]
+	namespace := containerAnnotations.Namespace
 	if namespace == "" {
 		return nil, errors.New("namespace must be set")
 	}
@@ -162,11 +147,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath, brid
 	}
 	o.fullID = namespace + "-" + o.state.ID
 
-	networksJSON := o.state.Annotations[labels.Networks]
-	var networks []string
-	if err := json.Unmarshal([]byte(networksJSON), &networks); err != nil {
-		return nil, err
-	}
+	networks := containerAnnotations.Networks
 
 	netType, err := nettype.Detect(networks)
 	if err != nil {
@@ -203,7 +184,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath, brid
 		return nil, fmt.Errorf("unexpected network type %v", netType)
 	}
 
-	if pidFile := o.state.Annotations[labels.PIDFile]; pidFile != "" {
+	if pidFile := containerAnnotations.PidFile; pidFile != "" {
 		if err := writePidFile(pidFile, state.Pid); err != nil {
 			return nil, err
 		}
@@ -215,27 +196,17 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath, brid
 	}
 	o.ports = ports
 
-	if ipAddress, ok := o.state.Annotations[labels.IPAddress]; ok {
-		o.containerIP = ipAddress
-	}
+	o.containerIP = containerAnnotations.IPAddress
+	o.containerMAC = containerAnnotations.MACAddress
 
-	if macAddress, ok := o.state.Annotations[labels.MACAddress]; ok {
-		o.containerMAC = macAddress
-	}
-
-	if ip6Address, ok := o.state.Annotations[labels.IP6Address]; ok {
-		o.containerIP6 = ip6Address
-	}
+	o.containerIP6 = containerAnnotations.IP6Address
 
 	if rootlessutil.IsRootlessChild() {
 		o.rootlessKitClient, err = rootlessutil.NewRootlessKitClient()
 		if err != nil {
 			return nil, err
 		}
-		b4nnEnabled, _, err := bypass4netnsutil.IsBypass4netnsEnabled(o.state.Annotations)
-		if err != nil {
-			return nil, err
-		}
+		b4nnEnabled := containerAnnotations.Bypass4netns
 		if b4nnEnabled {
 			socketPath, err := bypass4netnsutil.GetBypass4NetnsdDefaultSocketPath()
 			if err != nil {
@@ -260,7 +231,6 @@ type handlerOpts struct {
 	fullID            string
 	rootlessKitClient rlkclient.Client
 	bypassClient      b4nndclient.Client
-	extraHosts        map[string]string // host:ip
 	containerIP       string
 	containerMAC      string
 	containerIP6      string
@@ -287,26 +257,10 @@ func loadSpec(bundle string) (*hookSpec, error) {
 	return &s, nil
 }
 
-func getExtraHosts(state *specs.State) (map[string]string, error) {
-	extraHostsJSON := state.Annotations[labels.ExtraHosts]
-	var extraHosts []string
-	if err := json.Unmarshal([]byte(extraHostsJSON), &extraHosts); err != nil {
-		return nil, err
-	}
-
-	hosts := make(map[string]string)
-	for _, host := range extraHosts {
-		if v := strings.SplitN(host, ":", 2); len(v) == 2 {
-			hosts[v[0]] = v[1]
-		}
-	}
-	return hosts, nil
-}
-
-func getNetNSPath(state *specs.State) (string, error) {
+func getNetNSPath(state *specs.State, containerAnnotations *annotations.Annotations) (string, error) {
 	// If we have a network-namespace annotation we use it over the passed Pid.
-	netNsPath, netNsFound := state.Annotations[NetworkNamespace]
-	if netNsFound {
+	netNsPath := containerAnnotations.NetworkNamespace
+	if netNsPath != "" {
 		if _, err := os.Stat(netNsPath); err != nil {
 			return "", err
 		}
@@ -420,17 +374,17 @@ func getIP6AddressOpts(opts *handlerOpts) ([]cni.NamespaceOpts, error) {
 	return nil, nil
 }
 
-func applyNetworkSettings(opts *handlerOpts) (err error) {
+func applyNetworkSettings(opts *handlerOpts, containerAnnotations *annotations.Annotations) error {
 	portMapOpts, err := getPortMapOpts(opts)
 	if err != nil {
 		return err
 	}
-	nsPath, err := getNetNSPath(opts.state)
+	nsPath, err := getNetNSPath(opts.state, containerAnnotations)
 	if err != nil {
 		return err
 	}
 	ctx := context.Background()
-	hs, err := hostsstore.New(opts.dataStore, opts.state.Annotations[labels.Namespace])
+	hs, err := hostsstore.New(opts.dataStore, containerAnnotations.Namespace)
 	if err != nil {
 		return err
 	}
@@ -455,15 +409,15 @@ func applyNetworkSettings(opts *handlerOpts) (err error) {
 		cni.WithLabels(map[string]string{
 			"IgnoreUnknown": "1",
 		}),
-		cni.WithArgs("NERDCTL_CNI_DHCP_HOSTNAME", opts.state.Annotations[labels.Hostname]),
+		cni.WithArgs("NERDCTL_CNI_DHCP_HOSTNAME", containerAnnotations.HostName),
 	)
 	hsMeta := hostsstore.Meta{
 		ID:         opts.state.ID,
 		Networks:   make(map[string]*types100.Result, len(opts.cniNames)),
-		Hostname:   opts.state.Annotations[labels.Hostname],
-		Domainname: opts.state.Annotations[labels.Domainname],
-		ExtraHosts: opts.extraHosts,
-		Name:       opts.state.Annotations[labels.Name],
+		Hostname:   containerAnnotations.HostName,
+		Domainname: containerAnnotations.DomainName,
+		ExtraHosts: containerAnnotations.ExtraHosts,
+		Name:       containerAnnotations.Name,
 	}
 
 	// When containerd gets bounced, containers that were previously running and that are restarted will go again
@@ -495,10 +449,8 @@ func applyNetworkSettings(opts *handlerOpts) (err error) {
 		hsMeta.Networks[cniName] = cniResRaw[i]
 	}
 
-	b4nnEnabled, b4nnBindEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
-	if err != nil {
-		return err
-	}
+	b4nnEnabled := containerAnnotations.Bypass4netns
+	b4nnBindEnabled := !containerAnnotations.Bypass4netnsIgnoreBind
 
 	if err := hs.Acquire(hsMeta); err != nil {
 		return err
@@ -506,11 +458,11 @@ func applyNetworkSettings(opts *handlerOpts) (err error) {
 
 	if rootlessutil.IsRootlessChild() {
 		if b4nnEnabled {
-			bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient, opts.rootlessKitClient, opts.state.Annotations)
+			bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient, opts.rootlessKitClient, containerAnnotations)
 			if err != nil {
 				return err
 			}
-			err = bm.StartBypass(ctx, opts.ports, opts.state.ID, opts.state.Annotations[labels.StateDir])
+			err = bm.StartBypass(ctx, opts.ports, opts.state.ID, containerAnnotations.StateDir)
 			if err != nil {
 				return fmt.Errorf("bypass4netnsd not running? (Hint: run `containerd-rootless-setuptool.sh install-bypass4netnsd`): %w", err)
 			}
@@ -524,11 +476,11 @@ func applyNetworkSettings(opts *handlerOpts) (err error) {
 	return nil
 }
 
-func onCreateRuntime(opts *handlerOpts) error {
+func onCreateRuntime(opts *handlerOpts, containerAnnotations *annotations.Annotations) error {
 	loadAppArmor()
 
-	name := opts.state.Annotations[labels.Name]
-	ns := opts.state.Annotations[labels.Namespace]
+	name := containerAnnotations.Name
+	ns := containerAnnotations.Namespace
 	namst, err := namestore.New(opts.dataStore, ns)
 	if err != nil {
 		log.L.WithError(err).Error("failed opening the namestore in onCreateRuntime")
@@ -538,11 +490,11 @@ func onCreateRuntime(opts *handlerOpts) error {
 
 	var netError error
 	if opts.cni != nil {
-		netError = applyNetworkSettings(opts)
+		netError = applyNetworkSettings(opts, containerAnnotations)
 	}
 
 	// Set StartedAt and CreateError
-	lf, err := state.New(opts.state.Annotations[labels.StateDir])
+	lf, err := state.New(containerAnnotations.StateDir)
 	if err != nil {
 		return err
 	}
@@ -559,8 +511,8 @@ func onCreateRuntime(opts *handlerOpts) error {
 	return netError
 }
 
-func onPostStop(opts *handlerOpts) error {
-	lf, err := state.New(opts.state.Annotations[labels.StateDir])
+func onPostStop(opts *handlerOpts, containerAnnotations *annotations.Annotations) error {
+	lf, err := state.New(containerAnnotations.StateDir)
 	if err != nil {
 		return err
 	}
@@ -584,16 +536,14 @@ func onPostStop(opts *handlerOpts) error {
 	}
 
 	ctx := context.Background()
-	ns := opts.state.Annotations[labels.Namespace]
+	ns := containerAnnotations.Namespace
 	if opts.cni != nil {
 		var err error
-		b4nnEnabled, b4nnBindEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
-		if err != nil {
-			return err
-		}
+		b4nnEnabled := containerAnnotations.Bypass4netns
+		b4nnBindEnabled := !containerAnnotations.Bypass4netnsIgnoreBind
 		if rootlessutil.IsRootlessChild() {
 			if b4nnEnabled {
-				bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient, opts.rootlessKitClient, opts.state.Annotations)
+				bm, err := bypass4netnsutil.NewBypass4netnsCNIBypassManager(opts.bypassClient, opts.rootlessKitClient, containerAnnotations)
 				if err != nil {
 					return err
 				}
@@ -654,7 +604,7 @@ func onPostStop(opts *handlerOpts) error {
 	if err != nil {
 		return err
 	}
-	name := opts.state.Annotations[labels.Name]
+	name := containerAnnotations.Name
 	// Double-releasing may happen with containers started with --rm, so, ignore NotFound errors
 	if err := namst.Release(name, opts.state.ID); err != nil && !errors.Is(err, store.ErrNotFound) {
 		return fmt.Errorf("failed to release container name %s: %w", name, err)
