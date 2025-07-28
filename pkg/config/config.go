@@ -46,6 +46,7 @@ type Config struct {
 	DNS              []string `toml:"dns,omitempty"`
 	DNSOpts          []string `toml:"dns_opts,omitempty"`
 	DNSSearch        []string `toml:"dns_search,omitempty"`
+	DisableHCSystemd bool     `toml:"disable_hc_systemd"`
 }
 
 // New creates a default Config object statically,
@@ -71,5 +72,6 @@ func New() *Config {
 		DNS:              []string{},
 		DNSOpts:          []string{},
 		DNSSearch:        []string{},
+		DisableHCSystemd: false,
 	}
 }

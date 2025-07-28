@@ -33,6 +33,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/volume"
 	"github.com/containerd/nerdctl/v2/pkg/composer"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/v2/pkg/config"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/ipfs"
@@ -156,7 +157,7 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 		return err
 	}
 
-	return composer.New(options, client)
+	return composer.New(options, client, (*config.Config)(&globalOptions))
 }
 
 func imageVerifyOptionsFromCompose(ps *serviceparser.Service) types.ImageVerifyOptions {

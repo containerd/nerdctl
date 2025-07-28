@@ -23,6 +23,7 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/config"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 )
@@ -38,7 +39,7 @@ func Restart(ctx context.Context, client *containerd.Client, containers []string
 			if err := containerutil.Stop(ctx, found.Container, options.Timeout, options.Signal); err != nil {
 				return err
 			}
-			if err := containerutil.Start(ctx, found.Container, false, false, client, ""); err != nil {
+			if err := containerutil.Start(ctx, found.Container, false, false, client, "", (*config.Config)(&options.GOption)); err != nil {
 				return err
 			}
 			_, err := fmt.Fprintln(options.Stdout, found.Req)
