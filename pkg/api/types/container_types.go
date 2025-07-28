@@ -292,13 +292,12 @@ type ContainerCreateOptions struct {
 	ImagePullOpt ImagePullOptions
 
 	// Healthcheck related fields
-	HealthCmd           string
-	HealthInterval      time.Duration
-	HealthTimeout       time.Duration
-	HealthRetries       int
-	HealthStartPeriod   time.Duration
-	HealthStartInterval time.Duration
-	NoHealthcheck       bool
+	HealthCmd         string
+	HealthInterval    time.Duration
+	HealthTimeout     time.Duration
+	HealthRetries     int
+	HealthStartPeriod time.Duration
+	NoHealthcheck     bool
 
 	// UserNS name for user namespace mapping of container
 	UserNS string

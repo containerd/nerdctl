@@ -59,7 +59,6 @@ func HealthCheck(ctx context.Context, client *containerd.Client, container conta
 	hcConfig.Interval = timeoutWithDefault(hcConfig.Interval, healthcheck.DefaultProbeInterval)
 	hcConfig.Timeout = timeoutWithDefault(hcConfig.Timeout, healthcheck.DefaultProbeTimeout)
 	hcConfig.StartPeriod = timeoutWithDefault(hcConfig.StartPeriod, healthcheck.DefaultStartPeriod)
-	hcConfig.StartInterval = timeoutWithDefault(hcConfig.StartInterval, healthcheck.DefaultStartInterval)
 	if hcConfig.Retries == 0 {
 		hcConfig.Retries = healthcheck.DefaultProbeRetries
 	}

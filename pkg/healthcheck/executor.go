@@ -128,26 +128,42 @@ func updateHealthStatus(ctx context.Context, container containerd.Container, hcC
 		currentHealth = &HealthState{
 			Status:        Starting,
 			FailingStreak: 0,
+			StartPeriod:   hcConfig.StartPeriod > 0,
 		}
 	}
 
-	// Check if still within start period
-	startPeriod := hcConfig.StartPeriod
+	// Get container info for start period check
 	info, err := container.Info(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get container info: %w", err)
 	}
 	containerCreated := info.CreatedAt
-	stillInStartPeriod := hcResult.Start.Sub(containerCreated) < startPeriod
 
-	// Update health status based on exit code
-	if hcResult.ExitCode == 0 {
-		currentHealth.Status = Healthy
-		currentHealth.FailingStreak = 0
-	} else if !stillInStartPeriod {
-		currentHealth.FailingStreak++
-		if currentHealth.FailingStreak >= hcConfig.Retries {
-			currentHealth.Status = Unhealthy
+	// Check if we're in start period workflow
+	inStartPeriodTime := hcResult.Start.Sub(containerCreated) < hcConfig.StartPeriod
+	inStartPeriodState := currentHealth.StartPeriod
+
+	if inStartPeriodTime && inStartPeriodState {
+		// Start Period Workflow
+		if hcResult.ExitCode == 0 {
+			// First healthy result transitions us out of start period
+			currentHealth.Status = Healthy
+			currentHealth.FailingStreak = 0
+			currentHealth.StartPeriod = false
+		}
+		// Ignore unhealthy results during start period
+	} else {
+		// Health Interval Workflow
+		if hcResult.ExitCode == 0 {
+			if currentHealth.Status != Healthy {
+				currentHealth.Status = Healthy
+				currentHealth.FailingStreak = 0
+			}
+		} else {
+			currentHealth.FailingStreak++
+			if currentHealth.FailingStreak >= hcConfig.Retries && currentHealth.Status != Unhealthy {
+				currentHealth.Status = Unhealthy
+			}
 		}
 	}
 
