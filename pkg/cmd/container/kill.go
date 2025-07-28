@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
+	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
@@ -109,6 +110,11 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 
 	if err := task.Kill(ctx, signal); err != nil {
 		return err
+	}
+
+	// Clean up healthcheck systemd units
+	if err := healthcheck.RemoveTransientHealthCheckFiles(ctx, container); err != nil {
+		log.G(ctx).Warnf("failed to clean up healthcheck units for container %s: %s", container.ID(), err)
 	}
 
 	// signal will be sent once resume is finished

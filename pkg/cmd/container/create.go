@@ -891,9 +891,6 @@ func withHealthcheck(options types.ContainerCreateOptions, ensuredImage *imgutil
 	if options.HealthStartPeriod != 0 {
 		hc.StartPeriod = options.HealthStartPeriod
 	}
-	if options.HealthStartInterval != 0 {
-		hc.StartInterval = options.HealthStartInterval
-	}
 
 	// If no healthcheck config is set (via CLI or image), return empty string so we skip adding to container config.
 	if reflect.DeepEqual(hc, &healthcheck.Healthcheck{}) {
