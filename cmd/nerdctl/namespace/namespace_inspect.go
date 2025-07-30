@@ -19,6 +19,7 @@ package namespace
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -27,12 +28,13 @@ import (
 
 func inspectCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:           "inspect NAMESPACE",
-		Short:         "Display detailed information on one or more namespaces.",
-		RunE:          inspectAction,
-		Args:          cobra.MinimumNArgs(1),
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		Use:               "inspect NAMESPACE",
+		Short:             "Display detailed information on one or more namespaces.",
+		RunE:              inspectAction,
+		ValidArgsFunction: namespaceInspectShellComplete,
+		Args:              cobra.MinimumNArgs(1),
+		SilenceUsage:      true,
+		SilenceErrors:     true,
 	}
 	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
 	cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -70,4 +72,9 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	return namespace.Inspect(ctx, client, args, options)
+}
+
+func namespaceInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// show namespace names
+	return completion.NamespaceNames(cmd, args, toComplete)
 }

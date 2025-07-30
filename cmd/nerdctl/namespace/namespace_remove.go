@@ -19,6 +19,7 @@ package namespace
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -27,13 +28,14 @@ import (
 
 func removeCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:           "remove [flags] NAMESPACE [NAMESPACE...]",
-		Aliases:       []string{"rm"},
-		Args:          cobra.MinimumNArgs(1),
-		Short:         "Remove one or more namespaces",
-		RunE:          removeAction,
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		Use:               "remove [flags] NAMESPACE [NAMESPACE...]",
+		Aliases:           []string{"rm"},
+		Args:              cobra.MinimumNArgs(1),
+		Short:             "Remove one or more namespaces",
+		RunE:              removeAction,
+		ValidArgsFunction: namespaceRemoveShellComplete,
+		SilenceUsage:      true,
+		SilenceErrors:     true,
 	}
 	cmd.Flags().BoolP("cgroup", "c", false, "delete the namespace's cgroup")
 	return cmd
@@ -68,4 +70,9 @@ func removeAction(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	return namespace.Remove(ctx, client, args, options)
+}
+
+func namespaceRemoveShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// show namespace names
+	return completion.NamespaceNames(cmd, args, toComplete)
 }
