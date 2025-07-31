@@ -404,6 +404,15 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 	for _, s := range strutil.DedupeStrSlice(options.Attest) {
 		optAttestType, optAttestAttrs, _ := strings.Cut(s, ",")
 		if strings.HasPrefix(optAttestType, "type=") {
+			if strings.HasPrefix(optAttestAttrs, "disabled=") {
+				disabled, err := strconv.ParseBool(strings.TrimPrefix(optAttestAttrs, "disabled="))
+				if err != nil {
+					return "", nil, false, "", nil, nil, fmt.Errorf("invalid value for attribute \"disabled\"")
+				}
+				if disabled {
+					continue
+				}
+			}
 			optAttestType := strings.TrimPrefix(optAttestType, "type=")
 			buildctlArgs = append(buildctlArgs, fmt.Sprintf("--opt=attest:%s=%s", optAttestType, optAttestAttrs))
 		} else {
