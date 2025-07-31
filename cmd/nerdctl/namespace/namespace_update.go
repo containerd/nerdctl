@@ -19,6 +19,7 @@ package namespace
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -27,12 +28,13 @@ import (
 
 func updateCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:           "update [flags] NAMESPACE",
-		Short:         "Update labels for a namespace",
-		RunE:          updateAction,
-		Args:          cobra.MinimumNArgs(1),
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		Use:               "update [flags] NAMESPACE",
+		Short:             "Update labels for a namespace",
+		RunE:              updateAction,
+		ValidArgsFunction: namespaceUpdateShellComplete,
+		Args:              cobra.MinimumNArgs(1),
+		SilenceUsage:      true,
+		SilenceErrors:     true,
 	}
 	cmd.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
 	return cmd
@@ -66,4 +68,9 @@ func updateAction(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	return namespace.Update(ctx, client, args[0], options)
+}
+
+func namespaceUpdateShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// show namespace names
+	return completion.NamespaceNames(cmd, args, toComplete)
 }
