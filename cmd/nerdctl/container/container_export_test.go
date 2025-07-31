@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -66,6 +67,10 @@ func validateExportedTar(outFile string) test.Comparator {
 }
 
 func TestExportStoppedContainer(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("export is not supported on Windows")
+	}
+
 	testCase := nerdtest.Setup()
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		identifier := data.Identifier("container")
@@ -108,6 +113,10 @@ func TestExportStoppedContainer(t *testing.T) {
 }
 
 func TestExportRunningContainer(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("export is not supported on Windows")
+	}
+
 	testCase := nerdtest.Setup()
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		identifier := data.Identifier("container")
@@ -149,6 +158,10 @@ func TestExportRunningContainer(t *testing.T) {
 }
 
 func TestExportNonexistentContainer(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("export is not supported on Windows")
+	}
+
 	testCase := nerdtest.Setup()
 	testCase.Command = test.Command("export", "nonexistent-container")
 	testCase.Expected = test.Expects(1, nil, nil)
