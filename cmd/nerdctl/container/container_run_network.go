@@ -17,6 +17,8 @@
 package container
 
 import (
+	"errors"
+	"fmt"
 	"net"
 
 	"github.com/spf13/cobra"
@@ -24,6 +26,7 @@ import (
 	"github.com/containerd/go-cni"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/dnsutil"
 	"github.com/containerd/nerdctl/v2/pkg/portutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
@@ -108,6 +111,14 @@ func loadNetworkFlags(cmd *cobra.Command, globalOpts types.GlobalCommandOptions)
 		dnsSlice, err = cmd.Flags().GetStringSlice("dns")
 		if err != nil {
 			return netOpts, err
+		}
+		if len(dnsSlice) == 0 {
+			return netOpts, errors.New("--dns flag was specified but no DNS server was provided")
+		}
+		for _, dns := range dnsSlice {
+			if _, err := dnsutil.ValidateIPAddress(dns); err != nil {
+				return netOpts, fmt.Errorf("%w with --dns flag", err)
+			}
 		}
 	} else {
 		dnsSlice = globalOpts.DNS
