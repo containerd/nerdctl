@@ -34,7 +34,7 @@ import (
 // Export exports a container's filesystem as a tar archive
 func Export(ctx context.Context, client *containerd.Client, containerReq string, options types.ContainerExportOptions) error {
 	if runtime.GOOS == "windows" {
-		return fmt.Errorf("Nerdctl export command is not supported on Windows")
+		return fmt.Errorf("export command is not supported on Windows")
 	}
 
 	walker := &containerwalker.ContainerWalker{
