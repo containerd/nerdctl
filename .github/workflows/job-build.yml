@@ -41,6 +41,8 @@ jobs:
 
       - if: ${{ inputs.canary }}
         name: "Init (canary): retrieve GO_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           . ./hack/github/action-helpers.sh
           latest_go="$(. ./hack/provisioning/version/fetch.sh; go::canary::for::go-setup)"

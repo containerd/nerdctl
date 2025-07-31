@@ -77,6 +77,8 @@ jobs:
 
       - if: ${{ inputs.canary }}
         name: "Init (canary): retrieve latest go and containerd"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           latest_go="$(. ./hack/provisioning/version/fetch.sh; go::canary::for::go-setup)"
           latest_containerd="$(. ./hack/provisioning/version/fetch.sh; github::project::latest "containerd/containerd")"
