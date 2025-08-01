@@ -34,7 +34,7 @@ import (
 
 func parseBuildConfig(c *types.BuildConfig, project *types.Project, imageName string) (*Build, error) {
 	if unknown := reflectutil.UnknownNonEmptyFields(c,
-		"Context", "Dockerfile", "Args", "CacheFrom", "Target", "Labels", "Secrets", "AdditionalContexts",
+		"Context", "Dockerfile", "Args", "CacheFrom", "Target", "Labels", "Secrets", "DockerfileInline", "AdditionalContexts",
 	); len(unknown) > 0 {
 		log.L.Warnf("Ignoring: build: %+v", unknown)
 	}
@@ -58,6 +58,10 @@ func parseBuildConfig(c *types.BuildConfig, project *types.Project, imageName st
 			dockerfile := filepath.Join(ctxDir, c.Dockerfile)
 			b.BuildArgs = append(b.BuildArgs, "-f="+dockerfile)
 		}
+	}
+
+	if c.DockerfileInline != "" {
+		b.DockerfileInline = c.DockerfileInline
 	}
 
 	for k, v := range c.Args {
