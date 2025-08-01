@@ -34,6 +34,7 @@ func Command() *cobra.Command {
 
 	cmd.AddCommand(
 		InspectCommand(),
+		CreateCommand(),
 	)
 
 	return cmd
