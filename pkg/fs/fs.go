@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package pkg
+package fs
 
 import "github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 

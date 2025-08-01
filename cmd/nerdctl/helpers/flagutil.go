@@ -21,8 +21,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/containerd/nerdctl/v2/pkg"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/fs"
 )
 
 func VerifyOptions(cmd *cobra.Command) (opt types.ImageVerifyOptions, err error) {
@@ -159,7 +159,7 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 	}
 
 	// Point to dataRoot for filesystem-helpers implementing rollback / backups.
-	err = pkg.InitFS(dataRoot)
+	err = fs.InitFS(dataRoot)
 	if err != nil {
 		return types.GlobalCommandOptions{}, err
 	}
