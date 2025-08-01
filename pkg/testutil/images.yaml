@@ -5,8 +5,16 @@
 alpine:
   ref: "ghcr.io/stargz-containers/alpine"
   tag: "3.13-org"
+  schemaversion: 2
+  mediatype: "application/vnd.docker.distribution.manifest.list.v2+json"
   digest: "sha256:ec14c7992a97fc11425907e908340c6c3d6ff602f5f13d899e6b7027c9b4133a"
   variants: ["linux/amd64", "linux/arm64"]
+  manifests:
+    linux/amd64:
+      mediatype: "application/vnd.docker.distribution.manifest.v2+json"
+      manifest: "sha256:e103c1b4bf019dc290bcc7aca538dc2bf7a9d0fc836e186f5fa34945c5168310"
+      config: "sha256:49f356fa4513676c5e22e3a8404aad6c7262cc7aaed15341458265320786c58c"
+      raw: "ewogICAic2NoZW1hVmVyc2lvbiI6IDIsCiAgICJtZWRpYVR5cGUiOiAiYXBwbGljYXRpb24vdm5kLmRvY2tlci5kaXN0cmlidXRpb24ubWFuaWZlc3QudjIranNvbiIsCiAgICJjb25maWciOiB7CiAgICAgICJtZWRpYVR5cGUiOiAiYXBwbGljYXRpb24vdm5kLmRvY2tlci5jb250YWluZXIuaW1hZ2UudjEranNvbiIsCiAgICAgICJzaXplIjogMTQ3MiwKICAgICAgImRpZ2VzdCI6ICJzaGEyNTY6NDlmMzU2ZmE0NTEzNjc2YzVlMjJlM2E4NDA0YWFkNmM3MjYyY2M3YWFlZDE1MzQxNDU4MjY1MzIwNzg2YzU4YyIKICAgfSwKICAgImxheWVycyI6IFsKICAgICAgewogICAgICAgICAibWVkaWFUeXBlIjogImFwcGxpY2F0aW9uL3ZuZC5kb2NrZXIuaW1hZ2Uucm9vdGZzLmRpZmYudGFyLmd6aXAiLAogICAgICAgICAic2l6ZSI6IDI4MTE5NDcsCiAgICAgICAgICJkaWdlc3QiOiAic2hhMjU2OmNhM2NkNDJhN2M5NTI1ZjZjZTNkNjRjMWE3MDk4MjYxM2E4MjM1ZjBjYzA1N2VjOTI0NDA1MjkyMTg1M2VmMTUiCiAgICAgIH0KICAgXQp9"
 
 busybox:
   ref: "ghcr.io/containerd/busybox"
