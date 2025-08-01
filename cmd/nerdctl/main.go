@@ -61,11 +61,7 @@ var (
 // usage was derived from https://github.com/spf13/cobra/blob/v1.2.1/command.go#L491-L514
 func usage(c *cobra.Command) error {
 	s := "Usage: "
-	if c != c.Root() {
-		s += c.UseLine() + "\n"
-	} else {
-		s += c.CommandPath() + " [command]\n"
-	}
+	s += c.CommandPath() + " [command] flag\n"
 	s += "\n"
 	if len(c.Aliases) > 0 {
 		s += "Aliases: " + c.NameAndAliases() + "\n"
