@@ -43,3 +43,13 @@ type NamespaceInspectOptions struct {
 	// Format the output using the given Go template, e.g, '{{json .}}'
 	Format string
 }
+
+// NamespaceListOptions specifies options for `nerdctl namespace ls`.
+type NamespaceListOptions struct {
+	Stdout   io.Writer
+	GOptions GlobalCommandOptions
+	// Format the output using the given Go template, e.g, '{{json .}}'
+	Format string
+	// Quiet suppresses extra information and only prints namespace names
+	Quiet bool
+}

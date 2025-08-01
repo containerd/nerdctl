@@ -75,6 +75,5 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 }
 
 func namespaceInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	// show namespace names
 	return completion.NamespaceNames(cmd, args, toComplete)
 }
