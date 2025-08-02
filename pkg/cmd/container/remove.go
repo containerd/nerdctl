@@ -34,6 +34,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
+	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
@@ -178,6 +179,11 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 
 		// Otherwise, nil the error so that we do not write the error label on the container
 		retErr = nil
+
+		// Clean up healthcheck systemd units
+		if err := healthcheck.RemoveTransientHealthCheckFiles(ctx, c); err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to clean up healthcheck units for container %q", id)
+		}
 
 		// Now, delete the actual container
 		var delOpts []containerd.DeleteOpts
