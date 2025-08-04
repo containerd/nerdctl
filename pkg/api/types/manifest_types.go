@@ -18,6 +18,16 @@ package types
 
 import "io"
 
+// ManifestCreateOptions specifies options for `nerdctl manifest create`.
+type ManifestCreateOptions struct {
+	Stdout   io.Writer
+	GOptions GlobalCommandOptions
+	// Amend an existing manifest list
+	Amend bool
+	// Allow communication with an insecure registry
+	Insecure bool
+}
+
 // ManifestInspectOptions specifies options for `nerdctl manifest inspect`.
 type ManifestInspectOptions struct {
 	Stdout   io.Writer

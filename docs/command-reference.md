@@ -52,6 +52,7 @@ It does not necessarily mean that the corresponding features are missing in cont
   - [:nerd_face: nerdctl image encrypt](#nerd_face-nerdctl-image-encrypt)
   - [:nerd_face: nerdctl image decrypt](#nerd_face-nerdctl-image-decrypt)
 - [Manifest management](#manifest-management)
+  - [:whale: nerdctl manifest create](#whale-nerdctl-manifest-create)
   - [:whale: nerdctl manifest inspect](#whale-nerdctl-manifest-inspect)
 - [Registry](#registry)
   - [:whale: nerdctl login](#whale-nerdctl-login)
@@ -1038,6 +1039,23 @@ Flags:
 - `--all-platforms`              : Convert content for all platforms (default: false)
 
 ## Manifest management
+
+### :whale: nerdctl manifest create
+
+Create a local index/manifest list.
+
+Usage: `nerdctl manifest create [OPTIONS] INDEX/MANIFESTLIST MANIFEST [MANIFEST...]`
+
+Flags:
+
+- `--amend`: Amend the existing index/manifest list
+- `--insecure`: Allow communication with an insecure registry
+
+Example:
+
+```bash
+nerdctl manifest create myapp:latest alpine@sha256:eafc1edb577d2e9b458664a15f23ea1c370214193226069eb22921169fc7e43f
+```
 
 ### :whale: nerdctl manifest inspect
 
