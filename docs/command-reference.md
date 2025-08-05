@@ -34,6 +34,7 @@ It does not necessarily mean that the corresponding features are missing in cont
   - [:whale: nerdctl attach](#whale-nerdctl-attach)
   - [:whale: nerdctl container prune](#whale-nerdctl-container-prune)
   - [:whale: nerdctl diff](#whale-nerdctl-diff)
+  - [:whale: nerdctl export](#whale-nerdctl-export)
 - [Build](#build)
   - [:whale: nerdctl build](#whale-nerdctl-build)
   - [:whale: nerdctl commit](#whale-nerdctl-commit)
@@ -718,6 +719,12 @@ Unimplemented `docker container prune` flags: `--filter`
 Inspect changes to files or directories on a container's filesystem
 
 Usage: `nerdctl diff CONTAINER`
+
+### :whale: nerdctl export
+
+Export a containers filesystem as a tar archive.
+
+Usage: `nerdctl export CONTAINER`
 
 ## Build
 
@@ -1814,7 +1821,7 @@ Container management:
 
 Image:
 
-- `docker export` and `docker import`
+- `docker import`
 - `docker trust *` (Instead, nerdctl supports `nerdctl pull --verify=cosign|notation` and `nerdctl push --sign=cosign|notation`. See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md).)
 - `docker manifest *`
 

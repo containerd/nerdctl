@@ -287,6 +287,7 @@ Config file ($NERDCTL_TOML): %s
 		container.PauseCommand(),
 		container.UnpauseCommand(),
 		container.CommitCommand(),
+		container.ExportCommand(),
 		container.WaitCommand(),
 		container.RenameCommand(),
 		container.AttachCommand(),
