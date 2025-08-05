@@ -18,6 +18,17 @@ package types
 
 import "io"
 
+// ManifestAnnotateOptions specifies options for `nerdctl manifest annotate`.
+type ManifestAnnotateOptions struct {
+	Stdout     io.Writer
+	GOptions   GlobalCommandOptions
+	Os         string
+	Arch       string
+	OsVersion  string
+	Variant    string
+	OsFeatures []string
+}
+
 // ManifestCreateOptions specifies options for `nerdctl manifest create`.
 type ManifestCreateOptions struct {
 	Stdout   io.Writer

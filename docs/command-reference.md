@@ -52,6 +52,7 @@ It does not necessarily mean that the corresponding features are missing in cont
   - [:nerd_face: nerdctl image encrypt](#nerd_face-nerdctl-image-encrypt)
   - [:nerd_face: nerdctl image decrypt](#nerd_face-nerdctl-image-decrypt)
 - [Manifest management](#manifest-management)
+  - [:whale: nerdctl manifest annotate](#whale-nerdctl-manifest-annotate)
   - [:whale: nerdctl manifest create](#whale-nerdctl-manifest-create)
   - [:whale: nerdctl manifest inspect](#whale-nerdctl-manifest-inspect)
 - [Registry](#registry)
@@ -1039,6 +1040,27 @@ Flags:
 - `--all-platforms`              : Convert content for all platforms (default: false)
 
 ## Manifest management
+
+### :whale: nerdctl manifest annotate
+
+Add additional information to a local image manifest.
+
+Usage: `nerdctl manifest annotate [OPTIONS] INDEX/MANIFESTLIST MANIFEST`
+
+Flags:
+
+- :whale: `--os`: Set operating system (e.g., "linux", "windows", "freebsd")
+- :whale: `--arch`: Set architecture (e.g., "amd64", "arm64", "arm")
+- :whale: `--os-version`: Set operating system version (e.g., "10.0.19041")
+- :whale: `--variant`: Set architecture variant (e.g., "v7", "v8")
+- :whale: `--os-features`: Set operating system features (e.g., "win32k")
+
+Examples:
+
+```bash
+nerdctl manifest annotate myapp:latest alpine@sha256:eafc1edb577d2e9b458664a15f23ea1c370214193226069eb22921169fc7e43f \
+  --os linux --arch arm --variant v7 --os-features feature1,feature2
+```
 
 ### :whale: nerdctl manifest create
 

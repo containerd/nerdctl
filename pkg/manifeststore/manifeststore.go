@@ -28,6 +28,7 @@ import (
 )
 
 type Store interface {
+	Get(listRef *referenceutil.ImageReference, manifestRef *referenceutil.ImageReference) (*manifesttypes.DockerManifestEntry, error)
 	// GetList returns all the local manifests for a index or manifest list
 	GetList(listRef *referenceutil.ImageReference) ([]*manifesttypes.DockerManifestEntry, error)
 	// Save saves a manifest as part of a index or local manifest list
@@ -45,6 +46,19 @@ func NewStore(dataRoot string) (Store, error) {
 		return nil, fmt.Errorf("failed to create manifest store: %w", err)
 	}
 	return &manifestStore{store: st}, nil
+}
+
+func (s *manifestStore) Get(listRef *referenceutil.ImageReference, manifestRef *referenceutil.ImageReference) (*manifesttypes.DockerManifestEntry, error) {
+	var manifest *manifesttypes.DockerManifestEntry
+	err := s.store.WithLock(func() error {
+		listPath := makeFilesafeName(listRef.String())
+		manifestPath := makeFilesafeName(manifestRef.String())
+
+		var err error
+		manifest, err = s.getManifestFromPath(listPath, manifestPath)
+		return err
+	})
+	return manifest, err
 }
 
 func (s *manifestStore) GetList(listRef *referenceutil.ImageReference) ([]*manifesttypes.DockerManifestEntry, error) {
