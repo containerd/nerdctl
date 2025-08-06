@@ -78,3 +78,13 @@ jobs:
       go-version: ${{ matrix.go-version }}
       runner: ubuntu-24.04
       canary: ${{ matrix.canary && true || false }}
+
+
+  reporter:
+    if: ${{ failure() || success() }}
+    name: "DEBUG"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Process
+        run: |
+          printf '::error title=TESTTHIS,file=.github/workflows/job-test-in-container.yml,line=1::ONE<br><br>TWO %0A; %0A; %0A; `THREE`\n'
