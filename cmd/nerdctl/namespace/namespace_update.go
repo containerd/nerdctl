@@ -71,6 +71,5 @@ func updateAction(cmd *cobra.Command, args []string) error {
 }
 
 func namespaceUpdateShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	// show namespace names
 	return completion.NamespaceNames(cmd, args, toComplete)
 }

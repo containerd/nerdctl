@@ -19,46 +19,49 @@ package namespace
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/namespace"
 )
 
-func removeCommand() *cobra.Command {
+func listCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "remove [flags] NAMESPACE [NAMESPACE...]",
-		Aliases:           []string{"rm"},
-		Args:              cobra.MinimumNArgs(1),
-		Short:             "Remove one or more namespaces",
-		RunE:              removeAction,
-		ValidArgsFunction: namespaceRemoveShellComplete,
-		SilenceUsage:      true,
-		SilenceErrors:     true,
+		Use:           "ls",
+		Aliases:       []string{"list"},
+		Short:         "List containerd namespaces",
+		RunE:          listAction,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
-	cmd.Flags().BoolP("cgroup", "c", false, "delete the namespace's cgroup")
+	cmd.Flags().BoolP("quiet", "q", false, "Only display names")
+	cmd.Flags().StringP("format", "f", "", "Format the output using the given Go template, e.g, '{{json .}}'")
 	return cmd
 }
 
-func removeOptions(cmd *cobra.Command) (types.NamespaceRemoveOptions, error) {
+func listOptions(cmd *cobra.Command) (types.NamespaceListOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
-		return types.NamespaceRemoveOptions{}, err
+		return types.NamespaceListOptions{}, err
 	}
-	cgroup, err := cmd.Flags().GetBool("cgroup")
+	format, err := cmd.Flags().GetString("format")
 	if err != nil {
-		return types.NamespaceRemoveOptions{}, err
+		return types.NamespaceListOptions{}, err
 	}
-	return types.NamespaceRemoveOptions{
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return types.NamespaceListOptions{}, err
+	}
+	return types.NamespaceListOptions{
 		GOptions: globalOptions,
-		CGroup:   cgroup,
+		Format:   format,
+		Quiet:    quiet,
 		Stdout:   cmd.OutOrStdout(),
 	}, nil
 }
 
-func removeAction(cmd *cobra.Command, args []string) error {
-	options, err := removeOptions(cmd)
+func listAction(cmd *cobra.Command, args []string) error {
+	options, err := listOptions(cmd)
 	if err != nil {
 		return err
 	}
@@ -69,9 +72,5 @@ func removeAction(cmd *cobra.Command, args []string) error {
 	}
 	defer cancel()
 
-	return namespace.Remove(ctx, client, args, options)
-}
-
-func namespaceRemoveShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return completion.NamespaceNames(cmd, args, toComplete)
+	return namespace.List(ctx, client, options)
 }

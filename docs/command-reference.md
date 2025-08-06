@@ -1324,6 +1324,7 @@ Usage: `nerdctl namespace ls [OPTIONS]`
 Flags:
 
 - `-q, --quiet`: Only display namespace names
+- `-f, --format`: Format the output using the given Go template, e.g, `{{json .}}`
 
 ### :nerd_face: :blue_square: nerdctl namespace remove
 
