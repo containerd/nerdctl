@@ -397,30 +397,25 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 		return err
 	}
 
+	// signal will be sent once resume is finished
+	if paused {
+		if err := task.Resume(ctx); err != nil {
+			log.G(ctx).Errorf("Cannot unpause container %s: %s", container.ID(), err)
+			return err
+		}
+	}
 	if *timeout > 0 {
 		sig, err := getSignal(signalValue, l)
 		if err != nil {
 			return err
 		}
-
 		if err := task.Kill(ctx, sig); err != nil {
 			return err
 		}
-
-		// signal will be sent once resume is finished
-		if paused {
-			if err := task.Resume(ctx); err != nil {
-				log.G(ctx).Warnf("Cannot unpause container %s: %s", container.ID(), err)
-			} else {
-				// no need to do it again when send sigkill signal
-				paused = false
-			}
-		}
-
 		sigtermCtx, sigtermCtxCancel := context.WithTimeout(ctx, *timeout)
 		defer sigtermCtxCancel()
 
-		err = waitContainerStop(sigtermCtx, exitCh, container.ID())
+		err = waitContainerStop(sigtermCtx, task, exitCh, container.ID())
 		if err == nil {
 			return nil
 		}
@@ -434,18 +429,10 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 	if err != nil {
 		return err
 	}
-
 	if err := task.Kill(ctx, sig); err != nil {
 		return err
 	}
-
-	// signal will be sent once resume is finished
-	if paused {
-		if err := task.Resume(ctx); err != nil {
-			log.G(ctx).Warnf("Cannot unpause container %s: %s", container.ID(), err)
-		}
-	}
-	return waitContainerStop(ctx, exitCh, container.ID())
+	return waitContainerStop(ctx, task, exitCh, container.ID())
 }
 
 func getSignal(signalValue string, containerLabels map[string]string) (syscall.Signal, error) {
@@ -460,7 +447,7 @@ func getSignal(signalValue string, containerLabels map[string]string) (syscall.S
 	return signal.ParseSignal("SIGTERM")
 }
 
-func waitContainerStop(ctx context.Context, exitCh <-chan containerd.ExitStatus, id string) error {
+func waitContainerStop(ctx context.Context, task containerd.Task, exitCh <-chan containerd.ExitStatus, id string) error {
 	select {
 	case <-ctx.Done():
 		if err := ctx.Err(); err != nil {
@@ -468,6 +455,12 @@ func waitContainerStop(ctx context.Context, exitCh <-chan containerd.ExitStatus,
 		}
 		return nil
 	case status := <-exitCh:
+		// Cleanup the IO after a successful Stop
+		if io := task.IO(); io != nil {
+			if cerr := io.Close(); cerr != nil {
+				log.G(ctx).Warnf("failed to close IO for container %s: %v", id, cerr)
+			}
+		}
 		return status.Error()
 	}
 }
