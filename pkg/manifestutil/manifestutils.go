@@ -45,6 +45,20 @@ var manifestParsers = map[string]manifestParser{
 	ocispec.MediaTypeImageIndex:               parseOCIIndex,
 }
 
+// NoSuchManifestError represents an error when a manifest is not found
+type NoSuchManifestError struct {
+	Ref string
+}
+
+func (e *NoSuchManifestError) Error() string {
+	return fmt.Sprintf("No such manifest: %s", e.Ref)
+}
+
+// NewNoSuchManifestError creates a new NoSuchManifestError
+func NewNoSuchManifestError(ref string) error {
+	return &NoSuchManifestError{Ref: ref}
+}
+
 // ParseManifest parses manifest data based on media type
 func ParseManifest(mediaType string, data []byte) (interface{}, error) {
 	if parser, exists := manifestParsers[mediaType]; exists {

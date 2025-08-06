@@ -33,6 +33,8 @@ type Store interface {
 	GetList(listRef *referenceutil.ImageReference) ([]*manifesttypes.DockerManifestEntry, error)
 	// Save saves a manifest as part of a index or local manifest list
 	Save(listRef, manifestRef *referenceutil.ImageReference, manifest *manifesttypes.DockerManifestEntry) error
+	// Remove removes a index or local manifest list
+	Remove(listRef *referenceutil.ImageReference) error
 }
 
 type manifestStore struct {
@@ -100,6 +102,13 @@ func (s *manifestStore) Save(listRef, manifestRef *referenceutil.ImageReference,
 		}
 
 		return s.store.Set(data, listPath, manifestPath)
+	})
+}
+
+func (s *manifestStore) Remove(listRef *referenceutil.ImageReference) error {
+	return s.store.WithLock(func() error {
+		listPath := makeFilesafeName(listRef.String())
+		return s.store.Delete(listPath)
 	})
 }
 
