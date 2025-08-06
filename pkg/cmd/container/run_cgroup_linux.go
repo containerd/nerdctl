@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
@@ -42,7 +43,7 @@ type customMemoryOptions struct {
 	disableOOMKiller  *bool
 }
 
-func generateCgroupOpts(id string, options types.ContainerCreateOptions, internalLabels *internalLabels) ([]oci.SpecOpts, error) {
+func generateCgroupOpts(id string, options types.ContainerCreateOptions, internalLabels *annotations.Annotations) ([]oci.SpecOpts, error) {
 	if options.KernelMemory != "" {
 		log.L.Warnf("The --kernel-memory flag is no longer supported. This flag is a noop.")
 	}
@@ -221,7 +222,7 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions, interna
 		deviceMap.PathOnHost = devPath
 		deviceMap.PathInContainer = conPath
 		deviceMap.CgroupPermissions = mode
-		internalLabels.deviceMapping = append(internalLabels.deviceMapping, deviceMap)
+		internalLabels.DeviceMapping = append(internalLabels.DeviceMapping, deviceMap)
 	}
 
 	return opts, nil
