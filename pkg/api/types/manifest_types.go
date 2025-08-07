@@ -48,3 +48,13 @@ type ManifestInspectOptions struct {
 	// Allow communication with an insecure registry
 	Insecure bool
 }
+
+// ManifestPushOptions specifies options for `nerdctl manifest push`.
+type ManifestPushOptions struct {
+	Stdout   io.Writer
+	GOptions GlobalCommandOptions
+	// Allow communication with an insecure registry
+	Insecure bool
+	// Remove the manifest list after pushing
+	Purge bool
+}
