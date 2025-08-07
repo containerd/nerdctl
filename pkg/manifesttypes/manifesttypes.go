@@ -17,11 +17,12 @@
 package manifesttypes
 
 import (
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
+// For Docker's verbose format
 type (
-
 	// DockerManifestEntry represents a single manifest entry in Docker's verbose format
 	DockerManifestEntry struct {
 		Ref              string             `json:"Ref"`
@@ -30,6 +31,7 @@ type (
 		SchemaV2Manifest interface{}        `json:"SchemaV2Manifest,omitempty"`
 		OCIManifest      interface{}        `json:"OCIManifest,omitempty"`
 	}
+
 	ManifestStruct struct {
 		SchemaVersion int                  `json:"schemaVersion"`
 		MediaType     string               `json:"mediaType"`
@@ -38,15 +40,29 @@ type (
 		Annotations   map[string]string    `json:"annotations,omitempty"`
 	}
 
-	DockerManifestStruct ManifestStruct
-
 	DockerManifestListStruct struct {
 		SchemaVersion int                  `json:"schemaVersion"`
 		MediaType     string               `json:"mediaType"`
 		Manifests     []ocispec.Descriptor `json:"manifests"`
 	}
 
-	OCIIndexStruct ocispec.Index
+	DockerManifestStruct = ManifestStruct
+	OCIManifestStruct    = ManifestStruct
+	OCIIndexStruct       = ocispec.Index
+)
 
-	OCIManifestStruct ManifestStruct
+// For manifest push, compatible with Docker distribution spec
+type (
+	DockerManifestDescriptor struct {
+		MediaType string           `json:"mediaType"`
+		Size      int64            `json:"size"`
+		Digest    digest.Digest    `json:"digest"`
+		Platform  ocispec.Platform `json:"platform"`
+	}
+
+	DockerManifestList struct {
+		SchemaVersion int                        `json:"schemaVersion"`
+		MediaType     string                     `json:"mediaType,omitempty"`
+		Manifests     []DockerManifestDescriptor `json:"manifests"`
+	}
 )
