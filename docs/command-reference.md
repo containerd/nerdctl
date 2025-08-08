@@ -1169,8 +1169,9 @@ Flags:
 - :whale: `--ip-range`: Allocate container ip from a sub-range
 - :whale: `--label`: Set metadata on a network
 - :whale: `--ipv6`: Enable IPv6. Should be used with a valid subnet.
+- :whale: `--internal`: Restrict external access to the network.
 
-Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--ingress`, `--internal`, `--scope`
+Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--ingress`, `--scope`
 
 ### :whale: nerdctl network ls
 

@@ -30,7 +30,7 @@ const (
 
 	// When creating non-default network without passing in `--subnet` option,
 	// nerdctl assigns subnet address for the creation starting from `StartingCIDR`
-	// This prevents subnet address overlapping with `DefaultCIDR` used by the default networkß
+	// This prevents subnet address overlapping with `DefaultCIDR` used by the default network
 	StartingCIDR = "10.4.1.0/24"
 )
 
@@ -58,7 +58,7 @@ func (n *NetworkConfig) clean() error {
 	return nil
 }
 
-func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]interface{}, opts map[string]string, ipv6 bool) ([]CNIPlugin, error) {
+func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]interface{}, opts map[string]string, ipv6 bool, internal bool) ([]CNIPlugin, error) {
 	var plugins []CNIPlugin
 	switch driver {
 	case "nat":
@@ -71,7 +71,7 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 	return plugins, nil
 }
 
-func (e *CNIEnv) generateIPAM(driver string, subnets []string, gatewayStr, ipRangeStr string, opts map[string]string, ipv6 bool) (map[string]interface{}, error) {
+func (e *CNIEnv) generateIPAM(driver string, subnets []string, gatewayStr, ipRangeStr string, opts map[string]string, ipv6 bool, internal bool) (map[string]interface{}, error) {
 	switch driver {
 	case "default":
 	default:

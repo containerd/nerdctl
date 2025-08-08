@@ -88,6 +88,19 @@ func InspectNetwork(helpers test.Helpers, name string) dockercompat.Network {
 	return res
 }
 
+func InspectNetworkNative(helpers test.Helpers, name string) native.Network {
+	helpers.T().Helper()
+	var res native.Network
+	cmd := helpers.Command("network", "inspect", "--mode", "native", name)
+	cmd.Run(&test.Expected{
+		Output: expect.JSON([]native.Network{}, func(dc []native.Network, t tig.T) {
+			assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results")
+			res = dc[0]
+		}),
+	})
+	return res
+}
+
 func InspectImage(helpers test.Helpers, name string) dockercompat.Image {
 	helpers.T().Helper()
 	var res dockercompat.Image

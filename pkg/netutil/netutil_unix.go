@@ -90,7 +90,7 @@ func (n *NetworkConfig) clean() error {
 	return nil
 }
 
-func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]interface{}, opts map[string]string, ipv6 bool) ([]CNIPlugin, error) {
+func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]interface{}, opts map[string]string, ipv6 bool, internal bool) ([]CNIPlugin, error) {
 	var (
 		plugins []CNIPlugin
 		err     error
@@ -123,13 +123,21 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 		}
 		bridge.MTU = mtu
 		bridge.IPAM = ipam
-		bridge.IsGW = true
-		bridge.IPMasq = iPMasq
+		bridge.IsGW = !internal
+		if internal {
+			bridge.IPMasq = false
+		} else {
+			bridge.IPMasq = iPMasq
+		}
 		bridge.HairpinMode = true
 		if ipv6 {
 			bridge.Capabilities["ips"] = true
 		}
-		plugins = []CNIPlugin{bridge, newPortMapPlugin(), newFirewallPlugin(), newTuningPlugin()}
+		if internal {
+			plugins = []CNIPlugin{bridge, newFirewallPlugin(), newTuningPlugin()}
+		} else {
+			plugins = []CNIPlugin{bridge, newPortMapPlugin(), newFirewallPlugin(), newTuningPlugin()}
+		}
 		if name != DefaultNetworkName {
 			firewallPath := filepath.Join(e.Path, "firewall")
 			ok, err := firewallPluginGEQ110(firewallPath)
@@ -186,13 +194,15 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 	return plugins, nil
 }
 
-func (e *CNIEnv) generateIPAM(driver string, subnets []string, gatewayStr, ipRangeStr string, opts map[string]string, ipv6 bool) (map[string]interface{}, error) {
+func (e *CNIEnv) generateIPAM(driver string, subnets []string, gatewayStr, ipRangeStr string, opts map[string]string, ipv6 bool, internal bool) (map[string]interface{}, error) {
 	var ipamConfig interface{}
 	switch driver {
 	case "default", "host-local":
 		ipamConf := newHostLocalIPAMConfig()
-		ipamConf.Routes = []IPAMRoute{
-			{Dst: "0.0.0.0/0"},
+		if !internal {
+			ipamConf.Routes = []IPAMRoute{
+				{Dst: "0.0.0.0/0"},
+			}
 		}
 		ranges, findIPv4, err := e.parseIPAMRanges(subnets, gatewayStr, ipRangeStr, ipv6)
 		if err != nil {

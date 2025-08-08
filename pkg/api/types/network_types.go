@@ -35,6 +35,7 @@ type NetworkCreateOptions struct {
 	IPRange     string
 	Labels      []string
 	IPv6        bool
+	Internal    bool
 }
 
 // NetworkInspectOptions specifies options for `nerdctl network inspect`.

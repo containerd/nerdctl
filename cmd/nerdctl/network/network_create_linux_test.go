@@ -17,6 +17,7 @@
 package network
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -103,6 +104,53 @@ func TestNetworkCreate(t *testing.T) {
 						_, subnet, _ := net.ParseCIDR(data.Labels().Get("subnetStr"))
 						ip := nerdtest.FindIPv6(stdout)
 						assert.Assert(t, subnet.Contains(ip), fmt.Sprintf("subnet %s contains ip %s", subnet, ip))
+					},
+				}
+			},
+		},
+		{
+			Description: "internal enabled",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", "--internal", data.Identifier())
+				netw := nerdtest.InspectNetwork(helpers, data.Identifier())
+				assert.Equal(t, len(netw.IPAM.Config), 1)
+				data.Labels().Set("subnet", netw.IPAM.Config[0].Subnet)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.CommonImage, "ip", "route")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, t tig.T) {
+						assert.Assert(t, strings.Contains(stdout, data.Labels().Get("subnet")))
+						assert.Assert(t, !strings.Contains(stdout, "default "))
+						if nerdtest.IsDocker() {
+							return
+						}
+						nativeNet := nerdtest.InspectNetworkNative(helpers, data.Identifier())
+						var cni struct {
+							Plugins []struct {
+								Type   string `json:"type"`
+								IsGW   bool   `json:"isGateway"`
+								IPMasq bool   `json:"ipMasq"`
+							} `json:"plugins"`
+						}
+						_ = json.Unmarshal(nativeNet.CNI, &cni)
+						// bridge plugin assertions and no portmap
+						foundBridge := false
+						for _, p := range cni.Plugins {
+							assert.Assert(t, p.Type != "portmap")
+							if p.Type == "bridge" {
+								foundBridge = true
+								assert.Assert(t, !p.IsGW)
+								assert.Assert(t, !p.IPMasq)
+							}
+						}
+						assert.Assert(t, foundBridge)
 					},
 				}
 			},
