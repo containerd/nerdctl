@@ -51,6 +51,7 @@ func createCommand() *cobra.Command {
 	cmd.Flags().String("ip-range", "", `Allocate container ip from a sub-range`)
 	cmd.Flags().StringArray("label", nil, "Set metadata for a network")
 	cmd.Flags().Bool("ipv6", false, "Enable IPv6 networking")
+	cmd.Flags().Bool("internal", false, "Restrict external access to the network")
 	return cmd
 }
 
@@ -100,6 +101,10 @@ func createAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	internal, err := cmd.Flags().GetBool("internal")
+	if err != nil {
+		return err
+	}
 
 	return network.Create(types.NetworkCreateOptions{
 		GOptions:    globalOptions,
@@ -113,5 +118,6 @@ func createAction(cmd *cobra.Command, args []string) error {
 		IPRange:     ipRangeStr,
 		Labels:      labels,
 		IPv6:        ipv6,
+		Internal:    internal,
 	}, cmd.OutOrStdout())
 }
