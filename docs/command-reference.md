@@ -552,8 +552,6 @@ Flags:
 - :whale: `--type`: Return JSON for specified type
 - :whale: `--size`: Display total file sizes if the type is container
 
-Unimplemented `docker inspect` flags:  `--size`
-
 ### :whale: nerdctl logs
 
 Fetch the logs of a container.
@@ -1559,7 +1557,7 @@ Flags:
 - :whale: `--pull`: Pull image before running ("always"|"missing"|"never")
 
 Unimplemented `docker-compose up` (V1) flags: `--no-deps`, `--always-recreate-deps`,
-`--no-start`, `--abort-on-container-exit`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--exit-code-from`
+`--no-start`, `--attach-dependencies`, `--timeout`, `--renew-anon-volumes`, `--exit-code-from`
 
 Unimplemented `docker compose up` (V2) flags: `--environment`
 
@@ -1896,7 +1894,6 @@ Image:
 
 - `docker export` and `docker import`
 - `docker trust *` (Instead, nerdctl supports `nerdctl pull --verify=cosign|notation` and `nerdctl push --sign=cosign|notation`. See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md).)
-- `docker manifest *`
 
 Network management:
 
