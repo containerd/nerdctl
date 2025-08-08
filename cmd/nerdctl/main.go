@@ -304,6 +304,7 @@ Config file ($NERDCTL_TOML): %s
 		image.PushCommand(),
 		image.LoadCommand(),
 		image.SaveCommand(),
+		image.ImportCommand(),
 		image.TagCommand(),
 		image.RmiCommand(),
 		image.HistoryCommand(),
