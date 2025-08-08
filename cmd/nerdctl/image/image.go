@@ -41,6 +41,7 @@ func Command() *cobra.Command {
 		PushCommand(),
 		LoadCommand(),
 		SaveCommand(),
+		ImportCommand(),
 		TagCommand(),
 		imageRemoveCommand(),
 		convertCommand(),
