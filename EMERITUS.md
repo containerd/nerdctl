@@ -19,3 +19,12 @@ a Reviewer of nerdctl from November 2022 to June 2024.
 Hanchin has made significant contributions such as the addition of
 [syslog driver](https://github.com/containerd/nerdctl/pull/1377) and
 [IPv6 networking](https://github.com/containerd/nerdctl/pull/1558).
+
+### Manu Gupta ([@manugupt1](https://github.com/manugupt1))
+Manu Gupta (GitHub ID [@manugupt1](https://github.com/manugupt1)) served as
+a Reviewer of nerdctl from 2022 to August 2025.
+
+Manu has made [significant improvements](https://github.com/containerd/nerdctl/pulls?q=author%3Amanugupt1+)
+especially to image and volume management, container runtime features, build system enhancements,
+and CI/CD infrastructure. Notable contributions include image filtering capabilities, volume size
+inspection, Docker Compose enhancements, and multi-architecture build support.
