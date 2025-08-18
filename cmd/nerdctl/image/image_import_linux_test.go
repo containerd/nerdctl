@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,7 +71,7 @@ func TestImageImportErrors(t *testing.T) {
 func TestImageImport(t *testing.T) {
 	testCase := nerdtest.Setup()
 
-	var urlServer *httptest.Server
+	var stopServer func()
 
 	testCase.SubTests = []*test.Case{
 		{
@@ -170,17 +169,21 @@ func TestImageImport(t *testing.T) {
 		{
 			Description: "image import from URL",
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				if urlServer != nil {
-					urlServer.Close()
+				if stopServer != nil {
+					stopServer()
+					stopServer = nil
 				}
 				helpers.Anyhow("rmi", "-f", data.Identifier())
 			},
 			Setup: func(data test.Data, helpers test.Helpers) {
-				urlServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Content-Type", "application/x-tar")
 					_, _ = w.Write(minimalRootfsTar(t).Bytes())
-				}))
-				data.Labels().Set("url", urlServer.URL)
+				})
+				url, stop, err := nerdtest.StartHTTPServer(handler)
+				assert.NilError(t, err)
+				stopServer = stop
+				data.Labels().Set("url", url)
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("import", data.Labels().Get("url"), data.Identifier())

@@ -17,6 +17,9 @@
 package nerdtest
 
 import (
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strconv"
 	"strings"
@@ -26,6 +29,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 )
 
 const SignalCaught = "received"
@@ -72,4 +76,28 @@ func RunSigProxyContainer(signal os.Signal, exitOnSignal bool, args []string, da
 	}
 
 	return cmd
+}
+
+// StartHTTPServer starts an HTTP server bound to 0.0.0.0 and returns a URL reachable
+// from processes that cannot access 127.0.0.1 due to namespace isolation.
+// It also returns a cleanup function that stops the server.
+func StartHTTPServer(handler http.Handler) (url string, stop func(), err error) {
+	l, err := net.Listen("tcp", "0.0.0.0:0")
+	if err != nil {
+		return "", nil, err
+	}
+	srv := &httptest.Server{Config: &http.Server{Handler: handler}}
+	srv.Listener = l
+	srv.Start()
+	hostIP, herr := nettestutil.NonLoopbackIPv4()
+	if herr != nil {
+		srv.Close()
+		return "", nil, herr
+	}
+	_, port, perr := net.SplitHostPort(l.Addr().String())
+	if perr != nil {
+		srv.Close()
+		return "", nil, perr
+	}
+	return "http://" + hostIP.String() + ":" + port, func() { srv.Close() }, nil
 }
