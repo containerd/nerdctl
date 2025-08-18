@@ -44,6 +44,13 @@ type ContainerKillOptions struct {
 	KillSignal string
 }
 
+// ContainerExportOptions specifies options for `nerdctl (container) export`.
+type ContainerExportOptions struct {
+	Stdout io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+}
+
 // ContainerCreateOptions specifies options for `nerdctl (container) create` and `nerdctl (container) run`.
 type ContainerCreateOptions struct {
 	Stdout io.Writer
