@@ -56,6 +56,7 @@ It does not necessarily mean that the corresponding features are missing in cont
   - [:whale: nerdctl manifest annotate](#whale-nerdctl-manifest-annotate)
   - [:whale: nerdctl manifest create](#whale-nerdctl-manifest-create)
   - [:whale: nerdctl manifest inspect](#whale-nerdctl-manifest-inspect)
+  - [:whale: nerdctl manifest push](#whale-nerdctl-manifest-push)
   - [:whale: nerdctl manifest rm](#whale-nerdctl-manifest-rm)
 - [Registry](#registry)
   - [:whale: nerdctl login](#whale-nerdctl-login)
@@ -1106,6 +1107,24 @@ Example:
 ```bash
 nerdctl manifest inspect alpine:3.22.1
 nerdctl manifest inspect alpine@sha256:eafc1edb577d2e9b458664a15f23ea1c370214193226069eb22921169fc7e43f
+```
+
+### :whale: nerdctl manifest push
+
+Push a manifest list to a registry.
+
+Usage: `nerdctl manifest push [OPTIONS] INDEX/MANIFESTLIST`
+
+Flags:
+
+- `--insecure`: Allow communication with an insecure registry
+- `--purge`: Remove the manifest list after pushing
+
+Examples:
+
+```bash
+# Push a manifest list to a registry
+nerdctl manifest push myapp:latest
 ```
 
 ### :whale: nerdctl manifest rm
