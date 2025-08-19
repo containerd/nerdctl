@@ -306,11 +306,11 @@ func (e *CNIEnv) CreateNetwork(opts types.NetworkCreateOptions) (*NetworkConfig,
 	if _, ok := netMap[opts.Name]; ok {
 		return nil, errdefs.ErrAlreadyExists
 	}
-	ipam, err := e.generateIPAM(opts.IPAMDriver, opts.Subnets, opts.Gateway, opts.IPRange, opts.IPAMOptions, opts.IPv6)
+	ipam, err := e.generateIPAM(opts.IPAMDriver, opts.Subnets, opts.Gateway, opts.IPRange, opts.IPAMOptions, opts.IPv6, opts.Internal)
 	if err != nil {
 		return nil, err
 	}
-	plugins, err := e.generateCNIPlugins(opts.Driver, opts.Name, ipam, opts.Options, opts.IPv6)
+	plugins, err := e.generateCNIPlugins(opts.Driver, opts.Name, ipam, opts.Options, opts.IPv6, opts.Internal)
 	if err != nil {
 		return nil, err
 	}
