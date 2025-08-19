@@ -135,6 +135,10 @@ func pushIndividualManifests(ctx context.Context, resolver remotes.Resolver, man
 			return fmt.Errorf("failed to parse manifest reference %s: %w", manifest.Ref, err)
 		}
 
+		if manifestRef.Domain != targetDomain {
+			return fmt.Errorf("cannot use source images from a different registry than the target image: %s != %s", manifestRef.Domain, targetDomain)
+		}
+
 		var targetManifestRef string
 		if manifestRef.Domain != targetDomain {
 			targetManifestRef = fmt.Sprintf("%s/%s@%s", targetDomain, manifestRef.Path, manifest.Descriptor.Digest)

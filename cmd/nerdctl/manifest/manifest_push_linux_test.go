@@ -118,6 +118,29 @@ func TestManifestPush(t *testing.T) {
 					"output": expectedDigest,
 				}),
 			},
+			{
+				Description: "reject-cross-registry-sources",
+				Require:     require.Not(nerdtest.Docker),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					targetRef := fmt.Sprintf("%s:%d/%s",
+						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, "test-list-push:v1")
+					helpers.Ensure("manifest", "create", "--insecure", targetRef+"-cross", manifestRef)
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					targetRef := fmt.Sprintf("%s:%d/%s",
+						registryTokenAuthHTTPSRandom.IP.String(), registryTokenAuthHTTPSRandom.Port, "test-list-push:v1")
+					return helpers.Command("manifest", "push", "--insecure", targetRef+"-cross")
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						ExitCode: 1,
+						Errors:   []error{errors.New(data.Labels().Get("error"))},
+					}
+				},
+				Data: test.WithLabels(map[string]string{
+					"error": "cannot use source images from a different registry than the target image:",
+				}),
+			},
 		},
 	}
 	testCase.Run(t)
