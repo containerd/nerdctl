@@ -67,6 +67,18 @@ func TestImageInspectSimpleCases(t *testing.T) {
 				Expected:    test.Expects(0, nil, nil),
 			},
 			{
+				Description: "Config.Image field is set",
+				Command:     test.Command("image", "inspect", testutil.CommonImage),
+				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
+					var dc []dockercompat.Image
+					err := json.Unmarshal([]byte(stdout), &dc)
+					assert.NilError(t, err, "Unable to unmarshal output\n")
+					assert.Equal(t, 1, len(dc), "Unexpectedly got multiple results\n")
+					assert.Assert(t, dc[0].Config != nil, "image Config should not be nil")
+					assert.Assert(t, dc[0].Config.Image != "", "Config.Image should not be empty")
+				}),
+			},
+			{
 				Description: "Error for image not found",
 				Command:     test.Command("image", "inspect", "dne:latest", "dne2:latest"),
 				Expected: test.Expects(1, []error{
