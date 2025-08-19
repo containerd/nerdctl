@@ -44,7 +44,7 @@ func TestPush(t *testing.T) {
 			require.Linux,
 			nerdtest.Registry,
 		),
-
+		NoParallel: true,
 		Setup: func(data test.Data, helpers test.Helpers) {
 			registryNoAuthHTTPRandom = nerdtest.RegistryWithNoAuth(data, helpers, 0, false)
 			registryNoAuthHTTPRandom.Setup(data, helpers)
