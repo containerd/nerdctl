@@ -82,5 +82,5 @@ func Create(ctx context.Context, listRef string, manifestRefs []string, options 
 		}
 	}
 
-	return listRef, nil
+	return parsedListRef.String(), nil
 }

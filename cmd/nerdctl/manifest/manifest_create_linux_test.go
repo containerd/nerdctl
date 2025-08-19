@@ -92,7 +92,7 @@ func TestManifestCreate(t *testing.T) {
 				}
 			},
 			Data: test.WithLabels(map[string]string{
-				"output": "Created manifest list ",
+				"output": "Created manifest list docker.io/library/" + manifestListName,
 			}),
 		},
 		{
@@ -126,7 +126,7 @@ func TestManifestCreate(t *testing.T) {
 				}
 			},
 			Data: test.WithLabels(map[string]string{
-				"output": "Created manifest list",
+				"output": "Created manifest list docker.io/library/" + manifestListName + "-with-amend-flag",
 			}),
 		},
 	}
