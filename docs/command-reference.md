@@ -44,6 +44,7 @@ It does not necessarily mean that the corresponding features are missing in cont
   - [:whale: nerdctl push](#whale-nerdctl-push)
   - [:whale: nerdctl load](#whale-nerdctl-load)
   - [:whale: nerdctl save](#whale-nerdctl-save)
+  - [:whale: nerdctl import](#whale-nerdctl-import)
   - [:whale: nerdctl tag](#whale-nerdctl-tag)
   - [:whale: nerdctl rmi](#whale-nerdctl-rmi)
   - [:whale: nerdctl image inspect](#whale-nerdctl-image-inspect)
@@ -904,6 +905,19 @@ Flags:
 - :whale: `-o, --output`: Write to a file, instead of STDOUT
 - :nerd_face: `--platform=(amd64|arm64|...)`: Export content for a specific platform
 - :nerd_face: `--all-platforms`: Export content for all platforms
+
+### :whale: nerdctl import
+
+Import the contents from a tarball to create a filesystem image.
+
+Usage: `nerdctl import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]`
+
+Flags:
+
+- :whale: `-m, --message`: Set commit message for imported image
+- :nerd_face: `--platform=(linux/amd64|linux/arm64|...)`: Set platform for the imported image
+
+Unimplemented `docker import` flags: `--change`
 
 ### :whale: nerdctl tag
 
@@ -1919,7 +1933,6 @@ Container management:
 
 Image:
 
-- `docker import`
 - `docker trust *` (Instead, nerdctl supports `nerdctl pull --verify=cosign|notation` and `nerdctl push --sign=cosign|notation`. See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md).)
 
 Network management:
