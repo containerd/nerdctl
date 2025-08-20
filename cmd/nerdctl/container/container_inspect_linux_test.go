@@ -17,6 +17,7 @@
 package container
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
@@ -183,6 +185,35 @@ func TestContainerInspectContainsInternalLabel(t *testing.T) {
 	labelMount := lbs[labels.Mounts]
 	expectedLabelMount := "[{\"Type\":\"bind\",\"Source\":\"/tmp\",\"Destination\":\"/app\",\"Mode\":\"rprivate,rbind\",\"RW\":true,\"Propagation\":\"rprivate\"}]"
 	assert.Equal(base.T, expectedLabelMount, labelMount)
+}
+
+func TestContainerInspectConfigImage(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Description: "Container inspect contains Config.Image field",
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.AlpineImage, "sleep", "infinity")
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rm", "-f", data.Identifier())
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("inspect", data.Identifier())
+		},
+		Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
+			var containers []dockercompat.Container
+			err := json.Unmarshal([]byte(stdout), &containers)
+			assert.NilError(t, err, "Unable to unmarshal output\n")
+			assert.Equal(t, 1, len(containers), "Expected exactly one container in inspect output")
+
+			container := containers[0]
+			assert.Assert(t, container.Config != nil, "container Config should not be nil")
+			assert.Assert(t, container.Config.Image != "", "Config.Image should not be empty")
+		}),
+	}
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectState(t *testing.T) {
