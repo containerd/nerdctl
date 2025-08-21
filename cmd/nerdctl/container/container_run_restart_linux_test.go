@@ -53,7 +53,8 @@ func TestRunRestart(t *testing.T) {
 		"--name", testContainerName,
 		"-p", fmt.Sprintf("127.0.0.1:%d:80", hostPort),
 		testutil.NginxAlpineImage).AssertOK()
-
+	inspectedContainer := base.InspectContainer(testContainerName)
+	pid := inspectedContainer.State.Pid
 	check := func(httpGetRetry int) error {
 		resp, err := nettestutil.HTTPGet(fmt.Sprintf("http://127.0.0.1:%d", hostPort), httpGetRetry, false)
 		if err != nil {
@@ -87,6 +88,9 @@ func TestRunRestart(t *testing.T) {
 		}
 		time.Sleep(sleep)
 	}
+	inspectedContainer = base.InspectContainer(testContainerName)
+	assert.Equal(t, inspectedContainer.State.Status, "running")
+	assert.Equal(t, inspectedContainer.State.Pid, pid)
 	base.DumpDaemonLogs(10)
 	t.Fatalf("the container does not seem to be restarted")
 }
