@@ -1193,6 +1193,8 @@ Flags:
 - :whale: `-o, --opt`: Set driver specific options
   - :whale: `--opt=com.docker.network.driver.mtu=<MTU>`: Set the containers network MTU
   - :nerd_face: `--opt=mtu=<MTU>`: Alias of `--opt=com.docker.network.driver.mtu=<MTU>`
+  - :whale: `--opt=com.docker.network.bridge.enable_icc=<true/false>`: Enable or Disable inter-container connectivity
+  - :nerd_face: `--opt=icc=<true/false>`: Alias of `--opt=com.docker.network.bridge.enable_icc`
   - :whale: `--opt=macvlan_mode=(bridge)>`: Set macvlan network mode (default: bridge)
   - :whale: `--opt=ipvlan_mode=(l2|l3)`: Set IPvlan network mode (default: l2)
   - :nerd_face: `--opt=mode=(bridge|l2|l3)`: Alias of `--opt=macvlan_mode=(bridge)` and `--opt=ipvlan_mode=(l2|l3)`
