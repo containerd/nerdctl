@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -34,7 +35,6 @@ import (
 	"github.com/containerd/containerd/v2/core/images/converter"
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/core/remotes/docker"
-	dockerconfig "github.com/containerd/containerd/v2/core/remotes/docker/config"
 	"github.com/containerd/containerd/v2/pkg/reference"
 	"github.com/containerd/log"
 	"github.com/containerd/stargz-snapshotter/estargz"
@@ -165,17 +165,29 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 	}
 	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
 
-	ho, err := dockerconfigresolver.NewHostOptions(ctx, refDomain, dOpts...)
+	// Configure connection limits to prevent registry overload (503 errors)
+	if options.MaxConnsPerHost > 0 {
+		dOpts = append(dOpts, dockerconfigresolver.WithMaxConnsPerHost(options.MaxConnsPerHost))
+	}
+	if options.MaxIdleConns > 0 {
+		dOpts = append(dOpts, dockerconfigresolver.WithMaxIdleConns(options.MaxIdleConns))
+	}
+	if options.RequestTimeout > 0 {
+		dOpts = append(dOpts, dockerconfigresolver.WithRequestTimeout(time.Duration(options.RequestTimeout)*time.Second))
+	}
+	if options.MaxRetries > 0 {
+		dOpts = append(dOpts, dockerconfigresolver.WithMaxRetries(options.MaxRetries))
+	}
+	if options.RetryInitialDelay > 0 {
+		dOpts = append(dOpts, dockerconfigresolver.WithRetryInitialDelay(time.Duration(options.RetryInitialDelay)*time.Millisecond))
+	}
+	// Use the local push tracker for this operation
+	dOpts = append(dOpts, dockerconfigresolver.WithTracker(pushTracker))
+
+	resolver, err := dockerconfigresolver.New(ctx, refDomain, dOpts...)
 	if err != nil {
 		return err
 	}
-
-	resolverOpts := docker.ResolverOptions{
-		Tracker: pushTracker,
-		Hosts:   dockerconfig.ConfigureHosts(ctx, *ho),
-	}
-
-	resolver := docker.NewResolver(resolverOpts)
 	if err = pushFunc(resolver); err != nil {
 		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused"
 		if !errors.Is(err, http.ErrSchemeMismatch) && !errutil.IsErrConnectionRefused(err) {
@@ -184,6 +196,22 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		if options.GOptions.InsecureRegistry {
 			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
 			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
+			// Apply same connection limits for HTTP fallback
+			if options.MaxConnsPerHost > 0 {
+				dOpts = append(dOpts, dockerconfigresolver.WithMaxConnsPerHost(options.MaxConnsPerHost))
+			}
+			if options.MaxIdleConns > 0 {
+				dOpts = append(dOpts, dockerconfigresolver.WithMaxIdleConns(options.MaxIdleConns))
+			}
+			if options.RequestTimeout > 0 {
+				dOpts = append(dOpts, dockerconfigresolver.WithRequestTimeout(time.Duration(options.RequestTimeout)*time.Second))
+			}
+			if options.MaxRetries > 0 {
+				dOpts = append(dOpts, dockerconfigresolver.WithMaxRetries(options.MaxRetries))
+			}
+			if options.RetryInitialDelay > 0 {
+				dOpts = append(dOpts, dockerconfigresolver.WithRetryInitialDelay(time.Duration(options.RetryInitialDelay)*time.Millisecond))
+			}
 			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
 			if err != nil {
 				return err
