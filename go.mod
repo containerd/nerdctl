@@ -38,7 +38,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.3.0 //gomodjail:unconfined
 	github.com/fatih/color v1.18.0 //gomodjail:unconfined
-	github.com/fluent/fluent-logger-golang v1.10.0
+	github.com/fluent/fluent-logger-golang v1.10.1
 	github.com/fsnotify/fsnotify v1.9.0 //gomodjail:unconfined
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/ipfs/go-cid v0.5.0
@@ -115,7 +115,7 @@ require (
 	github.com/opencontainers/runtime-tools v0.9.1-0.20221107090550-2e043c6bd626 // indirect
 	github.com/opencontainers/selinux v1.12.0 // indirect
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
-	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
+	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.1 // indirect
 	github.com/sasha-s/go-deadlock v0.3.5 // indirect
