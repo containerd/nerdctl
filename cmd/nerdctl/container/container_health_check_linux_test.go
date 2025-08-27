@@ -19,6 +19,7 @@ package container
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -37,9 +38,6 @@ import (
 )
 
 func TestContainerHealthCheckBasic(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("healthcheck tests are skipped in rootless environment")
-	}
 
 	testCase := nerdtest.Setup()
 
@@ -138,10 +136,6 @@ func TestContainerHealthCheckBasic(t *testing.T) {
 }
 
 func TestContainerHealthCheckAdvance(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("healthcheck tests are skipped in rootless environment")
-	}
-
 	testCase := nerdtest.Setup()
 
 	// Docker CLI does not provide a standalone healthcheck command.
@@ -400,6 +394,43 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 			},
 		},
 		{
+			Description: "Healthcheck emits large output repeatedly",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "yes X | head -c 60000",
+					"--health-interval", "1s", "--health-timeout", "2s",
+					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				for i := 0; i < 3; i++ {
+					helpers.Ensure("container", "healthcheck", data.Identifier())
+					time.Sleep(2 * time.Second)
+				}
+				return helpers.Command("inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(func(_ string, t tig.T) {
+						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
+						assert.Assert(t, h != nil, "expected health state")
+						assert.Equal(t, h.Status, healthcheck.Healthy)
+						assert.Assert(t, len(h.Log) >= 3, "expected at least 3 health log entries")
+						for _, log := range h.Log {
+							assert.Assert(t, len(log.Output) >= 1024, fmt.Sprintf("each output should be >= 1024 bytes, was: %s", log.Output))
+						}
+					}),
+				}
+			},
+		},
+		{
 			Description: "Health log in inspect keeps only the latest 5 entries",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("run", "-d", "--name", data.Identifier(),
@@ -587,13 +618,10 @@ func TestHealthCheck_SystemdIntegration_Basic(t *testing.T) {
 					"--health-interval", "2s",
 					testutil.CommonImage, "sleep", "30")
 				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
-				// Wait for a healthcheck to execute
-				time.Sleep(2 * time.Second)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				// Ensure proper cleanup of systemd units
 				helpers.Anyhow("stop", data.Identifier())
-				time.Sleep(500 * time.Millisecond) // Allow systemd cleanup
 				helpers.Anyhow("rm", "-f", data.Identifier())
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -617,9 +645,7 @@ func TestHealthCheck_SystemdIntegration_Basic(t *testing.T) {
 					"--health-interval", "1s",
 					testutil.CommonImage, "sleep", "30")
 				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
-				time.Sleep(2 * time.Second)               // Wait for at least one health check to execute
 				helpers.Ensure("kill", data.Identifier()) // Kill the container
-				time.Sleep(3 * time.Second)               // Wait to allow any potential extra healthchecks (shouldn't happen)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				// Container is already killed, just remove it

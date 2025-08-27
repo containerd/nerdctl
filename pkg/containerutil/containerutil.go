@@ -359,11 +359,6 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 		}
 	}()
 
-	// Clean up healthcheck units if configured.
-	// if err := healthcheck.RemoveTransientHealthCheckFiles(ctx, container); err != nil {
-	// 	return fmt.Errorf("failed to clean up healthcheck units for container %s", container.ID())
-	// }
-
 	if timeout == nil {
 		t, ok := l[labels.StopTimeout]
 		if !ok {
@@ -501,11 +496,6 @@ func Pause(ctx context.Context, client *containerd.Client, id string) error {
 	if err != nil {
 		return err
 	}
-
-	// Clean up healthcheck units if configured.
-	// if err := healthcheck.RemoveTransientHealthCheckFiles(ctx, container); err != nil {
-	// 	return fmt.Errorf("failed to clean up healthcheck units for container %s", container.ID())
-	// }
 
 	switch status.Status {
 	case containerd.Paused:

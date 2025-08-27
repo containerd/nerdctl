@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/coreos/go-systemd/v22/dbus"
-	"github.com/sirupsen/logrus"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
@@ -47,12 +46,9 @@ func CreateTimer(ctx context.Context, container containerd.Container) error {
 
 	containerID := container.ID()
 	hcName := hcUnitName(containerID, true)
-	logrus.Debugf("Creating healthcheck timer unit: %s", hcName)
+	log.G(ctx).Debugf("Creating healthcheck timer unit: %s", hcName)
 
 	cmd := []string{}
-	if rootlessutil.IsRootless() {
-		cmd = append(cmd, "--user")
-	}
 	if path := os.Getenv("PATH"); path != "" {
 		cmd = append(cmd, "--setenv=PATH="+path)
 	}
@@ -61,7 +57,7 @@ func CreateTimer(ctx context.Context, container containerd.Container) error {
 	cmd = append(cmd, "--unit", hcName, "--on-unit-inactive="+hc.Interval.String(), "--timer-property=AccuracySec=1s")
 
 	cmd = append(cmd, "nerdctl", "container", "healthcheck", containerID)
-	if logrus.IsLevelEnabled(logrus.DebugLevel) {
+	if log.G(ctx).Logger.IsLevelEnabled(log.DebugLevel) {
 		cmd = append(cmd, "--debug")
 	}
 
@@ -71,7 +67,7 @@ func CreateTimer(ctx context.Context, container containerd.Container) error {
 	}
 	defer conn.Close()
 
-	logrus.Debugf("creating healthcheck timer with: systemd-run %s", strings.Join(cmd, " "))
+	log.G(ctx).Debugf("creating healthcheck timer with: systemd-run %s", strings.Join(cmd, " "))
 	run := exec.Command("systemd-run", cmd...)
 	if out, err := run.CombinedOutput(); err != nil {
 		return fmt.Errorf("systemd-run failed: %w\noutput: %s", err, strings.TrimSpace(string(out)))
@@ -81,7 +77,6 @@ func CreateTimer(ctx context.Context, container containerd.Container) error {
 }
 
 // StartTimer starts the healthcheck timer unit.
-// TODO if we persist hcName to container state, pass that to this function.
 func StartTimer(ctx context.Context, container containerd.Container) error {
 	hc := extractHealthcheck(ctx, container)
 	if hc == nil {
@@ -124,17 +119,7 @@ func RemoveTransientHealthCheckFiles(ctx context.Context, container containerd.C
 
 // RemoveTransientHealthCheckFilesByID stops and cleans up the transient timer and service using just the container ID.
 func RemoveTransientHealthCheckFilesByID(ctx context.Context, containerID string) error {
-	// Don't proceed if systemd is unavailable or disabled
-	if !defaults.IsSystemdAvailable() || os.Getenv("DISABLE_HC_SYSTEMD") == "true" {
-		return nil
-	}
-
-	// Skip healthchecks in rootless environments to avoid systemd DBUS permission issues
-	if rootlessutil.IsRootless() {
-		return nil
-	}
-
-	logrus.Debugf("Removing healthcheck timer unit: %s", containerID)
+	log.G(ctx).Debugf("Removing healthcheck timer unit: %s", containerID)
 
 	conn, err := dbus.NewSystemConnectionContext(context.Background())
 	if err != nil {
@@ -150,7 +135,7 @@ func RemoveTransientHealthCheckFilesByID(ctx context.Context, containerID string
 	tChan := make(chan string)
 	if _, err := conn.StopUnitContext(context.Background(), timer, "ignore-dependencies", tChan); err == nil {
 		if msg := <-tChan; msg != "done" {
-			logrus.Warnf("timer stop message: %s", msg)
+			log.G(ctx).Warnf("timer stop message: %s", msg)
 		}
 	}
 
@@ -158,7 +143,7 @@ func RemoveTransientHealthCheckFilesByID(ctx context.Context, containerID string
 	sChan := make(chan string)
 	if _, err := conn.StopUnitContext(context.Background(), service, "ignore-dependencies", sChan); err == nil {
 		if msg := <-sChan; msg != "done" {
-			logrus.Warnf("service stop message: %s", msg)
+			log.G(ctx).Warnf("service stop message: %s", msg)
 		}
 	}
 
