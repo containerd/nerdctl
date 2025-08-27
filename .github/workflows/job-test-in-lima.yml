@@ -75,6 +75,10 @@ jobs:
           docker info
           docker version
 
+      - name: "Init: install br-netfilter in the guest VM"
+        run: |
+          lima sudo modprobe br-netfilter
+
       - name: "Init: expose GitHub Runtime variables for gha"
         uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124  # v3.1.0
 
