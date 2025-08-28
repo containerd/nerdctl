@@ -54,6 +54,10 @@ linters:
     - sloglint          # no slog
     - testifylint       # no testify
     - zerologlint       # no zerolog
+    - funcorder
+    - noctx
+    - noinlineerr
+    - wsl_v5
   settings:
     interfacebloat:
       # Default is 10
@@ -91,6 +95,12 @@ linters:
             - "fmt.Fprint"
             - "fmt.Fprintln"
             - "fmt.Fprintf"
+        - name: redundant-test-main-exit
+          disabled: true
+        - name: enforce-switch-style
+          disabled: true
+        - name: var-naming
+          disabled: true
     depguard:
       rules:
         main:
