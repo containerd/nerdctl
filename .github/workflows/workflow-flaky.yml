@@ -17,12 +17,12 @@ jobs:
     strategy:
       fail-fast: false
       # EL8 is used for testing compatibility with cgroup v1.
-      # Unfortunately, EL8 is hard to debug for M1 users (as Lima+M1+EL8 is not runnable because of page size),
+      # Unfortunately, EL8 is hard to debug for ARM Mac users (as Lima+ARM Mac+EL8 is not runnable because of page size),
       # and it currently shows numerous issues.
-      # Thus, EL9 is also added as target (for a limited time?) so that we can figure out which issues are EL8 specific,
-      # and which issues could be reproduced on EL9 as well (which would be easier to debug).
+      # ARM Mac users may use oraclelinux-8 instead for debugging cgroup v1 issues, although its kernel is different from
+      # other EL8 variants.
       matrix:
-        guest: ["almalinux-8", "almalinux-9"]
+        guest: ["almalinux-8"]
         target: ["rootful", "rootless"]
     with:
       timeout: 60
