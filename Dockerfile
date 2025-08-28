@@ -40,7 +40,7 @@ ARG TINI_VERSION=v0.19.0@BINARY
 # Extra deps: Debug
 ARG BUILDG_VERSION=v0.5.3@BINARY
 # Extra deps: gomodjail
-ARG GOMODJAIL_VERSION=v0.1.2@0a86b34442a491fa8f5e4565e9c846fce310239c
+ARG GOMODJAIL_VERSION=v0.1.3@cea529ddd971b677c67d8af7e936fbc62b35b98c
 
 # Test deps
 # Currently, the Docker Official Images and the test deps are not pinned by the hash
