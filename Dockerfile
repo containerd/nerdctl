@@ -44,7 +44,7 @@ ARG GOMODJAIL_VERSION=v0.1.3@cea529ddd971b677c67d8af7e936fbc62b35b98c
 
 # Test deps
 # Currently, the Docker Official Images and the test deps are not pinned by the hash
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25
 ARG UBUNTU_VERSION=24.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
 ARG GOTESTSUM_VERSION=v1.12.3

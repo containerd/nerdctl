@@ -30,7 +30,7 @@ jobs:
       canary: ${{ matrix.canary && true || false }}
       # Windows routinely go over 5 minutes
       timeout: 10
-      go-version: 1.24
+      go-version: 1.25
       windows-cni-version: v0.3.1
       linux-cni-version: v1.7.1
       linux-cni-sha: 1a28a0506bfe5bcdc981caf1a49eeab7e72da8321f1119b7be85f22621013098
@@ -138,7 +138,7 @@ jobs:
       runner: ${{ matrix.runner }}
       binary: ${{ matrix.binary != '' && matrix.binary || 'nerdctl' }}
       canary: ${{ matrix.canary && true || false }}
-      go-version: 1.24
+      go-version: 1.25
       windows-cni-version: v0.3.1
       docker-version: 5:28.0.4-1~ubuntu.24.04~noble
       containerd-version: 2.1.3

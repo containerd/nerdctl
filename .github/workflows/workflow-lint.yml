@@ -35,7 +35,7 @@ jobs:
             canary: true
     with:
       timeout: 5
-      go-version: "1.24"
+      go-version: "1.25"
       runner: ubuntu-24.04
       # Note: in GitHub yaml world, if `matrix.canary` is undefined, and is passed to `inputs.canary`, the job
       # will not run. However, if you test it, it will coerce to `false`, hence:
@@ -48,7 +48,7 @@ jobs:
     uses: ./.github/workflows/job-lint-project.yml
     with:
       timeout: 5
-      go-version: "1.24"
+      go-version: "1.25"
       runner: ubuntu-24.04
 
   # Lint for shell and yaml files
@@ -68,10 +68,10 @@ jobs:
       matrix:
         include:
           # Build for both old and stable go
-          - go-version: "1.23"
           - go-version: "1.24"
+          - go-version: "1.25"
           # Additionally build for canary
-          - go-version: "1.24"
+          - go-version: "1.25"
             canary: true
     with:
       timeout: 10

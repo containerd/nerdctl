@@ -20,7 +20,7 @@ readonly root
 # shellcheck source=/dev/null
 . "$root/../../scripts/lib.sh"
 
-GO_VERSION=1.24
+GO_VERSION=1.25
 KIND_VERSION=v0.27.0
 CNI_PLUGINS_VERSION=v1.7.1
 # shellcheck disable=SC2034
