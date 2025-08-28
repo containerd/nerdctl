@@ -48,7 +48,7 @@ jobs:
           - runner: ubuntu-24.04-arm
           # Additionally build for old containerd on amd
           - runner: ubuntu-24.04
-            containerd-version: v1.6.38
+            containerd-version: v1.7.28
     with:
       runner: ${{ matrix.runner }}
       containerd-version: ${{ matrix.containerd-version }}
@@ -75,7 +75,7 @@ jobs:
           # old containerd + old ubuntu + old rootlesskit
           - runner: ubuntu-22.04
             target: rootless
-            containerd-version: v1.6.38
+            containerd-version: v1.7.28
             rootlesskit-version: v1.1.1
           # gomodjail
           - runner: ubuntu-24.04
@@ -91,7 +91,7 @@ jobs:
           # old containerd + old ubuntu
           - runner: ubuntu-22.04
             target: rootful
-            containerd-version: v1.6.38
+            containerd-version: v1.7.28
           # ipv6
           - runner: ubuntu-24.04
             target: rootful
