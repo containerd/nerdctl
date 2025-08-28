@@ -26,6 +26,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
@@ -154,6 +155,103 @@ func TestNetworkCreate(t *testing.T) {
 					},
 				}
 			},
+		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestNetworkCreateICC(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Require = require.All(
+		require.Linux,
+	)
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "with enable_icc=false",
+			Require:     nerdtest.CNIFirewallVersion("1.7.1"),
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				// Create a network with ICC disabled
+				helpers.Ensure("network", "create", data.Identifier(), "--driver", "bridge",
+					"--opt", "com.docker.network.bridge.enable_icc=false")
+
+				// Run a container in that network
+				data.Labels().Set("container1", helpers.Capture("run", "-d", "--net", data.Identifier(),
+					"--name", data.Identifier("c1"), testutil.CommonImage, "sleep", "infinity"))
+
+				// Wait for container to be running
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier("c1"))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("container", "rm", "-f", data.Identifier("c1"))
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				// DEBUG: Check br_netfilter module status
+				helpers.Custom("sh", "-ec", "lsmod | grep br_netfilter || echo 'br_netfilter not loaded'").Run(&test.Expected{})
+				helpers.Custom("sh", "-ec", "cat /proc/sys/net/bridge/bridge-nf-call-iptables 2>/dev/null || echo 'bridge-nf-call-iptables not available'").Run(&test.Expected{})
+				helpers.Custom("sh", "-ec", "ls /proc/sys/net/bridge/ 2>/dev/null || echo 'bridge sysctl not available'").Run(&test.Expected{})
+				// Try to ping the other container in the same network
+				// This should fail when ICC is disabled
+				return helpers.Command("run", "--rm", "--net", data.Identifier(),
+					testutil.CommonImage, "ping", "-c", "1", "-W", "1", data.Identifier("c1"))
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil), // Expect ping to fail with exit code 1
+		},
+		{
+			Description: "with enable_icc=true",
+			Require:     nerdtest.CNIFirewallVersion("1.7.1"),
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				// Create a network with ICC enabled (default)
+				helpers.Ensure("network", "create", data.Identifier(), "--driver", "bridge",
+					"--opt", "com.docker.network.bridge.enable_icc=true")
+
+				// Run a container in that network
+				data.Labels().Set("container1", helpers.Capture("run", "-d", "--net", data.Identifier(),
+					"--name", data.Identifier("c1"), testutil.CommonImage, "sleep", "infinity"))
+				// Wait for container to be running
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier("c1"))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("container", "rm", "-f", data.Identifier("c1"))
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				// Try to ping the other container in the same network
+				// This should succeed when ICC is enabled
+				return helpers.Command("run", "--rm", "--net", data.Identifier(),
+					testutil.CommonImage, "ping", "-c", "1", "-W", "1", data.Identifier("c1"))
+			},
+			Expected: test.Expects(0, nil, nil), // Expect ping to succeed with exit code 0
+		},
+		{
+			Description: "with no enable_icc option set",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				// Create a network with ICC enabled (default)
+				helpers.Ensure("network", "create", data.Identifier(), "--driver", "bridge")
+
+				// Run a container in that network
+				data.Labels().Set("container1", helpers.Capture("run", "-d", "--net", data.Identifier(),
+					"--name", data.Identifier("c1"), testutil.CommonImage, "sleep", "infinity"))
+				// Wait for container to be running
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier("c1"))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("container", "rm", "-f", data.Identifier("c1"))
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				// Try to ping the other container in the same network
+				// This should succeed when no ICC is set
+				return helpers.Command("run", "--rm", "--net", data.Identifier(),
+					testutil.CommonImage, "ping", "-c", "1", "-W", "1", data.Identifier("c1"))
+			},
+			Expected: test.Expects(0, nil, nil), // Expect ping to succeed with exit code 0
 		},
 	}
 

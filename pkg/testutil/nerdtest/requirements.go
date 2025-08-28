@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -32,8 +33,10 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/snapshotterutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -444,6 +447,26 @@ func ContainerdVersion(v string) *test.Requirement {
 				return false, fmt.Sprintf("`nerdctl commit --compression expects containerd %s or later, got containerd %v", v, sv)
 			}
 			return true, ""
+		},
+	}
+}
+
+// CNIFirewallVersion checks if the CNI firewall plugin version is greater than or equal to the specified version
+func CNIFirewallVersion(requiredVersion string) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+			cniPath := ncdefaults.CNIPath()
+			firewallPath := filepath.Join(cniPath, "firewall")
+			ok, err := netutil.FirewallPluginGEQVersion(firewallPath, requiredVersion)
+			if err != nil {
+				return false, fmt.Sprintf("Failed to check CNI firewall version: %v", err)
+			}
+
+			if !ok {
+				return false, fmt.Sprintf("CNI firewall plugin version is less than required version %s", requiredVersion)
+			}
+
+			return true, fmt.Sprintf("CNI firewall plugin version is greater than or equal to required version %s", requiredVersion)
 		},
 	}
 }

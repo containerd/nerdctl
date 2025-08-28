@@ -95,13 +95,18 @@ type firewallConfig struct {
 
 	// IngressPolicy is supported since firewall plugin v1.1.0.
 	// "same-bridge" mode replaces the deprecated "isolation" plugin.
+	// "isolated" mode has been added since firewall plugin v1.7.1
 	IngressPolicy string `json:"ingressPolicy,omitempty"`
 }
 
-func newFirewallPlugin() *firewallConfig {
+func newFirewallPlugin(ingressPolicy string) *firewallConfig {
+	if ingressPolicy != "same-bridge" && ingressPolicy != "isolated" {
+		ingressPolicy = "same-bridge" // Default to "same-bridge" if invalid value provided
+	}
+
 	c := &firewallConfig{
 		PluginType:    "firewall",
-		IngressPolicy: "same-bridge",
+		IngressPolicy: ingressPolicy,
 	}
 	if rootlessutil.IsRootless() {
 		// https://github.com/containerd/nerdctl/issues/2818
