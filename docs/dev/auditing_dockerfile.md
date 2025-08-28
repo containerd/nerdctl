@@ -103,9 +103,7 @@ ci_run(){
   local no_cache="${1:-}"
   export UBUNTU_VERSION=24.04
 
-  CONTAINERD_VERSION=v1.6.36 run "$no_cache" arm64 Dockerfile.origin build-dependencies
-  UBUNTU_VERSION=20.04 CONTAINERD_VERSION=v1.6.36 run "" arm64 Dockerfile.origin test-integration
-
+  # The actual version may differ
   CONTAINERD_VERSION=v1.7.25 run "$no_cache"  arm64 Dockerfile.origin build-dependencies
   UBUNTU_VERSION=22.04 CONTAINERD_VERSION=v1.7.25 run "" arm64 Dockerfile.origin test-integration
 
