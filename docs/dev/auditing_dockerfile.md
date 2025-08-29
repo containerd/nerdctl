@@ -34,7 +34,7 @@ is the local ip of the Charles proxy (non-localhost)
 
 Add the following stages in the dockerfile:
 ```dockerfile
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS hack-build-base-debian
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-trixie AS hack-build-base-debian
 RUN apt-get update -qq; apt-get -qq install ca-certificates
 COPY charles-ssl-proxying-certificate.crt /usr/local/share/ca-certificates/
 RUN update-ca-certificates
@@ -52,7 +52,7 @@ RUN update-ca-certificates
 
 Then replace any later "FROM" with our modified bases:
 ```
-golang:${GO_VERSION}-bookworm => hack-build-base-debian
+golang:${GO_VERSION}-trixie => hack-build-base-debian
 golang:${GO_VERSION}-alpine => hack-build-base
 ubuntu:${UBUNTU_VERSION} => hack-base
 ```
