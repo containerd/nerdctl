@@ -177,7 +177,7 @@ func getContainerWait(ctx context.Context, address string, config *logging.Confi
 
 	task, err := con.Task(ctx, nil)
 	if err == nil {
-		return task.Wait(ctx)
+		return waitContainerExited(ctx, strings.TrimPrefix(address, "unix://"), config, task)
 	}
 	if !errdefs.IsNotFound(err) {
 		return nil, err
@@ -193,14 +193,14 @@ func getContainerWait(ctx context.Context, address string, config *logging.Confi
 		case <-ctx.Done():
 			return nil, errors.New("timed out waiting for container task to start")
 		case <-ticker.C:
-			task, err = con.Task(ctx, nil)
+			task, err := con.Task(ctx, nil)
 			if err != nil {
 				if errdefs.IsNotFound(err) {
 					continue
 				}
 				return nil, err
 			}
-			return task.Wait(ctx)
+			return waitContainerExited(ctx, strings.TrimPrefix(address, "unix://"), config, task)
 		}
 	}
 }
