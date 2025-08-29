@@ -26,7 +26,7 @@ if [[ "$(id -u)" = "0" ]]; then
   fi
 fi
 
-readonly timeout="60m"
+readonly timeout="30m"
 readonly retries="2"
 readonly needsudo="${WITH_SUDO:-}"
 
