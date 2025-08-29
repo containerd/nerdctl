@@ -99,6 +99,9 @@ linters:
         - name: use-errors-new
           # 84 occurrences. Improves error testing.
           disabled: true
+        - name: struct-tag
+          # 2 occurrences.
+          disabled: true
 
         ##### P1: consider making a dent on these, but not critical.
         - name: argument-limit
@@ -131,6 +134,9 @@ linters:
         - name: cognitive-complexity
           arguments: [205]
           # 441 occurrences (at default 7). We should try to lower it (involves significant refactoring).
+        - name: var-naming
+          # 1 occurrence.
+          disabled: true
 
         ##### P2: nice to have.
         - name: max-public-structs
@@ -155,6 +161,9 @@ linters:
         - name: exported
           # 577 occurrences. Forces documentation of any exported symbol.
           disabled: true
+        - name: unnecessary-format
+          # Many occurrences.
+          disabled: true
 
         ###### Permanently disabled. Below have been reviewed and vetted to be unnecessary.
         - name: line-length-limit
@@ -174,6 +183,9 @@ linters:
           disabled: true
         - name: add-constant
           # 2605 occurrences. Kind of useful in itself, but unacceptable amount of effort to fix
+          disabled: true
+        - name: enforce-switch-style
+          # Many occurrences.
           disabled: true
 
     depguard:
@@ -241,7 +253,6 @@ linters:
         - typeAssertChain
         - unlabelStmt
         - builtinShadow
-        - importShadow
         - initClause
         - nestingReduce
         - unnecessaryBlock
