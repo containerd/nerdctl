@@ -104,6 +104,7 @@ func SociAppendDefaultLabelsHandlerWrapper(indexDigest string, wrapper func(imag
 						c.Annotations[targetImageLayersSizeLabel] = strings.TrimSuffix(layerSizes, ",")
 					}
 				}
+			default:
 			}
 			return children, nil
 		})

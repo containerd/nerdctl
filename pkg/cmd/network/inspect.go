@@ -94,6 +94,7 @@ func Inspect(ctx context.Context, client *containerd.Client, options types.Netwo
 				return err
 			}
 			result = append(result, compat)
+		default:
 		}
 	}
 

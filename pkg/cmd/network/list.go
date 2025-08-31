@@ -173,6 +173,8 @@ func getNetworkFilterFuncs(filters []string) ([]func(*map[string]string) bool, [
 					}
 					return true
 				})
+			default:
+				continue
 			}
 			continue
 		}

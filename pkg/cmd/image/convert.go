@@ -179,6 +179,7 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 				Image: convertedRef,
 			}
 			return printConvertedImage(options.Stdout, options, res)
+		default:
 		}
 
 		if convertType != "overlaybd" {

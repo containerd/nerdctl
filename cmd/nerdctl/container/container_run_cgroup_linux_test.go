@@ -53,6 +53,7 @@ func TestRunCgroupV2(t *testing.T) {
 	switch info.CgroupDriver {
 	case "none", "":
 		t.Skip("test requires cgroup driver")
+	default:
 	}
 
 	if !info.MemoryLimit {
@@ -152,6 +153,7 @@ func TestRunCgroupV1(t *testing.T) {
 	switch info.CgroupDriver {
 	case "none", "":
 		t.Skip("test requires cgroup driver")
+	default:
 	}
 	if !info.MemoryLimit {
 		t.Skip("test requires MemoryLimit")
@@ -195,6 +197,7 @@ func TestIssue3781(t *testing.T) {
 	switch info.CgroupDriver {
 	case "none", "":
 		t.Skip("test requires cgroup driver")
+	default:
 	}
 	containerName := testutil.Identifier(t)
 	base.Cmd("run", "-d", "--name", containerName, testutil.AlpineImage, "sleep", "infinity").AssertOK()
@@ -402,6 +405,7 @@ func TestRunCgroupConf(t *testing.T) {
 	switch info.CgroupDriver {
 	case "none", "":
 		t.Skip("test requires cgroup driver")
+	default:
 	}
 	if !info.MemoryLimit {
 		t.Skip("test requires MemoryLimit")
@@ -417,6 +421,7 @@ func TestRunCgroupParent(t *testing.T) {
 	switch info.CgroupDriver {
 	case "none", "":
 		t.Skip("test requires cgroup driver")
+	default:
 	}
 
 	containerName := testutil.Identifier(t)
@@ -476,6 +481,7 @@ func TestRunBlkioWeightCgroupV2(t *testing.T) {
 	switch info.CgroupDriver {
 	case "none", "":
 		t.Skip("test requires cgroup driver")
+	default:
 	}
 	containerName := testutil.Identifier(t)
 	defer base.Cmd("rm", "-f", containerName).AssertOK()

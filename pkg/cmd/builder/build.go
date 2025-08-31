@@ -390,6 +390,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 			buildctlArgs = append(buildctlArgs, "--opt=image-resolve-mode=pull")
 		case false:
 			buildctlArgs = append(buildctlArgs, "--opt=image-resolve-mode=local")
+		default:
 		}
 	}
 

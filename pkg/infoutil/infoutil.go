@@ -235,6 +235,7 @@ func parseRuncVersion(runcVersionStdout []byte) (*dockercompat.ComponentVersion,
 		switch strings.TrimSpace(detail[0]) {
 		case "commit":
 			details["GitCommit"] = strings.TrimSpace(detail[1])
+		default:
 		}
 	}
 
