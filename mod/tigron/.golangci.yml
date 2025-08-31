@@ -96,7 +96,6 @@ linters:
             - "fmt.Fprintln"
             - "fmt.Fprintf"
         - name: redundant-test-main-exit
-          disabled: true
         - name: enforce-switch-style
           disabled: true
         - name: var-naming
