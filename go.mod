@@ -1,7 +1,7 @@
 //gomodjail:confined
 module github.com/containerd/nerdctl/v2
 
-go 1.24.0
+go 1.24.2
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
@@ -27,7 +27,7 @@ require (
 	github.com/containerd/stargz-snapshotter/ipfs v0.17.0 //gomodjail:unconfined
 	github.com/containerd/typeurl/v2 v2.2.3
 	github.com/containernetworking/cni v1.3.0 //gomodjail:unconfined
-	github.com/containernetworking/plugins v1.7.1 //gomodjail:unconfined
+	github.com/containernetworking/plugins v1.8.0 //gomodjail:unconfined
 	github.com/coreos/go-iptables v0.8.0 //gomodjail:unconfined
 	github.com/coreos/go-systemd/v22 v22.6.0
 	github.com/cyphar/filepath-securejoin v0.4.1 //gomodjail:unconfined
@@ -86,7 +86,7 @@ require (
 	github.com/docker/docker-credential-helpers v0.8.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
-	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -141,7 +141,7 @@ require (
 	//gomodjail:unconfined
 	google.golang.org/grpc v1.73.0 // indirect
 	//gomodjail:unconfined
-	google.golang.org/protobuf v1.36.6 // indirect
+	google.golang.org/protobuf v1.36.7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
