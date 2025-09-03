@@ -90,6 +90,7 @@ func generateEventFilter(filter, filterValue string) (func(e *EventOut) bool, er
 
 			return strings.EqualFold(string(e.Status), filterValue)
 		}, nil
+	default:
 	}
 
 	return nil, fmt.Errorf("%s is an invalid or unsupported filter", filter)

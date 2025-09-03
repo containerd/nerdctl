@@ -38,8 +38,9 @@ func qemuArchFromOCIArch(ociArch string) (string, error) {
 		return "mips64el", nil // NOT typo
 	case "loong64":
 		return "loongarch64", nil // NOT typo
+	default:
+		return "", fmt.Errorf("unknown OCI architecture string: %q", ociArch)
 	}
-	return "", fmt.Errorf("unknown OCI architecture string: %q", ociArch)
 }
 
 func canExecProbably(s string) (bool, error) {

@@ -185,9 +185,6 @@ linters:
           # 2605 occurrences. Kind of useful in itself, but unacceptable amount of effort to fix
           disabled: true
         - name: enforce-switch-style
-          # Many occurrences.
-          disabled: true
-
     depguard:
       rules:
         no-patent:
