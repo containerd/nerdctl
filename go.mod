@@ -57,7 +57,7 @@ require (
 	github.com/rootless-containers/bypass4netns v0.4.2 //gomodjail:unconfined
 	github.com/rootless-containers/rootlesskit/v2 v2.3.5 //gomodjail:unconfined
 	github.com/spf13/cobra v1.10.1 //gomodjail:unconfined
-	github.com/spf13/pflag v1.0.9 //gomodjail:unconfined
+	github.com/spf13/pflag v1.0.10 //gomodjail:unconfined
 	github.com/vishvananda/netlink v1.3.1 //gomodjail:unconfined
 	github.com/vishvananda/netns v0.0.5 //gomodjail:unconfined
 	github.com/yuchanns/srslog v1.1.0
