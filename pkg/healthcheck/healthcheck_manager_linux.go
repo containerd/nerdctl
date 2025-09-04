@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/coreos/go-systemd/v22/dbus"
 
@@ -110,45 +111,120 @@ func RemoveTransientHealthCheckFiles(ctx context.Context, container containerd.C
 	if hc == nil {
 		return nil
 	}
-	if shouldSkipHealthCheckSystemd(hc) {
-		return nil
-	}
 
-	return RemoveTransientHealthCheckFilesByID(ctx, container.ID())
+	return ForceRemoveTransientHealthCheckFiles(ctx, container.ID())
 }
 
-// RemoveTransientHealthCheckFilesByID stops and cleans up the transient timer and service using just the container ID.
-func RemoveTransientHealthCheckFilesByID(ctx context.Context, containerID string) error {
-	log.G(ctx).Debugf("Removing healthcheck timer unit: %s", containerID)
+// ForceRemoveTransientHealthCheckFiles forcefully stops and cleans up the transient timer and service
+// using just the container ID. This function is non-blocking and uses timeouts to prevent hanging
+// on systemd operations. It logs errors as warnings but continues cleanup attempts.
+func ForceRemoveTransientHealthCheckFiles(ctx context.Context, containerID string) error {
+	log.G(ctx).Debugf("Force removing healthcheck timer unit: %s", containerID)
 
-	conn, err := dbus.NewSystemConnectionContext(context.Background())
-	if err != nil {
-		return fmt.Errorf("systemd DBUS connect error: %w", err)
-	}
-	defer conn.Close()
+	// Create a timeout context for systemd operations
+	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
 
 	unitName := hcUnitName(containerID, true)
 	timer := unitName + ".timer"
 	service := unitName + ".service"
 
-	// Stop timer
-	tChan := make(chan string)
-	if _, err := conn.StopUnitContext(context.Background(), timer, "ignore-dependencies", tChan); err == nil {
-		if msg := <-tChan; msg != "done" {
-			log.G(ctx).Warnf("timer stop message: %s", msg)
+	// Channel to collect any critical errors (though we'll continue cleanup regardless)
+	errChan := make(chan error, 3)
+
+	// Goroutine for DBUS connection and cleanup operations
+	go func() {
+		defer close(errChan)
+
+		conn, err := dbus.NewSystemConnectionContext(timeoutCtx)
+		if err != nil {
+			log.G(ctx).Warnf("systemd DBUS connect error during force cleanup: %v", err)
+			errChan <- fmt.Errorf("systemd DBUS connect error: %w", err)
+			return
 		}
+		defer conn.Close()
+
+		// Stop timer with timeout
+		go func() {
+			select {
+			case <-timeoutCtx.Done():
+				log.G(ctx).Warnf("timeout stopping timer %s during force cleanup", timer)
+				return
+			default:
+				tChan := make(chan string, 1)
+				if _, err := conn.StopUnitContext(timeoutCtx, timer, "ignore-dependencies", tChan); err == nil {
+					select {
+					case msg := <-tChan:
+						if msg != "done" {
+							log.G(ctx).Warnf("timer stop message during force cleanup: %s", msg)
+						}
+					case <-timeoutCtx.Done():
+						log.G(ctx).Warnf("timeout waiting for timer stop confirmation: %s", timer)
+					}
+				} else {
+					log.G(ctx).Warnf("failed to stop timer %s during force cleanup: %v", timer, err)
+				}
+			}
+		}()
+
+		// Stop service with timeout
+		go func() {
+			select {
+			case <-timeoutCtx.Done():
+				log.G(ctx).Warnf("timeout stopping service %s during force cleanup", service)
+				return
+			default:
+				sChan := make(chan string, 1)
+				if _, err := conn.StopUnitContext(timeoutCtx, service, "ignore-dependencies", sChan); err == nil {
+					select {
+					case msg := <-sChan:
+						if msg != "done" {
+							log.G(ctx).Warnf("service stop message during force cleanup: %s", msg)
+						}
+					case <-timeoutCtx.Done():
+						log.G(ctx).Warnf("timeout waiting for service stop confirmation: %s", service)
+					}
+				} else {
+					log.G(ctx).Warnf("failed to stop service %s during force cleanup: %v", service, err)
+				}
+			}
+		}()
+
+		// Reset failed units (best effort, non-blocking)
+		go func() {
+			select {
+			case <-timeoutCtx.Done():
+				log.G(ctx).Warnf("timeout resetting failed unit %s during force cleanup", service)
+				return
+			default:
+				if err := conn.ResetFailedUnitContext(timeoutCtx, service); err != nil {
+					log.G(ctx).Warnf("failed to reset failed unit %s during force cleanup: %v", service, err)
+				}
+			}
+		}()
+
+		// Wait a short time for operations to complete, but don't block indefinitely
+		select {
+		case <-time.After(3 * time.Second):
+			log.G(ctx).Debugf("force cleanup operations completed for container %s", containerID)
+		case <-timeoutCtx.Done():
+			log.G(ctx).Warnf("force cleanup timed out for container %s", containerID)
+		}
+	}()
+
+	// Wait for the cleanup goroutine to finish or timeout
+	select {
+	case err := <-errChan:
+		if err != nil {
+			log.G(ctx).Warnf("force cleanup encountered errors but continuing: %v", err)
+		}
+	case <-timeoutCtx.Done():
+		log.G(ctx).Warnf("force cleanup timed out for container %s, but cleanup may continue in background", containerID)
 	}
 
-	// Stop service
-	sChan := make(chan string)
-	if _, err := conn.StopUnitContext(context.Background(), service, "ignore-dependencies", sChan); err == nil {
-		if msg := <-sChan; msg != "done" {
-			log.G(ctx).Warnf("service stop message: %s", msg)
-		}
-	}
-
-	// Reset failed units
-	_ = conn.ResetFailedUnitContext(context.Background(), service)
+	// Always return nil - this function should never block the caller
+	// even if systemd operations fail or timeout
+	log.G(ctx).Debugf("force cleanup completed (non-blocking) for container %s", containerID)
 	return nil
 }
 

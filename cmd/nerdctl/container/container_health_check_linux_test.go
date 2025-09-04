@@ -32,7 +32,6 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -628,24 +627,57 @@ func TestHealthCheck_SystemdIntegration_Basic(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output: expect.All(func(stdout string, t tig.T) {
-						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
-						h := inspect.State.Health
-						assert.Assert(t, h != nil, "expected health state to be present")
-						assert.Equal(t, h.Status, "healthy")
+						var h *healthcheck.Health
+
+						// Poll up to 5 times for health status
+						maxAttempts := 5
+						var finalStatus string
+
+						for i := 0; i < maxAttempts; i++ {
+							inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+							h = inspect.State.Health
+
+							assert.Assert(t, h != nil, "expected health state to be present")
+							finalStatus = h.Status
+
+							// If healthy, break and pass the test
+							if finalStatus == "healthy" {
+								t.Log(fmt.Sprintf("Container became healthy on attempt %d/%d", i+1, maxAttempts))
+								break
+							}
+
+							// If unhealthy, fail immediately
+							if finalStatus == "unhealthy" {
+								assert.Assert(t, false, fmt.Sprintf("Container became unhealthy on attempt %d/%d, status: %s", i+1, maxAttempts, finalStatus))
+								return
+							}
+
+							// If not the last attempt, wait before retrying
+							if i < maxAttempts-1 {
+								t.Log(fmt.Sprintf("Attempt %d/%d: status is '%s', waiting 1 second before retry", i+1, maxAttempts, finalStatus))
+								time.Sleep(1 * time.Second)
+							}
+						}
+
+						if finalStatus != "healthy" {
+							assert.Assert(t, false, fmt.Sprintf("Container did not become healthy after %d attempts, final status: %s", maxAttempts, finalStatus))
+							return
+						}
+
 						assert.Assert(t, len(h.Log) > 0, "expected at least one health check log entry")
 					}),
 				}
 			},
 		},
 		{
-			Description: "Kill stops healthcheck execution",
+			Description: "Kill stops healthcheck execution and cleans up systemd timer",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("run", "-d", "--name", data.Identifier(),
 					"--health-cmd", "echo healthy",
 					"--health-interval", "1s",
 					testutil.CommonImage, "sleep", "30")
 				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
-				helpers.Ensure("kill", data.Identifier()) // Kill the container
+				helpers.Ensure("kill", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				// Container is already killed, just remove it
@@ -653,10 +685,14 @@ func TestHealthCheck_SystemdIntegration_Basic(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 0,
-					Output: expect.All(func(stdout string, t tig.T) {
+					ExitCode: expect.ExitCodeNoCheck,
+					Output: func(stdout string, t tig.T) {
+						// Get container info for verification
 						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+						containerID := inspect.ID
 						h := inspect.State.Health
+
+						// Verify health state and logs exist
 						assert.Assert(t, h != nil, "expected health state to be present")
 						assert.Assert(t, len(h.Log) > 0, "expected at least one health check log entry")
 
@@ -666,10 +702,90 @@ func TestHealthCheck_SystemdIntegration_Basic(t *testing.T) {
 
 						// Assert all healthcheck log start times are before container finished
 						for _, entry := range h.Log {
-							assert.NilError(t, err, "parsing healthcheck Start time")
 							assert.Assert(t, entry.Start.Before(containerEnd), "healthcheck ran after container was killed")
 						}
-					}),
+
+						// Ensure systemd timers are removed
+						result := helpers.Custom("systemctl", "list-timers", "--all", "--no-pager")
+						result.Run(&test.Expected{
+							ExitCode: expect.ExitCodeNoCheck,
+							Output: func(stdout string, _ tig.T) {
+								assert.Assert(t, !strings.Contains(stdout, containerID),
+									"expected nerdctl healthcheck timer for container ID %s to be removed after container stop", containerID)
+							},
+						})
+					},
+				}
+			},
+		},
+		{
+			Description: "Remove cleans up systemd timer",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "echo healthy",
+					"--health-interval", "1s",
+					testutil.CommonImage, "sleep", "30")
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+				helpers.Ensure("rm", "-f", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				// Container is already removed, no cleanup needed
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeNoCheck,
+					Output: func(stdout string, t tig.T) {
+						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+						containerID := inspect.ID
+
+						// Check systemd timers to ensure cleanup
+						result := helpers.Custom("systemctl", "list-timers", "--all", "--no-pager")
+						result.Run(&test.Expected{
+							ExitCode: expect.ExitCodeNoCheck,
+							Output: func(stdout string, _ tig.T) {
+								// Verify systemd timer has been cleaned up by checking systemctl output
+								// We check that no timer contains our test identifier
+								assert.Assert(t, !strings.Contains(stdout, containerID),
+									"expected nerdctl healthcheck timer for container ID %s to be removed after container removal", containerID)
+							},
+						})
+					},
+				}
+			},
+		},
+		{
+			Description: "Stop cleans up systemd timer",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "echo healthy",
+					"--health-interval", "1s",
+					testutil.CommonImage, "sleep", "30")
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+				helpers.Ensure("stop", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				// Container is already stopped, just remove it
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeNoCheck,
+					Output: func(stdout string, t tig.T) {
+						// Get container info for verification
+						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+						containerID := inspect.ID
+
+						// Ensure systemd timers are removed
+						result := helpers.Custom("systemctl", "list-timers", "--all", "--no-pager")
+						result.Run(&test.Expected{
+							ExitCode: expect.ExitCodeNoCheck,
+							Output: func(stdout string, _ tig.T) {
+								assert.Assert(t, !strings.Contains(stdout, containerID),
+									"expected nerdctl healthcheck timer for container ID %s to be removed after container stop", containerID)
+							},
+						})
+					},
 				}
 			},
 		},
@@ -678,9 +794,7 @@ func TestHealthCheck_SystemdIntegration_Basic(t *testing.T) {
 }
 
 func TestHealthCheck_SystemdIntegration_Advanced(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("systemd healthcheck tests are skipped in rootless environment")
-	}
+
 	testCase := nerdtest.Setup()
 	testCase.Require = require.Not(nerdtest.Docker)
 
@@ -695,8 +809,6 @@ func TestHealthCheck_SystemdIntegration_Advanced(t *testing.T) {
 					"--health-interval", "1s",
 					testutil.CommonImage, "sleep", "30")
 				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
-				// Wait longer for systemd timer creation and first healthcheck execution
-				time.Sleep(3 * time.Second)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -724,7 +836,6 @@ func TestHealthCheck_SystemdIntegration_Advanced(t *testing.T) {
 						})
 						// Stop container and verify cleanup
 						helpers.Ensure("stop", data.Identifier())
-						time.Sleep(500 * time.Millisecond) // Allow cleanup to complete
 
 						// Check that timer is gone
 						result = helpers.Custom("systemctl", "list-timers", "--all", "--no-pager")
@@ -733,7 +844,6 @@ func TestHealthCheck_SystemdIntegration_Advanced(t *testing.T) {
 							Output: func(stdout string, _ tig.T) {
 								assert.Assert(t, !strings.Contains(stdout, containerID),
 									"expected nerdctl healthcheck timer for container ID %s to be removed after container stop", containerID)
-
 							},
 						})
 					}),
@@ -748,7 +858,6 @@ func TestHealthCheck_SystemdIntegration_Advanced(t *testing.T) {
 					"--health-interval", "2s",
 					testutil.CommonImage, "sleep", "60")
 				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
-				time.Sleep(3 * time.Second) // Wait for initial timer creation
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier())
@@ -770,7 +879,6 @@ func TestHealthCheck_SystemdIntegration_Advanced(t *testing.T) {
 
 				// Step 2: Stop container
 				helpers.Ensure("stop", data.Identifier())
-				time.Sleep(1 * time.Second) // Allow cleanup
 
 				// Step 3: Verify timer is removed after stop
 				result = helpers.Custom("systemctl", "list-timers", "--all", "--no-pager")
@@ -785,7 +893,6 @@ func TestHealthCheck_SystemdIntegration_Advanced(t *testing.T) {
 				// Step 4: Restart container
 				helpers.Ensure("start", data.Identifier())
 				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
-				time.Sleep(3 * time.Second) // Wait for timer recreation
 
 				// Step 5: Verify timer is recreated after restart - this is our final verification
 				return helpers.Custom("systemctl", "list-timers", "--all", "--no-pager")

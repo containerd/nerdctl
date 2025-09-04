@@ -3,6 +3,8 @@
 `nerdctl` supports Docker-compatible health checks for containers, allowing users to monitor container health via a user-defined command.
 
 ## Configuration Options
+| :zap: Requirement | nerdctl >= 2.1.5 |
+|-------------------|----------------|
 
 Health checks can be configured in multiple ways:
 
