@@ -39,7 +39,7 @@ func TestImageConvert(t *testing.T) {
 			require.Not(nerdtest.Docker),
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+			helpers.Ensure("pull", "--quiet", "--all-platforms", testutil.CommonImage)
 		},
 		SubTests: []*test.Case{
 			{
@@ -101,6 +101,24 @@ func TestImageConvert(t *testing.T) {
 				},
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("image", "convert", "--soci",
+						"--soci-span-size", "2097152",
+						"--soci-min-layer-size", "0",
+						testutil.CommonImage, data.Identifier("converted-image"))
+				},
+				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "soci with all-platforms",
+				Require: require.All(
+					require.Not(nerdtest.Docker),
+					nerdtest.Soci,
+					nerdtest.SociVersion("0.10.0"),
+				),
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("image", "convert", "--soci", "--all-platforms",
 						"--soci-span-size", "2097152",
 						"--soci-min-layer-size", "0",
 						testutil.CommonImage, data.Identifier("converted-image"))

@@ -310,4 +310,8 @@ type SociOptions struct {
 	SpanSize int64
 	// Minimum layer size to build zTOC for. Smaller layers won't have zTOC and not lazy pulled. Default is 10 MiB.
 	MinLayerSize int64
+	// Platforms convert content for a specific platform
+	Platforms []string
+	// AllPlatforms convert content for all platforms
+	AllPlatforms bool
 }
