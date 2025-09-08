@@ -177,6 +177,7 @@ var CGroup = &test.Requirement{
 		case "none", "":
 			ret = false
 			mess = "cgroup is none"
+		default:
 		}
 		return ret, mess
 	},
@@ -212,6 +213,7 @@ var CGroupV2 = &test.Requirement{
 		case "none", "":
 			ret = false
 			mess = "cgroup is none"
+		default:
 		}
 		if dinf.CgroupVersion != "2" {
 			ret = false
