@@ -104,7 +104,7 @@ func CheckSociVersion(requiredVersion string) error {
 }
 
 // ConvertSociIndexV2 converts an image to SOCI format and returns the converted image reference with digest
-func ConvertSociIndexV2(ctx context.Context, client *client.Client, srcRef string, destRef string, gOpts types.GlobalCommandOptions, platforms []string, sOpts types.SociOptions) (string, error) {
+func ConvertSociIndexV2(ctx context.Context, client *client.Client, srcRef string, destRef string, gOpts types.GlobalCommandOptions, sOpts types.SociOptions) (string, error) {
 	// Check if SOCI version is at least 0.10.0 which is required for the convert operation
 	if err := CheckSociVersion("0.10.0"); err != nil {
 		return "", err
@@ -117,10 +117,12 @@ func ConvertSociIndexV2(ctx context.Context, client *client.Client, srcRef strin
 
 	sociCmd.Args = append(sociCmd.Args, "convert")
 
-	if len(platforms) > 0 {
+	if sOpts.AllPlatforms {
+		sociCmd.Args = append(sociCmd.Args, "--all-platforms")
+	} else if len(sOpts.Platforms) > 0 {
 		// multiple values need to be passed as separate, repeating flags in soci as it uses urfave
 		// https://github.com/urfave/cli/blob/main/docs/v2/examples/flags.md#multiple-values-per-single-flag
-		for _, p := range platforms {
+		for _, p := range sOpts.Platforms {
 			sociCmd.Args = append(sociCmd.Args, "--platform", p)
 		}
 	}

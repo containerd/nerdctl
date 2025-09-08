@@ -171,7 +171,7 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 			convertType = "nydus"
 		case soci:
 			// Convert image to SOCI format
-			convertedRef, err := snapshotterutil.ConvertSociIndexV2(ctx, client, srcRef, targetRef, options.GOptions, options.Platforms, options.SociOptions)
+			convertedRef, err := snapshotterutil.ConvertSociIndexV2(ctx, client, srcRef, targetRef, options.GOptions, options.SociOptions)
 			if err != nil {
 				return fmt.Errorf("failed to convert image to SOCI format: %w", err)
 			}
