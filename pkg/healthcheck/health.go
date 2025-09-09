@@ -80,7 +80,7 @@ type Healthcheck struct {
 type HealthState struct {
 	Status        HealthStatus // Status is one of [Starting], [Healthy] or [Unhealthy]
 	FailingStreak int          // FailingStreak is the number of consecutive failures
-	StartPeriod   bool         // StartPeriod indicates if we're in the start period workflow
+	InStartPeriod bool         // InStartPeriod indicates if we're in the start period workflow
 }
 
 // ToJSONString serializes HealthState to a JSON string for label storage

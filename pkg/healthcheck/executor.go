@@ -125,10 +125,12 @@ func updateHealthStatus(ctx context.Context, container containerd.Container, hcC
 		return fmt.Errorf("failed to read health state from labels: %w", err)
 	}
 	if currentHealth == nil {
+		// Determine if we should start in the start period workflow
+		hasStartPeriod := hcConfig.StartPeriod > 0
 		currentHealth = &HealthState{
 			Status:        Starting,
 			FailingStreak: 0,
-			StartPeriod:   hcConfig.StartPeriod > 0,
+			InStartPeriod: hasStartPeriod,
 		}
 	}
 
@@ -141,7 +143,7 @@ func updateHealthStatus(ctx context.Context, container containerd.Container, hcC
 
 	// Check if we're in start period workflow
 	inStartPeriodTime := hcResult.Start.Sub(containerCreated) < hcConfig.StartPeriod
-	inStartPeriodState := currentHealth.StartPeriod
+	inStartPeriodState := currentHealth.InStartPeriod
 
 	if inStartPeriodTime && inStartPeriodState {
 		// Start Period Workflow
@@ -149,7 +151,7 @@ func updateHealthStatus(ctx context.Context, container containerd.Container, hcC
 			// First healthy result transitions us out of start period
 			currentHealth.Status = Healthy
 			currentHealth.FailingStreak = 0
-			currentHealth.StartPeriod = false
+			currentHealth.InStartPeriod = false
 		}
 		// Ignore unhealthy results during start period
 	} else {

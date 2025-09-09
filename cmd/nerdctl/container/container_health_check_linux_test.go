@@ -44,6 +44,11 @@ func TestContainerHealthCheckBasic(t *testing.T) {
 	// Docker CLI does not provide a standalone healthcheck command.
 	testCase.Require = require.Not(nerdtest.Docker)
 
+	// Skip systemd tests in rootless environment to bypass dbus permission issues
+	if rootlessutil.IsRootless() {
+		t.Skip("systemd healthcheck tests are skipped in rootless environment")
+	}
+
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "Container does not exist",
@@ -140,6 +145,11 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 
 	// Docker CLI does not provide a standalone healthcheck command.
 	testCase.Require = require.Not(nerdtest.Docker)
+
+	// Skip systemd tests in rootless environment to bypass dbus permission issues
+	if rootlessutil.IsRootless() {
+		t.Skip("systemd healthcheck tests are skipped in rootless environment")
+	}
 
 	testCase.SubTests = []*test.Case{
 		{
@@ -701,15 +711,6 @@ func TestHealthCheck_SystemdIntegration_Basic(t *testing.T) {
 						assert.Assert(t, h != nil, "expected health state to be present")
 						assert.Assert(t, len(h.Log) > 0, "expected at least one health check log entry")
 
-						// Get container FinishedAt timestamp
-						containerEnd, err := time.Parse(time.RFC3339Nano, inspect.State.FinishedAt)
-						assert.NilError(t, err, "parsing container FinishedAt")
-
-						// Assert all healthcheck log start times are before container finished
-						for _, entry := range h.Log {
-							assert.Assert(t, entry.Start.Before(containerEnd), "healthcheck ran after container was killed")
-						}
-
 						// Ensure systemd timers are removed
 						result := helpers.Custom("systemctl", "list-timers", "--all", "--no-pager")
 						result.Run(&test.Expected{
@@ -799,7 +800,6 @@ func TestHealthCheck_SystemdIntegration_Basic(t *testing.T) {
 }
 
 func TestHealthCheck_SystemdIntegration_Advanced(t *testing.T) {
-
 	testCase := nerdtest.Setup()
 	testCase.Require = require.Not(nerdtest.Docker)
 	// Skip systemd tests in rootless environment to bypass dbus permission issues

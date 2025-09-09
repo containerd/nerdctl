@@ -136,7 +136,13 @@ func ForceRemoveTransientHealthCheckFiles(ctx context.Context, containerID strin
 	go func() {
 		defer close(errChan)
 
-		conn, err := dbus.NewSystemConnectionContext(timeoutCtx)
+		var conn *dbus.Conn
+		var err error
+		if rootlessutil.IsRootless() {
+			conn, err = dbus.NewUserConnectionContext(ctx)
+		} else {
+			conn, err = dbus.NewSystemConnectionContext(ctx)
+		}
 		if err != nil {
 			log.G(ctx).Warnf("systemd DBUS connect error during force cleanup: %v", err)
 			errChan <- fmt.Errorf("systemd DBUS connect error: %w", err)
@@ -258,7 +264,7 @@ func extractHealthcheck(ctx context.Context, container containerd.Container) *He
 // shouldSkipHealthCheckSystemd determines if healthcheck timers should be skipped.
 func shouldSkipHealthCheckSystemd(hc *Healthcheck) bool {
 	// Don't proceed if systemd is unavailable or disabled
-	if !defaults.IsSystemdAvailable() || os.Getenv("DISABLE_HC_SYSTEMD") == "true" {
+	if !defaults.IsSystemdAvailable() || os.Getenv("DISABLE_HC_SYSTEMD") == "true" || rootlessutil.IsRootless() {
 		return true
 	}
 
