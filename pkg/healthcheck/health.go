@@ -43,7 +43,6 @@ const (
 	DefaultProbeInterval   = 30 * time.Second // Default interval between probe runs. Also applies before the first probe.
 	DefaultProbeTimeout    = 30 * time.Second // Max duration a single probe run may take before it's considered failed.
 	DefaultStartPeriod     = 0 * time.Second  // Grace period for container startup before health checks count as failures.
-	DefaultStartInterval   = 5 * time.Second  // Interval between checks during the start period.
 	DefaultProbeRetries    = 3                // Number of consecutive failures before marking container as unhealthy.
 	MaxLogEntries          = 5                // Maximum number of health check log entries to keep.
 	MaxOutputLenForInspect = 4096             // Max output length (in bytes) stored in health check logs during inspect. Longer outputs are truncated.
@@ -70,18 +69,18 @@ type HealthcheckResult struct {
 
 // Healthcheck represents the health check configuration
 type Healthcheck struct {
-	Test          []string      `json:"Test,omitempty"`          // Test is the check to perform that the container is healthy
-	Interval      time.Duration `json:"Interval,omitempty"`      // Interval is the time to wait between checks
-	Timeout       time.Duration `json:"Timeout,omitempty"`       // Timeout is the time to wait before considering the check to have hung
-	Retries       int           `json:"Retries,omitempty"`       // Retries is the number of consecutive failures needed to consider a container as unhealthy
-	StartPeriod   time.Duration `json:"StartPeriod,omitempty"`   // StartPeriod is the period for the container to initialize before the health check starts
-	StartInterval time.Duration `json:"StartInterval,omitempty"` // StartInterval is the time between health checks during the start period
+	Test        []string      `json:"Test,omitempty"`        // Test is the check to perform that the container is healthy
+	Interval    time.Duration `json:"Interval,omitempty"`    // Interval is the time to wait between checks
+	Timeout     time.Duration `json:"Timeout,omitempty"`     // Timeout is the time to wait before considering the check to have hung
+	Retries     int           `json:"Retries,omitempty"`     // Retries is the number of consecutive failures needed to consider a container as unhealthy
+	StartPeriod time.Duration `json:"StartPeriod,omitempty"` // StartPeriod is the period for the container to initialize before the health check starts
 }
 
 // HealthState stores the current health state of a container
 type HealthState struct {
 	Status        HealthStatus // Status is one of [Starting], [Healthy] or [Unhealthy]
 	FailingStreak int          // FailingStreak is the number of consecutive failures
+	InStartPeriod bool         // InStartPeriod indicates if we're in the start period workflow
 }
 
 // ToJSONString serializes HealthState to a JSON string for label storage
