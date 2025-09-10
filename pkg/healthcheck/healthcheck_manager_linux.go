@@ -35,15 +35,30 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
-// CreateTimer sets up the transient systemd timer and service for healthchecks.
-func CreateTimer(ctx context.Context, container containerd.Container) error {
+// ShouldCreateTimer determines if a healthcheck timer should be created for the container.
+func ShouldCreateTimer(ctx context.Context, container containerd.Container) bool {
 	hc := extractHealthcheck(ctx, container)
 	if hc == nil {
-		return nil
+		return false
 	}
-	if shouldSkipHealthCheckSystemd(hc) {
-		return nil
+	return !shouldSkipHealthCheckSystemd(hc)
+}
+
+// ShouldStartTimer determines if a healthcheck timer should be started for the container.
+func ShouldStartTimer(ctx context.Context, container containerd.Container) bool {
+	hc := extractHealthcheck(ctx, container)
+	if hc == nil {
+		return false
 	}
+	return !shouldSkipHealthCheckSystemd(hc)
+}
+
+// CreateTimer sets up the transient systemd timer and service for healthchecks.
+// This function assumes the caller has already validated that a timer should be created.
+func CreateTimer(ctx context.Context, container containerd.Container) error {
+	hc := extractHealthcheck(ctx, container)
+	// Note: We still need to extract healthcheck here for the actual timer creation logic
+	// but we assume the caller has already validated it exists and is valid
 
 	containerID := container.ID()
 	hcName := hcUnitName(containerID, true)
@@ -72,15 +87,8 @@ func CreateTimer(ctx context.Context, container containerd.Container) error {
 }
 
 // StartTimer starts the healthcheck timer unit.
+// This function assumes the caller has already validated that a timer should be started.
 func StartTimer(ctx context.Context, container containerd.Container) error {
-	hc := extractHealthcheck(ctx, container)
-	if hc == nil {
-		return nil
-	}
-	if shouldSkipHealthCheckSystemd(hc) {
-		return nil
-	}
-
 	hcName := hcUnitName(container.ID(), true)
 	var conn *dbus.Conn
 	var err error

@@ -22,6 +22,18 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 )
 
+// ShouldCreateTimer determines if a healthcheck timer should be created for the container.
+// On Darwin, this always returns false since systemd is not available.
+func ShouldCreateTimer(ctx context.Context, container containerd.Container) bool {
+	return false
+}
+
+// ShouldStartTimer determines if a healthcheck timer should be started for the container.
+// On Darwin, this always returns false since systemd is not available.
+func ShouldStartTimer(ctx context.Context, container containerd.Container) bool {
+	return false
+}
+
 // CreateTimer sets up the transient systemd timer and service for healthchecks.
 func CreateTimer(ctx context.Context, container containerd.Container) error {
 	return nil
