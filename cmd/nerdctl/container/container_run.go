@@ -446,13 +446,11 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 
 	// Setup container healthchecks.
-	if healthcheck.ShouldCreateTimer(ctx, c) {
-		if err := healthcheck.CreateTimer(ctx, c); err != nil {
-			return fmt.Errorf("failed to create healthcheck timer: %w", err)
-		}
-		if err := healthcheck.StartTimer(ctx, c); err != nil {
-			return fmt.Errorf("failed to start healthcheck timer: %w", err)
-		}
+	if err := healthcheck.CreateTimer(ctx, c); err != nil {
+		return fmt.Errorf("failed to create healthcheck timer: %w", err)
+	}
+	if err := healthcheck.StartTimer(ctx, c); err != nil {
+		return fmt.Errorf("failed to start healthcheck timer: %w", err)
 	}
 
 	if createOpt.Detach {
