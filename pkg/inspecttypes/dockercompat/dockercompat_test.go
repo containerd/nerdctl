@@ -105,9 +105,9 @@ func TestContainerFromNative(t *testing.T) {
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
-					UTSMode:            "host",
-					Tmpfs:              map[string]string{},
-					LinuxBlkioSettings: getDefaultLinuxBlkioSettings(),
+					UTSMode:       "host",
+					Tmpfs:         map[string]string{},
+					BlkioSettings: getDefaultBlkioSettings(),
 				},
 				Mounts: []MountPoint{
 					{
@@ -201,9 +201,9 @@ func TestContainerFromNative(t *testing.T) {
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
-					UTSMode:            "host",
-					Tmpfs:              map[string]string{},
-					LinuxBlkioSettings: getDefaultLinuxBlkioSettings(),
+					UTSMode:       "host",
+					Tmpfs:         map[string]string{},
+					BlkioSettings: getDefaultBlkioSettings(),
 				},
 				Mounts: []MountPoint{
 					{
@@ -292,9 +292,9 @@ func TestContainerFromNative(t *testing.T) {
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
-					UTSMode:            "host",
-					Tmpfs:              map[string]string{},
-					LinuxBlkioSettings: getDefaultLinuxBlkioSettings(),
+					UTSMode:       "host",
+					Tmpfs:         map[string]string{},
+					BlkioSettings: getDefaultBlkioSettings(),
 				},
 				Mounts: []MountPoint{
 					{
@@ -342,12 +342,12 @@ func TestContainerFromNative(t *testing.T) {
 					FinishedAt: "",
 				},
 				HostConfig: &HostConfig{
-					LogConfig:          loggerLogConfig{Driver: "json-file", Opts: map[string]string{}},
-					PortBindings:       nat.PortMap{},
-					GroupAdd:           []string{},
-					Tmpfs:              map[string]string{},
-					UTSMode:            "host",
-					LinuxBlkioSettings: getDefaultLinuxBlkioSettings(),
+					LogConfig:     loggerLogConfig{Driver: "json-file", Opts: map[string]string{}},
+					PortBindings:  nat.PortMap{},
+					GroupAdd:      []string{},
+					Tmpfs:         map[string]string{},
+					UTSMode:       "host",
+					BlkioSettings: getDefaultBlkioSettings(),
 				},
 				NetworkSettings: &NetworkSettings{
 					Ports:    &nat.PortMap{},

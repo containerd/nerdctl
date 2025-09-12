@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -495,31 +494,33 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 	// For now, disable the test unless on a recent kernel.
 	testutil.RequireKernelVersion(t, ">= 6.0.0-0")
 
-	// Create dummy device path
-	dummyDev := "/dev/dummy-zero"
-
+	const (
+		weight       = "150"
+		deviceWeight = "100"
+		readBps      = "1048576"
+		readIops     = "1000"
+		writeBps     = "2097152"
+		writeIops    = "2000"
+	)
+	var lo *loopback.Loopback
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		// Create dummy device
-		helperCmd := exec.Command("mknod", dummyDev, "c", "1", "5")
-		if out, err := helperCmd.CombinedOutput(); err != nil {
-			t.Fatalf("cannot create %q: %q: %v", dummyDev, string(out), err)
-		}
+		var err error
+		lo, err = loopback.New(4096)
+		assert.NilError(t, err)
+		t.Logf("loopback device: %+v", lo)
 	}
-
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		// Clean up the dummy device
-		if err := exec.Command("rm", "-f", dummyDev).Run(); err != nil {
-			t.Logf("failed to remove device %s: %v", dummyDev, err)
+		if lo != nil {
+			_ = lo.Close()
 		}
 	}
-
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "blkio-weight",
 			Require:     nerdtest.CGroupV2,
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "-d", "--name", data.Identifier(),
-					"--blkio-weight", "150",
+					"--blkio-weight", weight,
 					testutil.AlpineImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -530,7 +531,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 					ExitCode: 0,
 					Output: expect.All(
 						func(stdout string, t tig.T) {
-							assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "{{.HostConfig.BlkioWeight}}", data.Identifier()), "150"))
+							assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "{{.HostConfig.BlkioWeight}}", data.Identifier()), weight))
 						},
 					),
 				}
@@ -541,7 +542,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 			Require:     nerdtest.CGroupV2,
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "-d", "--name", data.Identifier(),
-					"--blkio-weight-device", dummyDev+":100",
+					"--blkio-weight-device", fmt.Sprintf("%s:%s", lo.Device, deviceWeight),
 					testutil.AlpineImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -553,7 +554,11 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 					Output: expect.All(
 						func(stdout string, t tig.T) {
 							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioWeightDevice}}{{.Weight}}{{end}}", data.Identifier())
-							assert.Assert(t, strings.Contains(inspectOut, "100"))
+							assert.Assert(t, strings.Contains(inspectOut, deviceWeight))
+						},
+						func(stdout string, t tig.T) {
+							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioWeightDevice}}{{.Path}}{{end}}", data.Identifier())
+							assert.Assert(t, strings.Contains(inspectOut, lo.Device))
 						},
 					),
 				}
@@ -570,7 +575,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 			),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "-d", "--name", data.Identifier(),
-					"--device-read-bps", dummyDev+":1048576",
+					"--device-read-bps", fmt.Sprintf("%s:%s", lo.Device, readBps),
 					testutil.AlpineImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -582,7 +587,11 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 					Output: expect.All(
 						func(stdout string, t tig.T) {
 							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceReadBps}}{{.Rate}}{{end}}", data.Identifier())
-							assert.Assert(t, strings.Contains(inspectOut, "1048576"))
+							assert.Assert(t, strings.Contains(inspectOut, readBps))
+						},
+						func(stdout string, t tig.T) {
+							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceReadBps}}{{.Path}}{{end}}", data.Identifier())
+							assert.Assert(t, strings.Contains(inspectOut, lo.Device))
 						},
 					),
 				}
@@ -599,7 +608,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 			),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "-d", "--name", data.Identifier(),
-					"--device-write-bps", dummyDev+":2097152",
+					"--device-write-bps", fmt.Sprintf("%s:%s", lo.Device, writeBps),
 					testutil.AlpineImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -611,7 +620,11 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 					Output: expect.All(
 						func(stdout string, t tig.T) {
 							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceWriteBps}}{{.Rate}}{{end}}", data.Identifier())
-							assert.Assert(t, strings.Contains(inspectOut, "2097152"))
+							assert.Assert(t, strings.Contains(inspectOut, writeBps))
+						},
+						func(stdout string, t tig.T) {
+							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceWriteBps}}{{.Path}}{{end}}", data.Identifier())
+							assert.Assert(t, strings.Contains(inspectOut, lo.Device))
 						},
 					),
 				}
@@ -628,7 +641,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 			),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "-d", "--name", data.Identifier(),
-					"--device-read-iops", dummyDev+":1000",
+					"--device-read-iops", fmt.Sprintf("%s:%s", lo.Device, readIops),
 					testutil.AlpineImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -640,7 +653,11 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 					Output: expect.All(
 						func(stdout string, t tig.T) {
 							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceReadIOps}}{{.Rate}}{{end}}", data.Identifier())
-							assert.Assert(t, strings.Contains(inspectOut, "1000"))
+							assert.Assert(t, strings.Contains(inspectOut, readIops))
+						},
+						func(stdout string, t tig.T) {
+							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceReadIOps}}{{.Path}}{{end}}", data.Identifier())
+							assert.Assert(t, strings.Contains(inspectOut, lo.Device))
 						},
 					),
 				}
@@ -657,7 +674,7 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 			),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "-d", "--name", data.Identifier(),
-					"--device-write-iops", dummyDev+":2000",
+					"--device-write-iops", fmt.Sprintf("%s:%s", lo.Device, writeIops),
 					testutil.AlpineImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
@@ -669,7 +686,11 @@ func TestRunBlkioSettingCgroupV2(t *testing.T) {
 					Output: expect.All(
 						func(stdout string, t tig.T) {
 							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceWriteIOps}}{{.Rate}}{{end}}", data.Identifier())
-							assert.Assert(t, strings.Contains(inspectOut, "2000"))
+							assert.Assert(t, strings.Contains(inspectOut, writeIops))
+						},
+						func(stdout string, t tig.T) {
+							inspectOut := helpers.Capture("inspect", "--format", "{{range .HostConfig.BlkioDeviceWriteIOps}}{{.Path}}{{end}}", data.Identifier())
+							assert.Assert(t, strings.Contains(inspectOut, lo.Device))
 						},
 					),
 				}

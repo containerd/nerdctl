@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"slices"
 	"strings"
 	"testing"
@@ -28,6 +27,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/continuity/testutil/loopback"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
@@ -512,45 +512,45 @@ func TestContainerInspectBlkioSettings(t *testing.T) {
 	// For now, disable the test unless on a recent kernel.
 	testutil.RequireKernelVersion(t, ">= 6.0.0-0")
 
-	devPath := "/dev/dummy-zero"
-	// a dummy zero device: mknod /dev/dummy-zero c 1 5
-	helperCmd := exec.Command("mknod", []string{devPath, "c", "1", "5"}...)
-	if out, err := helperCmd.CombinedOutput(); err != nil {
-		err = fmt.Errorf("cannot create %q: %q: %w", devPath, string(out), err)
+	lo, err := loopback.New(4096)
+	if err != nil {
+		err = fmt.Errorf("cannot find a loop device: %w", err)
 		t.Fatal(err)
 	}
-
-	// ensure the file will be removed in case of failed in the test
-	defer func() {
-		if err := exec.Command("rm", "-f", devPath).Run(); err != nil {
-			t.Logf("failed to remove device %s: %v", devPath, err)
-		}
-	}()
+	defer lo.Close()
 
 	base := testutil.NewBase(t)
 	defer base.Cmd("rm", "-f", testContainer).AssertOK()
 
+	const (
+		weight    = 500
+		readBps   = 1048576
+		readIops  = 1000
+		writeBps  = 2097152
+		writeIops = 2000
+	)
 	base.Cmd("run", "-d", "--name", testContainer,
-		"--blkio-weight", "500",
-		"--blkio-weight-device", "/dev/dummy-zero:500",
-		"--device-read-bps", "/dev/dummy-zero:1048576",
-		"--device-read-iops", "/dev/dummy-zero:1000",
-		"--device-write-bps", "/dev/dummy-zero:2097152",
-		"--device-write-iops", "/dev/dummy-zero:2000",
+		"--blkio-weight", fmt.Sprintf("%d", weight),
+		"--blkio-weight-device", fmt.Sprintf("%s:%d", lo.Device, weight),
+		"--device-read-bps", fmt.Sprintf("%s:%d", lo.Device, readBps),
+		"--device-read-iops", fmt.Sprintf("%s:%d", lo.Device, readIops),
+		"--device-write-bps", fmt.Sprintf("%s:%d", lo.Device, writeBps),
+		"--device-write-iops", fmt.Sprintf("%s:%d", lo.Device, writeIops),
 		testutil.AlpineImage, "sleep", "infinity").AssertOK()
 
 	inspect := base.InspectContainer(testContainer)
-	assert.Equal(t, uint16(500), inspect.HostConfig.BlkioWeight)
+	assert.Equal(t, uint16(weight), inspect.HostConfig.BlkioWeight)
 	assert.Equal(t, 1, len(inspect.HostConfig.BlkioWeightDevice))
-	assert.Equal(t, uint16(500), *inspect.HostConfig.BlkioWeightDevice[0].Weight)
+	assert.Equal(t, lo.Device, inspect.HostConfig.BlkioWeightDevice[0].Path)
+	assert.Equal(t, uint16(weight), inspect.HostConfig.BlkioWeightDevice[0].Weight)
 	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceReadBps))
-	assert.Equal(t, uint64(1048576), inspect.HostConfig.BlkioDeviceReadBps[0].Rate)
+	assert.Equal(t, uint64(readBps), inspect.HostConfig.BlkioDeviceReadBps[0].Rate)
 	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceWriteBps))
-	assert.Equal(t, uint64(2097152), inspect.HostConfig.BlkioDeviceWriteBps[0].Rate)
+	assert.Equal(t, uint64(writeBps), inspect.HostConfig.BlkioDeviceWriteBps[0].Rate)
 	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceReadIOps))
-	assert.Equal(t, uint64(1000), inspect.HostConfig.BlkioDeviceReadIOps[0].Rate)
+	assert.Equal(t, uint64(readIops), inspect.HostConfig.BlkioDeviceReadIOps[0].Rate)
 	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceWriteIOps))
-	assert.Equal(t, uint64(2000), inspect.HostConfig.BlkioDeviceWriteIOps[0].Rate)
+	assert.Equal(t, uint64(writeIops), inspect.HostConfig.BlkioDeviceWriteIOps[0].Rate)
 }
 
 func TestContainerInspectUser(t *testing.T) {
