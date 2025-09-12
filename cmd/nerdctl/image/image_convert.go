@@ -303,6 +303,8 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 			SociOptions: types.SociOptions{
 				SpanSize:     sociSpanSize,
 				MinLayerSize: sociMinLayerSize,
+				Platforms:    platforms,
+				AllPlatforms: allPlatforms,
 			},
 		},
 		Stdout: cmd.OutOrStdout(),
