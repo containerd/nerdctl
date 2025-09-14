@@ -107,9 +107,9 @@ jobs:
         name: "Init (linux): prepare host"
         run: |
           if [ "${{ contains(inputs.binary, 'docker') }}" == true ]; then
-            echo "::group:: configure cdi for docker"
+            echo "::group:: configure cdi and experimental for docker"
             sudo mkdir -p /etc/docker
-            sudo jq '.features.cdi = true' /etc/docker/daemon.json | sudo tee /etc/docker/daemon.json.tmp && sudo mv /etc/docker/daemon.json.tmp /etc/docker/daemon.json
+            sudo jq -n '.features.cdi = true | .experimental = true' | sudo tee /etc/docker/daemon.json
             echo "::endgroup::"
             echo "::group:: downgrade docker to the specific version we want to test (${{ inputs.docker-version }})"
             sudo apt-get update -qq
@@ -122,6 +122,7 @@ jobs:
               | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
             sudo apt-get update -qq
             sudo apt-get install -qq --allow-downgrades docker-ce=${{ inputs.docker-version }} docker-ce-cli=${{ inputs.docker-version }}
+            sudo systemctl restart docker
             echo "::endgroup::"
           else
             # FIXME: this is missing runc (see top level workflow note about the state of this)
@@ -153,7 +154,8 @@ jobs:
 
           # FIXME: remove expect when we are done removing unbuffer from tests
           echo "::group:: installing test dependencies"
-          sudo apt-get install -qq expect
+          sudo add-apt-repository ppa:criu/ppa -y
+          sudo apt-get install -qq expect criu
           echo "::endgroup::"
 
           # This ensures that bridged traffic goes through netfilter
