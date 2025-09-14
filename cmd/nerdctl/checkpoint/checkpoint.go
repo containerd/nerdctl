@@ -34,7 +34,15 @@ func Command() *cobra.Command {
 
 	cmd.AddCommand(
 		CreateCommand(),
+		checkpointLsCommand(),
 	)
 
 	return cmd
+}
+
+func checkpointLsCommand() *cobra.Command {
+	x := ListCommand()
+	x.Use = "ls"
+	x.Aliases = []string{"list"}
+	return x
 }

@@ -27,3 +27,15 @@ type CheckpointCreateOptions struct {
 	// Checkpoint directory
 	CheckpointDir string
 }
+
+type CheckpointListOptions struct {
+	Stdout   io.Writer
+	GOptions GlobalCommandOptions
+	// Checkpoint directory
+	CheckpointDir string
+}
+
+type CheckpointSummary struct {
+	// Name is the name of the checkpoint.
+	Name string
+}
