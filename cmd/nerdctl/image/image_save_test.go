@@ -66,6 +66,23 @@ func TestSaveContent(t *testing.T) {
 	testCase.Run(t)
 }
 
+func TestSaveSkipVerify(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Require: require.Not(require.Windows),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("save", "--skip-verify", "-o", filepath.Join(data.Temp().Path(), "out.tar"), testutil.CommonImage)
+		},
+		Expected: test.Expects(0, nil, nil),
+	}
+
+	testCase.Run(t)
+}
+
 func TestSave(t *testing.T) {
 	testCase := nerdtest.Setup()
 

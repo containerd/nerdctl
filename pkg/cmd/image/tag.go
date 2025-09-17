@@ -70,8 +70,8 @@ func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagO
 
 	err = EnsureAllContent(ctx, client, srcName, platMC, options.GOptions)
 	if err != nil {
-		log.G(ctx).Warn("Unable to fetch missing layers before committing. " +
-			"If you try to save or push this image, it might fail. See https://github.com/containerd/nerdctl/issues/3439.")
+		log.G(ctx).Warn("Unable to verify all image layers are present locally (this does not affect the tag operation). " +
+			"If you later save or push this image, some layers may need to be re-downloaded. See https://github.com/containerd/nerdctl/issues/3439.")
 	}
 
 	img, err := imageService.Get(ctx, srcName)
@@ -92,5 +92,8 @@ func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagO
 			return err
 		}
 	}
+	
+	// Log successful tag operation
+	log.G(ctx).Infof("Successfully tagged %s", parsedReference.String())
 	return nil
 }

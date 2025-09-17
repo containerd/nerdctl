@@ -274,6 +274,8 @@ type ImageSaveOptions struct {
 	AllPlatforms bool
 	// Export content for a specific platform
 	Platform []string
+	// Skip verification of remote layers
+	SkipVerify bool
 }
 
 // ImageSignOptions contains options for signing an image. It contains options from
