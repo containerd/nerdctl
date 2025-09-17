@@ -24,7 +24,6 @@ import (
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
-
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
@@ -92,7 +91,7 @@ func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagO
 			return err
 		}
 	}
-	
+
 	// Log successful tag operation
 	log.G(ctx).Infof("Successfully tagged %s", parsedReference.String())
 	return nil
