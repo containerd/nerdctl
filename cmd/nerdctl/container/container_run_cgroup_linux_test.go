@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -39,6 +40,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -705,6 +707,33 @@ func TestRunCPURealTimeSettingCgroupV1(t *testing.T) {
 				),
 			}
 		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestRunCPUSharesCgroupV2(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Require: require.All(
+			nerdtest.CGroupV2,
+			nerdtest.Info(
+				func(info dockercompat.Info) error {
+					if !info.CPUShares {
+						return fmt.Errorf("test requires CPUShares")
+					}
+					return nil
+				},
+			),
+		),
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("run", "--rm", "--cpu-shares", "2000",
+				testutil.AlpineImage, "cat", "/sys/fs/cgroup/cpu.weight")
+		},
+		// The value was historically 77, but with runc v1.4.0-rc.1 it became 170.
+		// https://github.com/opencontainers/runc/issues/4896#issuecomment-3301825811
+		Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("^(77|170)\n$"))),
 	}
 
 	testCase.Run(t)

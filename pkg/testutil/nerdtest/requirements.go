@@ -164,6 +164,24 @@ var Rootless = &test.Requirement{
 // Rootful marks a test as suitable only for rootful env
 var Rootful = require.Not(Rootless)
 
+// Info requires that `nerdctl info` satisfies the condition function passed as argument.
+func Info(f func(dockercompat.Info) error) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+			stdout := helpers.Capture("info", "--format", "{{ json . }}")
+			var dinf dockercompat.Info
+			err := json.Unmarshal([]byte(stdout), &dinf)
+			if err != nil {
+				return false, fmt.Sprintf("failed to parse docker info: %v", err)
+			}
+			if err := f(dinf); err != nil {
+				return false, err.Error()
+			}
+			return true, ""
+		},
+	}
+}
+
 // CGroup requires that cgroup is enabled
 var CGroup = &test.Requirement{
 	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
