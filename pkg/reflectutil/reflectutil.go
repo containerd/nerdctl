@@ -58,6 +58,7 @@ func isEmpty(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Map, reflect.Slice:
 		return v.Len() == 0
+	default:
+		return false
 	}
-	return false
 }
