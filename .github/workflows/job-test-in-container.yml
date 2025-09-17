@@ -151,6 +151,11 @@ jobs:
           sudo mkdir -p /etc/docker
           echo '{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64", "experimental": true, "ip6tables": true}' | sudo tee /etc/docker/daemon.json
           sudo systemctl restart docker
+      - name: "Init: enable Docker experimental features"
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{"experimental": true}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
       - name: "Run: integration tests"
         run: |
           . ./hack/github/action-helpers.sh

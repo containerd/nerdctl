@@ -161,7 +161,7 @@ else
 	# so that we can create our own files in our mount namespace.
 	# The actual files in the parent namespace are *not removed* by this rm command.
 	rm -f /run/containerd /run/xtables.lock \
-		/var/lib/containerd /var/lib/cni /etc/containerd
+		/var/lib/containerd /var/lib/cni /etc/containerd /etc/cni/net.d /etc/cdi /var/run/cdi /etc/buildkit/cdi
 
 	# Bind-mount /etc/ssl.
 	# Workaround for "x509: certificate signed by unknown authority" on openSUSE Tumbleweed.
@@ -186,6 +186,18 @@ else
 	# Bind-mount /etc/containerd
 	mkdir -p "${XDG_CONFIG_HOME}/containerd" "/etc/containerd"
 	mount --bind "${XDG_CONFIG_HOME}/containerd" "/etc/containerd"
+
+	# Bind-mount /etc/cni/net.d
+	mkdir -p "${XDG_CONFIG_HOME}/cni/net.d" "/etc/cni/net.d"
+	mount --bind "${XDG_CONFIG_HOME}/cni/net.d" "/etc/cni/net.d"
+
+	# Bind-mount CDI directories
+	mkdir -p "${XDG_CONFIG_HOME}/cdi" "/etc/cdi"
+	mount --bind "${XDG_CONFIG_HOME}/cdi" "/etc/cdi"
+	mkdir -p "${XDG_DATA_HOME}/cdi" "/var/run/cdi"
+	mount --bind "${XDG_DATA_HOME}/cdi" "/var/run/cdi"
+	mkdir -p "${XDG_CONFIG_HOME}/buildkit/cdi" "/etc/buildkit/cdi"
+	mount --bind "${XDG_CONFIG_HOME}/buildkit/cdi" "/etc/buildkit/cdi"
 
 	if [ -n "$_CONTAINERD_ROOTLESS_SELINUX" ]; then
 		# iptables requires /run in the child to be relabeled. The actual /run in the parent is unaffected.

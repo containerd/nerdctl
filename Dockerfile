@@ -294,7 +294,7 @@ RUN perl -pi -e 's/multi-user.target/docker-entrypoint.target/g' /usr/local/lib/
   systemctl enable containerd buildkit stargz-snapshotter && \
   mkdir -p /etc/bash_completion.d && \
   nerdctl completion bash >/etc/bash_completion.d/nerdctl && \
-  mkdir -p -m 0755 /etc/cni
+  mkdir -p -m 0755 /etc/cni /etc/cdi /var/run/cdi /etc/buildkit/cdi
 COPY ./Dockerfile.d/etc_containerd_config.toml /etc/containerd/config.toml
 COPY ./Dockerfile.d/etc_buildkit_buildkitd.toml /etc/buildkit/buildkitd.toml
 VOLUME /var/lib/containerd
@@ -309,10 +309,17 @@ ARG DEBIAN_FRONTEND=noninteractive
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
 # `jq` is required to generate test summaries
 RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
-  expect \
-  jq \
-  git \
-  make
+    software-properties-common \
+    gnupg \
+    gpg-agent \
+    ca-certificates && \
+    add-apt-repository ppa:criu/ppa && \
+    apt-get update -qq && apt-get install -qq --no-install-recommends \
+    expect \
+    jq \
+    git \
+    make \
+    criu
 # We wouldn't need this if Docker Hub could have "golang:${GO_VERSION}-ubuntu"
 COPY --from=build-base /usr/local/go /usr/local/go
 ARG TARGETARCH
