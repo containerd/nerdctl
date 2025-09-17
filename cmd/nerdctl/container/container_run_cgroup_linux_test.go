@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -38,6 +39,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -60,9 +62,6 @@ func TestRunCgroupV2(t *testing.T) {
 	if !info.SwapLimit {
 		t.Skip("test requires SwapLimit")
 	}
-	if !info.CPUShares {
-		t.Skip("test requires CPUShares")
-	}
 	if !info.CPUSet {
 		t.Skip("test requires CPUSet")
 	}
@@ -73,7 +72,6 @@ func TestRunCgroupV2(t *testing.T) {
 44040192
 44040192
 42
-77
 0-1
 0
 `
@@ -82,34 +80,32 @@ func TestRunCgroupV2(t *testing.T) {
 60817408
 6291456
 42
-77
 0-1
 0
 `
 
-	// In CgroupV2 CPUWeight replace CPUShares => weight := 1 + ((shares-2)*9999)/262142
 	base.Cmd("run", "--rm",
 		"--cpus", "0.42", "--cpuset-mems", "0",
 		"--memory", "42m",
 		"--pids-limit", "42",
-		"--cpu-shares", "2000", "--cpuset-cpus", "0-1",
+		"--cpuset-cpus", "0-1",
 		"-w", "/sys/fs/cgroup", testutil.AlpineImage,
 		"cat", "cpu.max", "memory.max", "memory.swap.max",
-		"pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected1)
+		"pids.max", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected1)
 	base.Cmd("run", "--rm",
 		"--cpu-quota", "42000", "--cpuset-mems", "0",
 		"--cpu-period", "100000", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m",
-		"--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1",
+		"--pids-limit", "42", "--cpuset-cpus", "0-1",
 		"-w", "/sys/fs/cgroup", testutil.AlpineImage,
 		"cat", "cpu.max", "memory.max", "memory.swap.max", "memory.low", "pids.max",
-		"cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
+		"cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
 
 	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate1", "-w", "/sys/fs/cgroup", "-d",
 		testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
 	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate1").Run()
 	update := []string{"update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
 		"--memory", "42m",
-		"--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1"}
+		"--pids-limit", "42", "--cpuset-cpus", "0-1"}
 	if nerdtest.IsDocker() && info.CgroupVersion == "2" && info.SwapLimit {
 		// Workaround for Docker with cgroup v2:
 		// > Error response from daemon: Cannot update container 67c13276a13dd6a091cdfdebb355aa4e1ecb15fbf39c2b5c9abee89053e88fce:
@@ -120,7 +116,7 @@ func TestRunCgroupV2(t *testing.T) {
 	base.Cmd(update...).AssertOK()
 	base.Cmd("exec", testutil.Identifier(t)+"-testUpdate1",
 		"cat", "cpu.max", "memory.max", "memory.swap.max",
-		"pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected1)
+		"pids.max", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected1)
 
 	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate2").Run()
 	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate2", "-w", "/sys/fs/cgroup", "-d",
@@ -129,11 +125,11 @@ func TestRunCgroupV2(t *testing.T) {
 
 	base.Cmd("update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
 		"--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m",
-		"--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1",
+		"--pids-limit", "42", "--cpuset-cpus", "0-1",
 		testutil.Identifier(t)+"-testUpdate2").AssertOK()
 	base.Cmd("exec", testutil.Identifier(t)+"-testUpdate2",
 		"cat", "cpu.max", "memory.max", "memory.swap.max", "memory.low",
-		"pids.max", "cpu.weight", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
+		"pids.max", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
 	base.Cmd("run", "--rm", "--security-opt", "writable-cgroups=true", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo").AssertOK()
 	base.Cmd("run", "--rm", "--security-opt", "writable-cgroups=false", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo").AssertFail()
 	base.Cmd("run", "--rm", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo").AssertFail()
@@ -732,6 +728,33 @@ func TestRunCPURealTimeSettingCgroupV1(t *testing.T) {
 				),
 			}
 		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestRunCPUSharesCgroupV2(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Require: require.All(
+			nerdtest.CGroupV2,
+			nerdtest.Info(
+				func(info dockercompat.Info) error {
+					if !info.CPUShares {
+						return fmt.Errorf("test requires CPUShares")
+					}
+					return nil
+				},
+			),
+		),
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("run", "--rm", "--cpu-shares", "2000",
+				testutil.AlpineImage, "cat", "/sys/fs/cgroup/cpu.weight")
+		},
+		// The value was historically 77, but with runc v1.4.0-rc.1 it became 170.
+		// https://github.com/opencontainers/runc/issues/4896#issuecomment-3301825811
+		Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile("^(77|170)\n$"))),
 	}
 
 	testCase.Run(t)
