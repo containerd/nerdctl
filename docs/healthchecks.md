@@ -2,25 +2,31 @@
 
 `nerdctl` supports Docker-compatible health checks for containers, allowing users to monitor container health via a user-defined command.
 
-Currently, health checks can be triggered manually using the nerdctl container healthcheck command. Automatic orchestration (e.g., periodic checks) will be added in a future update.
+## Configuration Options
+| :zap: Requirement | nerdctl >= 2.1.5 |
+|-------------------|----------------|
 
 Health checks can be configured in multiple ways:
 
-1. At container creation time using nerdctl run or nerdctl create with `--health-*` flags
+1. At container creation time using `nerdctl run` or `nerdctl create` with these flags:
+   - `--health-cmd`: Command to run to check health
+   - `--health-interval`: Time between running the check (default: 30s)
+   - `--health-timeout`: Maximum time to allow one check to run (default: 30s)
+   - `--health-retries`: Consecutive failures needed to report unhealthy (default: 3)
+   - `--health-start-period`: Start period for the container to initialize before starting health-retries countdown
+   - `--no-healthcheck`: Disable any container-specified HEALTHCHECK
+
 2. At image build time using HEALTHCHECK in a Dockerfile
-3. In docker-compose.yaml files, if using nerdctl compose
 
-When a container is created, nerdctl determines the health check configuration based on the following priority:
+**Note:** The `--health-start-interval` option is currently not supported by nerdctl.
 
-1. **CLI flags** take highest precedence (e.g., `--health-cmd`, etc.)
-2. If no CLI flags are set, nerdctl will use any health check defined in the image.
+## Configuration Priority
+
+When a container is created, nerdctl determines the health check configuration based on this priority:
+
+1. CLI flags take highest precedence (e.g., `--health-cmd`, etc.)
+2. If no CLI flags are set, nerdctl will use any health check defined in the image
 3. If neither is present, no health check will be configured
-
-Example:
-
-```bash
-nerdctl run --name web --health-cmd="curl -f http://localhost || exit 1" --health-interval=30s --health-timeout=5s --health-retries=3 nginx
-```
 
 ### Disabling Health Checks
 
@@ -37,15 +43,54 @@ configured health check inside the container and reports the result. It serves a
 health checks, especially in scenarios where external scheduling is used.
 
 Example:
-
 ```
 nerdctl container healthcheck <container-id>
 ```
 
-### Future Work (WIP)
+## Automatic Health Checks with systemd
 
-Since nerdctl is daemonless and does not have a persistent background process, we rely on systemd(or external schedulers)
-to invoke nerdctl container healthcheck at configured intervals. This allows periodic health checks for containers in a
-systemd-based environment. We are actively working on automating health checks, where we will listen to container lifecycle
-events and generate appropriate systemd service and timer units. This will enable nerdctl to support automated,
-Docker-compatible health checks by leveraging systemd for scheduling and lifecycle integration.
+On Linux systems with systemd, nerdctl automatically creates and manages systemd timer units to execute health checks at the configured intervals. This provides reliable scheduling and execution of health checks without requiring a persistent daemon.
+
+### Requirements for Automatic Health Checks
+
+- systemd must be available on the system
+- Container must not be running in rootless mode
+- Configuration property `disable_hc_systemd` must not be set to `true` in nerdctl.toml
+
+### How It Works
+
+1. When a container with health checks is created, nerdctl:
+   - Creates a systemd timer unit for the container
+   - Configures the timer according to the health check interval
+   - Starts monitoring the container's health status
+
+2. The health check status can be one of:
+   - `starting`: During container initialization
+   - `healthy`: When health checks are passing
+   - `unhealthy`: After specified number of consecutive failures
+## Examples
+
+1. Basic health check that verifies a web server:
+```bash
+nerdctl run -d --name web \
+  --health-cmd="curl -f http://localhost/ || exit 1" \
+  --health-interval=5s \
+  --health-retries=3 \
+  nginx
+```
+
+2. Health check with initialization period:
+```bash
+nerdctl run -d --name app \
+  --health-cmd="./health-check.sh" \
+  --health-interval=30s \
+  --health-timeout=10s \
+  --health-retries=3 \
+  --health-start-period=60s \
+  myapp
+```
+
+3. Disable health checks:
+```bash
+nerdctl run --no-healthcheck myapp
+```

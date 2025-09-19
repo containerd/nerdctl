@@ -45,9 +45,11 @@ import (
 	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/config"
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
+	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/labels/k8slabels"
@@ -204,7 +206,7 @@ func GenerateSharingPIDOpts(ctx context.Context, targetCon containerd.Container)
 }
 
 // Start starts `container` with `attach` flag. If `attach` is true, it will attach to the container's stdio.
-func Start(ctx context.Context, container containerd.Container, isAttach bool, isInteractive bool, client *containerd.Client, detachKeys string) (err error) {
+func Start(ctx context.Context, container containerd.Container, isAttach bool, isInteractive bool, client *containerd.Client, detachKeys string, cfg *config.Config) (err error) {
 	// defer the storage of start error in the dedicated label
 	defer func() {
 		if err != nil {
@@ -286,6 +288,15 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
+
+	// If container has health checks configured, create and start systemd timer/service files.
+	if err := healthcheck.CreateTimer(ctx, container, cfg); err != nil {
+		return fmt.Errorf("failed to create healthcheck timer: %w", err)
+	}
+	if err := healthcheck.StartTimer(ctx, container, cfg); err != nil {
+		return fmt.Errorf("failed to start healthcheck timer: %w", err)
+	}
+
 	if !isAttach {
 		return nil
 	}
@@ -501,7 +512,7 @@ func Pause(ctx context.Context, client *containerd.Client, id string) error {
 }
 
 // Unpause unpauses a container by its id.
-func Unpause(ctx context.Context, client *containerd.Client, id string) error {
+func Unpause(ctx context.Context, client *containerd.Client, id string, cfg *config.Config) error {
 	container, err := client.LoadContainer(ctx, id)
 	if err != nil {
 		return err
@@ -515,6 +526,14 @@ func Unpause(ctx context.Context, client *containerd.Client, id string) error {
 	status, err := task.Status(ctx)
 	if err != nil {
 		return err
+	}
+
+	// Recreate healthcheck related systemd timer/service files.
+	if err := healthcheck.CreateTimer(ctx, container, cfg); err != nil {
+		return fmt.Errorf("failed to create healthcheck timer: %w", err)
+	}
+	if err := healthcheck.StartTimer(ctx, container, cfg); err != nil {
+		return fmt.Errorf("failed to start healthcheck timer: %w", err)
 	}
 
 	switch status.Status {

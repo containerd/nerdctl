@@ -23,6 +23,7 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/config"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 )
@@ -40,7 +41,7 @@ func Start(ctx context.Context, client *containerd.Client, reqs []string, option
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := containerutil.Start(ctx, found.Container, options.Attach, options.Interactive, client, options.DetachKeys); err != nil {
+			if err := containerutil.Start(ctx, found.Container, options.Attach, options.Interactive, client, options.DetachKeys, (*config.Config)(&options.GOptions)); err != nil {
 				return err
 			}
 			if !options.Attach {
