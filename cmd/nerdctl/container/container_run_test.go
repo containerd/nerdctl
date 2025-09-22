@@ -841,6 +841,9 @@ func TestRunDomainname(t *testing.T) {
 }
 
 func TestRunHealthcheckFlags(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		t.Skip("healthcheck tests are skipped in rootless environment")
+	}
 	testCase := nerdtest.Setup()
 
 	testCases := []struct {
@@ -990,6 +993,9 @@ func TestRunHealthcheckFlags(t *testing.T) {
 }
 
 func TestRunHealthcheckFromImage(t *testing.T) {
+	if rootlessutil.IsRootless() {
+		t.Skip("healthcheck tests are skipped in rootless environment")
+	}
 	nerdtest.Setup()
 
 	dockerfile := fmt.Sprintf(`FROM %s

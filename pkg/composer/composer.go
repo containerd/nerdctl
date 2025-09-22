@@ -30,6 +30,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
+	"github.com/containerd/nerdctl/v2/pkg/config"
 	"github.com/containerd/nerdctl/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 )
@@ -54,7 +55,7 @@ type Options struct {
 	IPFSAddress      string
 }
 
-func New(o Options, client *containerd.Client) (*Composer, error) {
+func New(o Options, client *containerd.Client, cfg *config.Config) (*Composer, error) {
 	if o.NerdctlCmd == "" {
 		return nil, errors.New("got empty nerdctl cmd")
 	}
@@ -119,6 +120,7 @@ func New(o Options, client *containerd.Client) (*Composer, error) {
 		Options: o,
 		project: project,
 		client:  client,
+		config:  cfg,
 	}
 
 	return c, nil
@@ -128,6 +130,7 @@ type Composer struct {
 	Options
 	project *compose.Project
 	client  *containerd.Client
+	config  *config.Config
 }
 
 func (c *Composer) createNerdctlCmd(ctx context.Context, args ...string) *exec.Cmd {

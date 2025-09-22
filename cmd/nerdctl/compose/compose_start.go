@@ -28,8 +28,10 @@ import (
 	"github.com/containerd/errdefs"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
+	"github.com/containerd/nerdctl/v2/pkg/config"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
@@ -86,7 +88,7 @@ func startAction(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("service %q has no container to start", svcName)
 		}
 
-		if err := startContainers(ctx, client, containers); err != nil {
+		if err := startContainers(ctx, client, containers, &globalOptions); err != nil {
 			return err
 		}
 	}
@@ -94,7 +96,7 @@ func startAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func startContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container) error {
+func startContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container, globalOptions *types.GlobalCommandOptions) error {
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, c := range containers {
 		c := c
@@ -112,7 +114,7 @@ func startContainers(ctx context.Context, client *containerd.Client, containers 
 			}
 
 			// in compose, always disable attach
-			if err := containerutil.Start(ctx, c, false, false, client, ""); err != nil {
+			if err := containerutil.Start(ctx, c, false, false, client, "", (*config.Config)(globalOptions)); err != nil {
 				return err
 			}
 			info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
