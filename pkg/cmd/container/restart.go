@@ -21,11 +21,13 @@ import (
 	"fmt"
 
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/config"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/v2/pkg/labels/k8slabels"
 )
 
 // Restart will restart one or more containers.
@@ -36,13 +38,20 @@ func Restart(ctx context.Context, client *containerd.Client, containers []string
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
+			info, err := found.Container.Info(ctx)
+			if err != nil {
+				return fmt.Errorf("can't get container %s info ", found.Container.ID())
+			}
+			if _, ok := info.Labels[k8slabels.ContainerType]; ok {
+				log.L.Warnf("nerdctl does not support restarting container %s created by Kubernetes", info.ID)
+			}
 			if err := containerutil.Stop(ctx, found.Container, options.Timeout, options.Signal); err != nil {
 				return err
 			}
 			if err := containerutil.Start(ctx, found.Container, false, false, client, "", (*config.Config)(&options.GOption)); err != nil {
 				return err
 			}
-			_, err := fmt.Fprintln(options.Stdout, found.Req)
+			_, err = fmt.Fprintln(options.Stdout, found.Req)
 			return err
 		},
 	}

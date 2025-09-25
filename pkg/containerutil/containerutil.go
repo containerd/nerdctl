@@ -218,6 +218,9 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 		return err
 	}
 
+	if _, ok := lab[k8slabels.ContainerType]; ok {
+		log.L.Warnf("nerdctl does not support starting container %s created by Kubernetes", container.ID())
+	}
 	if err := ReconfigNetContainer(ctx, container, client, lab); err != nil {
 		return err
 	}
