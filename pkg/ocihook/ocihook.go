@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -425,6 +426,65 @@ func applyNetworkSettings(opts *handlerOpts) (err error) {
 	if err != nil {
 		return err
 	}
+	if !rootlessutil.IsRootlessChild() && len(opts.ports) > 0 {
+		// When running in rootful mode, reserve the ports on the host
+		// so that the ports appears on /proc/net/tcp.
+		//
+		// This also prevents other processes from binding to the same ports.
+		//
+		// Note that in rootless mode this is not necessary because
+		// RootlessKit's port driver already reserves the ports.
+		//
+		// See https://github.com/lima-vm/lima/issues/4085
+		//
+		// Similar patterns are used in Docker and Podman.
+		// - https://github.com/moby/moby/pull/48132
+		// - https://github.com/containers/podman/pull/23446
+		reserverCmd := exec.Command("sleep", "infinity")
+		for _, p := range opts.ports {
+			protocol := p.Protocol
+			if !strings.HasSuffix(protocol, "4") && !strings.HasSuffix(protocol, "6") {
+				// e.g. "tcp" -> "tcp4"
+				protocol += "4"
+			}
+			hostAddr := net.JoinHostPort(p.HostIP, strconv.Itoa(int(p.HostPort)))
+			l, err := net.Listen(protocol, hostAddr)
+			if err != nil {
+				return fmt.Errorf("cannot reserve the port %s/%s: %w", protocol, hostAddr, err)
+			}
+			type filer interface {
+				File() (*os.File, error)
+			}
+			lFiler, ok := l.(filer)
+			if !ok {
+				return fmt.Errorf("cannot get file descriptor from the listener of type %T", l)
+			}
+			lFile, err := lFiler.File()
+			if err != nil {
+				return err
+			}
+			if err = l.Close(); err != nil {
+				return err
+			}
+			reserverCmd.ExtraFiles = append(reserverCmd.ExtraFiles, lFile)
+		}
+		if err := reserverCmd.Start(); err != nil {
+			return fmt.Errorf("cannot start the port reserver process: %w", err)
+		}
+		reserverCmdPid := reserverCmd.Process.Pid
+		log.L.Debugf("started the port reserver process (pid=%d)", reserverCmdPid)
+		defer func() {
+			if err != nil {
+				log.L.Debugf("killing the port reserver process (pid=%d)", reserverCmdPid)
+				_ = reserverCmd.Process.Kill()
+			}
+		}()
+		// write the pid file under opts.state dir so that it is removed when the container is removed
+		// FIXME: this should be /run/nerdctl/<namespace>/<id>/port-reserver.pid
+		if err := writePidFile(filepath.Join(opts.state.Annotations[labels.StateDir], "port-reserver.pid"), reserverCmdPid); err != nil {
+			return fmt.Errorf("cannot write the pid file of the port reserver process: %w", err)
+		}
+	}
 	nsPath, err := getNetNSPath(opts.state)
 	if err != nil {
 		return err
@@ -658,6 +718,25 @@ func onPostStop(opts *handlerOpts) error {
 	// Double-releasing may happen with containers started with --rm, so, ignore NotFound errors
 	if err := namst.Release(name, opts.state.ID); err != nil && !errors.Is(err, store.ErrNotFound) {
 		return fmt.Errorf("failed to release container name %s: %w", name, err)
+	}
+	// Kill port-reserver process if any
+	portReserverPidFile := filepath.Join(opts.state.Annotations[labels.StateDir], "port-reserver.pid")
+	pidData, err := os.ReadFile(portReserverPidFile)
+	if err == nil {
+		pid, err := strconv.Atoi(strings.TrimSpace(string(pidData)))
+		if err != nil {
+			log.L.WithError(err).Warnf("failed to parse pid %q from %q", string(pidData), portReserverPidFile)
+		} else {
+			proc, err := os.FindProcess(pid)
+			if err != nil {
+				log.L.WithError(err).Warnf("failed to find process %d", pid)
+			} else {
+				log.L.Debugf("killing the port reserver process (pid=%d)", pid)
+				if err := proc.Kill(); err != nil {
+					log.L.WithError(err).Warnf("failed to kill process %d", pid)
+				}
+			}
+		}
 	}
 	return nil
 }
