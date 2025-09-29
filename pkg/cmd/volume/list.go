@@ -242,6 +242,8 @@ func getVolumeFilterFuncs(filters []string) ([]func(*map[string]string) bool, []
 					}
 					return true
 				})
+			default:
+				continue
 			}
 			continue
 		}

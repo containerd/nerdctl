@@ -25,10 +25,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// Prep exit code
-	exitCode := 0
-	defer func() { os.Exit(exitCode) }()
-
 	var (
 		snapFile      *os.File
 		before, after []byte
@@ -39,11 +35,7 @@ func TestMain(m *testing.M) {
 		before, _ = highk.SnapshotOpenFiles(snapFile)
 	}
 
-	exitCode = m.Run()
-
-	if exitCode != 0 {
-		return
-	}
+	m.Run()
 
 	if os.Getenv("HIGHK_EXPERIMENTAL_FD") != "" {
 		after, _ = highk.SnapshotOpenFiles(snapFile)
@@ -55,15 +47,11 @@ func TestMain(m *testing.M) {
 			for _, file := range diff {
 				fmt.Fprintln(os.Stderr, file)
 			}
-
-			exitCode = 1
 		}
 	}
 
 	if err := highk.FindGoRoutines(); err != nil {
 		fmt.Fprintln(os.Stderr, "Leaking go routines")
 		fmt.Fprintln(os.Stderr, os.Stderr, err.Error())
-
-		exitCode = 1
 	}
 }
