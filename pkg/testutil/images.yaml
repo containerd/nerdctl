@@ -75,6 +75,10 @@ ubuntu:
   ref: "public.ecr.aws/docker/library/ubuntu"
   tag: "23.10"
 
+coredns:
+  ref: "public.ecr.aws/eks-distro/coredns/coredns"
+  tag: "v1.12.2-eks-1-31-latest"
+
 # Future: images to add or update soon.
 # busybox:1.37.0@sha256:37f7b378a29ceb4c551b1b5582e27747b855bbfaa73fa11914fe0df028dc581f
 # debian:bookworm-slim@sha256:b1211f6d19afd012477bd34fdcabb6b663d680e0f4b0537da6e6b0fd057a3ec3

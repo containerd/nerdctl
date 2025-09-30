@@ -1080,3 +1080,58 @@ dns_search = ["example.com", "test.local"]`
 	}
 	testCase.Run(t)
 }
+
+// TestReservePorts tests that a published port appears
+// as a listening port on the host.
+// See https://github.com/containerd/nerdctl/pull/4526
+func TestReservePorts(t *testing.T) {
+	nerdtest.Setup()
+	testCase := &test.Case{
+		Require: require.All(
+			require.Not(require.Windows),
+			require.Not(nerdtest.RootlessWithoutDetachNetNS), // RootlessKit v1
+		),
+		NoParallel: true,
+		SubTests: []*test.Case{
+			{
+				Description: "TCP",
+				Setup: func(data test.Data, helpers test.Helpers) {
+					helpers.Ensure("run", "-d", "--name", data.Identifier("nginx"),
+						"-p", "60080:80", testutil.NginxAlpineImage)
+					nerdtest.EnsureContainerStarted(helpers, data.Identifier("nginx"))
+					time.Sleep(3 * time.Second)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rm", "-f", data.Identifier("nginx"))
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("run", "--rm",
+						"--network=host", testutil.CommonImage, "netstat", "-lnt")
+				},
+				Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
+					expect.Contains(":60080"),
+				)),
+			},
+			{
+				Description: "UDP",
+				Setup: func(data test.Data, helpers test.Helpers) {
+					helpers.Ensure("run", "-d", "--name", data.Identifier("coredns"),
+						"-p", "60053:53/udp", testutil.CoreDNSImage)
+					nerdtest.EnsureContainerStarted(helpers, data.Identifier("coredns"))
+					time.Sleep(3 * time.Second)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rm", "-f", data.Identifier("coredns"))
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("run", "--rm",
+						"--network=host", testutil.CommonImage, "netstat", "-lnu")
+				},
+				Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.All(
+					expect.Contains(":60053"),
+				)),
+			},
+		},
+	}
+	testCase.Run(t)
+}
