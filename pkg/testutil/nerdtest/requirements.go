@@ -161,6 +161,24 @@ var Rootless = &test.Requirement{
 	},
 }
 
+// RootlessWithDetachNetNS marks a test as suitable only for rootless environment with detached netns support.
+var RootlessWithDetachNetNS = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+		ns, err := rootlessutil.DetachedNetNS()
+		if err != nil {
+			return false, fmt.Sprintf("failed to check for detached netns: %+v", err)
+		}
+		if ns == "" {
+			return false, "detached netns is not supported"
+		}
+		return true, "detached netns is supported"
+	},
+}
+
+// RootlessWithoutDetachNetNS marks a test as suitable only for rootless environment without detached netns support.
+// i.e., RootlessKit v1.
+var RootlessWithoutDetachNetNS = require.All(Rootless, require.Not(RootlessWithDetachNetNS))
+
 // Rootful marks a test as suitable only for rootful env
 var Rootful = require.Not(Rootless)
 

@@ -34,6 +34,7 @@ var (
 	FedoraESGZImage = GetTestImage("fedora_esgz") // eStargz
 	FfmpegSociImage = GetTestImage("ffmpeg_soci") // SOCI
 	UbuntuImage     = GetTestImage("ubuntu")      // Large enough for testing soci index creation
+	CoreDNSImage    = GetTestImage("coredns")
 )
 
 const (
