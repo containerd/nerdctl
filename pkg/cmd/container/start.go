@@ -19,10 +19,12 @@ package container
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	containerd "github.com/containerd/containerd/v2/client"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/checkpointutil"
 	"github.com/containerd/nerdctl/v2/pkg/config"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
@@ -33,15 +35,28 @@ func Start(ctx context.Context, client *containerd.Client, reqs []string, option
 	if options.Attach && len(reqs) > 1 {
 		return fmt.Errorf("you cannot start and attach multiple containers at once")
 	}
+	if options.Checkpoint != "" && len(reqs) > 1 {
+		return fmt.Errorf("you cannot start multiple containers with checkpoint at once")
+	}
 
 	walker := &containerwalker.ContainerWalker{
 		Client: client,
 		OnFound: func(ctx context.Context, found containerwalker.Found) error {
 			var err error
+			var checkpointDir string
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := containerutil.Start(ctx, found.Container, options.Attach, options.Interactive, client, options.DetachKeys, (*config.Config)(&options.GOptions)); err != nil {
+			if options.Checkpoint != "" {
+				if options.CheckpointDir == "" {
+					options.CheckpointDir = filepath.Join(options.GOptions.DataRoot, "checkpoints")
+				}
+				checkpointDir, err = checkpointutil.GetCheckpointDir(options.CheckpointDir, options.Checkpoint, found.Container.ID(), false)
+				if err != nil {
+					return err
+				}
+			}
+			if err := containerutil.Start(ctx, found.Container, options.Attach, options.Interactive, client, options.DetachKeys, checkpointDir, (*config.Config)(&options.GOptions)); err != nil {
 				return err
 			}
 			if !options.Attach {

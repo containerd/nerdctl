@@ -19,6 +19,7 @@ package taskutil
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -27,13 +28,20 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/opencontainers/go-digest"
 	"golang.org/x/term"
 
 	"github.com/containerd/console"
+	"github.com/containerd/containerd/api/types"
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/content"
+	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/containerd/v2/pkg/archive"
 	"github.com/containerd/containerd/v2/pkg/cio"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/cioutil"
@@ -43,9 +51,50 @@ import (
 
 // NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
 func NewTask(ctx context.Context, client *containerd.Client, container containerd.Container,
-	attachStreamOpt []string, isInteractive, isTerminal, isDetach bool, con console.Console, logURI, detachKeys, namespace string, detachC chan<- struct{}) (containerd.Task, error) {
+	attachStreamOpt []string, isInteractive, isTerminal, isDetach bool, con console.Console, logURI, detachKeys, namespace string, detachC chan<- struct{}, checkpointDir string) (containerd.Task, error) {
+	var (
+		checkpoint *types.Descriptor
+		t          containerd.Task
+		err        error
+	)
 
-	var t containerd.Task
+	if checkpointDir != "" {
+		tar := archive.Diff(ctx, "", checkpointDir)
+		cs := client.ContentStore()
+		writer, err := cs.Writer(ctx, content.WithRef(checkpointDir))
+		if err != nil {
+			return nil, err
+		}
+		defer writer.Close()
+		size, err := io.Copy(writer, tar)
+		if err != nil {
+			return nil, err
+		}
+		labels := map[string]string{
+			"containerd.io/gc.root": time.Now().UTC().Format(time.RFC3339),
+		}
+		if err = writer.Commit(ctx, size, "", content.WithLabels(labels)); err != nil {
+			if !errors.Is(err, errdefs.ErrAlreadyExists) {
+				return nil, err
+			}
+		}
+		checkpoint = &types.Descriptor{
+			MediaType: images.MediaTypeContainerd1Checkpoint,
+			Digest:    writer.Digest().String(),
+			Size:      size,
+		}
+		defer func() {
+			if checkpoint != nil {
+				_ = cs.Delete(ctx, digest.Digest(checkpoint.Digest))
+			}
+		}()
+		if err = tar.Close(); err != nil {
+			return nil, fmt.Errorf("failed to close checkpoint tar stream: %w", err)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to upload checkpoint to containerd: %w", err)
+		}
+	}
 	closer := func() {
 		if detachC != nil {
 			detachC <- struct{}{}
@@ -158,7 +207,15 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		}
 		ioCreator = cioutil.NewContainerIO(namespace, logURI, false, in, os.Stdout, os.Stderr)
 	}
-	t, err := container.NewTask(ctx, ioCreator)
+
+	taskOpts := []containerd.NewTaskOpts{
+		func(_ context.Context, _ *containerd.Client, info *containerd.TaskInfo) error {
+			info.Checkpoint = checkpoint
+			return nil
+		},
+	}
+
+	t, err = container.NewTask(ctx, ioCreator, taskOpts...)
 	if err != nil {
 		return nil, err
 	}

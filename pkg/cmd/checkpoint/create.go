@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
@@ -97,6 +98,9 @@ func Create(ctx context.Context, client *containerd.Client, containerID string, 
 		return errors.New("invalid checkpoint")
 	}
 
+	if options.CheckpointDir == "" {
+		options.CheckpointDir = filepath.Join(options.GOptions.DataRoot, "checkpoints")
+	}
 	targetPath, err := checkpointutil.GetCheckpointDir(options.CheckpointDir, checkpointName, container.ID(), true)
 	if err != nil {
 		return err
