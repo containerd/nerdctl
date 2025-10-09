@@ -114,7 +114,7 @@ func startContainers(ctx context.Context, client *containerd.Client, containers 
 			}
 
 			// in compose, always disable attach
-			if err := containerutil.Start(ctx, c, false, false, client, "", (*config.Config)(globalOptions)); err != nil {
+			if err := containerutil.Start(ctx, c, false, false, client, "", "", (*config.Config)(globalOptions)); err != nil {
 				return err
 			}
 			info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)

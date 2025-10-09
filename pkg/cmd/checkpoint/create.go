@@ -97,6 +97,9 @@ func Create(ctx context.Context, client *containerd.Client, containerID string, 
 		return errors.New("invalid checkpoint")
 	}
 
+	if options.CheckpointDir == "" {
+		options.CheckpointDir = options.GOptions.DataRoot + "/checkpoints"
+	}
 	targetPath, err := checkpointutil.GetCheckpointDir(options.CheckpointDir, checkpointName, container.ID(), true)
 	if err != nil {
 		return err

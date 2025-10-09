@@ -32,6 +32,10 @@ type ContainerStartOptions struct {
 	DetachKeys string
 	// Attach stdin
 	Interactive bool
+	// Checkpoint is the name of the checkpoint to restore
+	Checkpoint string
+	// CheckpointDir is the directory to store checkpoints
+	CheckpointDir string
 }
 
 // ContainerKillOptions specifies options for `nerdctl (container) kill`.

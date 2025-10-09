@@ -432,7 +432,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 	logURI := lab[labels.LogURI]
 	detachC := make(chan struct{})
 	task, err := taskutil.NewTask(ctx, client, c, createOpt.Attach, createOpt.Interactive, createOpt.TTY, createOpt.Detach,
-		con, logURI, createOpt.DetachKeys, createOpt.GOptions.Namespace, detachC)
+		con, logURI, createOpt.DetachKeys, createOpt.GOptions.Namespace, detachC, "")
 	if err != nil {
 		return err
 	}
