@@ -5,9 +5,9 @@
 :nerd_face: = nerdctl specific
 
 > [!NOTE]
-- Unlisted `docker` CLI flags are unimplemented yet in `nerdctl` CLI.
-  It does not necessarily mean that the corresponding features are missing in containerd.
-- Some commands and flags are only available on Linux.
+> - Unlisted `docker` CLI flags are unimplemented yet in `nerdctl` CLI.
+>   It does not necessarily mean that the corresponding features are missing in containerd.
+> - Some commands and flags are only available on Linux.
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
