@@ -280,7 +280,18 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 		// source: https://github.com/containerd/nerdctl/blob/main/docs/command-reference.md#whale-nerdctl-start
 		attachStreamOpt = []string{"STDOUT", "STDERR"}
 	}
-	task, err := taskutil.NewTask(ctx, client, container, attachStreamOpt, isInteractive, isTerminal, true, con, logURI, detachKeys, namespace, detachC, checkpointDir)
+	task, err := taskutil.NewTask(ctx, client, container, taskutil.TaskOptions{
+		AttachStreamOpt: attachStreamOpt,
+		IsInteractive:   isInteractive,
+		IsTerminal:      isTerminal,
+		IsDetach:        true,
+		Con:             con,
+		LogURI:          logURI,
+		DetachKeys:      detachKeys,
+		Namespace:       namespace,
+		DetachC:         detachC,
+		CheckpointDir:   checkpointDir,
+	})
 	if err != nil {
 		return err
 	}
