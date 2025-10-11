@@ -615,8 +615,10 @@ Flags:
 
 - :whale: `-a, --attach`: Attach STDOUT/STDERR and forward signals
 - :whale: `--detach-keys`: Override the default detach keys
+- :whale: `--checkpoint`: checkpoint name
+- :whale: `--detach-keys`: checkpoint directory
 
-Unimplemented `docker start` flags: `--checkpoint`, `--checkpoint-dir`, `--interactive`
+Unimplemented `docker start` flags: `--interactive`
 
 ### :whale: nerdctl restart
 
