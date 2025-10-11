@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
@@ -44,4 +45,23 @@ func TestStartAttach(t *testing.T) {
 	defer base.Cmd("rm", "-f", containerName).AssertOK()
 	base.Cmd("run", "--name", containerName, testutil.CommonImage, "sh", "-euxc", "echo foo").AssertOK()
 	base.Cmd("start", "-a", containerName).AssertOutContains("foo")
+}
+
+func TestStartWithCheckpoint(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("checkpoint not supported on Windows")
+	}
+	if rootlessutil.IsRootless() {
+		t.Skip("test skipped for rootless containers")
+	}
+
+	t.Parallel()
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	checkpointName := containerName + "-checkpoint"
+
+	defer base.Cmd("rm", "-f", containerName).AssertOK()
+	base.Cmd("run", "-d", "--name", containerName, testutil.CommonImage, "sleep", "infinity").AssertOK()
+	base.Cmd("checkpoint", "create", containerName, checkpointName).AssertOK()
+	base.Cmd("start", "--checkpoint", checkpointName, containerName).AssertOK()
 }
