@@ -20,12 +20,15 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
@@ -70,6 +73,53 @@ func TestStartDetachKeys(t *testing.T) {
 			Output: expect.All(
 				func(stdout string, t tig.T) {
 					assert.Assert(t, strings.Contains(helpers.Capture("inspect", "--format", "json", data.Identifier()), "\"Running\":true"))
+				},
+			),
+		}
+	}
+
+	testCase.Run(t)
+}
+
+func TestStartWithCheckpoint(t *testing.T) {
+
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Rootless)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		// Use an in-memory tmpfs to model in-memory state without introducing extra processes
+		// Single PID 1 shell: continuously increment a counter and write to /state/counter (tmpfs)
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), "--tmpfs", "/state", testutil.CommonImage,
+			"sh", "-c", `i=0; while true; do i=$((i+1)); printf "%d\n" "$i" >/state/counter; sleep 0.2; done`)
+		// Give some time for the counter to increase before checkpoint to validate continuity after restore
+		time.Sleep(1 * time.Second)
+		helpers.Ensure("checkpoint", "create", data.Identifier(), data.Identifier()+"-checkpoint")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("start", "--checkpoint", data.Identifier()+"-checkpoint", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Output: expect.All(
+				func(_ string, t tig.T) {
+					// Validate in-memory state continuity via tmpfs: counter should not reset and must keep increasing
+					// Short delay to allow the container to resume; if the counter had reset to 0, it could not reach >5 this fast
+					time.Sleep(200 * time.Millisecond)
+					c1Str := strings.TrimSpace(helpers.Capture("exec", data.Identifier(), "cat", "/state/counter"))
+					var parseErrs []error
+					c1, err1 := strconv.Atoi(c1Str)
+					if err1 != nil {
+						parseErrs = append(parseErrs, err1)
+					}
+					assert.Assert(t, len(parseErrs) == 0, "failed to parse counter values: %v", parseErrs)
+					assert.Assert(t, c1 > 5, "tmpfs in-memory counter seems reset or too small: %d", c1)
 				},
 			),
 		}
