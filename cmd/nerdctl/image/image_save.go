@@ -42,6 +42,7 @@ func SaveCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 	cmd.Flags().StringP("output", "o", "", "Write to a file, instead of STDOUT")
+	cmd.Flags().Bool("skip-verify", false, "Skip verification of remote layers. Use this when the original registry is unavailable but you have all layers locally.")
 
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
@@ -67,11 +68,16 @@ func saveOptions(cmd *cobra.Command) (types.ImageSaveOptions, error) {
 	if err != nil {
 		return types.ImageSaveOptions{}, err
 	}
+	skipVerify, err := cmd.Flags().GetBool("skip-verify")
+	if err != nil {
+		return types.ImageSaveOptions{}, err
+	}
 
 	return types.ImageSaveOptions{
 		GOptions:     globalOptions,
 		AllPlatforms: allPlatforms,
 		Platform:     platform,
+		SkipVerify:   skipVerify,
 	}, err
 }
 
