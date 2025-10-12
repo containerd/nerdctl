@@ -30,7 +30,13 @@ import (
 
 func TestCheckpointCreateErrors(t *testing.T) {
 	testCase := nerdtest.Setup()
-	testCase.Require = require.Not(nerdtest.Rootless)
+
+	testCase.Require = require.All(
+		require.Not(nerdtest.Rootless),
+		// Docker version 28.x has a known regression that breaks Checkpoint/Restore functionality.
+		// The issue is tracked in the moby/moby project as https://github.com/moby/moby/issues/50750.
+		require.Not(nerdtest.Docker),
+	)
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "too-few-arguments",
@@ -71,7 +77,12 @@ func TestCheckpointCreate(t *testing.T) {
 		checkpointDir  = "/dir/foo"
 	)
 	testCase := nerdtest.Setup()
-	testCase.Require = require.Not(nerdtest.Rootless)
+	testCase.Require = require.All(
+		require.Not(nerdtest.Rootless),
+		// Docker version 28.x has a known regression that breaks Checkpoint/Restore functionality.
+		// The issue is tracked in the moby/moby project as https://github.com/moby/moby/issues/50750.
+		require.Not(nerdtest.Docker),
+	)
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "leave-running=true",

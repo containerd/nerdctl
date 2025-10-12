@@ -84,8 +84,12 @@ func TestStartDetachKeys(t *testing.T) {
 func TestStartWithCheckpoint(t *testing.T) {
 
 	testCase := nerdtest.Setup()
-	testCase.Require = require.Not(nerdtest.Rootless)
-
+	testCase.Require = require.All(
+		require.Not(nerdtest.Rootless),
+		// Docker version 28.x has a known regression that breaks Checkpoint/Restore functionality.
+		// The issue is tracked in the moby/moby project as https://github.com/moby/moby/issues/50750.
+		require.Not(nerdtest.Docker),
+	)
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		// Use an in-memory tmpfs to model in-memory state without introducing extra processes
 		// Single PID 1 shell: continuously increment a counter and write to /state/counter (tmpfs)
