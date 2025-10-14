@@ -136,3 +136,19 @@ func HealthcheckResultFromJSON(s string) (*HealthcheckResult, error) {
 	}
 	return &r, nil
 }
+
+// ApplyDefaults sets default values for unset healthcheck fields
+func (hc *Healthcheck) ApplyDefaults() {
+	if hc.Interval == 0 {
+		hc.Interval = DefaultProbeInterval
+	}
+	if hc.Timeout == 0 {
+		hc.Timeout = DefaultProbeTimeout
+	}
+	if hc.StartPeriod == 0 {
+		hc.StartPeriod = DefaultStartPeriod
+	}
+	if hc.Retries == 0 {
+		hc.Retries = DefaultProbeRetries
+	}
+}
