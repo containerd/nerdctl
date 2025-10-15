@@ -61,6 +61,7 @@ LINE:
 				skip = true
 			case MarkerEnd:
 				sawMarkerEnd = true
+			default:
 			}
 		}
 		if !skip {

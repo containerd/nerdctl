@@ -281,6 +281,7 @@ func (gc *Command) Wait() (*Result, error) {
 		return gc.result, gc.exec.err
 	case gc.result != nil:
 		return gc.result, ErrExecAlreadyFinished
+	default:
 	}
 
 	// Cancel the context in any case now
