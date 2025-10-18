@@ -41,6 +41,7 @@ import (
 	estargzexternaltocconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz/externaltoc"
 	zstdchunkedconvert "github.com/containerd/stargz-snapshotter/nativeconverter/zstdchunked"
 	"github.com/containerd/stargz-snapshotter/recorder"
+	estargzdecompressutil "github.com/containerd/stargz-snapshotter/util/decompressutil"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -284,6 +285,13 @@ func getESGZConvertOpts(options types.ImageConvertOptions) ([]estargz.Option, er
 		esgzOpts = append(esgzOpts, estargz.WithPrioritizedFiles(paths))
 		var ignored []string
 		esgzOpts = append(esgzOpts, estargz.WithAllowPrioritizeNotFound(&ignored))
+	}
+	if options.EstargzGzipHelper != "" {
+		gzipHelperFunc, err := estargzdecompressutil.GetGzipHelperFunc(options.EstargzGzipHelper)
+		if err != nil {
+			return nil, err
+		}
+		esgzOpts = append(esgzOpts, estargz.WithGzipHelperFunc(gzipHelperFunc))
 	}
 	return esgzOpts, nil
 }

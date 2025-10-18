@@ -92,7 +92,20 @@ Stargz Snapshotter is not needed for building stargz images.
 
 ## Tips for image conversion
 
-### Tips 1: Creating smaller eStargz images
+### Tips 1: Using gzip helper to speed up image conversion
+
+When converting a traditional overlayfs image encoded as tar.gz to an estargz format image, nerdctl supports specifying an additional command‑line decompression tool to speed up the conversion process. You can set `--estargz-gzip-helper` to choose different CLI gzip tools. Even using the gzip command corresponding to the Go gzip library can achieve approximately 32% speed improvement. For more details, see: [Using decompression commands to improve the layer decompression speed of gzip-formatted images](https://github.com/containerd/stargz-snapshotter/pull/2117). Currently, `--estargz-gzip-helper` supports `pigz`, `igzip`, and `gzip`. The recommended order is `pigz` > `igzip` > `gzip`.
+
+```console
+# nerdctl image convert --oci --estargz --estargz-gzip-helper pigz ghcr.io/stargz-containers/ubuntu:22.04 ghcr.io/stargz-containers/ubuntu:22.04-esgz
+sha256:aa6543b9885867b8b485925b6ec69d8e018e8fce40835ea6359cbb573683a014
+# nerdctl image ls
+REPOSITORY                             TAG              IMAGE ID        CREATED               PLATFORM        SIZE       BLOB SIZE
+ghcr.io/stargz-containers/ubuntu       22.04-esgz       aa6543b98858    About a minute ago    linux/amd64     0B         32.43MB
+ghcr.io/stargz-containers/ubuntu       22.04            20fa2d7bb4de    2 minutes ago         linux/amd64     87.47MB    30.43MB
+```
+
+### Tips 2: Creating smaller eStargz images
 
 `nerdctl image convert` allows the following flags for optionally creating a smaller eStargz image.
 The result image requires stargz-snapshotter >= v0.13.0 for lazy pulling.
@@ -167,7 +180,7 @@ sha256:7f5cbd8cc787c8d628630756bcc7240e6c96b876c2882e6fc980a8b60cdfa274
 sha256:7f5cbd8cc787c8d628630756bcc7240e6c96b876c2882e6fc980a8b60cdfa274
 ```
 
-### Tips 2: Using zstd instead of gzip (a.k.a. zstd:chunked)
+### Tips 3: Using zstd instead of gzip (a.k.a. zstd:chunked)
 
 You can use zstd compression with lazy pulling support (a.k.a zstd:chunked) instead of gzip.
 

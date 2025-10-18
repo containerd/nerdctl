@@ -92,6 +92,8 @@ type EstargzOptions struct {
 	EstargzExternalToc bool
 	// EstargzKeepDiffID convert to esgz without changing diffID (cannot be used in conjunction with '--estargz-record-in'. must be specified with '--estargz-external-toc')
 	EstargzKeepDiffID bool
+	// EstargzGzipHelper helper command for decompressing layers compressed with gzip. Options: pigz, igzip, or gzip
+	EstargzGzipHelper string
 }
 
 // ZstdOptions contains zstd conversion options
