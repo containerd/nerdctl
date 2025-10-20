@@ -56,7 +56,13 @@ func CreateTimer(ctx context.Context, container containerd.Container, cfg *confi
 	// Always use health-interval for timer frequency
 	cmdOpts = append(cmdOpts, "--unit", containerID, "--on-unit-inactive="+hc.Interval.String(), "--timer-property=AccuracySec=1s")
 
-	cmdOpts = append(cmdOpts, "nerdctl", "container", "healthcheck", containerID)
+	// Get the full path to the current nerdctl binary
+	nerdctlPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("could not determine nerdctl executable path: %v", err)
+	}
+
+	cmdOpts = append(cmdOpts, nerdctlPath, "container", "healthcheck", containerID)
 	if log.G(ctx).Logger.IsLevelEnabled(log.DebugLevel) {
 		cmdOpts = append(cmdOpts, "--debug")
 	}
@@ -257,8 +263,8 @@ func shouldSkipHealthCheckSystemd(hc *Healthcheck, cfg *config.Config) bool {
 		return true
 	}
 
-	// Don't proceed if health check is nil, empty, explicitly NONE or interval is 0.
-	if hc == nil || len(hc.Test) == 0 || hc.Test[0] == "NONE" || hc.Interval == 0 {
+	// Don't proceed if health check is nil, empty or explicitly NONE.
+	if hc == nil || len(hc.Test) == 0 || hc.Test[0] == "NONE" {
 		return true
 	}
 	return false

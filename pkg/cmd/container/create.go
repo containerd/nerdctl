@@ -892,6 +892,11 @@ func withHealthcheck(options types.ContainerCreateOptions, ensuredImage *imgutil
 		hc.StartPeriod = options.HealthStartPeriod
 	}
 
+	// Apply defaults for any unset values, but only if we have a healthcheck configured
+	if len(hc.Test) > 0 && hc.Test[0] != "NONE" {
+		hc.ApplyDefaults()
+	}
+
 	// If no healthcheck config is set (via CLI or image), return empty string so we skip adding to container config.
 	if reflect.DeepEqual(hc, &healthcheck.Healthcheck{}) {
 		return "", nil
