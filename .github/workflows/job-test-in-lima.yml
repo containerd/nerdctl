@@ -16,6 +16,10 @@ on:
       guest:
         required: true
         type: string
+      skip-flaky:
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   test:
@@ -114,6 +118,7 @@ jobs:
             docker run -t -v /dev:/dev --rm --privileged test-integration ./hack/test-integration.sh -test.only-flaky=false
           fi
       - name: "Run: integration tests (flaky)"
+        if: ${{ !fromJSON(inputs.skip-flaky) }}
         run: |
           set -eux
           if [ "$TARGET" = "rootless" ]; then

@@ -29,6 +29,7 @@ jobs:
       runner: ubuntu-24.04
       guest: ${{ matrix.guest }}
       target: ${{ matrix.target }}
+      skip-flaky: true  # skip the most flaky ones for now
 
   test-integration-freebsd:
     name: "FreeBSD"
