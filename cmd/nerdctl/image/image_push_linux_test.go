@@ -43,6 +43,7 @@ func TestPush(t *testing.T) {
 		Require: require.All(
 			require.Linux,
 			nerdtest.Registry,
+			nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/4470"),
 		),
 
 		Setup: func(data test.Data, helpers test.Helpers) {
