@@ -61,6 +61,7 @@ func convertCommand() *cobra.Command {
 	cmd.Flags().Int("estargz-min-chunk-size", 0, "The minimal number of bytes of data must be written in one gzip stream. (requires stargz-snapshotter >= v0.13.0)")
 	cmd.Flags().Bool("estargz-external-toc", false, "Separate TOC JSON into another image (called \"TOC image\"). The name of TOC image is the original + \"-esgztoc\" suffix. Both eStargz and the TOC image should be pushed to the same registry. (requires stargz-snapshotter >= v0.13.0) (EXPERIMENTAL)")
 	cmd.Flags().Bool("estargz-keep-diff-id", false, "Convert to esgz without changing diffID (cannot be used in conjunction with '--estargz-record-in'. must be specified with '--estargz-external-toc')")
+	cmd.Flags().String("estargz-gzip-helper", "", "Helper command for decompressing layers compressed with gzip. Options: pigz, igzip, or gzip.")
 	// #endregion
 
 	// #region zstd flags
@@ -146,6 +147,10 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 		return types.ImageConvertOptions{}, err
 	}
 	estargzKeepDiffID, err := cmd.Flags().GetBool("estargz-keep-diff-id")
+	if err != nil {
+		return types.ImageConvertOptions{}, err
+	}
+	estargzGzipHelper, err := cmd.Flags().GetString("estargz-gzip-helper")
 	if err != nil {
 		return types.ImageConvertOptions{}, err
 	}
@@ -275,6 +280,7 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 			EstargzMinChunkSize:     estargzMinChunkSize,
 			EstargzExternalToc:      estargzExternalTOC,
 			EstargzKeepDiffID:       estargzKeepDiffID,
+			EstargzGzipHelper:       estargzGzipHelper,
 		},
 		ZstdOptions: types.ZstdOptions{
 			Zstd:                 zstd,
