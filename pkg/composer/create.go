@@ -188,10 +188,15 @@ func (c *Composer) createServiceContainer(ctx context.Context, service *servicep
 	cidFilename := filepath.Join(tempDir, "cid")
 
 	//add metadata labels to container https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels
+	currentHash, err := ServiceHash(*service.Unparsed)
+	if err != nil {
+		return "", fmt.Errorf("failed computing service hash for %s: %w", container.Name, err)
+	}
 	container.RunArgs = append([]string{
 		"--cidfile=" + cidFilename,
 		fmt.Sprintf("-l=%s=%s", labels.ComposeProject, c.project.Name),
 		fmt.Sprintf("-l=%s=%s", labels.ComposeService, service.Unparsed.Name),
+		fmt.Sprintf("-l=%s=%s", labels.ComposeConfigHash, currentHash),
 	}, container.RunArgs...)
 
 	cmd := c.createNerdctlCmd(ctx, append([]string{"create"}, container.RunArgs...)...)
