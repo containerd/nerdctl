@@ -377,6 +377,46 @@ services:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "down").AssertOK()
 }
 
+func TestComposeUpNoRecreateDependencies(t *testing.T) {
+	base := testutil.NewBase(t)
+
+	var dockerComposeYAML = fmt.Sprintf(`
+services:
+  foo:
+    image: %s
+    command: "sleep infinity"
+  bar:
+    image: %s
+    command: "sleep infinity"
+    depends_on:
+      - foo
+`, testutil.CommonImage, testutil.CommonImage)
+
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "foo").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	fooName := serviceparser.DefaultContainerName(projectName, "foo", "1")
+	id1Cmd := base.Cmd("inspect", fooName, "--format", "{{.Id}}")
+	id1Res := id1Cmd.Run()
+	out1 := strings.TrimSpace(id1Res.Stdout())
+	assert.Assert(id1Cmd.Base.T, id1Res.ExitCode == 0, id1Res.Stdout()+id1Res.Stderr())
+
+	// Bring up dependent service; ensure foo is not recreated (ID unchanged)
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "bar").AssertOK()
+
+	id2Cmd := base.Cmd("inspect", fooName, "--format", "{{.Id}}")
+	id2Res := id2Cmd.Run()
+	out2 := strings.TrimSpace(id2Res.Stdout())
+	assert.Assert(id2Cmd.Base.T, id2Res.ExitCode == 0, id2Res.Stdout()+id2Res.Stderr())
+
+	assert.Equal(base.T, out1, out2)
+}
+
 func TestComposeUpWithExternalNetwork(t *testing.T) {
 	testCase := nerdtest.Setup()
 
