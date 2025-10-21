@@ -53,6 +53,8 @@
   - [:nerd_face: nerdctl image convert](#nerd_face-nerdctl-image-convert)
   - [:nerd_face: nerdctl image encrypt](#nerd_face-nerdctl-image-encrypt)
   - [:nerd_face: nerdctl image decrypt](#nerd_face-nerdctl-image-decrypt)
+- [Checkpoint management](#checkpoint-management)
+  - [:whale: nerdctl checkpoint create](#whale-nerdctl-checkpoint-create)
 - [Manifest management](#manifest-management)
   - [:whale: nerdctl manifest annotate](#whale-nerdctl-manifest-annotate)
   - [:whale: nerdctl manifest create](#whale-nerdctl-manifest-create)
@@ -1059,6 +1061,18 @@ Flags:
 - `--gpg-version=<VERSION>`      : The GPG version ("v1" or "v2"), default will make an educated guess
 - `--platform=<PLATFORM>`        : Convert content for a specific platform
 - `--all-platforms`              : Convert content for all platforms (default: false)
+
+## Checkpoint management
+
+### :whale: nerdctl checkpoint create
+
+Create a checkpoint from a running container.
+
+Usage: `nerdctl checkpoint create [OPTIONS] CONTAINER CHECKPOINT`
+
+Flags:
+- :whale: `--leave-running`: Leave the container running after checkpoint
+- :whale: `checkpoint-dir`: Use a custom checkpoint storage directory
 
 ## Manifest management
 
