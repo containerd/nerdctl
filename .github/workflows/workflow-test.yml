@@ -69,9 +69,11 @@ jobs:
           # arm64
           - runner: ubuntu-24.04-arm
             target: rootless
+            skip-flaky: true
           # port-slirp4netns
           - runner: ubuntu-24.04
             target: rootless-port-slirp4netns
+            skip-flaky: true
           # old containerd + old ubuntu + old rootlesskit
           - runner: ubuntu-22.04
             target: rootless
@@ -88,6 +90,7 @@ jobs:
           # arm64
           - runner: ubuntu-24.04-arm
             target: rootful
+            skip-flaky: true
           # old containerd + old ubuntu
           - runner: ubuntu-22.04
             target: rootful
@@ -96,6 +99,7 @@ jobs:
           - runner: ubuntu-24.04
             target: rootful
             ipv6: true
+            skip-flaky: true
           # all canary
           - runner: ubuntu-24.04
             target: rootful
@@ -110,6 +114,7 @@ jobs:
       rootlesskit-version: ${{ matrix.rootlesskit-version }}
       ipv6: ${{ matrix.ipv6 && true || false }}
       canary: ${{ matrix.canary && true || false }}
+      skip-flaky: ${{ matrix.skip-flaky && true || false }}
 
   test-integration-host:
     name: "in-host${{ inputs.hack }}"

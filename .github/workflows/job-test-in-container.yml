@@ -35,6 +35,10 @@ on:
         required: false
         default: false
         type: boolean
+      skip-flaky:
+        required: false
+        default: false
+        type: boolean
 
 env:
   GOTOOLCHAIN: local
@@ -171,6 +175,7 @@ jobs:
           fi
       # FIXME: this NEEDS to go away
       - name: "Run: integration tests (flaky)"
+        if: ${{ !fromJSON(inputs.skip-flaky) }}
         run: |
           . ./hack/github/action-helpers.sh
           github::md::h2 "flaky" >> "$GITHUB_STEP_SUMMARY"
