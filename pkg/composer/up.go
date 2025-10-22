@@ -85,7 +85,7 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 
 	var parsedServices []*serviceparser.Service
 	// use WithServices to sort the services in dependency order
-	if err := c.project.ForEachService(services, func(name string, svc *types.ServiceConfig) error {
+	forEachFn := func(name string, svc *types.ServiceConfig) error {
 		if replicas, ok := uo.Scale[svc.Name]; ok {
 			if svc.Deploy == nil {
 				svc.Deploy = &types.DeployConfig{}
@@ -98,7 +98,9 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 		}
 		parsedServices = append(parsedServices, ps)
 		return nil
-	}); err != nil {
+	}
+	err := c.project.ForEachService(services, forEachFn)
+	if err != nil {
 		return err
 	}
 

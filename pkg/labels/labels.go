@@ -41,6 +41,9 @@ const (
 	//Compose Volume Name
 	ComposeVolume = "com.docker.compose.volume"
 
+	// ComposeConfigHash stores the service configuration hash used for convergence decisions
+	ComposeConfigHash = "com.docker.compose.config-hash"
+
 	// Hostname
 	Hostname = Prefix + "hostname"
 

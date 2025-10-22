@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
+	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -203,4 +204,25 @@ services:
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "create", "--build").AssertOK()
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "svc0").AssertOutContains(imageSvc0)
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0", "-a").AssertOutContainsAny("Created", "created")
+}
+
+func TestComposeCreateWritesConfigHashLabel(t *testing.T) {
+	var dockerComposeYAML = fmt.Sprintf(`
+services:
+  svc0:
+    image: %s
+`, testutil.CommonImage)
+
+	base := testutil.NewBase(t)
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+	projectName := comp.ProjectName()
+	t.Logf("projectName=%q", projectName)
+
+	base.ComposeCmd("-f", comp.YAMLFullPath(), "create").AssertOK()
+	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+
+	container := serviceparser.DefaultContainerName(projectName, "svc0", "1")
+	base.Cmd("inspect", "--format", "{{json .Config.Labels}}", container).
+		AssertOutContains("com.docker.compose.config-hash")
 }

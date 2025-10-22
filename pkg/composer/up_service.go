@@ -155,6 +155,28 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 
 	// delete container if it already exists
 	if existingCid != "" {
+		// Default behavior for RecreateDiverged: compare stored hash with current service hash
+		if recreate == RecreateDiverged {
+			currentHash, err := ServiceHash(*service.Unparsed)
+			if err != nil {
+				return "", fmt.Errorf("failed computing service hash for %s: %w", container.Name, err)
+			}
+			con, err := c.client.LoadContainer(ctx, existingCid)
+			if err != nil {
+				return "", fmt.Errorf("failed to load container %s: %w", existingCid, err)
+			}
+			lbls, err := con.Labels(ctx)
+			if err != nil {
+				return "", fmt.Errorf("failed to read labels for %s: %w", existingCid, err)
+			}
+			if lbls[labels.ComposeConfigHash] == currentHash {
+				cmd := c.createNerdctlCmd(ctx, append([]string{"start"}, existingCid)...)
+				if err := c.executeUpCmd(ctx, cmd, container.Name, runFlagD, service.Unparsed.StdinOpen); err != nil {
+					return "", fmt.Errorf("error while starting existing container %s: %w", container.Name, err)
+				}
+				return existingCid, nil
+			}
+		}
 		log.G(ctx).Debugf("Container %q already exists, deleting", container.Name)
 		delCmd := c.createNerdctlCmd(ctx, "rm", "-f", container.Name)
 		if err = delCmd.Run(); err != nil {
@@ -184,10 +206,15 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 	}
 
 	//add metadata labels to container https://github.com/compose-spec/compose-spec/blob/master/spec.md#labels
+	currentHash, err := ServiceHash(*service.Unparsed)
+	if err != nil {
+		return "", fmt.Errorf("failed computing service hash for %s: %w", container.Name, err)
+	}
 	container.RunArgs = append([]string{
 		"--cidfile=" + cidFilename,
 		fmt.Sprintf("-l=%s=%s", labels.ComposeProject, c.project.Name),
 		fmt.Sprintf("-l=%s=%s", labels.ComposeService, service.Unparsed.Name),
+		fmt.Sprintf("-l=%s=%s", labels.ComposeConfigHash, currentHash),
 	}, container.RunArgs...)
 
 	cmd := c.createNerdctlCmd(ctx, append([]string{"run"}, container.RunArgs...)...)
