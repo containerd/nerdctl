@@ -44,6 +44,8 @@ func StartCommand() *cobra.Command {
 	cmd.Flags().BoolP("attach", "a", false, "Attach STDOUT/STDERR and forward signals")
 	cmd.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
 	cmd.Flags().BoolP("interactive", "i", false, "Attach container's STDIN")
+	cmd.Flags().String("checkpoint", "", "checkpoint name")
+	cmd.Flags().String("checkpoint-dir", "", "checkpoint directory")
 	return cmd
 }
 
@@ -64,12 +66,22 @@ func startOptions(cmd *cobra.Command) (types.ContainerStartOptions, error) {
 	if err != nil {
 		return types.ContainerStartOptions{}, err
 	}
+	checkpoint, err := cmd.Flags().GetString("checkpoint")
+	if err != nil {
+		return types.ContainerStartOptions{}, err
+	}
+	checkpointDir, err := cmd.Flags().GetString("checkpoint-dir")
+	if err != nil {
+		return types.ContainerStartOptions{}, err
+	}
 	return types.ContainerStartOptions{
-		Stdout:      cmd.OutOrStdout(),
-		GOptions:    globalOptions,
-		Attach:      attach,
-		DetachKeys:  detachKeys,
-		Interactive: interactive,
+		Stdout:        cmd.OutOrStdout(),
+		GOptions:      globalOptions,
+		Attach:        attach,
+		DetachKeys:    detachKeys,
+		Interactive:   interactive,
+		Checkpoint:    checkpoint,
+		CheckpointDir: checkpointDir,
 	}, nil
 }
 

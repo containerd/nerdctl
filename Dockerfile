@@ -309,10 +309,17 @@ ARG DEBIAN_FRONTEND=noninteractive
 # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
 # `jq` is required to generate test summaries
 RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
-  expect \
-  jq \
-  git \
-  make
+    software-properties-common \
+    gnupg \
+    gpg-agent \
+    ca-certificates && \
+    add-apt-repository ppa:criu/ppa && \
+    apt-get update -qq && apt-get install -qq --no-install-recommends \
+    expect \
+    jq \
+    git \
+    make \
+    criu
 # We wouldn't need this if Docker Hub could have "golang:${GO_VERSION}-ubuntu"
 COPY --from=build-base /usr/local/go /usr/local/go
 ARG TARGETARCH
