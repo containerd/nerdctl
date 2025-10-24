@@ -38,6 +38,7 @@ func TestImageConvert(t *testing.T) {
 			require.Not(require.Windows),
 			require.Not(nerdtest.Docker),
 		),
+		NoParallel: true,
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", "--quiet", "--all-platforms", testutil.CommonImage)
 		},

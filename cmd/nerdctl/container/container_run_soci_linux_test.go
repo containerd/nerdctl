@@ -56,7 +56,7 @@ func TestRunSoci(t *testing.T) {
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		return helpers.Command("--snapshotter=soci", "run", "--rm", testutil.FfmpegSociImage)
+		return helpers.Command("--snapshotter=soci", "run", "--quiet", "--rm", testutil.FfmpegSociImage, "/bin/bash", "-c", "ls")
 	}
 
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
