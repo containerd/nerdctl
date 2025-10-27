@@ -19,6 +19,7 @@ package taskutil
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -27,13 +28,20 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/opencontainers/go-digest"
 	"golang.org/x/term"
 
 	"github.com/containerd/console"
+	"github.com/containerd/containerd/api/types"
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/content"
+	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/containerd/v2/pkg/archive"
 	"github.com/containerd/containerd/v2/pkg/cio"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/cioutil"
@@ -41,14 +49,68 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 )
 
-// NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
-func NewTask(ctx context.Context, client *containerd.Client, container containerd.Container,
-	attachStreamOpt []string, isInteractive, isTerminal, isDetach bool, con console.Console, logURI, detachKeys, namespace string, detachC chan<- struct{}) (containerd.Task, error) {
+// TaskOptions contains options for creating a new task
+type TaskOptions struct {
+	AttachStreamOpt []string
+	IsInteractive   bool
+	IsTerminal      bool
+	IsDetach        bool
+	Con             console.Console
+	LogURI          string
+	DetachKeys      string
+	Namespace       string
+	DetachC         chan<- struct{}
+	CheckpointDir   string
+}
 
-	var t containerd.Task
+// NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
+func NewTask(ctx context.Context, client *containerd.Client, container containerd.Container, opts TaskOptions) (containerd.Task, error) {
+	var (
+		checkpoint *types.Descriptor
+		t          containerd.Task
+		err        error
+	)
+
+	if opts.CheckpointDir != "" {
+		tar := archive.Diff(ctx, "", opts.CheckpointDir)
+		cs := client.ContentStore()
+		writer, err := cs.Writer(ctx, content.WithRef(opts.CheckpointDir))
+		if err != nil {
+			return nil, err
+		}
+		defer writer.Close()
+		size, err := io.Copy(writer, tar)
+		if err != nil {
+			return nil, err
+		}
+		labels := map[string]string{
+			"containerd.io/gc.root": time.Now().UTC().Format(time.RFC3339),
+		}
+		if err = writer.Commit(ctx, size, "", content.WithLabels(labels)); err != nil {
+			if !errors.Is(err, errdefs.ErrAlreadyExists) {
+				return nil, err
+			}
+		}
+		checkpoint = &types.Descriptor{
+			MediaType: images.MediaTypeContainerd1Checkpoint,
+			Digest:    writer.Digest().String(),
+			Size:      size,
+		}
+		defer func() {
+			if checkpoint != nil {
+				_ = cs.Delete(ctx, digest.Digest(checkpoint.Digest))
+			}
+		}()
+		if err = tar.Close(); err != nil {
+			return nil, fmt.Errorf("failed to close checkpoint tar stream: %w", err)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to upload checkpoint to containerd: %w", err)
+		}
+	}
 	closer := func() {
-		if detachC != nil {
-			detachC <- struct{}{}
+		if opts.DetachC != nil {
+			opts.DetachC <- struct{}{}
 		}
 		// t will be set by container.NewTask at the end of this function.
 		//
@@ -64,30 +126,30 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		io.Cancel()
 	}
 	var ioCreator cio.Creator
-	if len(attachStreamOpt) != 0 {
+	if len(opts.AttachStreamOpt) != 0 {
 		log.G(ctx).Debug("attaching output instead of using the log-uri")
 		// when attaching a TTY we use writee for stdio and binary for log persistence
-		if isTerminal {
+		if opts.IsTerminal {
 			var in io.Reader
-			if isInteractive {
+			if opts.IsInteractive {
 				// FIXME: check IsTerminal on Windows too
 				if runtime.GOOS != "windows" && !term.IsTerminal(0) {
 					return nil, errors.New("the input device is not a TTY")
 				}
 				var err error
-				in, err = consoleutil.NewDetachableStdin(con, detachKeys, closer)
+				in, err = consoleutil.NewDetachableStdin(opts.Con, opts.DetachKeys, closer)
 				if err != nil {
 					return nil, err
 				}
 			}
-			ioCreator = cioutil.NewContainerIO(namespace, logURI, true, in, con, nil)
+			ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, true, in, opts.Con, nil)
 		} else {
-			streams := processAttachStreamsOpt(attachStreamOpt)
-			ioCreator = cioutil.NewContainerIO(namespace, logURI, false, streams.stdIn, streams.stdOut, streams.stdErr)
+			streams := processAttachStreamsOpt(opts.AttachStreamOpt)
+			ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, streams.stdIn, streams.stdOut, streams.stdErr)
 		}
 
-	} else if isTerminal && isDetach {
-		u, err := url.Parse(logURI)
+	} else if opts.IsTerminal && opts.IsDetach {
+		u, err := url.Parse(opts.LogURI)
 		if err != nil {
 			return nil, err
 		}
@@ -113,32 +175,32 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		ioCreator = cio.TerminalBinaryIO(parsedPath, map[string]string{
 			args[0]: args[1],
 		})
-	} else if isTerminal && !isDetach {
-		if con == nil {
+	} else if opts.IsTerminal && !opts.IsDetach {
+		if opts.Con == nil {
 			return nil, errors.New("got nil con with isTerminal=true")
 		}
 		var in io.Reader
-		if isInteractive {
+		if opts.IsInteractive {
 			// FIXME: check IsTerminal on Windows too
 			if runtime.GOOS != "windows" && !term.IsTerminal(0) {
 				return nil, errors.New("the input device is not a TTY")
 			}
 			var err error
-			in, err = consoleutil.NewDetachableStdin(con, detachKeys, closer)
+			in, err = consoleutil.NewDetachableStdin(opts.Con, opts.DetachKeys, closer)
 			if err != nil {
 				return nil, err
 			}
 		}
-		ioCreator = cioutil.NewContainerIO(namespace, logURI, true, in, os.Stdout, os.Stderr)
-	} else if isDetach && logURI != "" && logURI != "none" {
-		u, err := url.Parse(logURI)
+		ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, true, in, os.Stdout, os.Stderr)
+	} else if opts.IsDetach && opts.LogURI != "" && opts.LogURI != "none" {
+		u, err := url.Parse(opts.LogURI)
 		if err != nil {
 			return nil, err
 		}
 		ioCreator = cio.LogURI(u)
 	} else {
 		var in io.Reader
-		if isInteractive {
+		if opts.IsInteractive {
 			if sv, err := infoutil.ServerSemVer(ctx, client); err != nil {
 				log.G(ctx).Warn(err)
 			} else if sv.LessThan(semver.MustParse("1.6.0-0")) {
@@ -156,9 +218,17 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			}
 			in = stdinC
 		}
-		ioCreator = cioutil.NewContainerIO(namespace, logURI, false, in, os.Stdout, os.Stderr)
+		ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, in, os.Stdout, os.Stderr)
 	}
-	t, err := container.NewTask(ctx, ioCreator)
+
+	taskOpts := []containerd.NewTaskOpts{
+		func(_ context.Context, _ *containerd.Client, info *containerd.TaskInfo) error {
+			info.Checkpoint = checkpoint
+			return nil
+		},
+	}
+
+	t, err = container.NewTask(ctx, ioCreator, taskOpts...)
 	if err != nil {
 		return nil, err
 	}

@@ -36,6 +36,7 @@ func TestRunSoci(t *testing.T) {
 
 	testCase.Require = require.All(
 		require.Not(nerdtest.Docker),
+		require.Amd64,
 		nerdtest.Soci,
 	)
 
