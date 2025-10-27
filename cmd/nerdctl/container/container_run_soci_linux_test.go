@@ -56,6 +56,7 @@ func TestRunSoci(t *testing.T) {
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		t.Log("DEBUG: Executing command: nerdctl --snapshotter=soci run --rm", testutil.FfmpegSociImage)
 		return helpers.Command("--snapshotter=soci", "run", "--rm", testutil.FfmpegSociImage)
 	}
 
@@ -64,6 +65,7 @@ func TestRunSoci(t *testing.T) {
 			Output: func(stdout string, t tig.T) {
 				var afterCount int
 				beforeCount, _ := strconv.Atoi(data.Labels().Get("beforeCount"))
+				t.Log("DEBUG: Command stdout:", stdout)
 
 				helpers.Custom("mount").Run(&test.Expected{
 					Output: func(stdout string, t tig.T) {
