@@ -35,6 +35,13 @@ type CheckpointListOptions struct {
 	CheckpointDir string
 }
 
+// CheckpointRemoveOptions specifies options for `nerdctl checkpoint rm`.
+type CheckpointRemoveOptions struct {
+	Stdout   io.Writer
+	GOptions GlobalCommandOptions
+	// Checkpoint directory
+	CheckpointDir string
+}
 type CheckpointSummary struct {
 	// Name is the name of the checkpoint.
 	Name string
