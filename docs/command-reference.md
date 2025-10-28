@@ -55,6 +55,7 @@
   - [:nerd_face: nerdctl image decrypt](#nerd_face-nerdctl-image-decrypt)
 - [Checkpoint management](#checkpoint-management)
   - [:whale: nerdctl checkpoint create](#whale-nerdctl-checkpoint-create)
+  - [:whale: nerdctl checkpoint list](#whale-nerdctl-checkpoint-list)
 - [Manifest management](#manifest-management)
   - [:whale: nerdctl manifest annotate](#whale-nerdctl-manifest-annotate)
   - [:whale: nerdctl manifest create](#whale-nerdctl-manifest-create)
@@ -1074,6 +1075,15 @@ Usage: `nerdctl checkpoint create [OPTIONS] CONTAINER CHECKPOINT`
 
 Flags:
 - :whale: `--leave-running`: Leave the container running after checkpoint
+- :whale: `checkpoint-dir`: Use a custom checkpoint storage directory
+
+### :whale: nerdctl checkpoint list
+
+List checkpoints for a container
+
+Usage: `nerdctl checkpoint list/ls [OPTIONS] CONTAINER`
+
+Flags:
 - :whale: `checkpoint-dir`: Use a custom checkpoint storage directory
 
 ## Manifest management
