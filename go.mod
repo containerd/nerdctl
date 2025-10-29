@@ -9,7 +9,7 @@ require (
 	github.com/Microsoft/hcsshim v0.13.0
 	github.com/compose-spec/compose-go/v2 v2.9.0 //gomodjail:unconfined
 	github.com/containerd/accelerated-container-image v1.3.0
-	github.com/containerd/cgroups/v3 v3.0.5 //gomodjail:unconfined
+	github.com/containerd/cgroups/v3 v3.1.0 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
 	github.com/containerd/containerd/api v1.9.0
 	github.com/containerd/containerd/v2 v2.1.4 //gomodjail:unconfined
