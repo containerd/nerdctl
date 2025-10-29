@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/manifest"
 )
 
-func PushCommand() *cobra.Command {
+func pushCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "push [OPTIONS] INDEX/MANIFESTLIST",
 		Short:             "Push a manifest list to a registry",
