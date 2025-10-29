@@ -26,7 +26,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/manifest"
 )
 
-func RemoveCommand() *cobra.Command {
+func removeCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "rm INDEX/MANIFESTLIST [INDEX/MANIFESTLIST...]",
 		Short:             "Remove one or more index/manifest lists",

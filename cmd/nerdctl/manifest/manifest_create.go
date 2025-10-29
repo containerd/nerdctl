@@ -27,7 +27,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/manifest"
 )
 
-func CreateCommand() *cobra.Command {
+func createCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "create INDEX/MANIFESTLIST MANIFEST [MANIFEST...]",
 		Short:             "Create a local index/manifest list for annotating and pushing to a registry",

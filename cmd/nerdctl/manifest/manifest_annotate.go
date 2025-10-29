@@ -25,7 +25,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/manifest"
 )
 
-func AnnotateCommand() *cobra.Command {
+func annotateCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "annotate INDEX/MANIFESTLIST MANIFEST",
 		Short:             "Add additional information to a local image manifest",

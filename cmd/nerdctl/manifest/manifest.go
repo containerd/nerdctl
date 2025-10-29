@@ -33,11 +33,11 @@ func Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		InspectCommand(),
-		CreateCommand(),
-		AnnotateCommand(),
-		RemoveCommand(),
-		PushCommand(),
+		inspectCommand(),
+		createCommand(),
+		annotateCommand(),
+		removeCommand(),
+		pushCommand(),
 	)
 
 	return cmd

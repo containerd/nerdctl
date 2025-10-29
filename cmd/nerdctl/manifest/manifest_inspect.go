@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 )
 
-func InspectCommand() *cobra.Command {
+func inspectCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "inspect MANIFEST",
 		Short:             "Display the contents of a manifest or image index/manifest list",
