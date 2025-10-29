@@ -83,6 +83,7 @@ func TestCheckpointCreate(t *testing.T) {
 		// The issue is tracked in the moby/moby project as https://github.com/moby/moby/issues/50750.
 		require.Not(nerdtest.Docker),
 	)
+	testCase.NoParallel = true
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "leave-running=true",

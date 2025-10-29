@@ -83,6 +83,7 @@ func TestCheckpointRemove(t *testing.T) {
 		// The issue is tracked in the moby/moby project as https://github.com/moby/moby/issues/50750.
 		require.Not(nerdtest.Docker),
 	)
+	testCase.NoParallel = true
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "remove-existing",
@@ -92,7 +93,6 @@ func TestCheckpointRemove(t *testing.T) {
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier("container-running-remove"))
-				helpers.Anyhow("rmi", "-f", testutil.CommonImage)
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("checkpoint", "rm", "--checkpoint-dir", checkpointDir, data.Identifier("container-running-remove"), checkpointName)
@@ -111,7 +111,6 @@ func TestCheckpointRemove(t *testing.T) {
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", data.Identifier("container-clean-remove"))
-				helpers.Anyhow("rmi", "-f", testutil.CommonImage)
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("checkpoint", "rm", "--checkpoint-dir", checkpointDir, data.Identifier("container-clean-remove"), checkpointName)

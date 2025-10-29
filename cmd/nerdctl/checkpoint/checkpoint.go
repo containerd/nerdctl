@@ -33,22 +33,22 @@ func Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		CreateCommand(),
-		checkpointLsCommand(),
-		checkpointRmCommand(),
+		createCommand(),
+		lsCommand(),
+		rmCommand(),
 	)
 
 	return cmd
 }
 
-func checkpointLsCommand() *cobra.Command {
-	x := ListCommand()
+func lsCommand() *cobra.Command {
+	x := listCommand()
 	x.Use = "ls"
 	x.Aliases = []string{"list"}
 	return x
 }
-func checkpointRmCommand() *cobra.Command {
-	x := RemoveCommand()
+func rmCommand() *cobra.Command {
+	x := removeCommand()
 	x.Use = "rm"
 	x.Aliases = []string{"remove"}
 	return x

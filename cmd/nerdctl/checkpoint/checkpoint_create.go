@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/checkpoint"
 )
 
-func CreateCommand() *cobra.Command {
+func createCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "create [OPTIONS] CONTAINER CHECKPOINT",
 		Short:             "Create a checkpoint from a running container",

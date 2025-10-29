@@ -29,7 +29,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/checkpoint"
 )
 
-func ListCommand() *cobra.Command {
+func listCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "list [OPTIONS] CONTAINER",
 		Short:             "List checkpoints for a container",

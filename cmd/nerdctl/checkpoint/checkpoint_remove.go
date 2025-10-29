@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/checkpoint"
 )
 
-func RemoveCommand() *cobra.Command {
+func removeCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "rm [OPTIONS] CONTAINER CHECKPOINT",
 		Short:             "Remove a checkpoint",
