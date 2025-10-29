@@ -56,6 +56,7 @@
 - [Checkpoint management](#checkpoint-management)
   - [:whale: nerdctl checkpoint create](#whale-nerdctl-checkpoint-create)
   - [:whale: nerdctl checkpoint list](#whale-nerdctl-checkpoint-list)
+  - [:whale: nerdctl checkpoint remove](#whale-nerdctl-checkpoint-remove)
 - [Manifest management](#manifest-management)
   - [:whale: nerdctl manifest annotate](#whale-nerdctl-manifest-annotate)
   - [:whale: nerdctl manifest create](#whale-nerdctl-manifest-create)
@@ -1086,6 +1087,15 @@ Usage: `nerdctl checkpoint list/ls [OPTIONS] CONTAINER`
 Flags:
 - :whale: `checkpoint-dir`: Use a custom checkpoint storage directory
 
+### :whale: nerdctl checkpoint remove
+
+Remove a checkpoint for a container
+
+Usage: `nerdctl checkpoint remove/rm [OPTIONS] CONTAINER CHECKPOINT`
+
+Flags:
+- :whale: `checkpoint-dir`: Use a custom checkpoint storage directory
+
 ## Manifest management
 
 ### :whale: nerdctl manifest annotate
@@ -1958,7 +1968,6 @@ See [`./config.md`](./config.md).
 Container management:
 
 - `docker diff`
-- `docker checkpoint *`
 
 Image:
 

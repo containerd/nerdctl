@@ -80,7 +80,7 @@ func TestCheckpointList(t *testing.T) {
 		// The issue is tracked in the moby/moby project as https://github.com/moby/moby/issues/50750.
 		require.Not(nerdtest.Docker),
 	)
-
+	testCase.NoParallel = true
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 		helpers.Ensure("checkpoint", "create", data.Identifier(), checkpointName)
@@ -88,7 +88,6 @@ func TestCheckpointList(t *testing.T) {
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("rm", "-f", data.Identifier())
-		helpers.Anyhow("rmi", "-f", testutil.CommonImage)
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {

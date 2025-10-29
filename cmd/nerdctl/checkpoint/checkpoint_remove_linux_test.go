@@ -28,7 +28,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
-func TestCheckpointCreateErrors(t *testing.T) {
+func TestCheckpointRemoveErrors(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	testCase.Require = require.All(
@@ -40,7 +40,7 @@ func TestCheckpointCreateErrors(t *testing.T) {
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "too-few-arguments",
-			Command:     test.Command("checkpoint", "create", "too-few-arguments"),
+			Command:     test.Command("checkpoint", "rm", "too-few-arguments"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 1,
@@ -49,7 +49,7 @@ func TestCheckpointCreateErrors(t *testing.T) {
 		},
 		{
 			Description: "too-many-arguments",
-			Command:     test.Command("checkpoint", "create", "too", "many", "arguments"),
+			Command:     test.Command("checkpoint", "rm", "too", "many", "arguments"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 1,
@@ -58,11 +58,11 @@ func TestCheckpointCreateErrors(t *testing.T) {
 		},
 		{
 			Description: "invalid-container-id",
-			Command:     test.Command("checkpoint", "create", "foo", "bar"),
+			Command:     test.Command("checkpoint", "rm", "foo", "bar"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 1,
-					Errors:   []error{errors.New("error creating checkpoint for container: foo")},
+					Errors:   []error{errors.New("error removing checkpoint for container: foo")},
 				}
 			},
 		},
@@ -71,10 +71,10 @@ func TestCheckpointCreateErrors(t *testing.T) {
 	testCase.Run(t)
 }
 
-func TestCheckpointCreate(t *testing.T) {
+func TestCheckpointRemove(t *testing.T) {
 	const (
-		checkpointName = "checkpoint-bar"
-		checkpointDir  = "/dir/foo"
+		checkpointName = "checkpoint-remove"
+		checkpointDir  = "/dir/remove"
 	)
 	testCase := nerdtest.Setup()
 	testCase.Require = require.All(
@@ -86,38 +86,39 @@ func TestCheckpointCreate(t *testing.T) {
 	testCase.NoParallel = true
 	testCase.SubTests = []*test.Case{
 		{
-			Description: "leave-running=true",
+			Description: "remove-existing",
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "-d", "--name", data.Identifier("container-running"), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("run", "-d", "--name", data.Identifier("container-running-remove"), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("checkpoint", "create", "--checkpoint-dir", checkpointDir, data.Identifier("container-running-remove"), checkpointName)
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", data.Identifier("container-running"))
+				helpers.Anyhow("rm", "-f", data.Identifier("container-running-remove"))
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("checkpoint", "create", "--leave-running", "--checkpoint-dir", checkpointDir, data.Identifier("container-running"), checkpointName+"running")
+				return helpers.Command("checkpoint", "rm", "--checkpoint-dir", checkpointDir, data.Identifier("container-running-remove"), checkpointName)
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: 0,
-					Output:   expect.Equals(checkpointName + "running\n"),
+					Output:   expect.Equals(""),
 				}
 			},
 		},
 		{
-			Description: "leave-running=false",
+			Description: "remove-nonexistent-checkpoint",
 			Setup: func(data test.Data, helpers test.Helpers) {
-				helpers.Ensure("run", "-d", "--name", data.Identifier("container-exit"), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("run", "-d", "--name", data.Identifier("container-clean-remove"), testutil.CommonImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", data.Identifier("container-exit"))
+				helpers.Anyhow("rm", "-f", data.Identifier("container-clean-remove"))
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("checkpoint", "create", "--checkpoint-dir", checkpointDir, data.Identifier("container-exit"), checkpointName+"exit")
+				return helpers.Command("checkpoint", "rm", "--checkpoint-dir", checkpointDir, data.Identifier("container-clean-remove"), checkpointName)
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 0,
-					Output:   expect.Equals(checkpointName + "exit\n"),
+					ExitCode: 1,
+					Errors:   []error{errors.New("checkpoint " + checkpointName + " does not exist for container")},
 				}
 			},
 		},

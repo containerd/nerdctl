@@ -28,59 +28,53 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cmd/checkpoint"
 )
 
-func createCommand() *cobra.Command {
+func removeCommand() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:               "create [OPTIONS] CONTAINER CHECKPOINT",
-		Short:             "Create a checkpoint from a running container",
+		Use:               "rm [OPTIONS] CONTAINER CHECKPOINT",
+		Short:             "Remove a checkpoint",
 		Args:              cobra.ExactArgs(2),
-		RunE:              createAction,
-		ValidArgsFunction: createShellComplete,
+		RunE:              removeAction,
+		ValidArgsFunction: removeShellComplete,
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	cmd.Flags().Bool("leave-running", false, "Leave the container running after checkpointing")
 	cmd.Flags().String("checkpoint-dir", "", "Checkpoint directory")
 	return cmd
 }
 
-func processCreateFlags(cmd *cobra.Command) (types.CheckpointCreateOptions, error) {
+func processRemoveFlags(cmd *cobra.Command) (types.CheckpointRemoveOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
-		return types.CheckpointCreateOptions{}, err
+		return types.CheckpointRemoveOptions{}, err
 	}
 
-	leaveRunning, err := cmd.Flags().GetBool("leave-running")
-	if err != nil {
-		return types.CheckpointCreateOptions{}, err
-	}
 	checkpointDir, err := cmd.Flags().GetString("checkpoint-dir")
 	if err != nil {
-		return types.CheckpointCreateOptions{}, err
+		return types.CheckpointRemoveOptions{}, err
 	}
 	if checkpointDir == "" {
 		checkpointDir = filepath.Join(globalOptions.DataRoot, "checkpoints")
 	}
 
-	return types.CheckpointCreateOptions{
+	return types.CheckpointRemoveOptions{
 		Stdout:        cmd.OutOrStdout(),
 		GOptions:      globalOptions,
-		LeaveRunning:  leaveRunning,
 		CheckpointDir: checkpointDir,
 	}, nil
 }
 
-func createAction(cmd *cobra.Command, args []string) error {
-	createOptions, err := processCreateFlags(cmd)
+func removeAction(cmd *cobra.Command, args []string) error {
+	removeOptions, err := processRemoveFlags(cmd)
 	if err != nil {
 		return err
 	}
-	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), createOptions.GOptions.Namespace, createOptions.GOptions.Address)
+	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), removeOptions.GOptions.Namespace, removeOptions.GOptions.Address)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	err = checkpoint.Create(ctx, client, args[0], args[1], createOptions)
+	err = checkpoint.Remove(ctx, client, args[0], args[1], removeOptions)
 	if err != nil {
 		return err
 	}
@@ -88,6 +82,6 @@ func createAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func createShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func removeShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return completion.ImageNames(cmd)
 }
