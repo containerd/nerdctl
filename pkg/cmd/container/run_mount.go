@@ -175,8 +175,8 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 
 		// windows has additional steps for mounting see
 		// https://github.com/containerd/containerd/commit/791e175c79930a34cfbb2048fbcaa8493fd2c86b
-		unmounter := func(mountPath string) {
-			if uerr := mount.Unmount(mountPath, 0); uerr != nil {
+		unmounter := func(tempDir string) {
+			if uerr := mount.UnmountMounts(mounts, tempDir, 0); uerr != nil {
 				log.G(ctx).Debugf("Failed to unmount snapshot %q", tempDir)
 				if err == nil {
 					err = uerr
