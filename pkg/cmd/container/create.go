@@ -118,9 +118,15 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		return nil, nil, err
 	}
 
-	opts = append(opts,
-		oci.WithDefaultSpec(),
-	)
+	if options.Platform == "" {
+		opts = append(opts,
+			oci.WithDefaultSpec(),
+		)
+	} else {
+		opts = append(opts,
+			oci.WithDefaultSpecForPlatform(options.Platform),
+		)
+	}
 
 	platformOpts, err := setPlatformOptions(ctx, client, id, netManager.NetworkOptions().UTSNamespace, &internalLabels, options)
 	if err != nil {
