@@ -18,7 +18,7 @@
 # Basic deps
 # @BINARY: the binary checksums are verified via Dockerfile.d/SHA256SUMS.d/<COMPONENT>-<VERSION>
 ARG CONTAINERD_VERSION=v2.2.0-rc.0@870bb7c80de5f4f69952b0188154ce61dbd4115a
-ARG RUNC_VERSION=v1.3.1@e6457afc48eff1ce22dece664932395026a7105e
+ARG RUNC_VERSION=v1.3.2@aeabe4e711d903ef0ea86a4155da0f9e00eabd29
 ARG CNI_PLUGINS_VERSION=v1.8.0@BINARY
 
 # Extra deps: Build
