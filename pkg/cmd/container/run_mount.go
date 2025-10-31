@@ -173,10 +173,20 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 			return nil, nil, nil, err
 		}
 
+		mm := client.MountManager()
+
+		active, err := mm.Activate(ctx, tempDir, mounts)
+		if err == nil {
+			defer mm.Deactivate(ctx, tempDir)
+			mounts = active.System
+		} else if !errors.Is(err, errdefs.ErrNotImplemented) {
+			return nil, nil, nil, fmt.Errorf("failed to activate mounts: %w", err)
+		}
+
 		// windows has additional steps for mounting see
 		// https://github.com/containerd/containerd/commit/791e175c79930a34cfbb2048fbcaa8493fd2c86b
-		unmounter := func(mountPath string) {
-			if uerr := mount.Unmount(mountPath, 0); uerr != nil {
+		unmounter := func(tempDir string) {
+			if uerr := mount.UnmountMounts(mounts, tempDir, 0); uerr != nil {
 				log.G(ctx).Debugf("Failed to unmount snapshot %q", tempDir)
 				if err == nil {
 					err = uerr
