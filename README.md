@@ -298,6 +298,7 @@ Experimental features:
 - [`./docs/freebsd.md`](./docs/freebsd.md):  Running FreeBSD jails
 - [`./docs/ipfs.md`](./docs/ipfs.md): Distributing images on IPFS
 - [`./docs/builder-debug.md`](./docs/builder-debug.md): Interactive debugging of Dockerfile
+- [`./docs/nerdbox.md`](./docs/nerdbox.md):   Running Linux containers on macOS using nerdbox
 
 Implementation details:
 
