@@ -62,7 +62,47 @@ func CreateTimer(ctx context.Context, container containerd.Container, cfg *confi
 		return fmt.Errorf("could not determine nerdctl executable path: %v", err)
 	}
 
-	cmdOpts = append(cmdOpts, nerdctlPath, "container", "healthcheck", containerID)
+	cmdOpts = append(
+		cmdOpts, nerdctlPath,
+		"--namespace", cfg.Namespace,
+		"--address", cfg.Address,
+		"--data-root", cfg.DataRoot,
+		"--cni-path", cfg.CNIPath,
+		"--cni-netconfpath", cfg.CNINetConfPath,
+		"--cgroup-manager", cfg.CgroupManager,
+		"--host-gateway-ip", cfg.HostGatewayIP,
+	)
+
+	// Add boolean flags
+	if cfg.InsecureRegistry {
+		cmdOpts = append(cmdOpts, "--insecure-registry")
+	}
+	if cfg.Experimental {
+		cmdOpts = append(cmdOpts, "--experimental")
+	}
+	if cfg.DebugFull {
+		cmdOpts = append(cmdOpts, "--debug-full")
+	}
+
+	// Add array flags
+	for _, dir := range cfg.HostsDir {
+		cmdOpts = append(cmdOpts, "--hosts-dir", dir)
+	}
+	for _, dir := range cfg.CDISpecDirs {
+		cmdOpts = append(cmdOpts, "--cdi-spec-dirs", dir)
+	}
+
+	// Add userns-remap if set
+	if cfg.UsernsRemap != "" {
+		cmdOpts = append(cmdOpts, "--userns-remap", cfg.UsernsRemap)
+	}
+
+	cmdOpts = append(cmdOpts, "container", "healthcheck", containerID)
+
+	if log.G(ctx).Logger.IsLevelEnabled(log.DebugLevel) {
+		cmdOpts = append(cmdOpts, "--debug")
+	}
+
 	if log.G(ctx).Logger.IsLevelEnabled(log.DebugLevel) {
 		cmdOpts = append(cmdOpts, "--debug")
 	}
