@@ -36,7 +36,7 @@ import (
 )
 
 // CreateTimer sets up the transient systemd timer and service for healthchecks.
-func CreateTimer(ctx context.Context, container containerd.Container, cfg *config.Config) error {
+func CreateTimer(ctx context.Context, container containerd.Container, cfg *config.Config, nerdctlCmd string, nerdctlArgs []string) error {
 	hc := extractHealthcheck(ctx, container)
 	if hc == nil {
 		return nil
@@ -56,18 +56,11 @@ func CreateTimer(ctx context.Context, container containerd.Container, cfg *confi
 	// Always use health-interval for timer frequency
 	cmdOpts = append(cmdOpts, "--unit", containerID, "--on-unit-inactive="+hc.Interval.String(), "--timer-property=AccuracySec=1s")
 
-	// Get the full path to the current nerdctl binary
-	nerdctlPath, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("could not determine nerdctl executable path: %v", err)
-	}
+	cmdOpts = append(cmdOpts, nerdctlCmd)
+	cmdOpts = append(cmdOpts, nerdctlArgs...)
+	cmdOpts = append(cmdOpts, "container", "healthcheck", containerID)
 
-	cmdOpts = append(cmdOpts, nerdctlPath, "container", "healthcheck", containerID)
-	if log.G(ctx).Logger.IsLevelEnabled(log.DebugLevel) {
-		cmdOpts = append(cmdOpts, "--debug")
-	}
-
-	log.G(ctx).Debugf("creating healthcheck timer with: systemd-run %s", strings.Join(cmdOpts, " "))
+	log.G(ctx).Infof("creating healthcheck timer with: systemd-run %s", strings.Join(cmdOpts, " "))
 	run := exec.Command("systemd-run", cmdOpts...)
 	if out, err := run.CombinedOutput(); err != nil {
 		return fmt.Errorf("systemd-run failed: %w\noutput: %s", err, strings.TrimSpace(string(out)))
