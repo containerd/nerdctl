@@ -32,6 +32,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -923,6 +924,107 @@ func TestHealthCheck_SystemdIntegration_Basic(t *testing.T) {
 									"expected nerdctl healthcheck timer for container ID %s to be removed after container stop", containerID)
 							},
 						})
+					},
+				}
+			},
+		},
+	}
+	testCase.Run(t)
+}
+
+func TestHealthCheck_GlobalFlags(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Docker)
+	// Skip systemd tests in rootless environment to bypass dbus permission issues
+	if rootlessutil.IsRootless() {
+		t.Skip("systemd healthcheck tests are skipped in rootless environment")
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Healthcheck works with custom namespace flag",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				// Create container in custom namespace with healthcheck
+				helpers.Ensure("--namespace=healthcheck-test", "run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "echo healthy",
+					"--health-interval", "2s",
+					testutil.CommonImage, "sleep", "30")
+				// Wait a bit to ensure container is running (can't use EnsureContainerStarted with custom namespace)
+				time.Sleep(1 * time.Second)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("--namespace=healthcheck-test", "rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				// Wait a bit for healthcheck to run
+				time.Sleep(3 * time.Second)
+				// Verify container is accessible in the custom namespace
+				return helpers.Command("--namespace=healthcheck-test", "inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, t tig.T) {
+						var inspectResults []dockercompat.Container
+						err := json.Unmarshal([]byte(stdout), &inspectResults)
+						assert.NilError(t, err, "failed to parse inspect output")
+						assert.Assert(t, len(inspectResults) > 0, "expected at least one container in inspect results")
+
+						inspect := inspectResults[0]
+						h := inspect.State.Health
+						assert.Assert(t, h != nil, "expected health state to be present")
+						assert.Assert(t, h.Status == healthcheck.Healthy || h.Status == healthcheck.Starting,
+							"expected health status to be healthy or starting, got: %s", h.Status)
+						assert.Assert(t, len(h.Log) > 0, "expected at least one health check log entry")
+					},
+				}
+			},
+		},
+		{
+			Description: "Healthcheck works correctly with namespace after container restart",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				// Create container in custom namespace
+				helpers.Ensure("--namespace=restart-test", "run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "echo healthy",
+					"--health-interval", "2s",
+					testutil.CommonImage, "sleep", "60")
+				// Wait a bit to ensure container is running (can't use EnsureContainerStarted with custom namespace)
+				time.Sleep(1 * time.Second)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("--namespace=restart-test", "rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				// Wait for initial healthcheck
+				time.Sleep(3 * time.Second)
+
+				// Stop and restart the container
+				helpers.Ensure("--namespace=restart-test", "stop", data.Identifier())
+				helpers.Ensure("--namespace=restart-test", "start", data.Identifier())
+				// Wait a bit to ensure container is running after restart
+				time.Sleep(1 * time.Second)
+
+				// Wait for healthcheck to run after restart
+				time.Sleep(3 * time.Second)
+
+				return helpers.Command("--namespace=restart-test", "inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, t tig.T) {
+						// Parse the inspect JSON output directly since we're in a custom namespace
+						var inspectResults []dockercompat.Container
+						err := json.Unmarshal([]byte(stdout), &inspectResults)
+						assert.NilError(t, err, "failed to parse inspect output")
+						assert.Assert(t, len(inspectResults) > 0, "expected at least one container in inspect results")
+
+						inspect := inspectResults[0]
+						h := inspect.State.Health
+						assert.Assert(t, h != nil, "expected health state after restart")
+						assert.Assert(t, h.Status == healthcheck.Healthy || h.Status == healthcheck.Starting,
+							"expected health status to be healthy or starting after restart, got: %s", h.Status)
+						assert.Assert(t, len(h.Log) > 0, "expected health check logs after restart")
 					},
 				}
 			},
