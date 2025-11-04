@@ -60,7 +60,7 @@ func CreateTimer(ctx context.Context, container containerd.Container, cfg *confi
 	cmdOpts = append(cmdOpts, nerdctlArgs...)
 	cmdOpts = append(cmdOpts, "container", "healthcheck", containerID)
 
-	log.G(ctx).Infof("creating healthcheck timer with: systemd-run %s", strings.Join(cmdOpts, " "))
+	log.G(ctx).Debugf("creating healthcheck timer with: systemd-run %s", strings.Join(cmdOpts, " "))
 	run := exec.Command("systemd-run", cmdOpts...)
 	if out, err := run.CombinedOutput(); err != nil {
 		return fmt.Errorf("systemd-run failed: %w\noutput: %s", err, strings.TrimSpace(string(out)))
