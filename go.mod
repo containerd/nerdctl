@@ -9,7 +9,7 @@ require (
 	github.com/Microsoft/hcsshim v0.14.0-rc.1
 	github.com/compose-spec/compose-go/v2 v2.9.1 //gomodjail:unconfined
 	github.com/containerd/accelerated-container-image v1.3.0
-	github.com/containerd/cgroups/v3 v3.1.0 //gomodjail:unconfined
+	github.com/containerd/cgroups/v3 v3.1.1 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
 	github.com/containerd/containerd/api v1.10.0-rc.0
 	github.com/containerd/containerd/v2 v2.2.0-rc.1 //gomodjail:unconfined
@@ -52,7 +52,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2 //gomodjail:unconfined
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
-	github.com/opencontainers/runtime-spec v1.2.1
+	github.com/opencontainers/runtime-spec v1.3.0
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/rootless-containers/bypass4netns v0.4.2 //gomodjail:unconfined
 	github.com/rootless-containers/rootlesskit/v2 v2.3.5 //gomodjail:unconfined
