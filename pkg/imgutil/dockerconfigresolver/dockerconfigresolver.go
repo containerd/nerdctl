@@ -24,6 +24,7 @@ import (
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/core/remotes/docker"
 	dockerconfig "github.com/containerd/containerd/v2/core/remotes/docker/config"
+	"github.com/containerd/containerd/v2/core/transfer/registry"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 )
@@ -192,4 +193,28 @@ func NewAuthCreds(refHostname string) (AuthCreds, error) {
 	}
 
 	return credFunc, nil
+}
+
+func NewCredentialHelper(refHostname string) (registry.CredentialHelper, error) {
+	authCreds, err := NewAuthCreds(refHostname)
+	if err != nil {
+		return nil, err
+	}
+	return &credentialHelper{authCreds: authCreds}, nil
+}
+
+type credentialHelper struct {
+	authCreds AuthCreds
+}
+
+func (ch *credentialHelper) GetCredentials(ctx context.Context, ref, host string) (registry.Credentials, error) {
+	username, secret, err := ch.authCreds(host)
+	if err != nil {
+		return registry.Credentials{}, err
+	}
+	return registry.Credentials{
+		Host:     host,
+		Username: username,
+		Secret:   secret,
+	}, nil
 }

@@ -16,11 +16,40 @@
 
 package errutil
 
-import "strings"
+import (
+	"errors"
+	"net/http"
+	"strings"
+)
 
 // IsErrConnectionRefused return whether err is
 // "connect: connection refused"
 func IsErrConnectionRefused(err error) bool {
 	const errMessage = "connect: connection refused"
 	return strings.Contains(err.Error(), errMessage)
+}
+
+// IsErrHTTPResponseToHTTPSClient returns whether err is
+// "server gave HTTP response to HTTPS client"
+func IsErrHTTPResponseToHTTPSClient(err error) bool {
+	if err == nil {
+		return false
+	}
+	errMsg := err.Error()
+	return strings.Contains(errMsg, "server gave HTTP response to HTTPS client")
+}
+
+// IsErrHTTPSFallbackNeeded returns whether the error indicates that
+// HTTPS connection failed and should fallback to plain HTTP.
+// This includes:
+// - http.ErrSchemeMismatch
+// - connection refused errors
+// - "server gave HTTP response to HTTPS client" errors
+func IsErrHTTPSFallbackNeeded(err error) bool {
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, http.ErrSchemeMismatch) ||
+		IsErrConnectionRefused(err) ||
+		IsErrHTTPResponseToHTTPSClient(err)
 }
