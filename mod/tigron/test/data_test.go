@@ -71,7 +71,7 @@ func TestDataIdentifier(t *testing.T) {
 	assertive.HasPrefix(t, one, "testdataidentifier")
 
 	three := dataObj.Identifier("Some Add ∞ Funky∞Prefix")
-	assertive.HasPrefix(t, three, "testdataidentifier-some-add-funky-prefix")
+	assertive.HasPrefix(t, three, "testdataidentifiersomeaddfunkyprefix")
 }
 
 func TestDataIdentifierThatIsReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyReallyLong(
