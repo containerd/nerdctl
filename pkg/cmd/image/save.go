@@ -19,55 +19,104 @@ package image
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+
+	"github.com/distribution/reference"
+	"github.com/opencontainers/go-digest"
 
 	containerd "github.com/containerd/containerd/v2/client"
-	"github.com/containerd/containerd/v2/core/images/archive"
+	"github.com/containerd/containerd/v2/core/transfer"
+	tarchive "github.com/containerd/containerd/v2/core/transfer/archive"
+	transferimage "github.com/containerd/containerd/v2/core/transfer/image"
+	"github.com/containerd/platforms"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
-	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/transferutil"
 )
 
 // Save exports `images` to a `io.Writer` (e.g., a file writer, or os.Stdout) specified by `options.Stdout`.
-func Save(ctx context.Context, client *containerd.Client, images []string, options types.ImageSaveOptions, exportOpts ...archive.ExportOpt) error {
+func Save(ctx context.Context, client *containerd.Client, images []string, options types.ImageSaveOptions) error {
 	images = strutil.DedupeStrSlice(images)
+
+	var exportOpts []tarchive.ExportOpt
+
+	if len(options.Platform) > 0 {
+		for _, ps := range options.Platform {
+			p, err := platforms.Parse(ps)
+			if err != nil {
+				return fmt.Errorf("invalid platform %q: %w", ps, err)
+			}
+			exportOpts = append(exportOpts, tarchive.WithPlatform(p))
+		}
+	}
+	if options.AllPlatforms {
+		exportOpts = append(exportOpts, tarchive.WithAllPlatforms)
+	}
 
 	platMC, err := platformutil.NewMatchComparer(options.AllPlatforms, options.Platform)
 	if err != nil {
 		return err
 	}
 
-	exportOpts = append(exportOpts, archive.WithPlatform(platMC))
-	imageStore := client.ImageService()
+	imageService := client.ImageService()
+	var storeOpts []transferimage.StoreOpt
+	for _, img := range images {
+		var imageRef string
 
-	savedImages := make(map[string]struct{})
-	walker := &imagewalker.ImageWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
-			if found.UniqueImages > 1 {
-				return fmt.Errorf("ambiguous digest ID: multiple IDs found with provided prefix %s", found.Req)
+		var dgst digest.Digest
+		var err error
+		if dgst, err = digest.Parse(img); err != nil {
+			if dgst, err = digest.Parse("sha256:" + img); err != nil {
+				named, err := reference.ParseNormalizedNamed(img)
+				if err != nil {
+					return fmt.Errorf("invalid image name %q: %w", img, err)
+				}
+				imageRef = reference.TagNameOnly(named).String()
+				err = EnsureAllContent(ctx, client, imageRef, platMC, options.GOptions)
+				if err != nil {
+					return err
+				}
+				storeOpts = append(storeOpts, transferimage.WithExtraReference(imageRef))
+				continue
 			}
+		}
 
-			// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
-			err = EnsureAllContent(ctx, client, found.Image.Name, platMC, options.GOptions)
-			if err != nil {
-				return err
-			}
+		filters := []string{fmt.Sprintf("target.digest~=^%s$", dgst.String())}
+		imageList, err := imageService.List(ctx, filters...)
+		if err != nil {
+			return fmt.Errorf("failed to list images: %w", err)
+		}
+		if len(imageList) == 0 {
+			return fmt.Errorf("image %q: not found", img)
+		}
 
-			imgName := found.Image.Name
-			if _, ok := savedImages[imgName]; !ok {
-				savedImages[imgName] = struct{}{}
-				exportOpts = append(exportOpts, archive.WithImage(imageStore, imgName))
-			}
-			return nil
-		},
+		imageRef = imageList[0].Name
+		err = EnsureAllContent(ctx, client, imageRef, platMC, options.GOptions)
+		if err != nil {
+			return err
+		}
+		storeOpts = append(storeOpts, transferimage.WithExtraReference(imageRef))
 	}
 
-	// check if all images exist
-	if err := walker.WalkAll(ctx, images, false); err != nil {
-		return err
-	}
+	w := nopWriteCloser{options.Stdout}
 
-	return client.Export(ctx, options.Stdout, exportOpts...)
+	pf, done := transferutil.ProgressHandler(ctx, os.Stderr)
+	defer done()
+
+	return client.Transfer(ctx,
+		transferimage.NewStore("", storeOpts...),
+		tarchive.NewImageExportStream(w, "", exportOpts...),
+		transfer.WithProgress(pf),
+	)
+}
+
+type nopWriteCloser struct {
+	io.Writer
+}
+
+func (nopWriteCloser) Close() error {
+	return nil
 }

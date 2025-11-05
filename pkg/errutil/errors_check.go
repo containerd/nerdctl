@@ -24,3 +24,18 @@ func IsErrConnectionRefused(err error) bool {
 	const errMessage = "connect: connection refused"
 	return strings.Contains(err.Error(), errMessage)
 }
+
+// IsErrHTTPResponseToHTTPSClient returns whether err is
+// "http: server gave HTTP response to HTTPS client"
+func IsErrHTTPResponseToHTTPSClient(err error) bool {
+	const errMessage = "server gave HTTP response to HTTPS client"
+	return strings.Contains(err.Error(), errMessage)
+}
+
+// IsErrTLSHandshakeFailure returns whether err is a TLS handshake or certificate verification error
+func IsErrTLSHandshakeFailure(err error) bool {
+	errStr := err.Error()
+	return strings.Contains(errStr, "tls:") ||
+		strings.Contains(errStr, "x509:") ||
+		strings.Contains(errStr, "certificate")
+}

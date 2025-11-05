@@ -37,12 +37,14 @@ import (
 	dockerconfig "github.com/containerd/containerd/v2/core/remotes/docker/config"
 	"github.com/containerd/containerd/v2/pkg/reference"
 	"github.com/containerd/log"
+	"github.com/containerd/platforms"
 	"github.com/containerd/stargz-snapshotter/estargz"
 	"github.com/containerd/stargz-snapshotter/estargz/zstdchunked"
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	nerdconverter "github.com/containerd/nerdctl/v2/pkg/imgutil/converter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/push"
@@ -110,7 +112,6 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return err
 	}
 	ref := parsedReference.String()
-	refDomain := parsedReference.Domain
 
 	platMC, err := platformutil.NewMatchComparer(options.AllPlatforms, options.Platforms)
 	if err != nil {
@@ -146,53 +147,14 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		defer client.ImageService().Delete(ctx, esgzImg.Name, images.SynchronousDelete())
 		log.G(ctx).Infof("pushing as an eStargz image (%s, %s)", esgzImg.Target.MediaType, esgzImg.Target.Digest)
 	}
-
-	// In order to push images where most layers are the same but the
-	// repository name is different, it is necessary to refresh the
-	// PushTracker. Otherwise, the MANIFEST_BLOB_UNKNOWN error will occur due
-	// to the registry not creating the corresponding layer link file,
-	// resulting in the failure of the entire image push.
-	pushTracker := docker.NewInMemoryTracker()
-
-	pushFunc := func(r remotes.Resolver) error {
-		return push.Push(ctx, client, r, pushTracker, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
-	}
-
-	var dOpts []dockerconfigresolver.Opt
-	if options.GOptions.InsecureRegistry {
-		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
-		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
-	}
-	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
-
-	ho, err := dockerconfigresolver.NewHostOptions(ctx, refDomain, dOpts...)
-	if err != nil {
-		return err
-	}
-
-	resolverOpts := docker.ResolverOptions{
-		Tracker: pushTracker,
-		Hosts:   dockerconfig.ConfigureHosts(ctx, *ho),
-	}
-
-	resolver := docker.NewResolver(resolverOpts)
-	if err = pushFunc(resolver); err != nil {
-		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused"
-		if !errors.Is(err, http.ErrSchemeMismatch) && !errutil.IsErrConnectionRefused(err) {
+	if !options.AllowNondistributableArtifacts {
+		if err := pushImageWithLocal(ctx, client, parsedReference, pushRef, ref, options, platMC); err != nil {
 			return err
 		}
-		if options.GOptions.InsecureRegistry {
-			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
-			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
-			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
-			if err != nil {
-				return err
-			}
-			return pushFunc(resolver)
+	} else {
+		if err := imgutil.PushImageWithTransfer(ctx, client, parsedReference, pushRef, ref, options); err != nil {
+			return err
 		}
-		log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
-		log.G(ctx).Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
-		return err
 	}
 
 	img, err := client.ImageService().Get(ctx, pushRef)
@@ -262,4 +224,58 @@ func isReusableESGZ(ctx context.Context, cs content.Store, desc ocispec.Descript
 		return false
 	}
 	return true
+}
+
+func pushImageWithLocal(ctx context.Context, client *containerd.Client, parsedReference *referenceutil.ImageReference, pushRef, rawRef string, options types.ImagePushOptions, platMC platforms.MatchComparer) error {
+	ref := parsedReference.String()
+	refDomain := parsedReference.Domain
+
+	// In order to push images where most layers are the same but the
+	// repository name is different, it is necessary to refresh the
+	// PushTracker. Otherwise, the MANIFEST_BLOB_UNKNOWN error will occur due
+	// to the registry not creating the corresponding layer link file,
+	// resulting in the failure of the entire image push.
+	pushTracker := docker.NewInMemoryTracker()
+
+	pushFunc := func(r remotes.Resolver) error {
+		return push.Push(ctx, client, r, pushTracker, options.Stdout, pushRef, ref, platMC, options.AllowNondistributableArtifacts, options.Quiet)
+	}
+
+	var dOpts []dockerconfigresolver.Opt
+	if options.GOptions.InsecureRegistry {
+		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", refDomain)
+		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
+	}
+	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
+
+	ho, err := dockerconfigresolver.NewHostOptions(ctx, refDomain, dOpts...)
+	if err != nil {
+		return err
+	}
+
+	resolverOpts := docker.ResolverOptions{
+		Tracker: pushTracker,
+		Hosts:   dockerconfig.ConfigureHosts(ctx, *ho),
+	}
+
+	resolver := docker.NewResolver(resolverOpts)
+	if err = pushFunc(resolver); err != nil {
+		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused"
+		if !errors.Is(err, http.ErrSchemeMismatch) && !errutil.IsErrConnectionRefused(err) {
+			return err
+		}
+		if options.GOptions.InsecureRegistry {
+			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
+			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
+			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
+			if err != nil {
+				return err
+			}
+			return pushFunc(resolver)
+		}
+		log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
+		log.G(ctx).Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
+		return err
+	}
+	return nil
 }

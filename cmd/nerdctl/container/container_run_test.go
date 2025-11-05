@@ -786,7 +786,7 @@ func TestRunFromOCIArchive(t *testing.T) {
 	tarPath := fmt.Sprintf("%s/%s.tar", buildCtx, imageName)
 
 	base.Cmd("build", "--tag", tag, fmt.Sprintf("--output=type=oci,dest=%s", tarPath), buildCtx).AssertOK()
-	base.Cmd("run", "--rm", fmt.Sprintf("oci-archive://%s", tarPath)).AssertOutContainsAll(fmt.Sprintf("Loaded image: %s", tag), sentinel)
+	base.Cmd("run", "--rm", fmt.Sprintf("oci-archive://%s", tarPath)).AssertOutContainsAll(tag, sentinel)
 }
 
 func TestRunDomainname(t *testing.T) {
