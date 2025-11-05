@@ -5,8 +5,26 @@ version = 2
   [proxy_plugins.stargz]
     type = "snapshot"
     address = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+  [proxy_plugins.stargz.exports]
+    root = "/var/lib/containerd-stargz-grpc/"
+    enable_remote_snapshot_annotations = "true"
 
 # Enable soci snapshotter
   [proxy_plugins.soci]
     type = "snapshot"
     address = "/run/soci-snapshotter-grpc/soci-snapshotter-grpc.sock"
+  [proxy_plugins.soci.exports]
+    root = "/var/lib/soci-snapshotter-grpc"
+    enable_remote_snapshot_annotations = "true"
+
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux"
+  snapshotter = "overlayfs"
+
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux"
+  snapshotter = "soci"
+
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux"
+  snapshotter = "stargz"

@@ -30,6 +30,11 @@ For detailed information about the differences between v1 and v2, see the [SOCI 
   [proxy_plugins.soci]
     type = "snapshot"
     address = "/run/soci-snapshotter-grpc/soci-snapshotter-grpc.sock"
+
+# Optional: Configure soci for image unpacking (allows automatic snapshotter selection)
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux"
+  snapshotter = "soci"
 ```
 
 - Launch `containerd` and `soci-snapshotter-grpc`
