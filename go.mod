@@ -30,7 +30,7 @@ require (
 	github.com/containernetworking/plugins v1.8.0 //gomodjail:unconfined
 	github.com/coreos/go-iptables v0.8.0 //gomodjail:unconfined
 	github.com/coreos/go-systemd/v22 v22.6.0
-	github.com/cyphar/filepath-securejoin v0.4.1 //gomodjail:unconfined
+	github.com/cyphar/filepath-securejoin v0.6.0 //gomodjail:unconfined
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v28.5.2+incompatible //gomodjail:unconfined
 	github.com/docker/docker v28.5.2+incompatible //gomodjail:unconfined
@@ -113,7 +113,7 @@ require (
 	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/multiformats/go-varint v0.1.0 // indirect
 	github.com/opencontainers/runtime-tools v0.9.1-0.20250523060157-0ea5ed0382a2 // indirect
-	github.com/opencontainers/selinux v1.12.0 // indirect
+	github.com/opencontainers/selinux v1.13.0 // indirect
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -147,6 +147,9 @@ require (
 	tags.cncf.io/container-device-interface/specs-go v1.0.0 // indirect
 )
 
-require github.com/moby/sys/capability v0.4.0 // indirect
+require (
+	cyphar.com/go-pathrs v0.2.1 // indirect
+	github.com/moby/sys/capability v0.4.0 // indirect
+)
 
 replace github.com/containerd/nerdctl/mod/tigron v0.0.0 => ./mod/tigron
