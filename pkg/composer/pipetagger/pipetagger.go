@@ -64,6 +64,7 @@ func ChooseColorAttrs(tag string) []color.Attribute {
 		attrs = append(attrs, color.BgHiWhite)
 	case color.FgHiWhite:
 		attrs = append(attrs, color.BgHiBlack)
+	default:
 	}
 
 	return attrs
