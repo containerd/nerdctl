@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -110,15 +111,59 @@ func Ellipsis(str string, maxDisplayWidth int) string {
 	return str[:maxDisplayWidth-1] + "…"
 }
 
+func formatRange(startHost, endHost, startContainer, endContainer int32) string {
+	if startHost == endHost && startContainer == endContainer {
+		return fmt.Sprintf("%d->%d", startHost, startContainer)
+	}
+	return fmt.Sprintf("%d-%d->%d-%d", startHost, endHost, startContainer, endContainer)
+}
+
 func FormatPorts(ports []cni.PortMapping) string {
 	if len(ports) == 0 {
 		return ""
 	}
-	strs := make([]string, len(ports))
-	for i, p := range ports {
-		strs[i] = fmt.Sprintf("%s:%d->%d/%s", p.HostIP, p.HostPort, p.ContainerPort, p.Protocol)
+
+	type key struct {
+		HostIP   string
+		Protocol string
 	}
-	return strings.Join(strs, ", ")
+	grouped := make(map[key][]cni.PortMapping)
+
+	for _, p := range ports {
+		k := key{HostIP: p.HostIP, Protocol: p.Protocol}
+		grouped[k] = append(grouped[k], p)
+	}
+
+	var displayPorts []string
+	for k, pms := range grouped {
+		sort.Slice(pms, func(i, j int) bool {
+			return pms[i].HostPort < pms[j].HostPort
+		})
+
+		var i int
+		var ranges []string
+		for i = 0; i < len(pms); {
+			start, end := pms[i], pms[i]
+			for i+1 < len(pms) &&
+				pms[i+1].HostPort == end.HostPort+1 &&
+				pms[i+1].ContainerPort == end.ContainerPort+1 {
+				i++
+				end = pms[i]
+			}
+
+			ranges = append(
+				ranges,
+				formatRange(start.HostPort, end.HostPort, start.ContainerPort, end.ContainerPort),
+			)
+			i++
+		}
+		displayPorts = append(
+			displayPorts,
+			fmt.Sprintf("%s:%s/%s", k.HostIP, strings.Join(ranges, ", "), k.Protocol),
+		)
+	}
+
+	return strings.Join(displayPorts, ", ")
 }
 
 func TimeSinceInHuman(since time.Time) string {
