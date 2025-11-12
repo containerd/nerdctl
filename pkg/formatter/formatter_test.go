@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/go-cni"
 )
 
 func TestTimeSinceInHuman(t *testing.T) {
@@ -83,6 +85,109 @@ func TestTimeSinceInHuman(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := TimeSinceInHuman(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestFormatPorts(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    []cni.PortMapping
+		expected string
+	}{
+		{
+			name: "a single tcp port on localhost",
+			input: []cni.PortMapping{
+				{
+					HostPort:      3000,
+					ContainerPort: 8080,
+					Protocol:      "tcp",
+					HostIP:        "127.0.0.1",
+				},
+			},
+			expected: "127.0.0.1:3000->8080/tcp",
+		},
+		{
+			name: "consecutive tcp ports on localhost",
+			input: []cni.PortMapping{
+				{
+					HostPort:      3000,
+					ContainerPort: 8080,
+					Protocol:      "tcp",
+					HostIP:        "127.0.0.1",
+				},
+				{
+					HostPort:      3001,
+					ContainerPort: 8081,
+					Protocol:      "tcp",
+					HostIP:        "127.0.0.1",
+				},
+			},
+			expected: "127.0.0.1:3000-3001->8080-8081/tcp",
+		},
+		{
+			name: "a single tcp port on anyhost",
+			input: []cni.PortMapping{
+				{
+					HostPort:      3000,
+					ContainerPort: 8080,
+					Protocol:      "tcp",
+					HostIP:        "0.0.0.0",
+				},
+			},
+			expected: "0.0.0.0:3000->8080/tcp",
+		},
+		{
+			name: "a single udp port on anyhost",
+			input: []cni.PortMapping{
+				{
+					HostPort:      3000,
+					ContainerPort: 8080,
+					Protocol:      "udp",
+					HostIP:        "0.0.0.0",
+				},
+			},
+			expected: "0.0.0.0:3000->8080/udp",
+		},
+		{
+			name: "mixed tcp and udp with consecutive ports on anyhost",
+			input: []cni.PortMapping{
+				{
+					HostPort:      3000,
+					ContainerPort: 8080,
+					Protocol:      "tcp",
+					HostIP:        "0.0.0.0",
+				},
+				{
+					HostPort:      3001,
+					ContainerPort: 8081,
+					Protocol:      "tcp",
+					HostIP:        "0.0.0.0",
+				},
+				{
+					HostPort:      3002,
+					ContainerPort: 8082,
+					Protocol:      "udp",
+					HostIP:        "0.0.0.0",
+				},
+				{
+					HostPort:      3003,
+					ContainerPort: 8083,
+					Protocol:      "udp",
+					HostIP:        "0.0.0.0",
+				},
+			},
+			expected: "0.0.0.0:3000-3001->8080-8081/tcp, 0.0.0.0:3002-3003->8082-8083/udp",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := FormatPorts(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
