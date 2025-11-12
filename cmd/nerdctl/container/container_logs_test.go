@@ -55,6 +55,8 @@ bar
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("run", "--quiet", "--name", data.Identifier(), testutil.CommonImage, "sh", "-euxc", "echo foo; echo bar;")
 		data.Labels().Set("cID", data.Identifier())
+		// Sleep to ensure enough time passes for since/until time-based filtering tests
+		time.Sleep(2 * time.Second)
 	}
 
 	testCase.SubTests = []*test.Case{
