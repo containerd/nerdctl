@@ -56,7 +56,7 @@ func Start(ctx context.Context, client *containerd.Client, reqs []string, option
 					return err
 				}
 			}
-			if err := containerutil.Start(ctx, found.Container, options.Attach, options.Interactive, client, options.DetachKeys, checkpointDir, (*config.Config)(&options.GOptions)); err != nil {
+			if err := containerutil.Start(ctx, found.Container, options.Attach, options.Interactive, client, options.DetachKeys, checkpointDir, (*config.Config)(&options.GOptions), options.NerdctlCmd, options.NerdctlArgs); err != nil {
 				return err
 			}
 			if !options.Attach {

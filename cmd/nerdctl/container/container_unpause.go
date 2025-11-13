@@ -46,9 +46,12 @@ func unpauseOptions(cmd *cobra.Command) (types.ContainerUnpauseOptions, error) {
 	if err != nil {
 		return types.ContainerUnpauseOptions{}, err
 	}
+	nerdctlCmd, nerdctlArgs := helpers.GlobalFlags(cmd)
 	return types.ContainerUnpauseOptions{
-		GOptions: globalOptions,
-		Stdout:   cmd.OutOrStdout(),
+		GOptions:    globalOptions,
+		Stdout:      cmd.OutOrStdout(),
+		NerdctlCmd:  nerdctlCmd,
+		NerdctlArgs: nerdctlArgs,
 	}, nil
 }
 

@@ -156,7 +156,11 @@ func GlobalFlags(cmd *cobra.Command) (string, []string) {
 	flagSet.VisitAll(func(f *pflag.Flag) {
 		key := f.Name
 		val := f.Value.String()
-		if f.Changed {
+		// Include flag if:
+		// 1. It was explicitly changed via CLI (highest priority), OR
+		// 2. It has a non-default value (from TOML config)
+		// This ensures both CLI flags and TOML config values are propagated
+		if f.Changed || (val != f.DefValue && val != "") {
 			args = append(args, "--"+key+"="+val)
 		}
 	})

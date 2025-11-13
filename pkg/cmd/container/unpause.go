@@ -36,7 +36,7 @@ func Unpause(ctx context.Context, client *containerd.Client, reqs []string, opti
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := containerutil.Unpause(ctx, client, found.Container.ID(), (*config.Config)(&options.GOptions)); err != nil {
+			if err := containerutil.Unpause(ctx, client, found.Container.ID(), (*config.Config)(&options.GOptions), options.NerdctlCmd, options.NerdctlArgs); err != nil {
 				return err
 			}
 
