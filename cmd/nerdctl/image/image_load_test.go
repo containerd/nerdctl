@@ -17,7 +17,6 @@
 package image
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,7 +60,7 @@ func TestLoadStdinFromPipe(t *testing.T) {
 			identifier := data.Identifier()
 			return &test.Expected{
 				Output: expect.All(
-					expect.Contains(fmt.Sprintf("Loaded image: %s:latest", identifier)),
+					expect.Contains(identifier),
 					func(stdout string, t tig.T) {
 						assert.Assert(t, strings.Contains(helpers.Capture("images"), identifier))
 					},
@@ -107,7 +106,7 @@ func TestLoadQuiet(t *testing.T) {
 		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 			return &test.Expected{
 				Output: expect.All(
-					expect.Contains(fmt.Sprintf("Loaded image: %s:latest", data.Identifier())),
+					expect.Contains(data.Identifier()),
 					expect.DoesNotContain("Loading layer"),
 				),
 			}

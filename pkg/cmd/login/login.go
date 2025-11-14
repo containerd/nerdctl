@@ -150,7 +150,7 @@ func loginClientSide(ctx context.Context, globalOptions types.GlobalCommandOptio
 	}
 	for i, rh := range regHosts {
 		err = tryLoginWithRegHost(ctx, rh)
-		if err != nil && globalOptions.InsecureRegistry && (errors.Is(err, http.ErrSchemeMismatch) || errutil.IsErrConnectionRefused(err)) {
+		if err != nil && globalOptions.InsecureRegistry && errutil.IsErrHTTPSFallbackNeeded(err) {
 			rh.Scheme = "http"
 			err = tryLoginWithRegHost(ctx, rh)
 		}

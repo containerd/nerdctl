@@ -18,8 +18,6 @@ package image
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -80,7 +78,6 @@ func ensureOne(ctx context.Context, client *containerd.Client, rawRef string, ta
 		// Get a resolver
 		var dOpts []dockerconfigresolver.Opt
 		if options.InsecureRegistry {
-			log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", parsedReference.Domain)
 			dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 		}
 		dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.HostsDir))
@@ -99,7 +96,7 @@ func ensureOne(ctx context.Context, client *containerd.Client, rawRef string, ta
 
 		if err != nil {
 			// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused".
-			if !errors.Is(err, http.ErrSchemeMismatch) && !errutil.IsErrConnectionRefused(err) {
+			if !errutil.IsErrHTTPSFallbackNeeded(err) {
 				return err
 			}
 			if options.InsecureRegistry {
