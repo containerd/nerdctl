@@ -32,7 +32,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.6.0
 	github.com/cyphar/filepath-securejoin v0.4.1 //gomodjail:unconfined
 	github.com/distribution/reference v0.6.0
-	github.com/docker/cli v28.5.2+incompatible //gomodjail:unconfined
+	github.com/docker/cli v29.0.0+incompatible //gomodjail:unconfined
 	github.com/docker/docker v28.5.2+incompatible //gomodjail:unconfined
 	github.com/docker/go-connections v0.6.0
 	github.com/docker/go-units v0.5.0
@@ -147,6 +147,10 @@ require (
 	tags.cncf.io/container-device-interface/specs-go v1.0.0 // indirect
 )
 
-require github.com/moby/sys/capability v0.4.0 // indirect
+require (
+	github.com/moby/moby/api v1.52.0 // indirect
+	github.com/moby/moby/client v0.1.0 // indirect
+	github.com/moby/sys/capability v0.4.0 // indirect
+)
 
 replace github.com/containerd/nerdctl/mod/tigron v0.0.0 => ./mod/tigron
