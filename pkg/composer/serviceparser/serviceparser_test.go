@@ -482,6 +482,44 @@ services:
 
 }
 
+func TestParseDualStackAddress(t *testing.T) {
+	t.Parallel()
+	const dockerComposeYAML = `
+services:
+  foo:
+    image: nginx:alpine
+    networks:
+      default:
+        ipv4_address: "172.30.0.100"
+        ipv6_address: "2001:db8:abc:123::42"
+networks:
+  default:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.30.0.0/24"
+        - subnet: "2001:db8:abc:123::/64"
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	fooSvc, err := project.GetService("foo")
+	assert.NilError(t, err)
+
+	foo, err := Parse(project, fooSvc)
+	assert.NilError(t, err)
+
+	t.Logf("foo: %+v", foo)
+	for _, c := range foo.Containers {
+		assert.Assert(t, in(c.RunArgs, "--ip=172.30.0.100"))
+		assert.Assert(t, in(c.RunArgs, "--ip6=2001:db8:abc:123::42"))
+	}
+}
+
 func TestParseConfigs(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
