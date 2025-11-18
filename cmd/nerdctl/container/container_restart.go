@@ -48,6 +48,9 @@ func restartOptions(cmd *cobra.Command) (types.ContainerRestartOptions, error) {
 		return types.ContainerRestartOptions{}, err
 	}
 
+	// Call GlobalFlags function here
+	nerdctlCmd, nerdctlArgs := helpers.GlobalFlags(cmd)
+
 	var timeout *time.Duration
 	if cmd.Flags().Changed("time") {
 		// Seconds to wait for stop before killing it
@@ -70,10 +73,12 @@ func restartOptions(cmd *cobra.Command) (types.ContainerRestartOptions, error) {
 	}
 
 	return types.ContainerRestartOptions{
-		Stdout:  cmd.OutOrStdout(),
-		GOption: globalOptions,
-		Timeout: timeout,
-		Signal:  signal,
+		Stdout:      cmd.OutOrStdout(),
+		GOption:     globalOptions,
+		Timeout:     timeout,
+		Signal:      signal,
+		NerdctlCmd:  nerdctlCmd,
+		NerdctlArgs: nerdctlArgs,
 	}, err
 }
 

@@ -54,6 +54,8 @@ func startAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	nerdctlCmd, nerdctlArgs := helpers.GlobalFlags(cmd)
+
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), globalOptions.Namespace, globalOptions.Address)
 	if err != nil {
 		return err
@@ -88,7 +90,7 @@ func startAction(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("service %q has no container to start", svcName)
 		}
 
-		if err := startContainers(ctx, client, containers, &globalOptions); err != nil {
+		if err := startContainers(ctx, client, containers, &globalOptions, nerdctlCmd, nerdctlArgs); err != nil {
 			return err
 		}
 	}
@@ -96,7 +98,7 @@ func startAction(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func startContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container, globalOptions *types.GlobalCommandOptions) error {
+func startContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container, globalOptions *types.GlobalCommandOptions, nerdctlCmd string, nerdctlArgs []string) error {
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, c := range containers {
 		c := c
@@ -114,7 +116,7 @@ func startContainers(ctx context.Context, client *containerd.Client, containers 
 			}
 
 			// in compose, always disable attach
-			if err := containerutil.Start(ctx, c, false, false, client, "", "", (*config.Config)(globalOptions)); err != nil {
+			if err := containerutil.Start(ctx, c, false, false, client, "", "", (*config.Config)(globalOptions), nerdctlCmd, nerdctlArgs); err != nil {
 				return err
 			}
 			info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)

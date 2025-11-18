@@ -91,6 +91,8 @@ func startAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	options.NerdctlCmd, options.NerdctlArgs = helpers.GlobalFlags(cmd)
+
 	client, ctx, cancel, err := clientutil.NewClient(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address)
 	if err != nil {
 		return err

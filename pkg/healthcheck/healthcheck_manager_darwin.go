@@ -25,7 +25,7 @@ import (
 )
 
 // CreateTimer sets up the transient systemd timer and service for healthchecks.
-func CreateTimer(ctx context.Context, container containerd.Container, cfg *config.Config) error {
+func CreateTimer(ctx context.Context, container containerd.Container, cfg *config.Config, nerdctlCmd string, nerdctlArgs []string) error {
 	return nil
 }
 
