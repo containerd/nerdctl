@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/remotes/docker"
@@ -45,27 +46,49 @@ func prepareImageStore(ctx context.Context, parsedReference *referenceutil.Image
 	return transferimage.NewStore(parsedReference.String(), storeOpts...), nil
 }
 
-func createOCIRegistry(ctx context.Context, parsedReference *referenceutil.ImageReference, gOptions types.GlobalCommandOptions, plainHTTP bool) (*registry.OCIRegistry, error) {
+func createOCIRegistry(ctx context.Context, parsedReference *referenceutil.ImageReference, gOptions types.GlobalCommandOptions, plainHTTP bool) (*registry.OCIRegistry, func(), error) {
 	ch, err := dockerconfigresolver.NewCredentialHelper(parsedReference.Domain)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	opts := []registry.Opt{
 		registry.WithCredentials(ch),
 	}
 
-	if len(gOptions.HostsDir) > 0 {
+	var tmpHostsDir string
+	cleanup := func() {
+		if tmpHostsDir != "" {
+			os.RemoveAll(tmpHostsDir)
+		}
+	}
+
+	// If insecure-registry is set, create a temporary hosts.toml with skip_verify
+	if gOptions.InsecureRegistry {
+		tmpHostsDir, err = dockerconfigresolver.CreateTmpHostsConfig(parsedReference.Domain, true)
+		if err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to create temporary hosts.toml for %q, continuing without it", parsedReference.Domain)
+		} else if tmpHostsDir != "" {
+			opts = append(opts, registry.WithHostDir(tmpHostsDir))
+		}
+	} else if len(gOptions.HostsDir) > 0 {
 		opts = append(opts, registry.WithHostDir(gOptions.HostsDir[0]))
 	}
 
 	if isLocalHost, err := docker.MatchLocalhost(parsedReference.Domain); err != nil {
-		return nil, err
+		cleanup()
+		return nil, nil, err
 	} else if isLocalHost || plainHTTP {
 		opts = append(opts, registry.WithDefaultScheme("http"))
 	}
 
-	return registry.NewOCIRegistry(ctx, parsedReference.String(), opts...)
+	reg, err := registry.NewOCIRegistry(ctx, parsedReference.String(), opts...)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+
+	return reg, cleanup, nil
 }
 
 func PullImageWithTransfer(ctx context.Context, client *containerd.Client, parsedReference *referenceutil.ImageReference, rawRef string, options types.ImagePullOptions) (*EnsuredImage, error) {
@@ -79,20 +102,22 @@ func PullImageWithTransfer(ctx context.Context, client *containerd.Client, parse
 		progressWriter = options.Stdout
 	}
 
-	fetcher, err := createOCIRegistry(ctx, parsedReference, options.GOptions, false)
+	fetcher, cleanup, err := createOCIRegistry(ctx, parsedReference, options.GOptions, false)
 	if err != nil {
 		return nil, err
 	}
+	defer cleanup()
 
 	transferErr := doTransfer(ctx, client, fetcher, store, options.Quiet, progressWriter)
 
-	if transferErr != nil && (errors.Is(transferErr, http.ErrSchemeMismatch) || errutil.IsErrConnectionRefused(transferErr)) {
+	if transferErr != nil && (errors.Is(transferErr, http.ErrSchemeMismatch) || errutil.IsErrConnectionRefused(transferErr) || errutil.IsErrHTTPResponseToHTTPSClient(transferErr) || errutil.IsErrTLSHandshakeFailure(transferErr)) {
 		if options.GOptions.InsecureRegistry {
-			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", parsedReference.Domain)
-			fetcher, err = createOCIRegistry(ctx, parsedReference, options.GOptions, true)
+			log.G(ctx).WithError(transferErr).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", parsedReference.Domain)
+			fetcher, cleanup2, err := createOCIRegistry(ctx, parsedReference, options.GOptions, true)
 			if err != nil {
 				return nil, err
 			}
+			defer cleanup2()
 			transferErr = doTransfer(ctx, client, fetcher, store, options.Quiet, progressWriter)
 		}
 	}
@@ -151,20 +176,22 @@ func PushImageWithTransfer(ctx context.Context, client *containerd.Client, parse
 		progressWriter = options.Stdout
 	}
 
-	pusher, err := createOCIRegistry(ctx, parsedReference, options.GOptions, false)
+	pusher, cleanup, err := createOCIRegistry(ctx, parsedReference, options.GOptions, false)
 	if err != nil {
 		return err
 	}
+	defer cleanup()
 
 	transferErr := doTransfer(ctx, client, source, pusher, options.Quiet, progressWriter)
 
-	if transferErr != nil && (errors.Is(transferErr, http.ErrSchemeMismatch) || errutil.IsErrConnectionRefused(transferErr)) {
+	if transferErr != nil && (errors.Is(transferErr, http.ErrSchemeMismatch) || errutil.IsErrConnectionRefused(transferErr) || errutil.IsErrHTTPResponseToHTTPSClient(transferErr) || errutil.IsErrTLSHandshakeFailure(transferErr)) {
 		if options.GOptions.InsecureRegistry {
-			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", parsedReference.Domain)
-			pusher, err = createOCIRegistry(ctx, parsedReference, options.GOptions, true)
+			log.G(ctx).WithError(transferErr).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", parsedReference.Domain)
+			pusher, cleanup2, err := createOCIRegistry(ctx, parsedReference, options.GOptions, true)
 			if err != nil {
 				return err
 			}
+			defer cleanup2()
 			transferErr = doTransfer(ctx, client, source, pusher, options.Quiet, progressWriter)
 		}
 	}

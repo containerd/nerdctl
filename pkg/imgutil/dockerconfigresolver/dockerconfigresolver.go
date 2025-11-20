@@ -20,6 +20,9 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/containerd/containerd/v2/core/remotes"
 	"github.com/containerd/containerd/v2/core/remotes/docker"
@@ -27,6 +30,7 @@ import (
 	"github.com/containerd/containerd/v2/core/transfer/registry"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
+	"github.com/pelletier/go-toml/v2"
 )
 
 var PushTracker = docker.NewInMemoryTracker()
@@ -217,4 +221,47 @@ func (ch *credentialHelper) GetCredentials(ctx context.Context, ref, host string
 		Username: username,
 		Secret:   secret,
 	}, nil
+}
+
+type hostFileConfig struct {
+	SkipVerify *bool `toml:"skip_verify,omitempty"`
+}
+
+// CreateTmpHostsConfig creates a temporary hosts directory with hosts.toml configured for skip_verify
+// Returns the temporary directory path or empty string if creation failed
+func CreateTmpHostsConfig(hostname string, skipVerify bool) (string, error) {
+	if !skipVerify {
+		return "", nil
+	}
+
+	tempDir, err := os.MkdirTemp("", "nerdctl-hosts-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp directory: %w", err)
+	}
+
+	hostDir := filepath.Join(tempDir, hostname)
+	if err := os.MkdirAll(hostDir, 0755); err != nil {
+		os.RemoveAll(tempDir)
+		return "", fmt.Errorf("failed to create host directory: %w", err)
+	}
+
+	config := hostFileConfig{}
+	if skipVerify {
+		skip := true
+		config.SkipVerify = &skip
+	}
+
+	data, err := toml.Marshal(config)
+	if err != nil {
+		os.RemoveAll(tempDir)
+		return "", fmt.Errorf("failed to marshal hosts config: %w", err)
+	}
+
+	hostsTomlPath := filepath.Join(hostDir, "hosts.toml")
+	if err := os.WriteFile(hostsTomlPath, data, 0644); err != nil {
+		os.RemoveAll(tempDir)
+		return "", fmt.Errorf("failed to write hosts.toml: %w", err)
+	}
+
+	return tempDir, nil
 }
