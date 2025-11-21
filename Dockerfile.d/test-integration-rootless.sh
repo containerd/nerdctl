@@ -53,6 +53,15 @@ else
   [proxy_plugins."stargz"]
     type = "snapshot"
     address = "/run/user/$(id -u)/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+  [proxy_plugins.stargz.exports]
+    root = "/home/rootless/.local/share/containerd-stargz-grpc/"
+    enable_remote_snapshot_annotations = "true"
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux"
+  snapshotter = "overlayfs"
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux"
+  snapshotter = "stargz"
 EOF
 	systemctl --user restart containerd.service
 	containerd-rootless-setuptool.sh -- install-ipfs --init --offline # offline ipfs daemon for testing

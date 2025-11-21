@@ -80,7 +80,6 @@ func ensureOne(ctx context.Context, client *containerd.Client, rawRef string, ta
 		// Get a resolver
 		var dOpts []dockerconfigresolver.Opt
 		if options.InsecureRegistry {
-			log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", parsedReference.Domain)
 			dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
 		}
 		dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.HostsDir))

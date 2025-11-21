@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"reflect"
 
 	"github.com/opencontainers/image-spec/identity"
@@ -39,7 +38,6 @@ import (
 	"github.com/containerd/platforms"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
-	"github.com/containerd/nerdctl/v2/pkg/errutil"
 	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
@@ -133,38 +131,7 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 		return nil, err
 	}
 
-	var dOpts []dockerconfigresolver.Opt
-	if options.GOptions.InsecureRegistry {
-		log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", parsedReference.Domain)
-		dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
-	}
-	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
-	resolver, err := dockerconfigresolver.New(ctx, parsedReference.Domain, dOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	img, err := PullImage(ctx, client, resolver, parsedReference.String(), options)
-	if err != nil {
-		// In some circumstance (e.g. people just use 80 port to support pure http), the error will contain message like "dial tcp <port>: connection refused".
-		if !errors.Is(err, http.ErrSchemeMismatch) && !errutil.IsErrConnectionRefused(err) {
-			return nil, err
-		}
-		if options.GOptions.InsecureRegistry {
-			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", parsedReference.Domain)
-			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
-			resolver, err = dockerconfigresolver.New(ctx, parsedReference.Domain, dOpts...)
-			if err != nil {
-				return nil, err
-			}
-			return PullImage(ctx, client, resolver, parsedReference.String(), options)
-		}
-		log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", parsedReference.Domain)
-		log.G(ctx).Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
-		return nil, err
-
-	}
-	return img, nil
+	return PullImageWithTransfer(ctx, client, parsedReference, rawRef, options)
 }
 
 // ResolveDigest resolves `rawRef` and returns its descriptor digest.

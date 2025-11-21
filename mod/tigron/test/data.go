@@ -31,7 +31,6 @@ import (
 
 const (
 	identifierMaxLength       = 76
-	identifierSeparator       = "-"
 	identifierSignatureLength = 8
 )
 
@@ -250,27 +249,18 @@ func newData(t tig.T, seed, parent Data) Data {
 func defaultIdentifierHashing(names ...string) string {
 	// Notes: identifier MAY be used for namespaces, image names, etc.
 	// So, the rules are stringent on what it can contain.
-	replaceWith := []byte(identifierSeparator)
-	name := strings.ToLower(strings.Join(names, string(replaceWith)))
+	// Join names without separator to avoid '-' which causes display issues in progress output
+	name := strings.ToLower(strings.Join(names, ""))
 	// Ensure we have a unique identifier despite characters replacements
 	// (well, as unique as the names collection being passed)
 	signature := fmt.Sprintf("%x", sha256.Sum256([]byte(name)))[0:identifierSignatureLength]
-	// Make sure we do not use any unsafe characters
-	safeName := regexp.MustCompile(`[^a-z0-9-]+`)
-	// And we avoid repeats of the separator
-	noRepeat := regexp.MustCompile(fmt.Sprintf(`[%s]{2,}`, replaceWith))
-	escapedName := safeName.ReplaceAll([]byte(name), replaceWith)
-	escapedName = noRepeat.ReplaceAll(escapedName, replaceWith)
-	// Do not allow trailing or leading dash (as that may stutter)
-	name = strings.Trim(string(escapedName), string(replaceWith))
+	safeName := regexp.MustCompile(`[^a-z0-9]+`)
+	escapedName := safeName.ReplaceAll([]byte(name), []byte(""))
+	name = string(escapedName)
 
 	// Ensure we will never go above 76 characters in length (with signature)
-	if len(name) > (identifierMaxLength - len(signature)) {
-		name = name[0 : identifierMaxLength-identifierSignatureLength-len(identifierSeparator)]
-	}
-
-	if name[len(name)-1:] != identifierSeparator {
-		signature = identifierSeparator + signature
+	if len(name) > (identifierMaxLength - identifierSignatureLength) {
+		name = name[0 : identifierMaxLength-identifierSignatureLength]
 	}
 
 	return name + signature
