@@ -175,8 +175,9 @@ func fieldsASCII(s string) []string {
 		switch r {
 		case '\t', '\n', '\f', '\r', ' ':
 			return true
+		default:
+			return false
 		}
-		return false
 	}
 	return strings.FieldsFunc(s, fn)
 }

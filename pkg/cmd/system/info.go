@@ -96,6 +96,7 @@ func Info(ctx context.Context, client *containerd.Client, options types.SystemIn
 		return prettyPrintInfoNative(options.Stdout, infoNative)
 	case "dockercompat":
 		return prettyPrintInfoDockerCompat(options.Stdout, options.Stderr, infoCompat, options.GOptions)
+	default:
 	}
 	return nil
 }
