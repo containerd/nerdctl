@@ -324,7 +324,8 @@ func getUserAndGroup(spec string) (user.User, user.Group, error) {
 	parts := strings.Split(spec, ":")
 	if len(parts) > 2 {
 		return user.User{}, user.Group{}, fmt.Errorf("invalid identity mapping format: %s", spec)
-	} else if len(parts) == 2 && (parts[0] == "" || parts[1] == "") {
+	}
+	if len(parts) == 2 && (parts[0] == "" || parts[1] == "") {
 		return user.User{}, user.Group{}, fmt.Errorf("invalid identity mapping format: %s", spec)
 	}
 
