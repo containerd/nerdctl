@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -330,6 +331,10 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	opts = append(opts, umaskOpts...)
 
+	if !isHostNetwork(netLabelOpts) {
+		opts = append(opts, withDefaultUnprivilegedPortSysctl())
+	}
+
 	rtCOpts, err := generateRuntimeCOpts(options.GOptions.CgroupManager, options.Runtime)
 	if err != nil {
 		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
@@ -561,6 +566,31 @@ func GenerateLogURI(dataStore string) (*url.URL, error) {
 	}
 
 	return cio.LogURIGenerator("binary", selfExe, args)
+}
+
+func isHostNetwork(netOpts types.NetworkOptions) bool {
+	return slices.Contains(netOpts.NetworkSlice, "host")
+}
+
+// withDefaultUnprivilegedPortSysctl ensures that containers can bind to
+// privileged ports (<1024) without requiring CAP_NET_BIND_SERVICE inside
+// the container by defaulting net.ipv4.ip_unprivileged_port_start to 0
+// in the container's network namespace.
+func withDefaultUnprivilegedPortSysctl() oci.SpecOpts {
+	const key = "net.ipv4.ip_unprivileged_port_start"
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		if s.Linux == nil {
+			s.Linux = &specs.Linux{}
+		}
+		if s.Linux.Sysctl == nil {
+			s.Linux.Sysctl = make(map[string]string)
+		}
+
+		if _, exists := s.Linux.Sysctl[key]; !exists {
+			s.Linux.Sysctl[key] = "0"
+		}
+		return nil
+	}
 }
 
 func withNerdctlOCIHook(cmd string, args []string) (oci.SpecOpts, error) {
