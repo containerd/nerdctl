@@ -18,9 +18,11 @@ package namespace
 
 import (
 	"context"
+	"errors"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
+	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
@@ -28,10 +30,17 @@ import (
 )
 
 func Inspect(ctx context.Context, client *containerd.Client, inspectedNamespaces []string, options types.NamespaceInspectOptions) error {
-	result := make([]interface{}, len(inspectedNamespaces))
-	for index, ns := range inspectedNamespaces {
+	result := []interface{}{}
+
+	warns := []error{}
+	for _, ns := range inspectedNamespaces {
 		ctx = namespaces.WithNamespace(ctx, ns)
-		labels, err := client.NamespaceService().Labels(ctx, ns)
+		namespaceService := client.NamespaceService()
+		if err := namespaceExists(ctx, namespaceService, ns); err != nil {
+			warns = append(warns, err)
+			continue
+		}
+		labels, err := namespaceService.Labels(ctx, ns)
 		if err != nil {
 			return err
 		}
@@ -39,7 +48,18 @@ func Inspect(ctx context.Context, client *containerd.Client, inspectedNamespaces
 			Name:   ns,
 			Labels: &labels,
 		}
-		result[index] = nsInspect
+		result = append(result, nsInspect)
 	}
-	return formatter.FormatSlice(options.Format, options.Stdout, result)
+	if err := formatter.FormatSlice(options.Format, options.Stdout, result); err != nil {
+		return err
+	}
+	for _, warn := range warns {
+		log.G(ctx).Warn(warn)
+	}
+
+	if len(warns) != 0 {
+		return errors.New("some namespaces could not be inspected")
+	}
+
+	return nil
 }
