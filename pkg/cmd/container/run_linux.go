@@ -25,7 +25,6 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 
 	containerd "github.com/containerd/containerd/v2/client"
-	"github.com/containerd/containerd/v2/contrib/nvidia"
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/log"
@@ -99,7 +98,7 @@ func setPlatformOptions(ctx context.Context, client *containerd.Client, id, uts 
 	if options.Sysctl != nil {
 		opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(options.Sysctl)))
 	}
-	gpuOpt, err := parseGPUOpts(options.GPUs)
+	gpuOpt, err := parseGPUOpts(options.GOptions.CDISpecDirs, options.GPUs)
 	if err != nil {
 		return nil, err
 	}
@@ -262,60 +261,36 @@ func withOOMScoreAdj(score int) oci.SpecOpts {
 	}
 }
 
-func parseGPUOpts(value []string) (res []oci.SpecOpts, _ error) {
+func parseGPUOpts(cdiSpecDirs []string, value []string) (res []oci.SpecOpts, _ error) {
 	for _, gpu := range value {
-		gpuOpt, err := parseGPUOpt(gpu)
+		req, err := ParseGPUOptCSV(gpu)
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, gpuOpt)
+		res = append(res, withCDIDevices(cdiSpecDirs, req.toCDIDeviceIDS()...))
 	}
 	return res, nil
 }
 
-func parseGPUOpt(value string) (oci.SpecOpts, error) {
-	req, err := ParseGPUOptCSV(value)
-	if err != nil {
-		return nil, err
+func (req *GPUReq) toCDIDeviceIDS() []string {
+	var cdiDeviceIDs []string
+	for _, id := range req.normalizeDeviceIDs() {
+		cdiDeviceIDs = append(cdiDeviceIDs, "nvidia.com/gpu="+id)
 	}
+	return cdiDeviceIDs
+}
 
-	var gpuOpts []nvidia.Opts
-
+func (req *GPUReq) normalizeDeviceIDs() []string {
 	if len(req.DeviceIDs) > 0 {
-		gpuOpts = append(gpuOpts, nvidia.WithDeviceUUIDs(req.DeviceIDs...))
-	} else if req.Count > 0 {
-		var devices []int
-		for i := 0; i < req.Count; i++ {
-			devices = append(devices, i)
-		}
-		gpuOpts = append(gpuOpts, nvidia.WithDevices(devices...))
-	} else if req.Count < 0 {
-		gpuOpts = append(gpuOpts, nvidia.WithAllDevices)
+		return req.DeviceIDs
+	}
+	if req.Count < 0 {
+		return []string{"all"}
+	}
+	var ids []string
+	for i := 0; i < req.Count; i++ {
+		ids = append(ids, fmt.Sprintf("%d", i))
 	}
 
-	str2cap := make(map[string]nvidia.Capability)
-	for _, c := range nvidia.AllCaps() {
-		str2cap[string(c)] = c
-	}
-	var nvidiaCaps []nvidia.Capability
-	for _, c := range req.Capabilities {
-		if cp, isNvidiaCap := str2cap[c]; isNvidiaCap {
-			nvidiaCaps = append(nvidiaCaps, cp)
-		}
-	}
-	if len(nvidiaCaps) != 0 {
-		gpuOpts = append(gpuOpts, nvidia.WithCapabilities(nvidiaCaps...))
-	} else {
-		// Add "utility", "compute" capability if unset.
-		// Please see also: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/user-guide.html#driver-capabilities
-		gpuOpts = append(gpuOpts, nvidia.WithCapabilities(nvidia.Utility, nvidia.Compute))
-	}
-
-	if rootlessutil.IsRootless() {
-		// "--no-cgroups" option is needed to nvidia-container-cli in rootless environment
-		// Please see also: https://github.com/moby/moby/issues/38729#issuecomment-463493866
-		gpuOpts = append(gpuOpts, nvidia.WithNoCgroups)
-	}
-
-	return nvidia.WithGPUs(gpuOpts...), nil
+	return ids
 }
