@@ -43,6 +43,7 @@ import (
 	estargzconvert "github.com/containerd/stargz-snapshotter/nativeconverter/estargz"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	nerdconverter "github.com/containerd/nerdctl/v2/pkg/imgutil/converter"
@@ -152,8 +153,21 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 			return err
 		}
 	} else {
-		if err := imgutil.PushImageWithTransfer(ctx, client, parsedReference, pushRef, ref, options); err != nil {
-			return err
+		// Transfer service is available in containerd 1.7, but full support is only in 2.0+
+		// For containerd 1.7, use the legacy resolver-based push method for better compatibility
+		useTransferAPI := containerdutil.SupportsFullTransferService(ctx, client)
+		if !useTransferAPI {
+			log.G(ctx).Debug("Detected containerd < 2.0, using legacy push method")
+		}
+
+		if useTransferAPI {
+			if err := imgutil.PushImageWithTransfer(ctx, client, parsedReference, pushRef, ref, options); err != nil {
+				return err
+			}
+		} else {
+			if err := pushImageWithLocal(ctx, client, parsedReference, pushRef, ref, options, platMC); err != nil {
+				return err
+			}
 		}
 	}
 
