@@ -404,6 +404,15 @@ cmd_entrypoint_install_fuse_overlayfs() {
 		  [proxy_plugins."fuse-overlayfs"]
 		    type = "snapshot"
 		    address = "${XDG_RUNTIME_DIR}/containerd-fuse-overlayfs.sock"
+		  [proxy_plugins."fuse-overlayfs".exports]
+		    root = "${XDG_DATA_HOME}/containerd-fuse-overlayfs/"
+			enable_remote_snapshot_annotations = "true"
+		[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+			platform = "linux"
+			snapshotter = "fuse-overlayfs"
+		[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+			platform = "linux"
+			snapshotter = "overlayfs"
 		###  END  ###
 	EOT
 	INFO "Set \`export CONTAINERD_SNAPSHOTTER=\"fuse-overlayfs\"\` to use the fuse-overlayfs snapshotter."
@@ -449,6 +458,15 @@ cmd_entrypoint_install_stargz() {
 		  [proxy_plugins."stargz"]
 		    type = "snapshot"
 		    address = "${XDG_RUNTIME_DIR}/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+		  [proxy_plugins.stargz.exports]
+		    root = "${XDG_DATA_HOME}/containerd-stargz-grpc/"
+		    enable_remote_snapshot_annotations = "true"
+		[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+			platform = "linux"
+			snapshotter = "stargz"
+		[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+			platform = "linux"
+			snapshotter = "overlayfs"
 		###  END  ###
 	EOT
 	INFO "Set \`export CONTAINERD_SNAPSHOTTER=\"stargz\"\` to use the stargz snapshotter."
