@@ -49,8 +49,11 @@ jobs:
           repo-access-token: ${{ secrets.GITHUB_TOKEN }}
           # go-licenses-ignore is set because go-licenses cannot detect the license of the following package:
           # * go-base36: Apache-2.0 OR MIT (https://github.com/multiformats/go-base36/blob/master/LICENSE.md)
+          # * filepath-securejoin: MPL-2.0 AND BSD-3-Clause, exceptionally approved by CNCF
+          #   (https://github.com/cncf/foundation/issues/1154#issuecomment-3562385979)
           #
           # The list of the CNCF-approved licenses can be found here:
           # https://github.com/cncf/foundation/blob/main/allowed-third-party-license-policy.md
           go-licenses-ignore: |
             github.com/multiformats/go-base36
+            github.com/cyphar/filepath-securejoin
