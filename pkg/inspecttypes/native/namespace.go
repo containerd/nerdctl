@@ -19,4 +19,23 @@ package native
 type Namespace struct {
 	Name   string             `json:"Name"`
 	Labels *map[string]string `json:"Labels,omitempty"`
+
+	Containers *ContainerInfo `json:"Containers"`
+	Images     *ImageInfo     `json:"Images"`
+	Volumes    *VolumeInfo    `json:"Volumes"`
+}
+
+type ContainerInfo struct {
+	Count int      `json:"count"`
+	IDs   []string `json:"ids"`
+}
+
+type ImageInfo struct {
+	Count int      `json:"count"`
+	IDs   []string `json:"ids"`
+}
+
+type VolumeInfo struct {
+	Count int      `json:"count"`
+	Names []string `json:"names"`
 }

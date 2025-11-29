@@ -19,14 +19,17 @@ package namespace
 import (
 	"context"
 	"errors"
+	"strings"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 )
 
 func Inspect(ctx context.Context, client *containerd.Client, inspectedNamespaces []string, options types.NamespaceInspectOptions) error {
@@ -40,13 +43,33 @@ func Inspect(ctx context.Context, client *containerd.Client, inspectedNamespaces
 			warns = append(warns, err)
 			continue
 		}
+
 		labels, err := namespaceService.Labels(ctx, ns)
 		if err != nil {
 			return err
 		}
+
+		containerInfo, err := containerInfo(ctx, client)
+		if err != nil {
+			warns = append(warns, err)
+		}
+
+		imageInfo, err := imageInfo(ctx, client)
+		if err != nil {
+			warns = append(warns, err)
+		}
+
+		volumeInfo, err := volumeInfo(ns, options)
+		if err != nil {
+			warns = append(warns, err)
+		}
+
 		nsInspect := native.Namespace{
-			Name:   ns,
-			Labels: &labels,
+			Name:       ns,
+			Labels:     &labels,
+			Containers: &containerInfo,
+			Images:     &imageInfo,
+			Volumes:    &volumeInfo,
 		}
 		result = append(result, nsInspect)
 	}
@@ -62,4 +85,67 @@ func Inspect(ctx context.Context, client *containerd.Client, inspectedNamespaces
 	}
 
 	return nil
+}
+func containerInfo(ctx context.Context, client *containerd.Client) (native.ContainerInfo, error) {
+	info := native.ContainerInfo{}
+	containers, err := client.Containers(ctx)
+	if err != nil {
+		return info, err
+	}
+
+	info.Count = len(containers)
+	ids := make([]string, info.Count)
+
+	info.IDs = ids
+	for idx, container := range containers {
+		ids[idx] = container.ID()
+	}
+
+	return info, nil
+}
+func imageInfo(ctx context.Context, client *containerd.Client) (native.ImageInfo, error) {
+	info := native.ImageInfo{}
+	imageService := client.ImageService()
+	images, err := imageService.List(ctx)
+	if err != nil {
+		return info, err
+	}
+
+	info.Count = len(images)
+	ids := make([]string, info.Count)
+
+	info.IDs = ids
+	for idx, img := range images {
+		ids[idx] = strings.Split(img.Target.Digest.String(), ":")[1]
+	}
+
+	return info, nil
+}
+
+func volumeInfo(namespace string, options types.NamespaceInspectOptions) (native.VolumeInfo, error) {
+	info := native.VolumeInfo{}
+
+	dataStore, err := clientutil.DataStore(options.GOptions.DataRoot, options.GOptions.Address)
+	if err != nil {
+		return info, err
+	}
+	volStore, err := volumestore.New(dataStore, namespace)
+	if err != nil {
+		return info, err
+	}
+
+	volumes, err := volStore.List(false)
+	if err != nil {
+		return info, err
+	}
+
+	info.Count = len(volumes)
+	names := make([]string, 0, info.Count)
+
+	for _, v := range volumes {
+		names = append(names, v.Name)
+	}
+
+	info.Names = names
+	return info, nil
 }
