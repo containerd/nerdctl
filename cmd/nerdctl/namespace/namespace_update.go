@@ -36,7 +36,8 @@ func updateCommand() *cobra.Command {
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 	}
-	cmd.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace")
+	cmd.Flags().StringArrayP("label", "l", nil, "Set labels for a namespace (required)")
+	cmd.MarkFlagRequired("label")
 	return cmd
 }
 
