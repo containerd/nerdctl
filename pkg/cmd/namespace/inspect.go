@@ -18,7 +18,6 @@ package namespace
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -80,10 +79,6 @@ func Inspect(ctx context.Context, client *containerd.Client, inspectedNamespaces
 		log.G(ctx).Warn(warn)
 	}
 
-	if len(warns) != 0 {
-		return errors.New("some namespaces could not be inspected")
-	}
-
 	return nil
 }
 func containerInfo(ctx context.Context, client *containerd.Client) (native.ContainerInfo, error) {
@@ -111,13 +106,19 @@ func imageInfo(ctx context.Context, client *containerd.Client) (native.ImageInfo
 		return info, err
 	}
 
-	info.Count = len(images)
-	ids := make([]string, info.Count)
+	ids := make([]string, 0, len(images))
+
+	for _, img := range images {
+		digestStrSplit := strings.SplitN(img.Target.Digest.String(), ":", 2)
+		if len(digestStrSplit) == 2 {
+			ids = append(ids, digestStrSplit[1][:12])
+		} else {
+			log.G(ctx).Warnf("invalid image digest format:%s", img.Target.Digest.String())
+		}
+	}
 
 	info.IDs = ids
-	for idx, img := range images {
-		ids[idx] = strings.Split(img.Target.Digest.String(), ":")[1]
-	}
+	info.Count = len(ids)
 
 	return info, nil
 }
