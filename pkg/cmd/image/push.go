@@ -63,9 +63,9 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 	}
 
 	if parsedReference.Protocol != "" {
-        if options.AllTags {
-            return fmt.Errorf("--all-tags is not supported for %q references", parsedReference.Protocol)
-        }
+		if options.AllTags {
+			return fmt.Errorf("--all-tags is not supported for %q references", parsedReference.Protocol)
+		}
 
 		if parsedReference.Protocol != referenceutil.IPFSProtocol {
 			return fmt.Errorf("ipfs scheme is only supported but got %q", parsedReference.Protocol)
@@ -110,6 +110,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return nil
 	}
 
+	// Handle --all-tags
 	if options.AllTags {
 		repo := ""
 		if parsedReference.Domain != "" {
@@ -135,8 +136,8 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 
 		for i, tagRef := range tagRefs {
 			tagOpts := options
-			tagOpts.AllTags = false   // avoid infinite recursion
-			tagOpts.SkipSoci = i > 0  // avoid SOCI indexing for the same image
+			tagOpts.AllTags = false  // avoid infinite recursion
+			tagOpts.SkipSoci = i > 0 // avoid SOCI indexing for the same image
 
 			if err := Push(ctx, client, tagRef, tagOpts); err != nil {
 				return err

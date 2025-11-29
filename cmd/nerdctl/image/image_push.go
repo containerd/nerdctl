@@ -130,7 +130,7 @@ func pushOptions(cmd *cobra.Command) (types.ImagePushOptions, error) {
 		IpfsEnsureImage:                ipfsEnsureImage,
 		IpfsAddress:                    ipfsAddress,
 		Quiet:                          quiet,
-		AllTags:						allTags,
+		AllTags:                        allTags,
 		AllowNondistributableArtifacts: allowNonDist,
 		Stdout:                         cmd.OutOrStdout(),
 	}, nil
