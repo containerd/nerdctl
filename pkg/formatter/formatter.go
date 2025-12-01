@@ -163,6 +163,8 @@ func FormatPorts(ports []cni.PortMapping) string {
 		)
 	}
 
+	sort.Strings(displayPorts)
+
 	return strings.Join(displayPorts, ", ")
 }
 
