@@ -16,7 +16,15 @@
 
 package namespace
 
-import "strings"
+import (
+	"context"
+	"fmt"
+	"slices"
+	"strings"
+
+	"github.com/compose-spec/compose-go/v2/errdefs"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
+)
 
 func objectWithLabelArgs(args []string) map[string]string {
 	if len(args) >= 1 {
@@ -38,4 +46,17 @@ func labelArgs(labelStrings []string) map[string]string {
 	}
 
 	return labels
+}
+
+// namespaceExists checks if the namespace exists
+func namespaceExists(ctx context.Context, store namespaces.Store, namespace string) error {
+	nsList, err := store.List(ctx)
+	if err != nil {
+		return err
+	}
+	if slices.Contains(nsList, namespace) {
+		return nil
+	}
+
+	return fmt.Errorf("namespace %s: %w", namespace, errdefs.ErrNotFound)
 }
