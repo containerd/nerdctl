@@ -7,7 +7,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/Microsoft/hcsshim v0.14.0-rc.1
-	github.com/compose-spec/compose-go/v2 v2.9.1 //gomodjail:unconfined
+	github.com/compose-spec/compose-go/v2 v2.10.0 //gomodjail:unconfined
 	github.com/containerd/accelerated-container-image v1.3.0
 	github.com/containerd/cgroups/v3 v3.1.0 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
@@ -152,6 +152,7 @@ require (
 	github.com/moby/moby/api v1.52.0 // indirect
 	github.com/moby/moby/client v0.1.0 // indirect
 	github.com/moby/sys/capability v0.4.0 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.3 // indirect
 )
 
 replace github.com/containerd/nerdctl/mod/tigron v0.0.0 => ./mod/tigron
