@@ -42,7 +42,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 //gomodjail:unconfined
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/ipfs/go-cid v0.6.0
-	github.com/klauspost/compress v1.18.1
+	github.com/klauspost/compress v1.18.2
 	github.com/mattn/go-isatty v0.0.20 //gomodjail:unconfined
 	github.com/moby/sys/mount v0.3.4
 	github.com/moby/sys/signal v0.7.1
