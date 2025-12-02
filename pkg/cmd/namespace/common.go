@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/compose-spec/compose-go/v2/errdefs"
+
 	"github.com/containerd/containerd/v2/pkg/namespaces"
 )
 
