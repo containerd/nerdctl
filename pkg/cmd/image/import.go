@@ -17,6 +17,7 @@
 package image
 
 import (
+	"archive/tar"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -25,73 +26,190 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	pathpkg "path"
 	"time"
 
 	"github.com/opencontainers/go-digest"
-	"github.com/opencontainers/image-spec/identity"
-	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
-	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/leases"
+	"github.com/containerd/containerd/v2/core/transfer"
+	tarchive "github.com/containerd/containerd/v2/core/transfer/archive"
+	transferimage "github.com/containerd/containerd/v2/core/transfer/image"
 	"github.com/containerd/containerd/v2/pkg/archive/compression"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/platforms"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
+	"github.com/containerd/nerdctl/v2/pkg/transferutil"
 )
 
 func Import(ctx context.Context, client *containerd.Client, options types.ImageImportOptions) (string, error) {
-	img, err := importRootfs(ctx, client, options.GOptions.Snapshotter, options)
+	prefix := options.Reference
+	if prefix == "" {
+		prefix = fmt.Sprintf("import-%s", time.Now().Format("2006-01-02"))
+	}
+
+	parsed, err := referenceutil.Parse(prefix)
 	if err != nil {
 		return "", err
 	}
-	return img.Name, nil
+	imageName := parsed.String()
+
+	platUnpack := platforms.DefaultSpec()
+	var opts []transferimage.StoreOpt
+	if options.Platform != "" {
+		p, err := platforms.Parse(options.Platform)
+		if err != nil {
+			return "", err
+		}
+		platUnpack = p
+		opts = append(opts, transferimage.WithPlatforms(platUnpack))
+	}
+
+	opts = append(opts, transferimage.WithUnpack(platUnpack, options.GOptions.Snapshotter))
+	opts = append(opts, transferimage.WithDigestRef(imageName, true, true))
+
+	var r io.ReadCloser
+	if rc, ok := options.Stdin.(io.ReadCloser); ok {
+		r = rc
+	} else {
+		r = io.NopCloser(options.Stdin)
+	}
+
+	converted, cleanup, err := ensureOCIArchive(ctx, client, r, options, prefix)
+	if err != nil {
+		return "", err
+	}
+	defer cleanup()
+
+	iis := tarchive.NewImageImportStream(converted, "")
+	is := transferimage.NewStore("", opts...)
+
+	pf, done := transferutil.ProgressHandler(ctx, os.Stderr)
+	defer done()
+
+	if err := client.Transfer(ctx, iis, is, transfer.WithProgress(pf)); err != nil {
+		return "", err
+	}
+
+	return imageName, nil
 }
 
-func importRootfs(ctx context.Context, client *containerd.Client, snapshotter string, options types.ImageImportOptions) (images.Image, error) {
-	var zero images.Image
+func ensureOCIArchive(ctx context.Context, client *containerd.Client, r io.ReadCloser, options types.ImageImportOptions, prefix string) (io.ReadCloser, func(), error) {
+	buf := &bytes.Buffer{}
+	tee := io.TeeReader(r, buf)
+
+	isStandardArchive, err := detectStandardImageArchive(tee)
+	if err != nil {
+		return nil, func() {}, err
+	}
+
+	combined := io.NopCloser(io.MultiReader(buf, r))
+	if isStandardArchive {
+		return combined, func() { r.Close() }, nil
+	}
+
+	converted, err := convertRootfsToOCIArchive(ctx, client, combined, options, prefix)
+	if err != nil {
+		r.Close()
+		return nil, func() {}, err
+	}
+
+	cleanup := func() {
+		r.Close()
+		if converted != nil {
+			converted.Close()
+		}
+	}
+
+	return converted, cleanup, nil
+}
+
+func detectStandardImageArchive(r io.Reader) (bool, error) {
+	tr := tar.NewReader(r)
+	const maxHeadersToCheck = 10
+
+	for i := 0; i < maxHeadersToCheck; i++ {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return false, err
+		}
+
+		name := pathpkg.Clean(hdr.Name)
+		if name == "manifest.json" || name == ocispec.ImageLayoutFile {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func convertRootfsToOCIArchive(ctx context.Context, client *containerd.Client, r io.ReadCloser, options types.ImageImportOptions, prefix string) (io.ReadCloser, error) {
+	defer r.Close()
 
 	ctx, done, err := client.WithLease(ctx, leases.WithRandomID(), leases.WithExpiration(1*time.Hour))
 	if err != nil {
-		return zero, err
+		return nil, err
 	}
 	defer done(ctx)
 
-	if options.Stdin == nil {
-		return zero, fmt.Errorf("no input stream provided")
-	}
-	decomp, err := compression.DecompressStream(options.Stdin)
+	decomp, err := compression.DecompressStream(r)
 	if err != nil {
-		return zero, err
+		return nil, err
 	}
 	defer decomp.Close()
 
 	cs := client.ContentStore()
-
-	ref := randomRef("import-rootfs-")
+	ref := randomRef("import-layer-")
 	w, err := content.OpenWriter(ctx, cs, content.WithRef(ref))
 	if err != nil {
-		return zero, err
+		return nil, err
 	}
 	defer w.Close()
+
 	if err := w.Truncate(0); err != nil {
-		return zero, err
+		return nil, err
 	}
 
+	layerDigest, diffID, layerSize, err := compressAndWriteLayer(ctx, w, decomp)
+	if err != nil {
+		return nil, err
+	}
+
+	imgConfig, configDigest, err := buildImageConfig(diffID, options)
+	if err != nil {
+		return nil, err
+	}
+
+	layerContent, err := readLayerContent(ctx, cs, layerDigest, layerSize)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildDockerArchive(imgConfig, configDigest, layerContent, layerDigest, prefix)
+}
+
+func compressAndWriteLayer(ctx context.Context, w content.Writer, r io.Reader) (digest.Digest, digest.Digest, int64, error) {
 	digester := digest.Canonical.Digester()
-	tee := io.TeeReader(decomp, digester.Hash())
+	tee := io.TeeReader(r, digester.Hash())
 	pr, pw := io.Pipe()
 	gz := gzip.NewWriter(pw)
+
 	doneCh := make(chan error, 1)
 	go func() {
-		_, err := io.Copy(gz, tee)
-		if err != nil {
-			doneCh <- err
+		defer func() {
 			_ = gz.Close()
+		}()
+
+		if _, err := io.Copy(gz, tee); err != nil {
+			doneCh <- err
 			_ = pw.CloseWithError(err)
 			return
 		}
@@ -105,10 +223,10 @@ func importRootfs(ctx context.Context, client *containerd.Client, snapshotter st
 
 	n, err := io.Copy(w, pr)
 	if err != nil {
-		return zero, err
+		return "", "", 0, err
 	}
 	if err := <-doneCh; err != nil {
-		return zero, err
+		return "", "", 0, err
 	}
 
 	diffID := digester.Digest()
@@ -116,21 +234,18 @@ func importRootfs(ctx context.Context, client *containerd.Client, snapshotter st
 		"containerd.io/uncompressed": diffID.String(),
 	}
 	if err := w.Commit(ctx, n, "", content.WithLabels(labels)); err != nil && !errdefs.IsAlreadyExists(err) {
-		return zero, err
-	}
-	layerDesc := ocispec.Descriptor{
-		MediaType: images.MediaTypeDockerSchema2LayerGzip,
-		Digest:    w.Digest(),
-		Size:      n,
+		return "", "", 0, err
 	}
 
+	return w.Digest(), diffID, n, nil
+}
+
+func buildImageConfig(diffID digest.Digest, options types.ImageImportOptions) ([]byte, digest.Digest, error) {
 	ociplat := platforms.DefaultSpec()
 	if options.Platform != "" {
-		p, err := platforms.Parse(options.Platform)
-		if err != nil {
-			return zero, err
+		if p, err := platforms.Parse(options.Platform); err == nil {
+			ociplat = p
 		}
-		ociplat = p
 	}
 
 	created := time.Now().UTC()
@@ -153,100 +268,85 @@ func importRootfs(ctx context.Context, client *containerd.Client, snapshotter st
 		}},
 	}
 
-	manifestDesc, _, err := writeConfigAndManifest(ctx, cs, snapshotter, imgConfig, []ocispec.Descriptor{layerDesc})
+	configJSON, err := json.Marshal(imgConfig)
 	if err != nil {
-		return zero, err
+		return nil, "", err
+	}
+	return configJSON, digest.FromBytes(configJSON), nil
+}
+
+func readLayerContent(ctx context.Context, cs content.Store, layerDigest digest.Digest, size int64) ([]byte, error) {
+	ra, err := cs.ReaderAt(ctx, ocispec.Descriptor{Digest: layerDigest, Size: size})
+	if err != nil {
+		return nil, err
+	}
+	defer ra.Close()
+
+	layerContent := make([]byte, size)
+	if _, err := ra.ReadAt(layerContent, 0); err != nil {
+		return nil, err
+	}
+	return layerContent, nil
+}
+
+func buildDockerArchive(configJSON []byte, configDigest digest.Digest, layerContent []byte, layerDigest digest.Digest, prefix string) (io.ReadCloser, error) {
+	layerFileName := layerDigest.Encoded() + ".tar.gz"
+	configFileName := configDigest.Encoded() + ".json"
+
+	var repoTags []string
+	if parsed, err := referenceutil.Parse(prefix); err == nil && parsed.String() != "" {
+		repoTags = []string{parsed.String()}
 	}
 
-	storedName := options.Reference
-	if storedName == "" {
-		storedName = manifestDesc.Digest.String()
-	} else if refParsed, err := referenceutil.Parse(storedName); err == nil {
-		if refParsed.ExplicitTag == "" {
-			storedName = refParsed.FamiliarName() + ":latest"
-		}
-		if p2, err := referenceutil.Parse(storedName); err == nil {
-			storedName = p2.String()
-		}
-	}
-	name := storedName
+	dockerManifest := []struct {
+		Config   string   `json:"Config"`
+		RepoTags []string `json:"RepoTags,omitempty"`
+		Layers   []string `json:"Layers"`
+	}{{
+		Config:   configFileName,
+		RepoTags: repoTags,
+		Layers:   []string{layerFileName},
+	}}
 
-	img := images.Image{
-		Name:      name,
-		Target:    manifestDesc,
-		CreatedAt: time.Now(),
-	}
-	if _, err := client.ImageService().Update(ctx, img); err != nil {
-		if !errdefs.IsNotFound(err) {
-			return zero, err
-		}
-		if _, err := client.ImageService().Create(ctx, img); err != nil {
-			return zero, err
-		}
+	dockerManifestJSON, err := json.Marshal(dockerManifest)
+	if err != nil {
+		return nil, err
 	}
 
-	cimg := containerd.NewImage(client, img)
-	if err := cimg.Unpack(ctx, snapshotter); err != nil {
-		return zero, err
+	buf := &bytes.Buffer{}
+	tw := tar.NewWriter(buf)
+
+	files := []struct {
+		name    string
+		content []byte
+	}{
+		{"manifest.json", dockerManifestJSON},
+		{configFileName, configJSON},
+		{layerFileName, layerContent},
 	}
-	return img, nil
+
+	for _, f := range files {
+		if err := tw.WriteHeader(&tar.Header{
+			Name: f.name,
+			Mode: 0644,
+			Size: int64(len(f.content)),
+		}); err != nil {
+			return nil, err
+		}
+		if _, err := tw.Write(f.content); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		return nil, err
+	}
+
+	return io.NopCloser(buf), nil
 }
 
 func randomRef(prefix string) string {
 	var b [6]byte
 	_, _ = rand.Read(b[:])
 	return prefix + base64.RawURLEncoding.EncodeToString(b[:])
-}
-
-func writeConfigAndManifest(ctx context.Context, cs content.Store, snapshotter string, config ocispec.Image, layers []ocispec.Descriptor) (ocispec.Descriptor, digest.Digest, error) {
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return ocispec.Descriptor{}, "", err
-	}
-	configDesc := ocispec.Descriptor{
-		MediaType: images.MediaTypeDockerSchema2Config,
-		Digest:    digest.FromBytes(configJSON),
-		Size:      int64(len(configJSON)),
-	}
-
-	gcLabel := map[string]string{}
-	if len(config.RootFS.DiffIDs) > 0 && snapshotter != "" {
-		gcLabel[fmt.Sprintf("containerd.io/gc.ref.snapshot.%s", snapshotter)] = identity.ChainID(config.RootFS.DiffIDs).String()
-	}
-	if err := content.WriteBlob(ctx, cs, configDesc.Digest.String(), bytes.NewReader(configJSON), configDesc, content.WithLabels(gcLabel)); err != nil && !errdefs.IsAlreadyExists(err) {
-		return ocispec.Descriptor{}, "", err
-	}
-
-	manifest := struct {
-		MediaType string `json:"mediaType,omitempty"`
-		ocispec.Manifest
-	}{
-		MediaType: images.MediaTypeDockerSchema2Manifest,
-		Manifest: ocispec.Manifest{
-			Versioned: specs.Versioned{SchemaVersion: 2},
-			Config:    configDesc,
-			Layers:    layers,
-		},
-	}
-	manifestJSON, err := json.Marshal(manifest)
-	if err != nil {
-		return ocispec.Descriptor{}, "", err
-	}
-	manifestDesc := ocispec.Descriptor{
-		MediaType: images.MediaTypeDockerSchema2Manifest,
-		Digest:    digest.FromBytes(manifestJSON),
-		Size:      int64(len(manifestJSON)),
-	}
-
-	refLabels := map[string]string{
-		"containerd.io/gc.ref.content.0": configDesc.Digest.String(),
-	}
-	for i, l := range layers {
-		refLabels[fmt.Sprintf("containerd.io/gc.ref.content.%d", i+1)] = l.Digest.String()
-	}
-	if err := content.WriteBlob(ctx, cs, manifestDesc.Digest.String(), bytes.NewReader(manifestJSON), manifestDesc, content.WithLabels(refLabels)); err != nil && !errdefs.IsAlreadyExists(err) {
-		return ocispec.Descriptor{}, "", err
-	}
-
-	return manifestDesc, configDesc.Digest, nil
 }

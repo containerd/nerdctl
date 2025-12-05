@@ -15,6 +15,11 @@ Nydus snapshotter is a remote snapshotter plugin of containerd for [Nydus](https
   [proxy_plugins.nydus]
     type = "snapshot"
     address = "/run/containerd-nydus-grpc/containerd-nydus-grpc.sock"
+
+# Optional: Configure nydus for image unpacking (allows automatic snapshotter selection)
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux"
+  snapshotter = "nydus"
 ```
 
 - Launch `containerd` and `containerd-nydus-grpc`

@@ -46,7 +46,7 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/cioutil"
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
-	"github.com/containerd/nerdctl/v2/pkg/infoutil"
+	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 )
 
 // TaskOptions contains options for creating a new task
@@ -201,7 +201,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 	} else {
 		var in io.Reader
 		if opts.IsInteractive {
-			if sv, err := infoutil.ServerSemVer(ctx, client); err != nil {
+			if sv, err := containerdutil.ServerSemVer(ctx, client); err != nil {
 				log.G(ctx).Warn(err)
 			} else if sv.LessThan(semver.MustParse("1.6.0-0")) {
 				log.G(ctx).Warnf("`nerdctl (run|exec) -i` without `-t` expects containerd 1.6 or later, got containerd %v", sv)

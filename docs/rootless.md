@@ -73,6 +73,11 @@ Then, add the following config to `~/.config/containerd/config.toml`, and run `s
       type = "snapshot"
 # NOTE: replace "1000" with your actual UID
       address = "/run/user/1000/containerd-fuse-overlayfs.sock"
+
+# Optional: Configure fuse-overlayfs for image unpacking (allows automatic snapshotter selection)
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux"
+  snapshotter = "fuse-overlayfs"
 ```
 
 The snapshotter can be specified as `$CONTAINERD_SNAPSHOTTER`.
@@ -98,6 +103,11 @@ Then, add the following config to `~/.config/containerd/config.toml` and run `sy
       type = "snapshot"
 # NOTE: replace "1000" with your actual UID
       address = "/run/user/1000/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+
+# Optional: Configure stargz for image unpacking (allows automatic snapshotter selection)
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux"
+  snapshotter = "stargz"
 ```
 
 The snapshotter can be specified as `$CONTAINERD_SNAPSHOTTER`.

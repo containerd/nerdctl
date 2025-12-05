@@ -22,6 +22,11 @@ See https://github.com/containerd/stargz-snapshotter to learn further informatio
   [proxy_plugins.stargz]                                                                                  
     type = "snapshot"
     address = "/run/containerd-stargz-grpc/containerd-stargz-grpc.sock"
+
+# Optional: Configure stargz for image unpacking (allows automatic snapshotter selection)
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux"
+  snapshotter = "stargz"
 ```
 
 - Launch `containerd` and `containerd-stargz-grpc`
