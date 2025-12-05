@@ -439,6 +439,43 @@ services:
 	}
 }
 
+func TestTmpfsVolumeLongSyntax(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("test is not compatible with windows")
+	}
+
+	const dockerComposeYAML = `
+services:
+  foo:
+    image: nginx:alpine
+    volumes:
+      - type: tmpfs
+        target: /target
+        read_only: true
+        tmpfs:
+          size: 2G
+          mode: 0o1770
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	fooSvc, err := project.GetService("foo")
+	assert.NilError(t, err)
+
+	foo, err := Parse(project, fooSvc)
+	assert.NilError(t, err)
+
+	t.Logf("foo: %+v", foo)
+	for _, c := range foo.Containers {
+		assert.Assert(t, in(c.RunArgs, "--tmpfs=/target:ro,size=2147483648,mode=1770"))
+	}
+}
+
 func TestParseNetworkMode(t *testing.T) {
 	t.Parallel()
 	const dockerComposeYAML = `
