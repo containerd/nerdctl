@@ -26,9 +26,15 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
 	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func getCapEff(base *testutil.Base, args ...string) uint64 {
@@ -184,6 +190,102 @@ func TestRunApparmor(t *testing.T) {
 	base.Cmd("run", "--rm", "--security-opt", "apparmor="+defaultProfile, testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly(attrCurrentEnforceExpected)
 	base.Cmd("run", "--rm", "--security-opt", "apparmor=unconfined", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutContains("unconfined")
 	base.Cmd("run", "--rm", "--privileged", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutContains("unconfined")
+}
+
+func TestRunSelinuxWithSecurityOpt(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.NoSelinux)
+	testContainer := testutil.Identifier(t)
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "test run with selinux-enabled",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("--selinux-enabled", "run", "-d", "--security-opt", "label=type:container_t", "--name", testContainer, "sleep", "infinity")
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", testContainer)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						func(stdout string, t tig.T) {
+							inspectOut := helpers.Capture("container", "inspect", "--format", "{{.State.Pid}}", testContainer)
+							pid := strings.TrimSpace(inspectOut)
+							fileName := fmt.Sprintf("/proc/%s/attr/current", pid)
+							data, err := os.ReadFile(fileName)
+							assert.NilError(t, err)
+							assert.Equal(t, strings.Contains(string(data), "container_t"), true)
+						},
+					),
+				}
+			},
+		},
+	}
+}
+func TestRunSelinux(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.NoSelinux)
+	testContainer := testutil.Identifier(t)
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "test run with selinux-enabled",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("--selinux-enabled", "run", "-d", "--name", testContainer, "sleep", "infinity")
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", testContainer)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						func(stdout string, t tig.T) {
+							inspectOut := helpers.Capture("container", "inspect", "--format", "{{.State.Pid}}", testContainer)
+							pid := strings.TrimSpace(inspectOut)
+							fileName := fmt.Sprintf("/proc/%s/attr/current", pid)
+							data, err := os.ReadFile(fileName)
+							assert.NilError(t, err)
+							assert.Equal(t, strings.Contains(string(data), "container_t"), true)
+						},
+					),
+				}
+			},
+		},
+	}
+}
+
+func TestRunSelinuxWithVolumeLabel(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.NoSelinux)
+	testContainer := testutil.Identifier(t)
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "test run with selinux-enabled",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("--selinux-enabled", "run", "-d", "-v", fmt.Sprintf("/%s:/%s:Z", testContainer, testContainer), "--name", testContainer, "sleep", "infinity")
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", testContainer)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						func(stdout string, t tig.T) {
+							cmd := exec.Command("ls", "-Z", fmt.Sprintf("/%s", testContainer))
+							lsStdout, err := cmd.CombinedOutput()
+							assert.NilError(t, err)
+							assert.Equal(t, strings.Contains(string(lsStdout), "container_t"), true)
+						},
+					),
+				}
+			},
+		},
+	}
 }
 
 // TestRunSeccompCapSysPtrace tests https://github.com/containerd/nerdctl/issues/976
