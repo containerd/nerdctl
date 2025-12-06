@@ -260,6 +260,7 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 		switch imgVol {
 		case "/", "/dev", "/sys", "proc":
 			return nil, nil, nil, fmt.Errorf("invalid VOLUME: %q", imgVolRaw)
+		default:
 		}
 		if _, ok := mounted[imgVol]; ok {
 			continue
