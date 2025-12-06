@@ -26,9 +26,12 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/require"
+
 	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func getCapEff(base *testutil.Base, args ...string) uint64 {
@@ -184,6 +187,48 @@ func TestRunApparmor(t *testing.T) {
 	base.Cmd("run", "--rm", "--security-opt", "apparmor="+defaultProfile, testutil.AlpineImage, "cat", attrCurrentPath).AssertOutExactly(attrCurrentEnforceExpected)
 	base.Cmd("run", "--rm", "--security-opt", "apparmor=unconfined", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutContains("unconfined")
 	base.Cmd("run", "--rm", "--privileged", testutil.AlpineImage, "cat", attrCurrentPath).AssertOutContains("unconfined")
+}
+
+func TestRunSelinuxWithSecurityOpt(t *testing.T) {
+	require.Not(nerdtest.NoSelinux)
+	base := testutil.NewBase(t)
+	testContainer := testutil.Identifier(t)
+	base.Cmd("run", "--name", testContainer, "-d", "--security-opt", "label=type:container_t", testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	defer func() {
+		base.Cmd("rm", "-f", testContainer)
+	}()
+	inspectCmd := base.Cmd("inspect", testContainer, "--format", "{{.State.Pid}}")
+	inspectRes := inspectCmd.Run()
+	pid := strings.TrimSpace(inspectRes.Stdout())
+	cmd := exec.Command("ps", "-Z", pid)
+	stdout, err := cmd.Output()
+	if err != nil {
+		output := strings.TrimSpace(string(stdout))
+		if strings.Contains(output, "container_t") {
+			t.Fatal(fmt.Errorf("expect label container_t but get %s", output))
+		}
+	}
+}
+
+func TestRunSelinux(t *testing.T) {
+	require.Not(nerdtest.NoSelinux)
+	base := testutil.NewBase(t)
+	testContainer := testutil.Identifier(t)
+	base.Cmd("--selinux-enabled", "run", "--name", testContainer, "-d", testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	defer func() {
+		base.Cmd("rm", "-f", testContainer)
+	}()
+	inspectCmd := base.Cmd("inspect", testContainer, "--format", "{{.State.Pid}}")
+	inspectRes := inspectCmd.Run()
+	pid := strings.TrimSpace(inspectRes.Stdout())
+	cmd := exec.Command("ps", "-Z", pid)
+	stdout, err := cmd.Output()
+	if err != nil {
+		output := strings.TrimSpace(string(stdout))
+		if strings.Contains(output, "container_t") {
+			t.Fatal(fmt.Errorf("expect label container_t but get %s", output))
+		}
+	}
 }
 
 // TestRunSeccompCapSysPtrace tests https://github.com/containerd/nerdctl/issues/976
