@@ -17,107 +17,124 @@
 package container
 
 import (
-	"errors"
 	"runtime"
 	"strings"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestExec(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	testContainer := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	nerdtest.Setup()
 
-	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
-	base.EnsureContainerStarted(testContainer)
-
-	base.Cmd("exec", testContainer, "echo", "success").AssertOutExactly("success\n")
+	testCase := &test.Case{
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rm", "-f", data.Identifier())
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("exec", data.Identifier(), "echo", "success")
+		},
+		Expected: test.Expects(0, nil, expect.Equals("success\n")),
+	}
+	testCase.Run(t)
 }
 
 func TestExecWithDoubleDash(t *testing.T) {
-	t.Parallel()
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	testContainer := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	nerdtest.Setup()
 
-	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
-	base.EnsureContainerStarted(testContainer)
-
-	base.Cmd("exec", testContainer, "--", "echo", "success").AssertOutExactly("success\n")
+	testCase := &test.Case{
+		Require: require.Not(nerdtest.Docker),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rm", "-f", data.Identifier())
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("exec", data.Identifier(), "--", "echo", "success")
+		},
+		Expected: test.Expects(0, nil, expect.Equals("success\n")),
+	}
+	testCase.Run(t)
 }
 
 func TestExecStdin(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-
-	testContainer := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
-	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
-	base.EnsureContainerStarted(testContainer)
+	nerdtest.Setup()
 
 	const testStr = "test-exec-stdin"
-	opts := []func(*testutil.Cmd){
-		testutil.WithStdin(strings.NewReader(testStr)),
+	testCase := &test.Case{
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rm", "-f", data.Identifier())
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			cmd := helpers.Command("exec", "-i", data.Identifier(), "cat")
+			cmd.Feed(strings.NewReader(testStr))
+			return cmd
+		},
+		Expected: test.Expects(0, nil, expect.Equals(testStr)),
 	}
-	base.Cmd("exec", "-i", testContainer, "cat").CmdOption(opts...).AssertOutExactly(testStr)
+	testCase.Run(t)
 }
 
 // FYI: https://github.com/containerd/nerdctl/blob/e4b2b6da56555dc29ed66d0fd8e7094ff2bc002d/cmd/nerdctl/run_test.go#L177
 func TestExecEnv(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	testContainer := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	nerdtest.Setup()
 
-	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "1h").AssertOK()
-	base.EnsureContainerStarted(testContainer)
+	testCase := &test.Case{
+		Env: map[string]string{
+			"CORGE":  "corge-value-in-host",
+			"GARPLY": "garply-value-in-host",
+		},
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rm", "-f", data.Identifier())
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("exec",
+				"--env", "FOO=foo1,foo2",
+				"--env", "BAR=bar1 bar2",
+				"--env", "BAZ=",
+				"--env", "QUX", // not exported in OS
+				"--env", "QUUX=quux1",
+				"--env", "QUUX=quux2",
+				"--env", "CORGE", // OS exported
+				"--env", "GRAULT=grault_key=grault_value", // value contains `=` char
+				"--env", "GARPLY=", // OS exported
+				"--env", "WALDO=", // not exported in OS
 
-	base.Env = append(base.Env, "CORGE=corge-value-in-host", "GARPLY=garply-value-in-host")
-	base.Cmd("exec",
-		"--env", "FOO=foo1,foo2",
-		"--env", "BAR=bar1 bar2",
-		"--env", "BAZ=",
-		"--env", "QUX", // not exported in OS
-		"--env", "QUUX=quux1",
-		"--env", "QUUX=quux2",
-		"--env", "CORGE", // OS exported
-		"--env", "GRAULT=grault_key=grault_value", // value contains `=` char
-		"--env", "GARPLY=", // OS exported
-		"--env", "WALDO=", // not exported in OS
-
-		testContainer, "env").AssertOutWithFunc(func(stdout string) error {
-		if !strings.Contains(stdout, "\nFOO=foo1,foo2\n") {
-			return errors.New("got bad FOO")
-		}
-		if !strings.Contains(stdout, "\nBAR=bar1 bar2\n") {
-			return errors.New("got bad BAR")
-		}
-		if !strings.Contains(stdout, "\nBAZ=\n") && runtime.GOOS != "windows" {
-			return errors.New("got bad BAZ")
-		}
-		if strings.Contains(stdout, "QUX") {
-			return errors.New("got bad QUX (should not be set)")
-		}
-		if !strings.Contains(stdout, "\nQUUX=quux2\n") {
-			return errors.New("got bad QUUX")
-		}
-		if !strings.Contains(stdout, "\nCORGE=corge-value-in-host\n") {
-			return errors.New("got bad CORGE")
-		}
-		if !strings.Contains(stdout, "\nGRAULT=grault_key=grault_value\n") {
-			return errors.New("got bad GRAULT")
-		}
-		if !strings.Contains(stdout, "\nGARPLY=\n") && runtime.GOOS != "windows" {
-			return errors.New("got bad GARPLY")
-		}
-		if !strings.Contains(stdout, "\nWALDO=\n") && runtime.GOOS != "windows" {
-			return errors.New("got bad WALDO")
-		}
-
-		return nil
-	})
+				data.Identifier(), "env")
+		},
+		Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
+			assert.Assert(t, strings.Contains(stdout, "\nFOO=foo1,foo2\n"), "got bad FOO")
+			assert.Assert(t, strings.Contains(stdout, "\nBAR=bar1 bar2\n"), "got bad BAR")
+			if runtime.GOOS != "windows" {
+				assert.Assert(t, strings.Contains(stdout, "\nBAZ=\n"), "got bad BAZ")
+			}
+			assert.Assert(t, !strings.Contains(stdout, "QUX"), "got bad QUX (should not be set)")
+			assert.Assert(t, strings.Contains(stdout, "\nQUUX=quux2\n"), "got bad QUUX")
+			assert.Assert(t, strings.Contains(stdout, "\nCORGE=corge-value-in-host\n"), "got bad CORGE")
+			assert.Assert(t, strings.Contains(stdout, "\nGRAULT=grault_key=grault_value\n"), "got bad GRAULT")
+			if runtime.GOOS != "windows" {
+				assert.Assert(t, strings.Contains(stdout, "\nGARPLY=\n"), "got bad GARPLY")
+				assert.Assert(t, strings.Contains(stdout, "\nWALDO=\n"), "got bad WALDO")
+			}
+		}),
+	}
+	testCase.Run(t)
 }
