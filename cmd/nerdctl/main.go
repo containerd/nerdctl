@@ -111,7 +111,7 @@ func usage(c *cobra.Command) error {
 		t += "\n"
 		return t
 	}
-	s += printCommands("helpers.Management commands", managementCommands)
+	s += printCommands("Management commands", managementCommands)
 	s += printCommands("Commands", nonManagementCommands)
 
 	s += Bold("Flags") + ":\n"
