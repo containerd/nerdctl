@@ -394,14 +394,29 @@ nerdtest.Soci // a test requires the soci snapshotter
 nerdtest.Stargz // a test requires the stargz snapshotter
 nerdtest.Rootless // a test requires Rootless
 nerdtest.Rootful // a test requires Rootful
+nerdtest.RootlessWithDetachNetNS // a test requires rootless with detached netns (RootlessKit v2)
+nerdtest.RootlessWithoutDetachNetNS // a test requires rootless without detached netns (RootlessKit v1)
 nerdtest.Build // a test requires buildkit
 nerdtest.CGroup // a test requires cgroup
+nerdtest.CgroupsAccessible // a test requires cgroup; passes if rootful, or rootless with cgroup v2
+nerdtest.CGroupV2 // a test requires cgroup v2
 nerdtest.NerdctlNeedsFixing // indicates that a test cannot be run on nerdctl yet as a fix is required
 nerdtest.BrokenTest // indicates that a test needs to be fixed and has been restricted to run only in certain cases
 nerdtest.OnlyIPv6 // a test is meant to run solely in the ipv6 environment
 nerdtest.OnlyKubernetes // a test is meant to run solely in the Kubernetes environment
 nerdtest.IsFlaky // indicates that a test will fail in a flaky way - this may be the test fault, or more likely something racy in nerdctl
 nerdtest.Private // see below
+nerdtest.Registry // a test requires a registry to be deployed
+nerdtest.IPFS // a test requires ipfs (binary present)
+nerdtest.Gomodjail // a test requires the target binary to be packed with gomodjail
+nerdtest.AllowModifyUserns // a test requires allow-modify-userns to be enabled
+nerdtest.RemapIDs // a test requires snapshotter to support ID remapping
+nerdtest.HyperV // a test requires Hyper-V (Windows)
+
+nerdtest.Info(func(info dockercompat.Info) error { ... }) // `nerdctl info` should satisfy custom conditions
+nerdtest.SociVersion("0.10.0") // SOCI snapshotter version check
+nerdtest.ContainerdVersion("2.0.0") // containerd version check
+nerdtest.CNIFirewallVersion("1.7.1") // CNI firewall plugin version check
 ```
 
 ### About `nerdtest.Private`
