@@ -699,7 +699,14 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		if err != nil {
 			return nil, err
 		}
-		c.RunArgs = append(c.RunArgs, "-v="+vStr)
+
+		switch v.Type {
+		case "tmpfs":
+			c.RunArgs = append(c.RunArgs, "--tmpfs="+vStr)
+		default:
+			c.RunArgs = append(c.RunArgs, "-v="+vStr)
+		}
+
 		c.Mkdir = mkdir
 	}
 
@@ -778,6 +785,7 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 		"ReadOnly",
 		"Bind",
 		"Volume",
+		"Tmpfs",
 	); len(unknown) > 0 {
 		log.L.Warnf("Ignoring: volume: %+v", unknown)
 	}
@@ -798,6 +806,29 @@ func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Proj
 	}
 	if !filepath.IsAbs(c.Target) {
 		return "", nil, fmt.Errorf("volume target must be an absolute path, got %q", c.Target)
+	}
+
+	if c.Type == "tmpfs" {
+		var opts []string
+
+		if c.ReadOnly {
+			opts = append(opts, "ro")
+		}
+		if c.Tmpfs != nil {
+			if c.Tmpfs.Size != 0 {
+				opts = append(opts, fmt.Sprintf("size=%d", c.Tmpfs.Size))
+			}
+			if c.Tmpfs.Mode != 0 {
+				opts = append(opts, fmt.Sprintf("mode=%o", c.Tmpfs.Mode))
+			}
+		}
+
+		s := c.Target
+		if len(opts) > 0 {
+			s = fmt.Sprintf("%s:%s", s, strings.Join(opts, ","))
+		}
+
+		return s, mkdir, nil
 	}
 
 	if c.Source == "" {

@@ -671,3 +671,73 @@ services:
 	base.Cmd("images").AssertOutNotContains(testutil.CommonImage)
 	base.ComposeCmd("-f", comp.YAMLFullPath(), "up").AssertExitCode(1)
 }
+
+func TestComposeTmpfsVolume(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		containerName := data.Identifier("tmpfs")
+		composeYAML := fmt.Sprintf(`
+services:
+  tmpfs:
+    container_name: %s
+    image: %s
+    command: sleep infinity
+    volumes:
+      - type: tmpfs
+        target: /target-rw
+        tmpfs:
+          size: 64m
+      - type: tmpfs
+        target: /target-ro
+        read_only: true
+        tmpfs:
+          size: 64m
+          mode: 0o1770
+`, containerName, testutil.CommonImage)
+
+		composeYAMLPath := data.Temp().Save(composeYAML, "compose.yaml")
+
+		helpers.Ensure("compose", "-f", composeYAMLPath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, containerName)
+
+		data.Labels().Set("composeYAML", composeYAMLPath)
+		data.Labels().Set("containerName", containerName)
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "rw tmpfs mount",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("containerName"), "grep", "/target-rw", "/proc/mounts")
+			},
+			Expected: test.Expects(0, nil,
+				expect.All(
+					expect.Contains("/target-rw"),
+					expect.Contains("rw"),
+					expect.Contains("size=65536k"),
+				),
+			),
+		},
+		{
+			Description: "ro tmpfs mount with mode",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("containerName"), "grep", "/target-ro", "/proc/mounts")
+			},
+			Expected: test.Expects(0, nil,
+				expect.All(
+					expect.Contains("/target-ro"),
+					expect.Contains("ro"),
+					expect.Contains("size=65536k"),
+					expect.Contains("mode=1770"),
+				),
+			),
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down")
+	}
+
+	testCase.Run(t)
+}
