@@ -184,7 +184,23 @@ func GetLastModified() *File {
 //  2. Given the caller provides the enable/disable state of IPv6, the filter
 //     code will remove all IPv6 nameservers if it is not enabled for containers
 func FilterResolvDNS(resolvConf []byte, ipv6Enabled bool) (*File, error) {
-	cleanedResolvConf := localhostNSRegexp.ReplaceAll(resolvConf, []byte{})
+	return FilterResolvDNSWithLocalhostOption(resolvConf, ipv6Enabled, false)
+}
+
+// FilterResolvDNSWithLocalhostOption is like FilterResolvDNS but allows controlling
+// whether localhost nameservers are preserved. This is useful for host network mode
+// where the container should inherit the host's DNS configuration including localhost resolvers.
+//
+// Parameters:
+//   - resolvConf: the resolv.conf file content
+//   - ipv6Enabled: whether IPv6 nameservers should be preserved
+//   - allowLocalhostDNS: if true, localhost nameservers are preserved; if false, they are filtered out
+func FilterResolvDNSWithLocalhostOption(resolvConf []byte, ipv6Enabled bool, allowLocalhostDNS bool) (*File, error) {
+	cleanedResolvConf := resolvConf
+	// if allowLocalhostDNS is false, remove localhost nameservers
+	if !allowLocalhostDNS {
+		cleanedResolvConf = localhostNSRegexp.ReplaceAll(cleanedResolvConf, []byte{})
+	}
 	// if IPv6 is not enabled, also clean out any IPv6 address nameserver
 	if !ipv6Enabled {
 		cleanedResolvConf = nsIPv6Regexp.ReplaceAll(cleanedResolvConf, []byte{})

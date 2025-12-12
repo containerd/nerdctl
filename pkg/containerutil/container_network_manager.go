@@ -89,7 +89,7 @@ func withCustomHosts(src string) func(context.Context, oci.Client, *containers.C
 	}
 }
 
-func fetchDNSResolverConfig(netOpts types.NetworkOptions) ([]string, []string, []string, error) {
+func fetchDNSResolverConfig(netOpts types.NetworkOptions, allowLocalhostDNS bool) ([]string, []string, []string, error) {
 	dns := netOpts.DNSServers
 	dnsSearch := netOpts.DNSSearchDomains
 	dnsOptions := netOpts.DNSResolvConfOptions
@@ -103,7 +103,7 @@ func fetchDNSResolverConfig(netOpts types.NetworkOptions) ([]string, []string, [
 		conf = &resolvconf.File{}
 		log.L.WithError(err).Debugf("resolvConf file doesn't exist on host")
 	}
-	conf, err = resolvconf.FilterResolvDNS(conf.Content, true)
+	conf, err = resolvconf.FilterResolvDNSWithLocalhostOption(conf.Content, true, allowLocalhostDNS)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -291,7 +291,7 @@ func (m *noneNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 	}
 
 	resolvConfPath := filepath.Join(stateDir, "resolv.conf")
-	dns, dnsSearch, dnsOptions, err := fetchDNSResolverConfig(m.netOpts)
+	dns, dnsSearch, dnsOptions, err := fetchDNSResolverConfig(m.netOpts, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -671,7 +671,7 @@ func (m *hostNetworkManager) ContainerNetworkingOpts(_ context.Context, containe
 	}
 
 	resolvConfPath := filepath.Join(stateDir, "resolv.conf")
-	dns, dnsSearch, dnsOptions, err := fetchDNSResolverConfig(m.netOpts)
+	dns, dnsSearch, dnsOptions, err := fetchDNSResolverConfig(m.netOpts, true)
 	if err != nil {
 		return nil, nil, err
 	}
