@@ -117,13 +117,6 @@ func ConvertSociIndexV2(ctx context.Context, client *client.Client, srcRef strin
 
 	sociCmd.Args = append(sociCmd.Args, "convert")
 
-	// The following option temporarily fix the image conversion regression in SOCI v0.12.0
-	// https://github.com/awslabs/soci-snapshotter/issues/1789
-	// TODO: remove after the bug is fixed in SOCI
-	if err := CheckSociVersion("0.12.0"); err == nil {
-		sociCmd.Args = append(sociCmd.Args, "--force")
-	}
-
 	if sOpts.AllPlatforms {
 		sociCmd.Args = append(sociCmd.Args, "--all-platforms")
 	} else if len(sOpts.Platforms) > 0 {
