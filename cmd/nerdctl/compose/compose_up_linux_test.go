@@ -19,37 +19,44 @@ package compose
 import (
 	"fmt"
 	"io"
-	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/docker/go-connections/nat"
 	"gotest.tools/v3/assert"
-	"gotest.tools/v3/icmd"
 
-	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 )
 
 func TestComposeUp(t *testing.T) {
-	base := testutil.NewBase(t)
-	helpers.ComposeUp(t, base, fmt.Sprintf(`
-services:
+	testCase := nerdtest.Setup()
 
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		hostPort, err := portlock.Acquire(0)
+		if err != nil {
+			helpers.T().Log(fmt.Sprintf("Failed to acquire port: %v", err))
+			helpers.T().FailNow()
+		}
+
+		composeYAML := fmt.Sprintf(`
+services:
   wordpress:
     image: %s
     restart: always
     ports:
-      - 8080:80
+      - %d:80
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: exampleuser
@@ -57,7 +64,6 @@ services:
       WORDPRESS_DB_NAME: exampledb
     volumes:
       - wordpress:/var/www/html
-
   db:
     image: %s
     restart: always
@@ -72,52 +78,142 @@ services:
 volumes:
   wordpress:
   db:
-`, testutil.WordpressImage, testutil.MariaDBImage))
+`, testutil.WordpressImage, hostPort, testutil.MariaDBImage)
+
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+
+		wordpressContainerName := serviceparser.DefaultContainerName(projectName, "wordpress", "1")
+		dbContainerName := serviceparser.DefaultContainerName(projectName, "db", "1")
+
+		data.Labels().Set("hostPort", strconv.Itoa(hostPort))
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("projectName", projectName)
+		data.Labels().Set("wordpressContainerName", wordpressContainerName)
+		data.Labels().Set("dbContainerName", dbContainerName)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, wordpressContainerName)
+		nerdtest.EnsureContainerStarted(helpers, dbContainerName)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Output: expect.All(
+				expect.Contains(data.Labels().Get("wordpressContainerName")),
+				expect.Contains(data.Labels().Get("dbContainerName")),
+			),
+		}
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+		if p := data.Labels().Get("hostPort"); p != "" {
+			if port, err := strconv.Atoi(p); err == nil {
+				_ = portlock.Release(port)
+			}
+		}
+		if projectName := data.Labels().Get("projectName"); projectName != "" {
+			helpers.Command("volume", "inspect", fmt.Sprintf("%s_db", projectName)).Run(&test.Expected{ExitCode: 1})
+			helpers.Command("network", "inspect", fmt.Sprintf("%s_default", projectName)).Run(&test.Expected{ExitCode: 1})
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpBuild(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	const dockerComposeYAML = `
+	testCase.Require = nerdtest.Build
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		hostPort, err := portlock.Acquire(0)
+		if err != nil {
+			helpers.T().Log(fmt.Sprintf("Failed to acquire port: %v", err))
+			helpers.T().FailNow()
+		}
+
+		composeYAML := fmt.Sprintf(`
 services:
   web:
     build: .
     ports:
-    - 8080:80
-`
-	dockerfile := fmt.Sprintf(`FROM %s
+    - %d:80
+`, hostPort)
+		dockerfile := fmt.Sprintf(`FROM %s
 COPY index.html /usr/share/nginx/html/index.html
 `, testutil.NginxAlpineImage)
-	indexHTML := t.Name()
+		indexHTML := data.Identifier("indexHTML")
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+		data.Temp().Save(dockerfile, "Dockerfile")
+		data.Temp().Save(indexHTML, "index.html")
 
-	comp.WriteFile("Dockerfile", dockerfile)
-	comp.WriteFile("index.html", indexHTML)
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--build").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		data.Labels().Set("hostPort", strconv.Itoa(hostPort))
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("indexHTML", data.Temp().Path("index.html"))
 
-	resp, err := nettestutil.HTTPGet("http://127.0.0.1:8080", 5, false)
-	assert.NilError(t, err)
-	respBody, err := io.ReadAll(resp.Body)
-	assert.NilError(t, err)
-	t.Logf("respBody=%q", respBody)
-	assert.Assert(t, strings.Contains(string(respBody), indexHTML))
+		helpers.Ensure("compose", "-f", composePath, "up", "-d", "--build")
+		nerdtest.EnsureContainerStarted(helpers, serviceparser.DefaultContainerName(projectName, "web", "1"))
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "HTTP request to the web container",
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, t tig.T) {
+						host := fmt.Sprintf("http://127.0.0.1:%s", data.Labels().Get("hostPort"))
+						resp, err := nettestutil.HTTPGet(host, 5, false)
+						assert.NilError(t, err)
+						respBody, err := io.ReadAll(resp.Body)
+						assert.NilError(t, err)
+						t.Log(fmt.Sprintf("respBody=%q", respBody))
+						assert.Assert(t, strings.Contains(string(respBody), data.Labels().Get("indexHTML")))
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+		helpers.Anyhow("builder", "prune", "--all", "--force")
+		if portStr := data.Labels().Get("hostPort"); portStr != "" {
+			port, _ := strconv.Atoi(portStr)
+			_ = portlock.Release(port)
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpNetWithStaticIP(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("Static IP assignment is not supported rootless mode yet.")
-	}
-	base := testutil.NewBase(t)
-	staticIP := "172.20.0.12"
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase := nerdtest.Setup()
+
+	testCase.Require = require.All(
+		require.Not(nerdtest.Rootless),
+	)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		staticIP := "10.4.255.254"
+		subnet := "10.4.255.0/24"
+		var composeYAML = fmt.Sprintf(`
 services:
   svc0:
     image: %s
@@ -129,31 +225,55 @@ networks:
   net0:
     ipam:
       config:
-        - subnet: 172.20.0.0/24
-`, testutil.NginxAlpineImage, staticIP)
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+        - subnet: %s
+`, testutil.NginxAlpineImage, staticIP, subnet)
 
-	svc0 := serviceparser.DefaultContainerName(projectName, "svc0", "1")
-	inspectCmd := base.Cmd("inspect", svc0, "--format", "\"{{range .NetworkSettings.Networks}} {{.IPAddress}}{{end}}\"")
-	result := inspectCmd.Run()
-	stdoutContent := result.Stdout() + result.Stderr()
-	assert.Assert(inspectCmd.Base.T, result.ExitCode == 0, stdoutContent)
-	if !strings.Contains(stdoutContent, staticIP) {
-		log.L.Errorf("test failed, the actual container ip is %s", stdoutContent)
-		t.Fail()
-		return
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+
+		containerName := serviceparser.DefaultContainerName(projectName, "svc0", "1")
+
+		data.Labels().Set("staticIP", staticIP)
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("containerName", containerName)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, containerName)
 	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "static IP is assigned to container",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Labels().Get("containerName"), "--format", "\"{{range .NetworkSettings.Networks}} {{.IPAddress}}{{end}}\"")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, t tig.T) {
+						assert.Assert(t, strings.Contains(stdout, data.Labels().Get("staticIP")))
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpMultiNet(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var composeYAML = fmt.Sprintf(`
 services:
   svc0:
     image: %s
@@ -176,126 +296,269 @@ networks:
   net1: {}
   net2: {}
 `, testutil.NginxAlpineImage, testutil.NginxAlpineImage, testutil.NginxAlpineImage)
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
 
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	svc0 := serviceparser.DefaultContainerName(projectName, "svc0", "1")
-	svc1 := serviceparser.DefaultContainerName(projectName, "svc1", "1")
-	svc2 := serviceparser.DefaultContainerName(projectName, "svc2", "1")
+		svc0 := serviceparser.DefaultContainerName(projectName, "svc0", "1")
+		svc1 := serviceparser.DefaultContainerName(projectName, "svc1", "1")
+		svc2 := serviceparser.DefaultContainerName(projectName, "svc2", "1")
 
-	base.Cmd("exec", svc0, "ping", "-c", "1", "svc0").AssertOK()
-	base.Cmd("exec", svc0, "ping", "-c", "1", "svc1").AssertOK()
-	base.Cmd("exec", svc0, "ping", "-c", "1", "svc2").AssertOK()
-	base.Cmd("exec", svc1, "ping", "-c", "1", "svc0").AssertOK()
-	base.Cmd("exec", svc2, "ping", "-c", "1", "svc0").AssertOK()
-	base.Cmd("exec", svc1, "ping", "-c", "1", "svc2").AssertFail()
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("svc0", svc0)
+		data.Labels().Set("svc1", svc1)
+		data.Labels().Set("svc2", svc2)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, svc0)
+		nerdtest.EnsureContainerStarted(helpers, svc1)
+		nerdtest.EnsureContainerStarted(helpers, svc2)
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "svc0 can ping itself",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("svc0"), "ping", "-c", "1", "svc0")
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
+		{
+			Description: "svc0 can ping svc1",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("svc0"), "ping", "-c", "1", "svc1")
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
+		{
+			Description: "svc0 can ping svc2",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("svc0"), "ping", "-c", "1", "svc2")
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
+		{
+			Description: "svc1 can ping svc0",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("svc1"), "ping", "-c", "1", "svc0")
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
+		{
+			Description: "svc2 can ping svc0",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("svc2"), "ping", "-c", "1", "svc0")
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
+		{
+			Description: "svc1 cannot ping svc2",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("svc1"), "ping", "-c", "1", "svc2")
+			},
+			Expected: test.Expects(1, nil, nil),
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpOsEnvVar(t *testing.T) {
-	base := testutil.NewBase(t)
-	const containerName = "nginxAlpine"
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase := nerdtest.Setup()
+
+	testCase.Env = map[string]string{
+		"ADDRESS": "0.0.0.0",
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		const containerName = "nginxAlpine"
+
+		hostPort, err := portlock.Acquire(0)
+		if err != nil {
+			helpers.T().Log(fmt.Sprintf("Failed to acquire port: %v", err))
+			helpers.T().FailNow()
+		}
+
+		var composeYAML = fmt.Sprintf(`
 services:
   svc1:
     image: %s
     container_name: %s
     ports:
-      - ${ADDRESS:-127.0.0.1}:8080:80
-`, testutil.NginxAlpineImage, containerName)
+      - ${ADDRESS:-127.0.0.1}:%d:80
+`, testutil.NginxAlpineImage, containerName, hostPort)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	base.Env = append(base.Env, "ADDRESS=0.0.0.0")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		data.Labels().Set("containerName", containerName)
+		data.Labels().Set("hostPort", strconv.Itoa(hostPort))
+		data.Labels().Set("composeYAML", composePath)
 
-	inspect := base.InspectContainer(containerName)
-	inspect80TCP := (*inspect.NetworkSettings.Ports)["80/tcp"]
-	expected := nat.PortBinding{
-		HostIP:   "0.0.0.0",
-		HostPort: "8080",
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, containerName)
 	}
-	assert.Equal(base.T, expected, inspect80TCP[0])
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("container", "inspect", data.Labels().Get("containerName"))
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+				assert.Equal(t, 1, len(dc), "unexpected number of containers")
+				inspect80TCP := (*dc[0].NetworkSettings.Ports)["80/tcp"]
+				assert.Assert(t, len(inspect80TCP) > 0, "no host bindings for 80/tcp")
+				expected := nat.PortBinding{
+					HostIP:   "0.0.0.0",
+					HostPort: data.Labels().Get("hostPort"),
+				}
+				assert.Equal(t, expected, inspect80TCP[0])
+			}),
+		}
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpDotEnvFile(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var dockerComposeYAML = `
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var composeYAML = `
 services:
   svc3:
     image: ghcr.io/stargz-containers/nginx:$TAG
 `
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+		data.Temp().Save(`TAG=1.19-alpine-org`, ".env")
 
-	envFile := `TAG=1.19-alpine-org`
-	comp.WriteFile(".env", envFile)
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		data.Labels().Set("composeYAML", composePath)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "up", "-d")
+	}
+
+	testCase.Expected = test.Expects(0, nil, nil)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpEnvFileNotFoundError(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var dockerComposeYAML = `
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var composeYAML = `
 services:
   svc4:
     image: ghcr.io/stargz-containers/nginx:$TAG
 `
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+		data.Temp().Save(`TAG=1.19-alpine-org`, "envFile")
 
-	envFile := `TAG=1.19-alpine-org`
-	comp.WriteFile("envFile", envFile)
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	//env-file is relative to the current working directory and not the project directory
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "--env-file", "envFile", "up", "-d").AssertFail()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		data.Labels().Set("composeYAML", composePath)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// env-file is relative to the current working directory and not the project directory
+		return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "--env-file", "envFile", "up", "-d")
+	}
+
+	testCase.Expected = test.Expects(1, nil, nil)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpWithScale(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var composeYAML = fmt.Sprintf(`
 services:
   test:
     image: %s
     command: "sleep infinity"
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--scale", "test=2").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps").AssertOutContains(serviceparser.DefaultContainerName(projectName, "test", "2"))
+		test1 := serviceparser.DefaultContainerName(projectName, "test", "1")
+		test2 := serviceparser.DefaultContainerName(projectName, "test", "2")
+
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("test1", test1)
+		data.Labels().Set("test2", test2)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d", "--scale", "test=2")
+		nerdtest.EnsureContainerStarted(helpers, test1)
+		nerdtest.EnsureContainerStarted(helpers, test2)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Output: expect.All(
+				expect.Contains(data.Labels().Get("test1")),
+				expect.Contains(data.Labels().Get("test2")),
+			),
+		}
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeIPAMConfig(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var composeYAML = fmt.Sprintf(`
 services:
   foo:
     image: %s
@@ -308,79 +571,148 @@ networks:
         - subnet: 10.1.100.0/24
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	base.Cmd("inspect", "-f", `{{json .NetworkSettings.Networks }}`, serviceparser.DefaultContainerName(projectName, "foo", "1")).AssertOutContains("10.1.100.")
+		fooContainer := serviceparser.DefaultContainerName(projectName, "foo", "1")
+
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("fooContainer", fooContainer)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, fooContainer)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", "-f", "{{json .NetworkSettings.Networks }}", data.Labels().Get("fooContainer"))
+	}
+
+	testCase.Expected = test.Expects(0, nil, expect.Contains("10.1.100."))
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpRemoveOrphans(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var (
-		dockerComposeYAMLOrphan = fmt.Sprintf(`
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var (
+			dockerComposeYAMLOrphan = fmt.Sprintf(`
 services:
   test:
     image: %s
     command: "sleep infinity"
 `, testutil.CommonImage)
 
-		dockerComposeYAMLFull = fmt.Sprintf(`
+			dockerComposeYAMLFull = fmt.Sprintf(`
 %s
   orphan:
     image: %s
     command: "sleep infinity"
 `, dockerComposeYAMLOrphan, testutil.CommonImage)
-	)
+		)
 
-	compOrphan := testutil.NewComposeDir(t, dockerComposeYAMLOrphan)
-	defer compOrphan.CleanUp()
-	compFull := testutil.NewComposeDir(t, dockerComposeYAMLFull)
-	defer compFull.CleanUp()
+		composeOrphanPath := data.Temp().Save(dockerComposeYAMLOrphan, "compose-orphan.yaml")
+		composeFullPath := data.Temp().Save(dockerComposeYAMLFull, "compose-full.yaml")
 
-	projectName := fmt.Sprintf("nerdctl-compose-test-%d", time.Now().Unix())
-	t.Logf("projectName=%q", projectName)
+		projectName := data.Identifier("project")
+		t.Logf("projectName=%q", projectName)
 
-	orphanContainer := serviceparser.DefaultContainerName(projectName, "orphan", "1")
+		testContainer := serviceparser.DefaultContainerName(projectName, "test", "1")
+		orphanContainer := serviceparser.DefaultContainerName(projectName, "orphan", "1")
 
-	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "down", "-v").Run()
-	base.ComposeCmd("-p", projectName, "-f", compOrphan.YAMLFullPath(), "up", "-d").AssertOK()
-	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "ps").AssertOutContains(orphanContainer)
-	base.ComposeCmd("-p", projectName, "-f", compOrphan.YAMLFullPath(), "up", "-d", "--remove-orphans").AssertOK()
-	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "ps").AssertOutNotContains(orphanContainer)
+		data.Labels().Set("composeOrphanPath", composeOrphanPath)
+		data.Labels().Set("composeFullPath", composeFullPath)
+		data.Labels().Set("projectName", projectName)
+		data.Labels().Set("orphanContainer", orphanContainer)
+
+		helpers.Ensure("compose", "-p", projectName, "-f", composeFullPath, "up", "-d")
+		helpers.Ensure("compose", "-p", projectName, "-f", composeOrphanPath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, testContainer)
+		nerdtest.EnsureContainerStarted(helpers, orphanContainer)
+
+		helpers.Command("compose", "-p", projectName, "-f", composeFullPath, "ps").Run(
+			&test.Expected{
+				ExitCode: 0,
+				Output:   expect.Contains(orphanContainer),
+			},
+		)
+		helpers.Ensure("compose", "-p", projectName, "-f", composeOrphanPath, "up", "-d", "--remove-orphans")
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-p", data.Labels().Get("projectName"), "-f", data.Labels().Get("composeFullPath"), "ps")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Output:   expect.DoesNotContain(data.Labels().Get("orphanContainer")),
+		}
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeOrphanPath") != "" {
+			helpers.Anyhow("compose", "-p", data.Labels().Get("projectName"), "-f", data.Labels().Get("composeOrphanPath"), "down", "-v")
+		}
+		if data.Labels().Get("composeFullPath") != "" {
+			helpers.Anyhow("compose", "-p", data.Labels().Get("projectName"), "-f", data.Labels().Get("composeFullPath"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpIdempotent(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composeYAML := fmt.Sprintf(`
 services:
   test:
     image: %s
     command: "sleep infinity"
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "down").AssertOK()
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+
+		data.Labels().Set("composeYAML", composePath)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, serviceparser.DefaultContainerName(projectName, "test", "1"))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "up", "-d")
+	}
+
+	testCase.Expected = test.Expects(0, nil, nil)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpNoRecreateDependencies(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var composeYAML = fmt.Sprintf(`
 services:
   foo:
     image: %s
@@ -392,29 +724,61 @@ services:
       - foo
 `, testutil.CommonImage, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "foo").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	fooName := serviceparser.DefaultContainerName(projectName, "foo", "1")
-	id1Cmd := base.Cmd("inspect", fooName, "--format", "{{.Id}}")
-	id1Res := id1Cmd.Run()
-	out1 := strings.TrimSpace(id1Res.Stdout())
-	assert.Assert(id1Cmd.Base.T, id1Res.ExitCode == 0, id1Res.Stdout()+id1Res.Stderr())
+		fooContainer := serviceparser.DefaultContainerName(projectName, "foo", "1")
+		barContainer := serviceparser.DefaultContainerName(projectName, "bar", "1")
 
-	// Bring up dependent service; ensure foo is not recreated (ID unchanged)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "bar").AssertOK()
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("projectName", projectName)
+		data.Labels().Set("fooContainer", fooContainer)
+		data.Labels().Set("barContainer", barContainer)
+	}
 
-	id2Cmd := base.Cmd("inspect", fooName, "--format", "{{.Id}}")
-	id2Res := id2Cmd.Run()
-	out2 := strings.TrimSpace(id2Res.Stdout())
-	assert.Assert(id2Cmd.Base.T, id2Res.ExitCode == 0, id2Res.Stdout()+id2Res.Stderr())
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "foo is not recreated when starting bar",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYAML"), "up", "-d", "foo")
+				nerdtest.EnsureContainerStarted(helpers, data.Labels().Get("fooContainer"))
 
-	assert.Equal(base.T, out1, out2)
+				helpers.Command("inspect", data.Labels().Get("fooContainer"), "--format", "{{.Id}}").Run(
+					&test.Expected{
+						ExitCode: 0,
+						Output: func(stdout string, t tig.T) {
+							data.Labels().Set("fooContainerID", strings.TrimSpace(stdout))
+						},
+					},
+				)
+
+				// Bring up dependent service; ensure foo is not recreated (ID unchanged)
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYAML"), "up", "-d", "bar")
+				nerdtest.EnsureContainerStarted(helpers, data.Labels().Get("barContainer"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Labels().Get("fooContainer"), "--format", "{{.Id}}")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, t tig.T) {
+						assert.Equal(t, strings.TrimSpace(stdout), data.Labels().Get("fooContainerID"))
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpWithExternalNetwork(t *testing.T) {
@@ -477,22 +841,30 @@ networks:
 }
 
 func TestComposeUpWithBypass4netns(t *testing.T) {
-	// docker does not support bypass4netns mode
-	testutil.DockerIncompatible(t)
-	if !rootlessutil.IsRootless() {
-		t.Skip("test needs rootless")
-	}
-	testutil.RequireKernelVersion(t, ">= 5.9.0-0")
-	testutil.RequireSystemService(t, "bypass4netnsd")
-	base := testutil.NewBase(t)
-	helpers.ComposeUp(t, base, fmt.Sprintf(`
-services:
+	testCase := nerdtest.Setup()
 
+	testCase.Require = require.All(
+		require.Not(nerdtest.Docker),
+		nerdtest.Rootless,
+	)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		testutil.RequireKernelVersion(t, ">= 5.9.0-0")
+		testutil.RequireSystemService(t, "bypass4netnsd")
+
+		hostPort, err := portlock.Acquire(0)
+		if err != nil {
+			helpers.T().Log(fmt.Sprintf("Failed to acquire port: %v", err))
+			helpers.T().FailNow()
+		}
+
+		composeYAML := fmt.Sprintf(`
+services:
   wordpress:
     image: %s
     restart: always
     ports:
-      - 8080:80
+      - %d:80
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: exampleuser
@@ -502,7 +874,6 @@ services:
       - wordpress:/var/www/html
     annotations:
       - nerdctl/bypass4netns=1
-
   db:
     image: %s
     restart: always
@@ -519,21 +890,68 @@ services:
 volumes:
   wordpress:
   db:
-`, testutil.WordpressImage, testutil.MariaDBImage))
+`, testutil.WordpressImage, hostPort, testutil.MariaDBImage)
+
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+
+		data.Labels().Set("hostPort", strconv.Itoa(hostPort))
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("projectName", projectName)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, serviceparser.DefaultContainerName(projectName, "wordpress", "1"))
+		nerdtest.EnsureContainerStarted(helpers, serviceparser.DefaultContainerName(projectName, "db", "1"))
+
+		helpers.Command("volume", "inspect", fmt.Sprintf("%s_db", projectName)).Run(&test.Expected{ExitCode: 0})
+		helpers.Command("network", "inspect", fmt.Sprintf("%s_default", projectName)).Run(&test.Expected{ExitCode: 0})
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			Output: func(_ string, tt tig.T) {
+				host := fmt.Sprintf("http://127.0.0.1:%s", data.Labels().Get("hostPort"))
+				resp, err := nettestutil.HTTPGet(host, 5, false)
+				assert.NilError(tt, err)
+				body, err := io.ReadAll(resp.Body)
+				assert.NilError(tt, err)
+				_ = resp.Body.Close()
+				assert.Assert(tt, strings.Contains(string(body), testutil.WordpressIndexHTMLSnippet))
+				t.Log("wordpress seems functional")
+			},
+		}
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+		if p := data.Labels().Get("hostPort"); p != "" {
+			if port, err := strconv.Atoi(p); err == nil {
+				_ = portlock.Release(port)
+			}
+		}
+
+		if projectName := data.Labels().Get("projectName"); projectName != "" {
+			helpers.Command("volume", "inspect", fmt.Sprintf("%s_db", projectName)).Run(&test.Expected{ExitCode: 1})
+			helpers.Command("network", "inspect", fmt.Sprintf("%s_default", projectName)).Run(&test.Expected{ExitCode: 1})
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpProfile(t *testing.T) {
-	base := testutil.NewBase(t)
-	serviceRegular := testutil.Identifier(t) + "-regular"
-	serviceProfiled := testutil.Identifier(t) + "-profiled"
+	testCase := nerdtest.Setup()
 
-	// write the env.common file to tmpdir
-	tmpDir := t.TempDir()
-	envFilePath := fmt.Sprintf("%s/env.common", tmpDir)
-	err := os.WriteFile(envFilePath, []byte("TEST_ENV_INJECTION=WORKS\n"), 0644)
-	assert.NilError(t, err)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		serviceRegular := data.Identifier("regular")
+		serviceProfiled := data.Identifier("profiled")
 
-	dockerComposeYAML := fmt.Sprintf(`
+		envFilePath := data.Temp().Save(`TEST_ENV_INJECTION=WORKS\n`, "env.common")
+
+		composeYAML := fmt.Sprintf(`
 services:
   %s:
     image: %[3]s
@@ -546,41 +964,84 @@ services:
       - %[4]s
 `, serviceRegular, serviceProfiled, testutil.NginxAlpineImage, envFilePath)
 
-	// * Test with profile
-	//   Should run both the services:
-	//     - matching active profile
-	//     - one without profile
-	comp1 := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp1.CleanUp()
-	base.ComposeCmd("-f", comp1.YAMLFullPath(), "--profile", "test-profile", "up", "-d").AssertOK()
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	psCmd := base.Cmd("ps", "-a", "--format={{.Names}}")
-	psCmd.AssertOutContains(serviceRegular)
-	psCmd.AssertOutContains(serviceProfiled)
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	execCmd := base.ComposeCmd("-f", comp1.YAMLFullPath(), "exec", serviceProfiled, "env")
-	execCmd.AssertOutContains("TEST_ENV_INJECTION=WORKS")
+		data.Labels().Set("serviceRegular", serviceRegular)
+		data.Labels().Set("serviceProfiled", serviceProfiled)
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("regularContainer", serviceparser.DefaultContainerName(projectName, serviceRegular, "1"))
+		data.Labels().Set("profiledContainer", serviceparser.DefaultContainerName(projectName, serviceProfiled, "1"))
+	}
 
-	base.ComposeCmd("-f", comp1.YAMLFullPath(), "--profile", "test-profile", "down", "-v").AssertOK()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "with profile",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYAML"), "--profile", "test-profile", "up", "-d")
+				nerdtest.EnsureContainerStarted(helpers, data.Labels().Get("regularContainer"))
+				nerdtest.EnsureContainerStarted(helpers, data.Labels().Get("profiledContainer"))
 
-	// * Test without profile
-	//   Should run:
-	//     - service without profile
-	comp2 := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp2.CleanUp()
-	base.ComposeCmd("-f", comp2.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp2.YAMLFullPath(), "down", "-v").AssertOK()
+				helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "exec", data.Labels().Get("serviceProfiled"), "env").
+					Run(&test.Expected{
+						ExitCode: 0,
+						Output:   expect.Contains("TEST_ENV_INJECTION=WORKS"),
+					})
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-a", "--format={{.Names}}")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						expect.Contains(data.Labels().Get("serviceRegular")),
+						expect.Contains(data.Labels().Get("serviceProfiled")),
+					),
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "--profile", "test-profile", "down", "-v")
+			},
+		},
+		{
+			Description: "profiled not started without profile flag",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYAML"), "up", "-d")
+				nerdtest.EnsureContainerStarted(helpers, data.Labels().Get("regularContainer"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-a", "--format={{.Names}}")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						expect.Contains(data.Labels().Get("serviceRegular")),
+						expect.DoesNotContain(data.Labels().Get("serviceProfiled")),
+					),
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+			},
+		},
+	}
 
-	psCmd = base.Cmd("ps", "-a", "--format={{.Names}}")
-	psCmd.AssertOutContains(serviceRegular)
-	psCmd.AssertOutNotContains(serviceProfiled)
+	testCase.Run(t)
 }
 
 func TestComposeUpAbortOnContainerExit(t *testing.T) {
-	base := testutil.NewBase(t)
-	serviceRegular := "regular"
-	serviceProfiled := "exited"
-	dockerComposeYAML := fmt.Sprintf(`
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		serviceRegular := data.Identifier("regular")
+		serviceProfiled := data.Identifier("exited")
+		composeYAML := fmt.Sprintf(`
 services:
   %s:
     image: %s
@@ -588,75 +1049,173 @@ services:
     image: %s
     entrypoint: /bin/sh -c "exit 1"
 `, serviceRegular, testutil.NginxAlpineImage, serviceProfiled, testutil.BusyboxImage)
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
 
-	// here we run 'compose up --abort-on-container-exit' command
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "--abort-on-container-exit").AssertExitCode(1)
-	time.Sleep(3 * time.Second)
-	psCmd := base.Cmd("ps", "-a", "--format={{.Names}}", "--filter", "status=exited")
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	psCmd.AssertOutContains(serviceRegular)
-	psCmd.AssertOutContains(serviceProfiled)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
-
-	// this time we run 'compose up' command without --abort-on-container-exit flag
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	time.Sleep(3 * time.Second)
-	psCmd = base.Cmd("ps", "-a", "--format={{.Names}}", "--filter", "status=exited")
-
-	// this time the regular service should not be listed in the output
-	psCmd.AssertOutNotContains(serviceRegular)
-	psCmd.AssertOutContains(serviceProfiled)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
-
-	// in this sub-test we are ensuring that flags '-d' and '--abort-on-container-exit' cannot be ran together
-	c := base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--abort-on-container-exit")
-	expected := icmd.Expected{
-		ExitCode: 1,
+		data.Labels().Set("serviceRegular", serviceRegular)
+		data.Labels().Set("serviceProfiled", serviceProfiled)
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("regularContainer", serviceparser.DefaultContainerName(projectName, serviceRegular, "1"))
 	}
-	c.Assert(expected)
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "abort on container exit",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "up", "--abort-on-container-exit").Run(
+					&test.Expected{
+						ExitCode: 1,
+					},
+				)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-a", "--format={{.Names}}", "--filter", "status=exited")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						expect.Contains(data.Labels().Get("serviceRegular")),
+						expect.Contains(data.Labels().Get("serviceProfiled")),
+					),
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+			},
+		},
+		{
+			Description: "no abort flag keeps other services running",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYAML"), "up", "-d")
+				nerdtest.EnsureContainerStarted(helpers, data.Labels().Get("regularContainer"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-a", "--format={{.Names}}", "--filter", "status=exited")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						expect.DoesNotContain(data.Labels().Get("serviceRegular")),
+						expect.Contains(data.Labels().Get("serviceProfiled")),
+					),
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+			},
+		},
+		// in this sub-test we are ensuring that flags '-d' and '--abort-on-container-exit' cannot be ran together
+		{
+			Description: "flag -d incompatible with --abort-on-container-exit",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "up", "-d", "--abort-on-container-exit")
+			},
+			Expected: test.Expects(1, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpPull(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase.NoParallel = true
+	testCase.Require = nerdtest.Private
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composeYAML := fmt.Sprintf(`
 services:
   test:
     image: %s
     command: sh -euxc "echo hi"
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	// Cases where pull is required
-	for _, pull := range []string{"missing", "always"} {
-		t.Run(fmt.Sprintf("pull=%s", pull), func(t *testing.T) {
-			base.Cmd("rmi", "-f", testutil.CommonImage).Run()
-			base.Cmd("images").AssertOutNotContains(testutil.CommonImage)
-			t.Cleanup(func() {
-				base.ComposeCmd("-f", comp.YAMLFullPath(), "down").AssertOK()
-			})
-			base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "--pull", pull).AssertOutContains("hi")
-		})
+		data.Labels().Set("composeYAML", composePath)
 	}
 
-	t.Run("pull=never, no pull", func(t *testing.T) {
-		base.Cmd("rmi", "-f", testutil.CommonImage).Run()
-		base.Cmd("images").AssertOutNotContains(testutil.CommonImage)
-		t.Cleanup(func() {
-			base.ComposeCmd("-f", comp.YAMLFullPath(), "down").AssertOK()
-		})
-		base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "--pull", "never").AssertExitCode(1)
-	})
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "pull=missing",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("rmi", "-f", testutil.CommonImage)
+				helpers.Command("images").Run(
+					&test.Expected{
+						ExitCode: 0,
+						Output:   expect.DoesNotContain(testutil.CommonImage),
+					},
+				)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "up", "--pull", "missing")
+			},
+			Expected: test.Expects(0, nil, expect.Contains("hi")),
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down")
+			},
+		},
+		{
+			Description: "pull=always",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("rmi", "-f", testutil.CommonImage)
+				helpers.Command("images").Run(
+					&test.Expected{
+						ExitCode: 0,
+						Output:   expect.DoesNotContain(testutil.CommonImage),
+					},
+				)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "up", "--pull", "always")
+			},
+			Expected: test.Expects(0, nil, expect.Contains("hi")),
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down")
+			},
+		},
+		{
+			Description: "pull=never, no pull",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("rmi", "-f", testutil.CommonImage)
+				helpers.Command("images").Run(
+					&test.Expected{
+						ExitCode: 0,
+						Output:   expect.DoesNotContain(testutil.CommonImage),
+					},
+				)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "up", "--pull", "never")
+			},
+			Expected: test.Expects(1, nil, nil),
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down")
+			},
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeUpServicePullPolicy(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase.Require = nerdtest.Private
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var composeYAML = fmt.Sprintf(`
 services:
   test:
     image: %s
@@ -664,12 +1223,26 @@ services:
     pull_policy: "never"
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	base.Cmd("rmi", "-f", testutil.CommonImage).Run()
-	base.Cmd("images").AssertOutNotContains(testutil.CommonImage)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up").AssertExitCode(1)
+		data.Labels().Set("composeYAML", composePath)
+
+		helpers.Ensure("rmi", "-f", testutil.CommonImage)
+		helpers.Command("images").Run(
+			&test.Expected{
+				ExitCode: 0,
+				Output:   expect.DoesNotContain(testutil.CommonImage),
+			},
+		)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "up")
+	}
+
+	testCase.Expected = test.Expects(1, nil, nil)
+
+	testCase.Run(t)
 }
 
 func TestComposeTmpfsVolume(t *testing.T) {
