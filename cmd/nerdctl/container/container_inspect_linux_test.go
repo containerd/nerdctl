@@ -362,8 +362,12 @@ func TestContainerInspectHostConfigDefaults(t *testing.T) {
 	assert.Equal(t, "", inspect.HostConfig.UTSMode)
 	assert.Equal(t, hc.ShmSize, inspect.HostConfig.ShmSize)
 	assert.Equal(t, hc.Runtime, inspect.HostConfig.Runtime)
-	assert.Equal(t, 0, len(inspect.HostConfig.Sysctls))
 	assert.Equal(t, 0, len(inspect.HostConfig.Devices))
+	// Sysctls can be empty or contain "net.ipv4.ip_unprivileged_port_start" depending on the environment.
+	got := len(inspect.HostConfig.Sysctls)
+	if got != 0 && got != 1 {
+		t.Fatalf("unexpected number of Sysctls entries: %d (want 0 or 1)", got)
+	}
 }
 
 func TestContainerInspectHostConfigDNS(t *testing.T) {

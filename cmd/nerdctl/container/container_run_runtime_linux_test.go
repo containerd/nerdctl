@@ -27,3 +27,31 @@ func TestRunSysctl(t *testing.T) {
 	base := testutil.NewBase(t)
 	base.Cmd("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.AlpineImage, "cat", "/proc/sys/net/ipv4/ip_forward").AssertOutExactly("1\n")
 }
+
+func TestRunSysctl_DefaultUnprivilegedPortStart(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	// No --sysctl flags, default network mode (non-host).
+	// We expect net.ipv4.ip_unprivileged_port_start=0 inside the container,
+	// because withDefaultUnprivilegedPortSysctl should apply the default.
+	base.Cmd(
+		"run", "--rm",
+		testutil.AlpineImage,
+		"cat", "/proc/sys/net/ipv4/ip_unprivileged_port_start",
+	).AssertOutExactly("0\n")
+}
+
+func TestRunSysctl_UnprivilegedPortStartOverride(t *testing.T) {
+	t.Parallel()
+	base := testutil.NewBase(t)
+
+	// User explicitly sets net.ipv4.ip_unprivileged_port_start=1000.
+	// We must NOT override this; the container should see "1000".
+	base.Cmd(
+		"run", "--rm",
+		"--sysctl", "net.ipv4.ip_unprivileged_port_start=1000",
+		testutil.AlpineImage,
+		"cat", "/proc/sys/net/ipv4/ip_unprivileged_port_start",
+	).AssertOutExactly("1000\n")
+}
