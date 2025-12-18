@@ -9,10 +9,10 @@ require (
 	github.com/Microsoft/hcsshim v0.14.0-rc.1
 	github.com/compose-spec/compose-go/v2 v2.10.0 //gomodjail:unconfined
 	github.com/containerd/accelerated-container-image v1.3.0
-	github.com/containerd/cgroups/v3 v3.1.0 //gomodjail:unconfined
+	github.com/containerd/cgroups/v3 v3.1.2 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
 	github.com/containerd/containerd/api v1.10.0
-	github.com/containerd/containerd/v2 v2.2.0 //gomodjail:unconfined
+	github.com/containerd/containerd/v2 v2.2.1 //gomodjail:unconfined
 	github.com/containerd/continuity v0.4.5 //gomodjail:unconfined
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
@@ -52,7 +52,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2 //gomodjail:unconfined
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
-	github.com/opencontainers/runtime-spec v1.2.1
+	github.com/opencontainers/runtime-spec v1.3.0
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/rootless-containers/bypass4netns v0.4.2 //gomodjail:unconfined
 	github.com/rootless-containers/rootlesskit/v2 v2.3.5 //gomodjail:unconfined
@@ -70,7 +70,7 @@ require (
 	golang.org/x/term v0.38.0 //gomodjail:unconfined
 	golang.org/x/text v0.32.0
 	gotest.tools/v3 v3.5.2
-	tags.cncf.io/container-device-interface v1.0.1 //gomodjail:unconfined
+	tags.cncf.io/container-device-interface v1.1.0 //gomodjail:unconfined
 )
 
 require (
@@ -112,8 +112,8 @@ require (
 	github.com/multiformats/go-multibase v0.2.0 // indirect
 	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/multiformats/go-varint v0.1.0 // indirect
-	github.com/opencontainers/runtime-tools v0.9.1-0.20250523060157-0ea5ed0382a2 // indirect
-	github.com/opencontainers/selinux v1.13.0 // indirect
+	github.com/opencontainers/runtime-tools v0.9.1-0.20251114084447-edf4cb3d2116 // indirect
+	github.com/opencontainers/selinux v1.13.1 // indirect
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -144,7 +144,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
-	tags.cncf.io/container-device-interface/specs-go v1.0.0 // indirect
+	tags.cncf.io/container-device-interface/specs-go v1.1.0 // indirect
 )
 
 require (
