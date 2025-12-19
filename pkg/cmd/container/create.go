@@ -580,7 +580,8 @@ func withDefaultUnprivilegedPortSysctl() oci.SpecOpts {
 	const key = "net.ipv4.ip_unprivileged_port_start"
 	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
 		if s.Linux == nil {
-			s.Linux = &specs.Linux{}
+			// NOP, as the target platform is not Linux
+			return nil
 		}
 		if s.Linux.Sysctl == nil {
 			s.Linux.Sysctl = make(map[string]string)
