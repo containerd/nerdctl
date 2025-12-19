@@ -333,8 +333,8 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 			if spec.Linux.Resources.Pids == nil {
 				spec.Linux.Resources.Pids = &runtimespec.LinuxPids{}
 			}
-			if spec.Linux.Resources.Pids.Limit != opts.PidsLimit {
-				spec.Linux.Resources.Pids.Limit = opts.PidsLimit
+			if spec.Linux.Resources.Pids.Limit == nil || (spec.Linux.Resources.Pids.Limit != nil && *spec.Linux.Resources.Pids.Limit != opts.PidsLimit) {
+				spec.Linux.Resources.Pids.Limit = &opts.PidsLimit
 			}
 		}
 	}
