@@ -22,6 +22,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images/archive"
+	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
@@ -50,9 +51,13 @@ func Save(ctx context.Context, client *containerd.Client, images []string, optio
 			}
 
 			// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
-			err = EnsureAllContent(ctx, client, found.Image.Name, platMC, options.GOptions)
-			if err != nil {
-				return err
+			if !options.SkipVerify {
+				err = EnsureAllContent(ctx, client, found.Image.Name, platMC, options.GOptions)
+				if err != nil {
+					return err
+				}
+			} else {
+				log.G(ctx).Info("Skipping remote layer verification (--skip-verify enabled)")
 			}
 
 			imgName := found.Image.Name
