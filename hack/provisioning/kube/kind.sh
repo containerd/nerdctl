@@ -21,7 +21,7 @@ readonly root
 . "$root/../../scripts/lib.sh"
 
 GO_VERSION=1.25
-KIND_VERSION=v0.30.0
+KIND_VERSION=v0.31.0
 CNI_PLUGINS_VERSION=v1.9.0
 # shellcheck disable=SC2034
 CNI_PLUGINS_SHA_AMD64=58c03705426e929658f45a851df15a86d06ef680cacbf3f2dc127731ca265c28
