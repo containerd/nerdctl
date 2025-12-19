@@ -274,8 +274,8 @@ github.com/rogpeppe/go-internal v1.13.1 h1:KvO1DLK/DRN07sQ1LQKScxyZJuNnedQ5/wKSR
 github.com/rogpeppe/go-internal v1.13.1/go.mod h1:uMEvuHeurkdAXX61udpOXGD/AzZDWNMNyH2VO9fmH0o=
 github.com/rootless-containers/bypass4netns v0.4.2 h1:JUZcpX7VLRfDkLxBPC6fyNalJGv9MjnjECOilZIvKRc=
 github.com/rootless-containers/bypass4netns v0.4.2/go.mod h1:iOY28IeFVqFHnK0qkBCQ3eKzKQgSW5DtlXFQJyJMAQk=
-github.com/rootless-containers/rootlesskit/v2 v2.3.5 h1:WGY05oHE7xQpSkCGfYP9lMY5z19tCxA8PhWlvP1cKx8=
-github.com/rootless-containers/rootlesskit/v2 v2.3.5/go.mod h1:83EIYLeMX8UeNgLHkR1PefoSV76aKEC+OyI3vzrEfvw=
+github.com/rootless-containers/rootlesskit/v2 v2.3.6 h1:m/26nAx0DbHZYaM46+uoQjfpu9G77QLzWj2jz25chO8=
+github.com/rootless-containers/rootlesskit/v2 v2.3.6/go.mod h1:pv+RESmjRmeUIOsEWOT1f8560CrdaQrDW0YsF4K5kAY=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.1 h1:PKK9DyHxif4LZo+uQSgXNqs0jj5+xZwwfKHgph2lxBw=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.1/go.mod h1:JXeL+ps8p7/KNMjDQk3TCwPpBy0wYklyWTfbkIzdIFU=
