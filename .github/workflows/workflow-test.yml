@@ -150,5 +150,5 @@ jobs:
       # Note: these as for amd64
       containerd-sha: f5d8e90ecb6c1c7e33ecddf8cc268a93b9e5b54e0e850320d765511d76624f41
       containerd-service-sha: 1941362cbaa89dd591b99c32b050d82c583d3cd2e5fa63085d7017457ec5fca8
-      linux-cni-version: v1.8.0
-      linux-cni-sha: ab3bda535f9d90766cccc90d3dddb5482003dd744d7f22bcf98186bf8eea8be6
+      linux-cni-version: v1.9.0
+      linux-cni-sha: 58c03705426e929658f45a851df15a86d06ef680cacbf3f2dc127731ca265c28
