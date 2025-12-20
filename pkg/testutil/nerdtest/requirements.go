@@ -337,7 +337,12 @@ var Build = &test.Requirement{
 		mess := "buildkitd is enabled"
 
 		if isTargetNerdish() {
-			bkHostAddr, err := buildkitutil.GetBuildkitHost(defaultNamespace)
+			namespace := defaultNamespace
+			if ns := helpers.Read(Namespace); ns != "" {
+				namespace = string(ns)
+			}
+
+			bkHostAddr, err := buildkitutil.GetBuildkitHost(namespace)
 			if err != nil {
 				ret = false
 				mess = fmt.Sprintf("buildkitd is not enabled: %+v", err)
