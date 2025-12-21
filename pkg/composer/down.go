@@ -65,7 +65,7 @@ func (c *Composer) Down(ctx context.Context, downOptions DownOptions) error {
 				return fmt.Errorf("error removeing orphaned containers: %w", err)
 			}
 		} else {
-			log.G(ctx).Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)
+			log.G(ctx).Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), containerShortIDs(orphans))
 		}
 	}
 

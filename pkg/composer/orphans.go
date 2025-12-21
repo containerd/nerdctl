@@ -55,3 +55,11 @@ func (c *Composer) getOrphanContainers(ctx context.Context, parsedServices []*se
 
 	return orphanContainers, nil
 }
+
+func containerShortIDs(containers []containerd.Container) []string {
+	names := make([]string, 0, len(containers))
+	for _, c := range containers {
+		names = append(names, c.ID()[:12])
+	}
+	return names
+}
