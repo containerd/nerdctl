@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/opencontainers/selinux/go-selinux"
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/containerd/v2/defaults"
@@ -156,6 +157,19 @@ var Rootless = &test.Requirement{
 			mess = "environment is root-less"
 		} else {
 			mess = "environment is root-ful"
+		}
+		return ret, mess
+	},
+}
+
+// NoSelinux marks a test as suitable only for the noselinux enable environment
+var NoSelinux = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+		ret = !selinux.GetEnabled()
+		if ret {
+			mess = "selinux is disabled"
+		} else {
+			mess = "selinux is enabled"
 		}
 		return ret, mess
 	},

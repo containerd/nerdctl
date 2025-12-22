@@ -254,6 +254,7 @@ Security flags:
 
 - :whale: `--security-opt seccomp=<PROFILE_JSON_FILE>`: specify custom seccomp profile
 - :whale: `--security-opt apparmor=<PROFILE>`: specify custom AppArmor profile
+  :whale: `--security-opt label=<selinuxbel>`: specify custom selinux label
 - :whale: `--security-opt no-new-privileges`: disallow privilege escalation, e.g., setuid and file capabilities
 - :whale: `--security-opt systempaths=unconfined`: Turn off confinement for system paths (masked paths, read-only paths) for the container
 - :whale: `--security-opt writable-cgroups`: making the cgroups writeable
@@ -1959,6 +1960,7 @@ Flags:
 - :nerd_face: `--host-gateway-ip`: IP address that the special 'host-gateway' string in --add-host resolves to. It has no effect without setting --add-host
   - Default: the IP address of the host
 - :nerd_face: `--userns-remap=<username>:<groupname>`: Support idmapping of containers. This options is only supported on rootful linux for container create and run if a user name and optionally group name is passed, it does idmapping based on the uidmap and gidmap ranges specified in /etc/subuid and /etc/subgid respectively. Note: `--userns-remap` is not supported for building containers. Nerdctl Build doesn't support userns-remap feature. (format: <name|uid>[:<group|gid>])
+- :nerd_face: `--selinux-enabled`: Enable selinux support
 
 The global flags can be also specified in `/etc/nerdctl/nerdctl.toml` (rootful) and `~/.config/nerdctl/nerdctl.toml` (rootless).
 See [`./config.md`](./config.md).
