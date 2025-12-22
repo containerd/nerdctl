@@ -45,10 +45,13 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	converterutil "github.com/containerd/nerdctl/v2/pkg/imgutil/converter"
+	"github.com/containerd/nerdctl/v2/pkg/imgutil/jobs"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/snapshotterutil"
+	"github.com/containerd/platforms"
 )
 
 func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRawRef string, options types.ImageConvertOptions) error {
@@ -205,11 +208,40 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 		convertOpts = append(convertOpts, converter.WithDockerToOCI(true))
 	}
 
+	var (
+		cancelProgress context.CancelFunc
+		progressDone   chan struct{}
+	)
+
+	if options.ProgressOutput != nil {
+		var progressCtx context.Context
+		progressCtx, cancelProgress = context.WithCancel(ctx)
+		progressDone = make(chan struct{})
+		ongoing := jobs.New(targetRef)
+		if err := addDescriptorsToJobs(ctx, client, srcRef, platMC, ongoing); err != nil {
+			return err
+		}
+		go func() {
+			jobs.ShowProgress(progressCtx, ongoing, client.ContentStore(), options.ProgressOutput)
+			close(progressDone)
+		}()
+	}
+
 	// converter.Convert() gains the lease by itself
 	newImg, err := converterutil.Convert(ctx, client, targetRef, srcRef, convertOpts...)
 	if err != nil {
+		if cancelProgress != nil {
+			cancelProgress()
+			<-progressDone
+		}
 		return err
 	}
+
+	if cancelProgress != nil {
+		cancelProgress()
+		<-progressDone
+	}
+
 	res := converterutil.ConvertedImageInfo{
 		Image: newImg.Name + "@" + newImg.Target.Digest.String(),
 	}
@@ -231,6 +263,32 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 		res.ExtraImages = append(res.ExtraImages, finimg.Name+"@"+finimg.Target.Digest.String())
 	}
 	return printConvertedImage(options.Stdout, options, res)
+}
+
+func addDescriptorsToJobs(ctx context.Context, client *containerd.Client, srcRef string, platMC platforms.MatchComparer, ongoing *jobs.Jobs) error {
+	imageService := client.ImageService()
+	img, err := imageService.Get(ctx, srcRef)
+	if err != nil {
+		return err
+	}
+	provider := containerdutil.NewProvider(client)
+	handler := images.ChildrenHandler(provider)
+	if platMC != nil {
+		handler = images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			if desc.Platform != nil && !platMC.Match(*desc.Platform) {
+				return nil, nil
+			}
+			return images.Children(ctx, provider, desc)
+		})
+	}
+	err = images.Walk(ctx, images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		ongoing.Add(desc)
+		return handler(ctx, desc)
+	}), img.Target)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func getESGZConverter(options types.ImageConvertOptions) (convertFunc converter.ConvertFunc, finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error), _ error) {
