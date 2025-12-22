@@ -30,7 +30,6 @@ import (
 
 	"github.com/compose-spec/compose-go/v2/types"
 
-	"github.com/containerd/containerd/v2/contrib/nvidia"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/identifiers"
@@ -262,9 +261,17 @@ func getMemLimit(svc types.ServiceConfig) (types.UnitBytes, error) {
 func getGPUs(svc types.ServiceConfig) (reqs []string, _ error) {
 	// "gpu" and "nvidia" are also allowed capabilities (but not used as nvidia driver capabilities)
 	// https://github.com/moby/moby/blob/v20.10.7/daemon/nvidia_linux.go#L37
-	capset := map[string]struct{}{"gpu": {}, "nvidia": {}}
-	for _, c := range nvidia.AllCaps() {
-		capset[string(c)] = struct{}{}
+	capset := map[string]struct{}{
+		"gpu": {}, "nvidia": {},
+		// Allow the list of capabilities here (excluding "all" and "none")
+		// https://github.com/NVIDIA/nvidia-container-toolkit/blob/ff7c2d4866a7d46d1bf2a83590b263e10ec99cb5/internal/config/image/capabilities.go#L28-L38
+		"compat32": {},
+		"compute":  {},
+		"display":  {},
+		"graphics": {},
+		"ngx":      {},
+		"utility":  {},
+		"video":    {},
 	}
 	if svc.Deploy != nil && svc.Deploy.Resources.Reservations != nil {
 		for _, dev := range svc.Deploy.Resources.Reservations.Devices {
