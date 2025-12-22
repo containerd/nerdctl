@@ -18,12 +18,15 @@ package compose
 
 import (
 	"fmt"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
@@ -147,82 +150,174 @@ services:
 }
 
 func TestComposeCreatePull(t *testing.T) {
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase.NoParallel = true
+	testCase.Require = nerdtest.Private
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composeYAML := fmt.Sprintf(`
 services:
   svc0:
     image: %s
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	// `compose create --pull never` should fail: no such image
-	base.Cmd("rmi", "-f", testutil.CommonImage).Run()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "create", "--pull", "never").AssertFail()
-	// `compose create --pull missing(default)|always` should succeed: image is pulled and container is created
-	base.Cmd("rmi", "-f", testutil.CommonImage).Run()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "create").AssertOK()
-	base.Cmd("rmi", "-f", testutil.CommonImage).Run()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "create", "--pull", "always").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0", "-a").AssertOutContainsAny("Created", "created")
+		data.Labels().Set("composeYAML", composePath)
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "compose create --pull never fails when image missing",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("rmi", "-f", testutil.CommonImage)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "create", "--pull", "never")
+			},
+			Expected: test.Expects(1, nil, nil),
+		},
+		{
+			Description: "compose create --pull missing (default) pulls and creates a container",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("rmi", "-f", testutil.CommonImage)
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYAML"), "create")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps", "svc0", "-a")
+			},
+			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile(`Created|created`))),
+		},
+		{
+			Description: "compose create --pull always pulls and creates a container",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("rmi", "-f", testutil.CommonImage)
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYAML"), "create", "--pull", "always")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps", "svc0", "-a")
+			},
+			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile(`Created|created`))),
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeCreateBuild(t *testing.T) {
-	const imageSvc0 = "composebuild_svc0"
+	testCase := nerdtest.Setup()
 
-	dockerComposeYAML := fmt.Sprintf(`
+	testCase.NoParallel = true
+	testCase.Require = require.All(
+		nerdtest.Private,
+		nerdtest.Build,
+	)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		imageSvc0 := data.Identifier("composebuild_svc0")
+		composeYAML := fmt.Sprintf(`
 services:
   svc0:
     build: .
     image: %s
 `, imageSvc0)
+		dockerfile := fmt.Sprintf(`FROM %s`, testutil.CommonImage)
 
-	dockerfile := fmt.Sprintf(`FROM %s`, testutil.CommonImage)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+		data.Temp().Save(dockerfile, "Dockerfile")
 
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	comp.WriteFile("Dockerfile", dockerfile)
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("imageName", imageSvc0)
+	}
 
-	defer base.Cmd("rmi", imageSvc0).Run()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "compose create --no-build fails when image needs to be built",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "create", "--no-build")
+			},
+			Expected: test.Expects(1, nil, nil),
+		},
+		{
+			Description: "compose create --build builds image and creates container",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYAML"), "create", "--build")
+				helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "images", "svc0").Run(
+					&test.Expected{
+						ExitCode: 0,
+						Output: func(stdout string, t tig.T) {
+							assert.Assert(t, strings.Contains(stdout, data.Labels().Get("imageName")))
+						},
+					},
+				)
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps", "svc0", "-a")
+			},
+			Expected: test.Expects(0, nil, expect.Match(regexp.MustCompile(`Created|created`))),
+		},
+	}
 
-	// `compose create --no-build` should fail if service image needs build
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "create", "--no-build").AssertFail()
-	// `compose create --build` should succeed: image is built and container is created
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "create", "--build").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "images", "svc0").AssertOutContains(imageSvc0)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0", "-a").AssertOutContainsAny("Created", "created")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+		helpers.Anyhow("rmi", "-f", data.Labels().Get("imageName"))
+		helpers.Anyhow("builder", "prune", "--all", "--force")
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeCreateWritesConfigHashLabel(t *testing.T) {
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var composeYAML = fmt.Sprintf(`
 services:
   svc0:
     image: %s
 `, testutil.CommonImage)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	base := testutil.NewBase(t)
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "create").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("containerName", serviceparser.DefaultContainerName(projectName, "svc0", "1"))
 
-	container := serviceparser.DefaultContainerName(projectName, "svc0", "1")
-	base.Cmd("inspect", "--format", "{{json .Config.Labels}}", container).
-		AssertOutContains("com.docker.compose.config-hash")
+		helpers.Ensure("compose", "-f", composePath, "create")
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", "--format", "{{json .Config.Labels}}", data.Labels().Get("containerName"))
+	}
+
+	testCase.Expected = test.Expects(0, nil, expect.Contains("com.docker.compose.config-hash"))
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if path := data.Labels().Get("composeYAML"); path != "" {
+			helpers.Anyhow("compose", "-f", path, "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
