@@ -116,7 +116,7 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 				return fmt.Errorf("error removing orphaned containers: %w", err)
 			}
 		} else {
-			log.G(ctx).Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)
+			log.G(ctx).Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), containerShortIDs(orphans))
 		}
 	}
 

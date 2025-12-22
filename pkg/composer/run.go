@@ -201,7 +201,7 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 				return fmt.Errorf("error removing orphaned containers: %w", err)
 			}
 		} else {
-			log.G(ctx).Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), orphans)
+			log.G(ctx).Warnf("found %d orphaned containers: %v, you can run this command with the --remove-orphans flag to clean it up", len(orphans), containerShortIDs(orphans))
 		}
 	}
 
