@@ -39,6 +39,7 @@ import (
 	"github.com/containerd/platforms"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
 	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
@@ -131,6 +132,17 @@ func EnsureImage(ctx context.Context, client *containerd.Client, rawRef string, 
 	parsedReference, err := referenceutil.Parse(rawRef)
 	if err != nil {
 		return nil, err
+	}
+
+	// Transfer service is available in containerd 1.7, but full support is only in 2.0+
+	// For containerd 1.7, use the legacy resolver-based pull method for better compatibility
+	useTransferAPI := containerdutil.SupportsFullTransferService(ctx, client)
+	if !useTransferAPI {
+		log.G(ctx).Debug("Detected containerd < 2.0, using legacy pull method")
+	}
+
+	if useTransferAPI {
+		return PullImageWithTransfer(ctx, client, parsedReference, rawRef, options)
 	}
 
 	var dOpts []dockerconfigresolver.Opt

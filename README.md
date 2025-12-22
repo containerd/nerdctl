@@ -287,6 +287,7 @@ Advanced features:
 
 - [`./docs/stargz.md`](./docs/stargz.md):     Lazy-pulling using Stargz Snapshotter
 - [`./docs/nydus.md`](./docs/nydus.md):       Lazy-pulling using Nydus Snapshotter
+- [`./docs/soci.md`](./docs/soci.md):         Lazy-pulling using SOCI Snapshotter
 - [`./docs/overlaybd.md`](./docs/overlaybd.md):       Lazy-pulling using OverlayBD Snapshotter
 - [`./docs/ocicrypt.md`](./docs/ocicrypt.md): Running encrypted images
 - [`./docs/gpu.md`](./docs/gpu.md):           Using GPUs inside containers

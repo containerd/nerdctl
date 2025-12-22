@@ -25,7 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/docker/docker/pkg/sysinfo"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -144,18 +143,6 @@ func ServerVersion(ctx context.Context, client *containerd.Client) (*dockercompa
 		},
 	}
 	return v, nil
-}
-
-func ServerSemVer(ctx context.Context, client *containerd.Client) (*semver.Version, error) {
-	v, err := client.Version(ctx)
-	if err != nil {
-		return nil, err
-	}
-	sv, err := semver.NewVersion(v.Version)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse the containerd version %q: %w", v.Version, err)
-	}
-	return sv, nil
 }
 
 func buildctlVersion() dockercompat.ComponentVersion {

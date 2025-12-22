@@ -17,6 +17,11 @@ See https://github.com/containerd/accelerated-container-image to learn further i
   [proxy_plugins.overlaybd]
     type = "snapshot"
     address = "/run/overlaybd-snapshotter/overlaybd.sock"
+
+# Optional: Configure overlaybd for image unpacking (allows automatic snapshotter selection)
+[[plugins."io.containerd.transfer.v1.local".unpack_config]]
+  platform = "linux"
+  snapshotter = "overlaybd"
 ```
 
 - Launch `containerd` and `overlaybd-snapshotter`

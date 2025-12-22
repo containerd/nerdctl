@@ -33,8 +33,8 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
+	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
-	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -477,7 +477,7 @@ func ContainerdVersion(v string) *test.Requirement {
 				return false, fmt.Sprintf("failed to create client: %v", err)
 			}
 			defer cancel()
-			if sv, err := infoutil.ServerSemVer(ctx, client); err != nil {
+			if sv, err := containerdutil.ServerSemVer(ctx, client); err != nil {
 				return false, err.Error()
 			} else if sv.LessThan(semver.MustParse(v)) {
 				return false, fmt.Sprintf("`nerdctl commit --compression expects containerd %s or later, got containerd %v", v, sv)

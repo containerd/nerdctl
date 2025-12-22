@@ -18,79 +18,37 @@ package image
 
 import (
 	"context"
-	"fmt"
 
 	containerd "github.com/containerd/containerd/v2/client"
-	"github.com/containerd/containerd/v2/core/images"
-	"github.com/containerd/errdefs"
-	"github.com/containerd/log"
+	transferimage "github.com/containerd/containerd/v2/core/transfer/image"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
-	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
 func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagOptions) error {
-	imageService := client.ImageService()
-	var srcName string
-	walker := &imagewalker.ImageWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found imagewalker.Found) error {
-			if srcName == "" {
-				srcName = found.Image.Name
-			}
-			return nil
-		},
-	}
-	matchCount, err := walker.Walk(ctx, options.Source)
-	if err != nil {
-		return err
-	}
-	if matchCount < 1 {
-		return fmt.Errorf("%s: not found", options.Source)
-	}
-
-	parsedReference, err := referenceutil.Parse(options.Target)
+	parsedSource, err := referenceutil.Parse(options.Source)
 	if err != nil {
 		return err
 	}
 
-	ctx, done, err := client.WithLease(ctx)
-	if err != nil {
-		return err
-	}
-	defer done(ctx)
-
-	// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
-	platMC, err := platformutil.NewMatchComparer(true, nil)
+	parsedTarget, err := referenceutil.Parse(options.Target)
 	if err != nil {
 		return err
 	}
 
-	err = EnsureAllContent(ctx, client, srcName, platMC, options.GOptions)
+	platMC, err := platformutil.NewMatchComparer(false, nil)
 	if err != nil {
-		log.G(ctx).Warn("Unable to fetch missing layers before committing. " +
-			"If you try to save or push this image, it might fail. See https://github.com/containerd/nerdctl/issues/3439.")
+		return err
 	}
-
-	img, err := imageService.Get(ctx, srcName)
+	err = EnsureAllContent(ctx, client, parsedSource.String(), platMC, options.GOptions)
 	if err != nil {
 		return err
 	}
 
-	img.Name = parsedReference.String()
-	if _, err = imageService.Create(ctx, img); err != nil {
-		if errdefs.IsAlreadyExists(err) {
-			if err = imageService.Delete(ctx, img.Name, images.SynchronousDelete()); err != nil {
-				return err
-			}
-			if _, err = imageService.Create(ctx, img); err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-	return nil
+	sourceStore := transferimage.NewStore(parsedSource.String())
+	targetStore := transferimage.NewStore(parsedTarget.String())
+
+	return client.Transfer(ctx, sourceStore, targetStore)
 }
