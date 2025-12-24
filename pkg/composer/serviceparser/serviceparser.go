@@ -604,6 +604,9 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 			if value != nil && value.Ipv4Address != "" {
 				c.RunArgs = append(c.RunArgs, "--ip="+value.Ipv4Address)
 			}
+			if value != nil && value.Ipv6Address != "" {
+				c.RunArgs = append(c.RunArgs, "--ip6="+value.Ipv6Address)
+			}
 			if value != nil && value.MacAddress != "" {
 				c.RunArgs = append(c.RunArgs, "--mac-address="+value.MacAddress)
 			}
