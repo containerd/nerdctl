@@ -957,6 +957,56 @@ func TestHostNetworkHostName(t *testing.T) {
 	testCase.Run(t)
 }
 
+func TestHostNetworkDnsPreserved(t *testing.T) {
+	nerdtest.Setup()
+	testCase := &test.Case{
+		Require: require.Not(require.Windows),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			// In some rootless CI job, slirp provides 10.0.2.3 as DNS server.
+			// We cannot simply parse host /etc/resolv.conf here.
+			helpers.Command("run", "--rm",
+				"-v", "/etc/resolv.conf:/mnt/resolv.conf:ro",
+				testutil.AlpineImage,
+				"grep", "-E", "^nameserver\\s+", "/mnt/resolv.conf").Run(&test.Expected{
+				Output: func(stdout string, t tig.T) {
+					data.Labels().Set("nameservers", stdout)
+				},
+			})
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("run", "--rm",
+				"--network", "host",
+				testutil.AlpineImage,
+				"grep", "-E", "^nameserver\\s+", "/etc/resolv.conf")
+		},
+		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			// container with --network=host should have same nameserver as host
+			nameservers := data.Labels().Get("nameservers")
+			return &test.Expected{
+				Output: expect.Equals(nameservers),
+			}
+		},
+	}
+	testCase.Run(t)
+}
+
+func TestDefaultNetworkDnsNoLocalhost(t *testing.T) {
+	nerdtest.Setup()
+	testCase := &test.Case{
+		Require: require.Not(require.Windows),
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("run", "--rm",
+				testutil.AlpineImage, "grep", "-E", "^nameserver\\s+(127\\.|::1)", "/etc/resolv.conf")
+		},
+		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			return &test.Expected{
+				ExitCode: 1, // no match
+			}
+		},
+	}
+	testCase.Run(t)
+}
+
 func TestNoneNetworkDnsConfigs(t *testing.T) {
 	nerdtest.Setup()
 	testCase := &test.Case{
