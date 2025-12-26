@@ -151,6 +151,49 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 	}
 }
 
+func EnsureContainerExited(helpers test.Helpers, con string, exitCode int) {
+	helpers.T().Helper()
+	exited := false
+	for i := 0; i < maxRetry && !exited; i++ {
+		helpers.Command("container", "inspect", con).
+			Run(&test.Expected{
+				ExitCode: expect.ExitCodeNoCheck,
+				Output: func(stdout string, t tig.T) {
+					var dc []dockercompat.Container
+					err := json.Unmarshal([]byte(stdout), &dc)
+					if err != nil || len(dc) == 0 || (len(dc) > 0 && dc[0].State == nil) {
+						return
+					}
+					assert.Equal(t, len(dc), 1, "Unexpectedly got multiple results\n")
+					state := dc[0].State
+					if state.Running {
+						return
+					}
+					if state.Status != "exited" && state.Status != "dead" {
+						return
+					}
+					// Use a negative exitCode to ignore the exit code and only verify exited/dead state.
+					if exitCode >= 0 && state.ExitCode != exitCode {
+						return
+					}
+					exited = true
+				},
+			})
+		time.Sleep(sleep)
+	}
+
+	if !exited {
+		ins := helpers.Capture("container", "inspect", con)
+		lgs := helpers.Capture("logs", con)
+		ps := helpers.Capture("ps", "-a")
+		helpers.T().Log(ins)
+		helpers.T().Log(lgs)
+		helpers.T().Log(ps)
+		helpers.T().Log(fmt.Sprintf("container %s still not exited after %d retries", con, maxRetry))
+		helpers.T().FailNow()
+	}
+}
+
 func GenerateJWEKeyPair(data test.Data, helpers test.Helpers) (string, string) {
 	helpers.T().Helper()
 
