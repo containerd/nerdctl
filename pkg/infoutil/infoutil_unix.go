@@ -84,6 +84,7 @@ func distroName(r io.Reader) string {
 			name = v
 		case "VERSION":
 			version = v
+		default:
 		}
 	}
 	if name != "" {

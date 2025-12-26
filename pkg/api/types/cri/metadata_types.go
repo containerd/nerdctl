@@ -70,6 +70,7 @@ func (c *ContainerMetadata) UnmarshalJSON(data []byte) error {
 	case metadataVersion:
 		*c = ContainerMetadata(versioned.Metadata)
 		return nil
+	default:
 	}
 	return fmt.Errorf("unsupported version: %q", versioned.Version)
 }

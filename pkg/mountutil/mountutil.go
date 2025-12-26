@@ -136,6 +136,7 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore, createDir bool) (*
 			case "rbind", "bind":
 				fstype = "bind"
 				found = true
+			default:
 			}
 			if found {
 				break

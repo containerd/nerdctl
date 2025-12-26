@@ -328,6 +328,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			case "bind-nonrecursive":
 				bindNonRecursive = true
 				continue
+			default:
 			}
 		}
 
@@ -386,7 +387,6 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 
 	// compose new fileds and join into a string
 	// to call legacy ProcessFlagTmpfs or ProcessFlagV function
-	fields = []string{}
 	options := []string{}
 	if rwOption != "" {
 		if rwOption == "readonly" {
@@ -416,6 +416,8 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 				options = append(options, "rbind")
 			}
 		}
+	default:
+		return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", mountType)
 	}
 
 	if len(options) > 0 {
@@ -432,8 +434,9 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 	case Volume, Bind:
 		// createDir=false for --mount option to disallow creating directories on host if not found
 		return ProcessFlagV(fieldsStr, volStore, false)
+	default:
+		return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", mountType)
 	}
-	return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", mountType)
 }
 
 // copy from https://github.com/moby/moby/blob/085c6a98d54720e70b28354ccec6da9b1b9e7fcf/volume/mounts/linux_parser.go#L375

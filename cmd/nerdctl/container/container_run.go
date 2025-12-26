@@ -60,6 +60,7 @@ func RunCommand() *cobra.Command {
 	case "freebsd":
 		longHelp += "\n"
 		longHelp += "WARNING: `nerdctl run` is experimental on FreeBSD and currently requires `--net=none` (https://github.com/containerd/nerdctl/blob/main/docs/freebsd.md)"
+	default:
 	}
 	var cmd = &cobra.Command{
 		Use:               "run [flags] IMAGE [COMMAND] [ARG...]",

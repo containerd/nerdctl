@@ -175,6 +175,7 @@ func calculateCgroupBlockIO(metrics *v1.Metrics) (uint64, uint64) {
 			blkRead = blkRead + bioEntry.Value
 		case 'w', 'W':
 			blkWrite = blkWrite + bioEntry.Value
+		default:
 		}
 	}
 	return blkRead, blkWrite

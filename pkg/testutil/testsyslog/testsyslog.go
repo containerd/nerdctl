@@ -95,12 +95,15 @@ func TestableNetwork(network string) bool {
 			switch runtime.GOARCH {
 			case "arm", "arm64":
 				return false
+			default:
 			}
 		case "windows":
 			return false
+		default:
 		}
 	case "udp", "tcp", "tcp+tls":
 		return !rootlessutil.IsRootless()
+	default:
 	}
 	return true
 }

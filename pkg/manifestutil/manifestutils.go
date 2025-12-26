@@ -211,6 +211,8 @@ func CreateManifestEntry(parsedRef *referenceutil.ImageReference, desc ocispec.D
 		entry.SchemaV2Manifest = manifest
 	case "OCIManifest":
 		entry.OCIManifest = manifest
+	default:
+		return manifesttypes.DockerManifestEntry{}, fmt.Errorf("unsupported media type: %s", desc.MediaType)
 	}
 
 	// Special handling for OCI manifests to match Docker output

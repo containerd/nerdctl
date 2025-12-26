@@ -207,6 +207,8 @@ func GenerateIPCOpts(ctx context.Context, ipc IPC, client *containerd.Client) ([
 		}
 
 		opts = append(opts, withBindMountHostOtherSourceIPC(*targetConIPC.HostShmPath))
+	default:
+		return nil, fmt.Errorf("unknown ipc mode: %s", ipc.Mode)
 	}
 
 	return opts, nil
@@ -242,6 +244,8 @@ func withBindMountHostIPC(_ context.Context, _ oci.Client, _ *containers.Contain
 				Source:      p,
 				Options:     []string{"rbind", "nosuid", "noexec", "nodev"},
 			}
+		default:
+			continue
 		}
 	}
 	return nil
