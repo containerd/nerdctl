@@ -175,6 +175,7 @@ http::get::secure(){
   shift
   shift
 
+  printf "Verifying $url against $sha\n"
   _http::get "$url" "$output" "2" "1" "" "" "$@"
   shasum -a 256 -c <<<"$sha  $output" || {
     ret=$?
@@ -182,6 +183,7 @@ http::get::secure(){
     log::error "Actual sha: $(shasum -a 256 "$output")"
     return $ret
   }
+  printf "result: %s \n" "$(shasum -a 256 -c <<<"$sha  $output")"
 }
 
 http::healthcheck(){
