@@ -19,6 +19,8 @@ package expect
 const (
 	// ExitCodeSuccess will ensure that the command effectively ran returned with exit code zero.
 	ExitCodeSuccess = 0
+	// ExitCodeSigkill verifies a container exited due to SIGKILL.
+	ExitCodeSigkill = 137
 	// ExitCodeGenericFail will verify that the command ran and exited with a non-zero error code.
 	// This does NOT include timeouts, cancellation, or signals.
 	ExitCodeGenericFail = -10
