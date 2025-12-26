@@ -66,6 +66,7 @@
 - [Registry](#registry)
   - [:whale: nerdctl login](#whale-nerdctl-login)
   - [:whale: nerdctl logout](#whale-nerdctl-logout)
+  - [:whale: nerdctl search](#whale-nerdctl-search)
 - [Network management](#network-management)
   - [:whale: nerdctl network create](#whale-nerdctl-network-create)
   - [:whale: nerdctl network ls](#whale-nerdctl-network-ls)
@@ -1209,6 +1210,19 @@ Log out from a container registry
 
 Usage: `nerdctl logout [SERVER]`
 
+### :whale: nerdctl search
+
+Search Docker Hub or a registry for images
+
+Usage: `nerdctl search [OPTIONS] TERM`
+
+Flags:
+
+- :whale: `--limit`: Max number of search results (default: 0)
+- :whale: `--no-trunc`: Don't truncate output (default: false)
+- :whale: `--filter, -f`: Filter output based on conditions provided
+- :whale: `--format`: Format the output using the given Go template
+
 ## Network management
 
 ### :whale: nerdctl network create
@@ -1977,10 +1991,6 @@ Network management:
 
 - `docker network connect`
 - `docker network disconnect`
-
-Registry:
-
-- `docker search`
 
 Compose:
 

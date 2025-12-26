@@ -44,6 +44,7 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/manifest"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/namespace"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/network"
+	"github.com/containerd/nerdctl/v2/cmd/nerdctl/search"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/system"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/volume"
 	"github.com/containerd/nerdctl/v2/pkg/config"
@@ -309,6 +310,7 @@ Config file ($NERDCTL_TOML): %s
 		image.TagCommand(),
 		image.RmiCommand(),
 		image.HistoryCommand(),
+		search.Command(),
 		// #endregion
 
 		// #region System
