@@ -397,6 +397,64 @@ func TestNetworkInspect(t *testing.T) {
 				}
 			},
 		},
+		{
+			Description: "Test container network details",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier("test-network"))
+
+				// See https://github.com/containerd/nerdctl/issues/4322
+				if runtime.GOOS == "windows" {
+					time.Sleep(time.Second)
+				}
+
+				// Create and start a container on this network
+				helpers.Ensure("run", "-d", "--name", data.Identifier("test-container"),
+					"--network", data.Identifier("test-network"),
+					testutil.CommonImage, "sleep", nerdtest.Infinity)
+
+				// Get container ID for later use
+				containerID := strings.Trim(helpers.Capture("inspect", data.Identifier("test-container"), "--format", "{{.Id}}"), "\n")
+				data.Labels().Set("containerID", containerID)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier("test-container"))
+				helpers.Anyhow("network", "remove", data.Identifier("test-network"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("network", "inspect", data.Identifier("test-network"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, t tig.T) {
+						var dc []dockercompat.Network
+						err := json.Unmarshal([]byte(stdout), &dc)
+						assert.NilError(t, err, "Unable to unmarshal output")
+						assert.Equal(t, 1, len(dc), "Expected exactly one network")
+
+						network := dc[0]
+						assert.Equal(t, network.Name, data.Identifier("test-network"))
+						assert.Equal(t, 1, len(network.Containers), "Expected exactly one container")
+
+						// Get the container details
+						containerID := data.Labels().Get("containerID")
+						container := network.Containers[containerID]
+
+						// Test container name
+						assert.Equal(t, container.Name, data.Identifier("test-container"))
+
+						// Test IPv4Address has CIDR notation (not empty and contains '/')
+						assert.Assert(t, container.IPv4Address != "", "IPv4Address should not be empty")
+						assert.Assert(t, strings.Contains(container.IPv4Address, "/"), "IPv4Address should contain CIDR notation with /")
+
+						// Test MacAddress is present and has valid format
+						assert.Assert(t, container.MacAddress != "", "MacAddress should not be empty")
+
+						// Test IPv6Address is empty for IPv4-only network
+						assert.Equal(t, "", container.IPv6Address, "IPv6Address should be empty for IPv4-only network")
+					},
+				}
+			},
+		},
 	}
 
 	testCase.Run(t)
