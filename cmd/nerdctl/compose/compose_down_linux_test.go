@@ -19,78 +19,136 @@ package compose
 import (
 	"fmt"
 	"testing"
-	"time"
+
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposeDownRemoveUsedNetwork(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var (
-		dockerComposeYAMLOrphan = fmt.Sprintf(`
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerComposeYAMLOrphan := fmt.Sprintf(`
 services:
   test:
     image: %s
     command: "sleep infinity"
 `, testutil.CommonImage)
 
-		dockerComposeYAMLFull = fmt.Sprintf(`
+		dockerComposeYAMLFull := fmt.Sprintf(`
 %s
   orphan:
     image: %s
     command: "sleep infinity"
 `, dockerComposeYAMLOrphan, testutil.CommonImage)
-	)
 
-	compOrphan := testutil.NewComposeDir(t, dockerComposeYAMLOrphan)
-	defer compOrphan.CleanUp()
-	compFull := testutil.NewComposeDir(t, dockerComposeYAMLFull)
-	defer compFull.CleanUp()
+		composeOrphanPath := data.Temp().Save(dockerComposeYAMLOrphan, "compose-orphan.yaml")
+		composeFullPath := data.Temp().Save(dockerComposeYAMLFull, "compose-full.yaml")
 
-	projectName := fmt.Sprintf("nerdctl-compose-test-%d", time.Now().Unix())
-	t.Logf("projectName=%q", projectName)
+		projectName := data.Identifier("project")
+		t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "down", "--remove-orphans").AssertOK()
+		testContainer := serviceparser.DefaultContainerName(projectName, "test", "1")
+		orphanContainer := serviceparser.DefaultContainerName(projectName, "orphan", "1")
 
-	base.ComposeCmd("-p", projectName, "-f", compOrphan.YAMLFullPath(), "down", "-v").AssertCombinedOutContains("in use")
+		data.Labels().Set("composeOrphan", composeOrphanPath)
+		data.Labels().Set("composeFull", composeFullPath)
+		data.Labels().Set("projectName", projectName)
 
+		helpers.Ensure("compose", "-p", projectName, "-f", composeFullPath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, testContainer)
+		nerdtest.EnsureContainerStarted(helpers, orphanContainer)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-p", data.Labels().Get("projectName"), "-f", data.Labels().Get("composeOrphan"), "down", "-v")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Errors: []error{
+				fmt.Errorf("in use"),
+			},
+		}
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if composeFull := data.Labels().Get("composeFull"); composeFull != "" {
+			helpers.Anyhow("compose", "-p", data.Labels().Get("projectName"), "-f", composeFull, "down", "--remove-orphans")
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeDownRemoveOrphans(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	var (
-		dockerComposeYAMLOrphan = fmt.Sprintf(`
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerComposeYAMLOrphan := fmt.Sprintf(`
 services:
   test:
     image: %s
     command: "sleep infinity"
 `, testutil.CommonImage)
 
-		dockerComposeYAMLFull = fmt.Sprintf(`
+		dockerComposeYAMLFull := fmt.Sprintf(`
 %s
   orphan:
     image: %s
     command: "sleep infinity"
 `, dockerComposeYAMLOrphan, testutil.CommonImage)
-	)
 
-	compOrphan := testutil.NewComposeDir(t, dockerComposeYAMLOrphan)
-	defer compOrphan.CleanUp()
-	compFull := testutil.NewComposeDir(t, dockerComposeYAMLFull)
-	defer compFull.CleanUp()
+		composeOrphanPath := data.Temp().Save(dockerComposeYAMLOrphan, "compose-orphan.yaml")
+		composeFullPath := data.Temp().Save(dockerComposeYAMLFull, "compose-full.yaml")
 
-	projectName := compFull.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		projectName := data.Identifier("project")
+		t.Logf("projectName=%q", projectName)
 
-	orphanContainer := serviceparser.DefaultContainerName(projectName, "orphan", "1")
+		testContainer := serviceparser.DefaultContainerName(projectName, "test", "1")
+		orphanContainer := serviceparser.DefaultContainerName(projectName, "orphan", "1")
 
-	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "down", "-v").Run()
+		data.Labels().Set("composeOrphan", composeOrphanPath)
+		data.Labels().Set("composeFull", composeFullPath)
+		data.Labels().Set("projectName", projectName)
+		data.Labels().Set("orphanContainer", orphanContainer)
 
-	base.ComposeCmd("-p", projectName, "-f", compOrphan.YAMLFullPath(), "down", "--remove-orphans").AssertOK()
-	base.ComposeCmd("-p", projectName, "-f", compFull.YAMLFullPath(), "ps", "-a").AssertOutNotContains(orphanContainer)
+		helpers.Ensure("compose", "-p", projectName, "-f", composeFullPath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, testContainer)
+		nerdtest.EnsureContainerStarted(helpers, orphanContainer)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-p", data.Labels().Get("projectName"), "-f", data.Labels().Get("composeOrphan"), "down", "--remove-orphans")
+	}
+
+	testCase.Expected = test.Expects(0, nil, nil)
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "orphan container removed",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-p", data.Labels().Get("projectName"), "-f", data.Labels().Get("composeFull"), "ps", "-a")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output:   expect.DoesNotContain(data.Labels().Get("orphanContainer")),
+				}
+			},
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if composeFull := data.Labels().Get("composeFull"); composeFull != "" {
+			helpers.Anyhow("compose", "-p", data.Labels().Get("projectName"), "-f", composeFull, "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
