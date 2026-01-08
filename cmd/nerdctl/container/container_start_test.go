@@ -17,31 +17,58 @@
 package container
 
 import (
-	"runtime"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestStart(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
+	nerdtest.Setup()
 
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	base.Cmd("run", "--name", containerName, testutil.CommonImage).AssertOK()
-	base.Cmd("start", containerName).AssertOutContains(containerName)
+	testCase := &test.Case{
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("run", "-d",
+				"--name", data.Identifier(),
+				testutil.CommonImage)
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rm", "-f", data.Identifier())
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("start", data.Identifier())
+		},
+		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			return test.Expects(0, nil, expect.Contains(data.Identifier()))(data, helpers)
+		},
+	}
+	testCase.Run(t)
 }
 
 func TestStartAttach(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("start attach test is not yet implemented on Windows")
-	}
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
 
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	base.Cmd("run", "--name", containerName, testutil.CommonImage, "sh", "-euxc", "echo foo").AssertOK()
-	base.Cmd("start", "-a", containerName).AssertOutContains("foo")
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Require: require.Not(require.Windows),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("run",
+				"--name", data.Identifier(),
+				testutil.CommonImage, "sh", "-euxc", "echo foo")
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rm", "-f", data.Identifier())
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("start", "-a", data.Identifier())
+		},
+		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			return test.Expects(0, nil, expect.Contains("foo"))(data, helpers)
+		},
+	}
+	testCase.Run(t)
 }
