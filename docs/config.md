@@ -30,6 +30,7 @@ userns_remap   = ""
 dns            = ["8.8.8.8", "1.1.1.1"]
 dns_opts       = ["ndots:1", "timeout:2"]
 dns_search     = ["example.com", "example.org"]
+selinux_enabled= true
 ```
 
 ## Properties
