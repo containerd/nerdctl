@@ -86,6 +86,7 @@ func TestRename(t *testing.T) {
 }
 
 func TestRenameUpdateHosts(t *testing.T) {
+	testutil.DockerIncompatible(t)
 	testCase := nerdtest.Setup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
