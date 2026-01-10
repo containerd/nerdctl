@@ -458,7 +458,7 @@ func Parse(project *types.Project, svc types.ServiceConfig) (*Service, error) {
 		parsed.Build.Force = true
 		parsed.PullMode = "never"
 	default:
-		log.L.Warnf("Ignoring: service %s: pull_policy: %q", svc.Name, svc.PullPolicy)
+		return nil, fmt.Errorf("invalid --pull option %q", svc.PullPolicy)
 	}
 
 	for i := 0; i < replicas; i++ {

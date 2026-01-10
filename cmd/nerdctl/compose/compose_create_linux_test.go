@@ -17,6 +17,7 @@
 package compose
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -211,6 +212,36 @@ services:
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		if data.Labels().Get("composeYAML") != "" {
 			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
+}
+
+func TestComposeCreatePullInvalidOption(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composeYAML := fmt.Sprintf(`
+services:
+  svc0:
+    image: %s
+`, testutil.CommonImage)
+
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+		data.Labels().Set("composeYAML", composePath)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// nerver isn't never.
+		return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "create", "--pull", "nerver")
+	}
+
+	testCase.Expected = test.Expects(1, []error{errors.New(`invalid --pull option \"nerver\"`)}, nil)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if path := data.Labels().Get("composeYAML"); path != "" {
+			helpers.Anyhow("compose", "-f", path, "down", "-v")
 		}
 	}
 
