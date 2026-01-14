@@ -19,39 +19,41 @@ package container
 import (
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRunSysctl(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.AlpineImage, "cat", "/proc/sys/net/ipv4/ip_forward").AssertOutExactly("1\n")
+	testCase := nerdtest.Setup()
+
+	testCase.Command = test.Command("run", "--rm", "--sysctl", "net.ipv4.ip_forward=1", testutil.AlpineImage, "cat", "/proc/sys/net/ipv4/ip_forward")
+	testCase.Expected = test.Expects(0, nil, expect.Equals("1\n"))
+
+	testCase.Run(t)
 }
 
 func TestRunSysctl_DefaultUnprivilegedPortStart(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
 	// No --sysctl flags, default network mode (non-host).
 	// We expect net.ipv4.ip_unprivileged_port_start=0 inside the container,
 	// because withDefaultUnprivilegedPortSysctl should apply the default.
-	base.Cmd(
-		"run", "--rm",
-		testutil.AlpineImage,
-		"cat", "/proc/sys/net/ipv4/ip_unprivileged_port_start",
-	).AssertOutExactly("0\n")
+	testCase.Command = test.Command("run", "--rm", testutil.AlpineImage, "cat", "/proc/sys/net/ipv4/ip_unprivileged_port_start")
+	testCase.Expected = test.Expects(0, nil, expect.Equals("0\n"))
+
+	testCase.Run(t)
 }
 
 func TestRunSysctl_UnprivilegedPortStartOverride(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
 	// User explicitly sets net.ipv4.ip_unprivileged_port_start=1000.
 	// We must NOT override this; the container should see "1000".
-	base.Cmd(
-		"run", "--rm",
-		"--sysctl", "net.ipv4.ip_unprivileged_port_start=1000",
-		testutil.AlpineImage,
-		"cat", "/proc/sys/net/ipv4/ip_unprivileged_port_start",
-	).AssertOutExactly("1000\n")
+	testCase.Command = test.Command("run", "--rm", "--sysctl", "net.ipv4.ip_unprivileged_port_start=1000", testutil.AlpineImage, "cat", "/proc/sys/net/ipv4/ip_unprivileged_port_start")
+	testCase.Expected = test.Expects(0, nil, expect.Equals("1000\n"))
+
+	testCase.Run(t)
 }
