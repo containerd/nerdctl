@@ -18,19 +18,26 @@ package compose
 
 import (
 	"fmt"
+	"path/filepath"
+	"regexp"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
+	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposePauseAndUnpause(t *testing.T) {
-	base := testutil.NewBase(t)
-	switch base.Info().CgroupDriver {
-	case "none", "":
-		t.Skip("requires cgroup (for pausing)")
-	}
+	testCase := nerdtest.Setup()
 
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase.Require = nerdtest.CGroup
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerComposeYAML := fmt.Sprintf(`
 services:
   svc0:
     image: %s
@@ -40,20 +47,49 @@ services:
     command: "sleep infinity"
 `, testutil.CommonImage, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	// pause a service should (only) pause its own container
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "pause", "svc0").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0", "-a").AssertOutContainsAny("Paused", "paused")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc1").AssertOutContainsAny("Up", "running")
+		svc0Container := serviceparser.DefaultContainerName(projectName, "svc0", "1")
+		svc1Container := serviceparser.DefaultContainerName(projectName, "svc1", "1")
 
-	// unpause should be able to recover the paused service container
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "unpause", "svc0").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "svc0").AssertOutContainsAny("Up", "running")
+		data.Labels().Set("composeYAML", composePath)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, svc0Container)
+		nerdtest.EnsureContainerStarted(helpers, svc1Container)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// pause a service should (only) pause its own container
+		return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "pause", "svc0")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				svc0Paused := helpers.Capture("compose", "-f", data.Labels().Get("composeYAML"), "ps", "svc0", "-a")
+				expect.Match(regexp.MustCompile("Paused|paused"))(svc0Paused, t)
+
+				svc1Running := helpers.Capture("compose", "-f", data.Labels().Get("composeYAML"), "ps", "svc1")
+				expect.Match(regexp.MustCompile("Up|running"))(svc1Running, t)
+
+				// unpause should be able to recover the paused service container
+				helpers.Ensure("compose", "-f", data.Labels().Get("composeYAML"), "unpause", "svc0")
+				svc0Running := helpers.Capture("compose", "-f", data.Labels().Get("composeYAML"), "ps", "svc0")
+				expect.Match(regexp.MustCompile("Up|running"))(svc0Running, t)
+			},
+		}
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composeYAML") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
 }
