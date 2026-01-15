@@ -19,38 +19,132 @@ package container
 import (
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRenameProcessContainer(t *testing.T) {
-	testContainerName := testutil.Identifier(t)
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	defer base.Cmd("rm", "-f", testContainerName).Run()
-	base.Cmd("run", "--isolation", "process", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		testContainerName := testutil.Identifier(t)
+		data.Labels().Set("containerName", testContainerName)
 
-	defer base.Cmd("rm", "-f", testContainerName+"_new").Run()
-	base.Cmd("rename", testContainerName, testContainerName+"_new").AssertOK()
-	base.Cmd("ps", "-a").AssertOutContains(testContainerName + "_new")
-	base.Cmd("rename", testContainerName, testContainerName+"_new").AssertFail()
-	base.Cmd("rename", testContainerName+"_new", testContainerName+"_new").AssertFail()
+		helpers.Ensure("run", "--isolation", "process", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, testContainerName)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		testContainerName := data.Labels().Get("containerName")
+		helpers.Anyhow("rm", "-f", testContainerName)
+		helpers.Anyhow("rm", "-f", testContainerName+"_new")
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "`rename` should work",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				testContainerName := data.Labels().Get("containerName")
+				return helpers.Command("rename", testContainerName, testContainerName+"_new")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "`rename` should have updated container name",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-a")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				testContainerName := data.Labels().Get("containerName")
+				return test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(testContainerName+"_new"))(data, helpers)
+			},
+		},
+		{
+			Description: "`rename` should fail to rename not existing container",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				testContainerName := data.Labels().Get("containerName")
+				return helpers.Command("rename", testContainerName, testContainerName+"_new")
+			},
+			Expected: test.Expects(1, nil, nil),
+		},
+		{
+			Description: "`rename` should fail to rename to existing name",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				testContainerName := data.Labels().Get("containerName")
+				return helpers.Command("rename", testContainerName+"_new", testContainerName+"_new")
+			},
+			Expected: test.Expects(1, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestRenameHyperVContainer(t *testing.T) {
-	testContainerName := testutil.Identifier(t)
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.HyperV
 
-	if !testutil.HyperVSupported() {
-		t.Skip("HyperV is not enabled, skipping test")
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		testContainerName := testutil.Identifier(t)
+		data.Labels().Set("containerName", testContainerName)
+
+		helpers.Ensure("run", "--isolation", "hyperv", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, testContainerName)
 	}
 
-	defer base.Cmd("rm", "-f", testContainerName).Run()
-	base.Cmd("run", "--isolation", "hyperv", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		testContainerName := data.Labels().Get("containerName")
+		helpers.Anyhow("rm", "-f", testContainerName)
+		helpers.Anyhow("rm", "-f", testContainerName+"_new")
+	}
 
-	defer base.Cmd("rm", "-f", testContainerName+"_new").Run()
-	base.Cmd("rename", testContainerName, testContainerName+"_new").AssertOK()
-	base.Cmd("ps", "-a").AssertOutContains(testContainerName + "_new")
-	base.Cmd("rename", testContainerName, testContainerName+"_new").AssertFail()
-	base.Cmd("rename", testContainerName+"_new", testContainerName+"_new").AssertFail()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "`rename` should work",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				testContainerName := data.Labels().Get("containerName")
+				return helpers.Command("rename", testContainerName, testContainerName+"_new")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "`rename` should have updated container name",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-a")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				testContainerName := data.Labels().Get("containerName")
+				return test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(testContainerName+"_new"))(data, helpers)
+			},
+		},
+		{
+			Description: "`rename` should fail to rename not existing container",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				testContainerName := data.Labels().Get("containerName")
+				return helpers.Command("rename", testContainerName, testContainerName+"_new")
+			},
+			Expected: test.Expects(1, nil, nil),
+		},
+		{
+			Description: "`rename` should fail to rename to existing name",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				testContainerName := data.Labels().Get("containerName")
+				return helpers.Command("rename", testContainerName+"_new", testContainerName+"_new")
+			},
+			Expected: test.Expects(1, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
 }
