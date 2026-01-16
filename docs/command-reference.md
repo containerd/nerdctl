@@ -494,6 +494,8 @@ Usage:
 - `nerdctl cp [OPTIONS] CONTAINER:SRC_PATH DEST_PATH|-`
 - `nerdctl cp [OPTIONS] SRC_PATH|- CONTAINER:DEST_PATH`
 
+Using `-` as the `SRC_PATH` streams the contents of `STDIN` as a tar archive. The command extracts the content of the tar to the `DEST_PATH` in container's filesystem. In this case, `DEST_PATH` must specify a directory. Using `-` as the `DEST_PATH` streams the contents of the resource as a tar archive to `STDOUT`.
+
 :warning: `nerdctl cp` is designed only for use with trusted, cooperating containers.
 Using `nerdctl cp` with untrusted or malicious containers is unsupported and may not provide protection against unexpected behavior.
 

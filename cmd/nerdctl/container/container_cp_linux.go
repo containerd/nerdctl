@@ -107,12 +107,6 @@ func copyOptions(cmd *cobra.Command, args []string) (types.ContainerCpOptions, e
 	if srcSpec.Container == nil && destSpec.Container == nil {
 		return types.ContainerCpOptions{}, fmt.Errorf("one of src or dest must be a container file specification")
 	}
-	if srcSpec.Path == "-" {
-		return types.ContainerCpOptions{}, fmt.Errorf("support for reading a tar archive from stdin is not implemented yet")
-	}
-	if destSpec.Path == "-" {
-		return types.ContainerCpOptions{}, fmt.Errorf("support for writing a tar archive to stdout is not implemented yet")
-	}
 
 	container2host := srcSpec.Container != nil
 	var containerReq string
@@ -128,6 +122,8 @@ func copyOptions(cmd *cobra.Command, args []string) (types.ContainerCpOptions, e
 		DestPath:       destSpec.Path,
 		SrcPath:        srcSpec.Path,
 		FollowSymLink:  flagL,
+		FromStdin:      srcSpec.Path == "-",
+		ToStdout:       destSpec.Path == "-",
 	}, nil
 }
 
@@ -138,6 +134,12 @@ func AddCpCommand(rootCmd *cobra.Command) {
 var errFileSpecDoesntMatchFormat = errors.New("filespec must match the canonical format: [container:]file/path")
 
 func parseCpFileSpec(arg string) (*copyFileSpec, error) {
+	if arg == "" {
+		return &copyFileSpec{
+			Path: "-",
+		}, nil
+	}
+
 	i := strings.Index(arg, ":")
 
 	// filespec starting with a semicolon is invalid
