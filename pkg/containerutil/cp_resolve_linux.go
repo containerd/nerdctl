@@ -60,6 +60,14 @@ type pathSpecifier struct {
 // getPathSpecFromHost builds a pathSpecifier from a host location
 // errors with errDoesNotExist, errIsNotADir, "EvalSymlinks: too many links", or other hard filesystem errors from lstat/stat
 func getPathSpecFromHost(originalPath string) (*pathSpecifier, error) {
+	if originalPath == "-" {
+		return &pathSpecifier{
+			originalPath: originalPath,
+			exists:       true,
+			isADir:       true,
+		}, nil
+	}
+
 	pathSpec := &pathSpecifier{
 		originalPath:         originalPath,
 		endsWithSeparator:    strings.HasSuffix(originalPath, string(os.PathSeparator)),
@@ -134,6 +142,14 @@ func getPathSpecFromHost(originalPath string) (*pathSpecifier, error) {
 
 // getPathSpecFromHost builds a pathSpecifier from a container location
 func getPathSpecFromContainer(originalPath string, conSpec *oci.Spec, containerHostRoot string) (*pathSpecifier, error) {
+	if originalPath == "-" {
+		return &pathSpecifier{
+			originalPath: originalPath,
+			exists:       true,
+			isADir:       true,
+		}, nil
+	}
+
 	pathSpec := &pathSpecifier{
 		originalPath:         originalPath,
 		endsWithSeparator:    strings.HasSuffix(originalPath, string(os.PathSeparator)),
