@@ -27,31 +27,66 @@ import (
 )
 
 func TestExecWithUser(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	testContainer := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	defer base.Cmd("rm", "-f", testContainer).Run()
-	base.Cmd("run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
-	base.EnsureContainerStarted(testContainer)
-
-	testCases := map[string]string{
-		"":             "uid=0(root) gid=0(root)",
-		"1000":         "uid=1000 gid=0(root)",
-		"1000:users":   "uid=1000 gid=100(users)",
-		"guest":        "uid=405(guest) gid=100(users)",
-		"nobody":       "uid=65534(nobody) gid=65534(nobody)",
-		"nobody:users": "uid=65534(nobody) gid=100(users)",
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("rm", "-f", data.Identifier())
 	}
 
-	for userStr, expected := range testCases {
-		cmd := []string{"exec"}
-		if userStr != "" {
-			cmd = append(cmd, "--user", userStr)
-		}
-		cmd = append(cmd, testContainer, "id")
-		base.Cmd(cmd...).AssertOutContains(expected)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+
+		data.Labels().Set("container_name", data.Identifier())
 	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "with no user flag",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("container_name"), "id")
+			},
+			Expected: test.Expects(0, nil, expect.Contains("uid=0(root) gid=0(root)")),
+		},
+		{
+			Description: "with --user 1000",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", "--user", "1000", data.Labels().Get("container_name"), "id")
+			},
+			Expected: test.Expects(0, nil, expect.Contains("uid=1000 gid=0(root)")),
+		},
+		{
+			Description: "with --user 1000:users",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", "--user", "1000:users", data.Labels().Get("container_name"), "id")
+			},
+			Expected: test.Expects(0, nil, expect.Contains("uid=1000 gid=100(users)")),
+		},
+		{
+			Description: "with --user guest",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", "--user", "guest", data.Labels().Get("container_name"), "id")
+			},
+			Expected: test.Expects(0, nil, expect.Contains("uid=405(guest) gid=100(users)")),
+		},
+		{
+			Description: "with --user nobody",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", "--user", "nobody", data.Labels().Get("container_name"), "id")
+			},
+			Expected: test.Expects(0, nil, expect.Contains("uid=65534(nobody) gid=65534(nobody)")),
+		},
+		{
+			Description: "with --user nobody:users",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", "--user", "nobody:users", data.Labels().Get("container_name"), "id")
+			},
+			Expected: test.Expects(0, nil, expect.Contains("uid=65534(nobody) gid=100(users)")),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestExecTTY(t *testing.T) {
