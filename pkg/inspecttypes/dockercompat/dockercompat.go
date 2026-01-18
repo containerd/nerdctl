@@ -929,9 +929,9 @@ type Network struct {
 type EndpointResource struct {
 	Name string `json:"Name"`
 	// EndpointID  string `json:"EndpointID"`
-	// MacAddress  string `json:"MacAddress"`
-	// IPv4Address string `json:"IPv4Address"`
-	// IPv6Address string `json:"IPv6Address"`
+	MacAddress  string `json:"MacAddress"`
+	IPv4Address string `json:"IPv4Address"`
+	IPv6Address string `json:"IPv6Address"`
 }
 
 type structuredCNI struct {
@@ -975,13 +975,50 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 
 	res.Containers = make(map[string]EndpointResource)
 	for _, container := range n.Containers {
-		res.Containers[container.ID] = EndpointResource{
+		endpoint := EndpointResource{
 			Name: container.Labels[labels.Name],
-			// EndpointID:  container.EndpointID,
-			// MacAddress:  container.MacAddress,
-			// IPv4Address: container.IPv4Address,
-			// IPv6Address: container.IPv6Address,
 		}
+
+		// Extract network information from container's NetNS if available
+		if container.Process != nil && container.Process.NetNS != nil {
+			for _, x := range container.Process.NetNS.Interfaces {
+				if x.Interface.Flags&net.FlagLoopback != 0 {
+					continue
+				}
+				if x.Interface.Flags&net.FlagUp == 0 {
+					continue
+				}
+
+				// Set MAC address
+				endpoint.MacAddress = x.HardwareAddr
+
+				// Extract IPv4 and IPv6 addresses
+				for _, a := range x.Addrs {
+					ip, _, err := net.ParseCIDR(a)
+					if err != nil {
+						continue
+					}
+					if ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+						continue
+					}
+
+					// Check for IPv4
+					if ip4 := ip.To4(); ip4 != nil {
+						endpoint.IPv4Address = ip4.String()
+					} else if ip6 := ip.To16(); ip6 != nil {
+						// It's IPv6
+						endpoint.IPv6Address = ip6.String()
+					}
+				}
+
+				// Use the primary interface if available, otherwise use the first valid interface
+				if x.Index == container.Process.NetNS.PrimaryInterface || endpoint.IPv4Address != "" {
+					break
+				}
+			}
+		}
+
+		res.Containers[container.ID] = endpoint
 	}
 
 	return &res, nil
