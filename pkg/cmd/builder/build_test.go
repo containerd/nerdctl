@@ -238,3 +238,49 @@ func TestParseBuildctlArgsForOCILayout(t *testing.T) {
 		})
 	}
 }
+
+func TestGetEffectiveSourcePolicyFile(t *testing.T) {
+	// Cannot use t.Parallel() since subtests modify environment variables
+
+	tests := []struct {
+		name        string
+		optionValue string
+		envValue    string
+		expected    string
+	}{
+		{
+			name:        "option value takes precedence over env var",
+			optionValue: "/path/from/flag.json",
+			envValue:    "/path/from/env.json",
+			expected:    "/path/from/flag.json",
+		},
+		{
+			name:        "env var is used when option is empty",
+			optionValue: "",
+			envValue:    "/path/from/env.json",
+			expected:    "/path/from/env.json",
+		},
+		{
+			name:        "empty when both are unset",
+			optionValue: "",
+			envValue:    "",
+			expected:    "",
+		},
+		{
+			name:        "option value used when env var is empty",
+			optionValue: "/path/from/flag.json",
+			envValue:    "",
+			expected:    "/path/from/flag.json",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set up the environment variable for this test
+			t.Setenv("EXPERIMENTAL_BUILDKIT_SOURCE_POLICY", tc.envValue)
+
+			result := GetEffectiveSourcePolicyFile(tc.optionValue)
+			assert.Equal(t, result, tc.expected)
+		})
+	}
+}

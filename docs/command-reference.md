@@ -780,6 +780,8 @@ Flags:
 - :whale: `--network=(default|host|none)`: Set the networking mode for the RUN instructions during build.(compatible with `buildctl build`)
 - :whale: `--build-context`: Set additional contexts for build (e.g. dir2=/path/to/dir2, myorg/myapp=docker-image://path/to/myorg/myapp)
 - :whale: `--add-host`: Add a custom host-to-IP mapping (format: `host:ip`)
+- :nerd_face: `--source-policy-file`: BuildKit source policy JSON file for reproducible builds. See [BuildKit build-repro docs](https://github.com/moby/buildkit/blob/master/docs/build-repro.md).
+  For compatibility with Docker Buildx, the `EXPERIMENTAL_BUILDKIT_SOURCE_POLICY` environment variable is also supported. Example no-op policy: `{"rules":[]}`
 
 Unimplemented `docker build` flags: `--squash`
 
