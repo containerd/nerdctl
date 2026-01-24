@@ -885,3 +885,83 @@ func writeTestCDISpec(t *testing.T, spec string, fileName string, cdiSpecDir str
 	err = os.WriteFile(cdiSpecPath, []byte(spec), 0o400)
 	assert.NilError(t, err)
 }
+
+func TestSharedIpcSetup(t *testing.T) {
+	nerdtest.Setup()
+	testCase := &test.Case{
+		Require: require.Not(require.Windows),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			data.Labels().Set("container1", data.Identifier("container1"))
+			helpers.Ensure("run", "-d", "--name", data.Identifier("container1"), "--ipc=shareable",
+				testutil.CommonImage, "sleep", "inf")
+			nerdtest.EnsureContainerStarted(helpers, data.Identifier("container1"))
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rm", "-f", data.Identifier("container1"))
+		},
+		SubTests: []*test.Case{
+			{
+				Description: "Test ipc is shared",
+				NoParallel:  true, // The validation involves starting of the main container: container1
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rm", "-f", data.Identifier("container2"))
+				},
+				Setup: func(data test.Data, helpers test.Helpers) {
+					helpers.Ensure(
+						"run", "-d", "--name", data.Identifier("container2"),
+						"--ipc=container:"+data.Labels().Get("container1"),
+						testutil.NginxAlpineImage)
+					data.Labels().Set("container2", data.Identifier("container2"))
+					nerdtest.EnsureContainerStarted(helpers, data.Identifier("container2"))
+				},
+				SubTests: []*test.Case{
+					{
+						NoParallel:  true,
+						Description: "Test ipc is shared",
+						Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+							return helpers.Command("exec", data.Labels().Get("container2"), "readlink", "/proc/1/ns/ipc")
+						},
+						Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+							return &test.Expected{
+								ExitCode: 0,
+								Output: expect.All(
+									func(stdout string, t tig.T) {
+										container1IPC := strings.TrimSpace(helpers.Capture("exec", data.Labels().Get("container1"), "readlink", "/proc/1/ns/ipc"))
+										container2IPC := strings.TrimSpace(stdout)
+										assert.Equal(t, container1IPC, container2IPC)
+									},
+								),
+							}
+						},
+					},
+					{
+						NoParallel:  true,
+						Description: "Test ipc is shared after restart",
+						Setup: func(data test.Data, helpers test.Helpers) {
+							helpers.Ensure("restart", data.Labels().Get("container1"))
+							helpers.Ensure("stop", "--time=1", data.Labels().Get("container2"))
+							helpers.Ensure("start", data.Labels().Get("container2"))
+							nerdtest.EnsureContainerStarted(helpers, data.Labels().Get("container2"))
+						},
+						Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+							return helpers.Command("exec", data.Labels().Get("container2"), "readlink", "/proc/1/ns/ipc")
+						},
+						Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+							return &test.Expected{
+								ExitCode: 0,
+								Output: expect.All(
+									func(stdout string, t tig.T) {
+										container1IPC := strings.TrimSpace(helpers.Capture("exec", data.Labels().Get("container1"), "readlink", "/proc/1/ns/ipc"))
+										container2IPC := strings.TrimSpace(stdout)
+										assert.Equal(t, container1IPC, container2IPC)
+									},
+								),
+							}
+						},
+					},
+				},
+			},
+		},
+	}
+	testCase.Run(t)
+}
