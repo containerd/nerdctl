@@ -189,7 +189,7 @@ func TestRunIpcHost(t *testing.T) {
 	base := testutil.NewBase(t)
 	testFilePath := filepath.Join("/dev/shm",
 		fmt.Sprintf("%s-%d-%s", testutil.Identifier(t), os.Geteuid(), base.Target))
-	err := os.WriteFile(testFilePath, []byte(""), 0644)
+	err := os.WriteFile(testFilePath, []byte(""), 0o644)
 	assert.NilError(base.T, err)
 	defer os.Remove(testFilePath)
 
@@ -203,7 +203,7 @@ func TestRunAddHost(t *testing.T) {
 		var found bool
 		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
 		for sc.Scan() {
-			//removing spaces and tabs separating items
+			// removing spaces and tabs separating items
 			line := strings.ReplaceAll(sc.Text(), " ", "")
 			line = strings.ReplaceAll(line, "\t", "")
 			if strings.Contains(line, "10.0.0.1testing.example.com") {
@@ -219,7 +219,7 @@ func TestRunAddHost(t *testing.T) {
 		var found int
 		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
 		for sc.Scan() {
-			//removing spaces and tabs separating items
+			// removing spaces and tabs separating items
 			line := strings.ReplaceAll(sc.Text(), " ", "")
 			line = strings.ReplaceAll(line, "\t", "")
 			if strutil.InStringSlice([]string{"10.0.0.1test", "10.0.0.1test1"}, line) {
@@ -252,7 +252,7 @@ func TestRunAddHostWithCustomHostGatewayIP(t *testing.T) {
 		var found bool
 		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
 		for sc.Scan() {
-			//removing spaces and tabs separating items
+			// removing spaces and tabs separating items
 			line := strings.ReplaceAll(sc.Text(), " ", "")
 			line = strings.ReplaceAll(line, "\t", "")
 			if strings.Contains(line, "192.168.5.2test") {
@@ -449,7 +449,7 @@ func TestRunSigProxy(t *testing.T) {
 func TestRunWithFluentdLogDriver(t *testing.T) {
 	base := testutil.NewBase(t)
 	tempDirectory := t.TempDir()
-	err := os.Chmod(tempDirectory, 0777)
+	err := os.Chmod(tempDirectory, 0o777)
 	assert.NilError(t, err)
 
 	containerName := testutil.Identifier(t)
@@ -478,7 +478,7 @@ func TestRunWithFluentdLogDriver(t *testing.T) {
 func TestRunWithFluentdLogDriverWithLogOpt(t *testing.T) {
 	base := testutil.NewBase(t)
 	tempDirectory := t.TempDir()
-	err := os.Chmod(tempDirectory, 0777)
+	err := os.Chmod(tempDirectory, 0o777)
 	assert.NilError(t, err)
 
 	containerName := testutil.Identifier(t)
@@ -510,7 +510,7 @@ func TestRunWithOOMScoreAdj(t *testing.T) {
 	}
 	t.Parallel()
 	base := testutil.NewBase(t)
-	var score = "-42"
+	score := "-42"
 
 	base.Cmd("run", "--rm", "--oom-score-adj", score, testutil.AlpineImage, "cat", "/proc/self/oom_score_adj").AssertOutContains(score)
 }
@@ -712,7 +712,7 @@ devices:
 	tomlPath := filepath.Join(t.TempDir(), "nerdctl.toml")
 	err := os.WriteFile(tomlPath, []byte(fmt.Sprintf(`
 cdi_spec_dirs = ["%s"]
-`, cdiSpecDir)), 0400)
+`, cdiSpecDir)), 0o400)
 	assert.NilError(t, err)
 
 	base := testutil.NewBase(t)
@@ -854,6 +854,7 @@ devices:
     env:
     - FOO=injected
 `
+
 	tmpDir := t.TempDir()
 	writeTestCDISpec(t, amdSpec, "amd.yaml", tmpDir)
 	writeTestCDISpec(t, vendor1Spec, "vendor1.yaml", tmpDir)
@@ -878,9 +879,9 @@ devices:
 }
 
 func writeTestCDISpec(t *testing.T, spec string, fileName string, cdiSpecDir string) {
-	err := os.MkdirAll(cdiSpecDir, 0700)
+	err := os.MkdirAll(cdiSpecDir, 0o700)
 	assert.NilError(t, err)
 	cdiSpecPath := filepath.Join(cdiSpecDir, fileName)
-	err = os.WriteFile(cdiSpecPath, []byte(spec), 0400)
+	err = os.WriteFile(cdiSpecPath, []byte(spec), 0o400)
 	assert.NilError(t, err)
 }
