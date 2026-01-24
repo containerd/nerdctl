@@ -17,50 +17,100 @@
 package container
 
 import (
+	"encoding/json"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestInspectProcessContainerContainsLabel(t *testing.T) {
-	testContainer := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		containerName := testutil.Identifier(t)
+		data.Labels().Set("containerName", containerName)
+		helpers.Ensure("run", "-d", "--name", containerName, "--label", "foo=foo", "--label", "bar=bar", testutil.CommonImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, containerName)
+	}
 
-	base.Cmd("run", "-d", "--name", testContainer, "--label", "foo=foo", "--label", "bar=bar", testutil.NginxAlpineImage).AssertOK()
-	base.EnsureContainerStarted(testContainer)
-	inspect := base.InspectContainer(testContainer)
-	lbs := inspect.Config.Labels
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		containerName := data.Labels().Get("containerName")
+		helpers.Anyhow("rm", "-f", containerName)
+	}
 
-	assert.Equal(base.T, "foo", lbs["foo"])
-	assert.Equal(base.T, "bar", lbs["bar"])
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		containerName := data.Labels().Get("containerName")
+		return helpers.Command("inspect", containerName)
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				var dc []dockercompat.Container
+
+				err := json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(t, err)
+				assert.Equal(t, 1, len(dc))
+
+				assert.Equal(t, "foo", dc[0].Config.Labels["foo"])
+				assert.Equal(t, "bar", dc[0].Config.Labels["bar"])
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestInspectHyperVContainerContainsLabel(t *testing.T) {
-	if !testutil.HyperVSupported() {
-		t.Skip("HyperV is not enabled, skipping test")
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.HyperV
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		containerName := testutil.Identifier(t)
+		data.Labels().Set("containerName", containerName)
+		helpers.Ensure("run", "-d", "--name", containerName, "--isolation", "hyperv", "--label", "foo=foo", "--label", "bar=bar", testutil.CommonImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, containerName)
 	}
 
-	testContainer := testutil.Identifier(t)
-
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
-
-	base.Cmd("run", "-d", "--name", testContainer, "--isolation", "hyperv", "--label", "foo=foo", "--label", "bar=bar", testutil.NginxAlpineImage).AssertOK()
-	base.EnsureContainerStarted(testContainer)
-	inspect := base.InspectContainer(testContainer)
-	lbs := inspect.Config.Labels
-
-	//check with HCS if the container is ineed a VM
-	isHypervContainer, err := testutil.HyperVContainer(inspect)
-	if err != nil {
-		t.Fatalf("unable to list HCS containers: %s", err)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		containerName := data.Labels().Get("containerName")
+		helpers.Anyhow("rm", "-f", containerName)
 	}
 
-	assert.Assert(t, isHypervContainer, true)
-	assert.Equal(base.T, "foo", lbs["foo"])
-	assert.Equal(base.T, "bar", lbs["bar"])
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		containerName := data.Labels().Get("containerName")
+		return helpers.Command("inspect", containerName)
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				var dc []dockercompat.Container
+
+				err := json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(t, err)
+				assert.Equal(t, 1, len(dc))
+
+				//check with HCS if the container is ineed a VM
+				isHypervContainer, err := testutil.HyperVContainer(dc[0])
+				assert.NilError(t, err)
+				assert.Equal(t, true, isHypervContainer)
+
+				assert.Equal(t, "foo", dc[0].Config.Labels["foo"])
+				assert.Equal(t, "bar", dc[0].Config.Labels["bar"])
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
