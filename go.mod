@@ -29,7 +29,7 @@ require (
 	github.com/containernetworking/cni v1.3.0 //gomodjail:unconfined
 	github.com/containernetworking/plugins v1.9.0 //gomodjail:unconfined
 	github.com/coreos/go-iptables v0.8.0 //gomodjail:unconfined
-	github.com/coreos/go-systemd/v22 v22.6.0
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/cyphar/filepath-securejoin v0.6.1 //gomodjail:unconfined
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v29.1.5+incompatible //gomodjail:unconfined
