@@ -22,6 +22,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
@@ -31,163 +32,133 @@ import (
 )
 
 func TestRunUserGID(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	testCases := map[string]string{
-		"":       "root bin daemon sys adm disk wheel floppy dialout tape video",
-		"1000":   "root",
-		"guest":  "users",
-		"nobody": "nobody",
+	testCase := nerdtest.Setup()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Test container run as default user (root) and verify root belongs to standard system groups",
+			Command:     test.Command("run", "--rm", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("root bin daemon sys adm disk wheel floppy dialout tape video")),
+		},
+		{
+			Description: "Test container run with numeric UID (1000) and verify it resolves to root group inside the container",
+			Command:     test.Command("run", "--rm", "--user", "1000", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("root")),
+		},
+		{
+			Description: "Test container run as user (guest) and verify group membership is resolved correctly",
+			Command:     test.Command("run", "--rm", "--user", "guest", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("users")),
+		},
+		{
+			Description: "Test container run with well-known user 'nobody' and verify it belongs to the 'nobody' group",
+			Command:     test.Command("run", "--rm", "--user", "nobody", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("nobody")),
+		},
 	}
-	for userStr, expected := range testCases {
-		userStr := userStr
-		expected := expected
-		t.Run(userStr, func(t *testing.T) {
-			t.Parallel()
-			cmd := []string{"run", "--rm"}
-			if userStr != "" {
-				cmd = append(cmd, "--user", userStr)
-			}
-			cmd = append(cmd, testutil.AlpineImage, "id", "-nG")
-			base.Cmd(cmd...).AssertOutContains(expected)
-		})
-	}
+	testCase.Run(t)
 }
 
 func TestRunUmask(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	testutil.DockerIncompatible(t)
-	base.Cmd("run", "--rm", "--umask", "0200", testutil.AlpineImage, "sh", "-c", "umask").AssertOutContains("0200")
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Docker)
+	testCase.Command = test.Command("run", "--rm", "--umask", "0200", testutil.AlpineImage, "sh", "-c", "umask")
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("0200"))
+	testCase.Run(t)
 }
 
 func TestRunAddGroup(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	testCases := []struct {
-		user     string
-		groups   []string
-		expected string
-	}{
+	testCase := nerdtest.Setup()
+	testCase.SubTests = []*test.Case{
 		{
-			user:     "",
-			groups:   []string{},
-			expected: "root bin daemon sys adm disk wheel floppy dialout tape video",
+			Description: "Test container run as default root user and its inherited system groups",
+			Command:     test.Command("run", "--rm", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("root bin daemon sys adm disk wheel floppy dialout tape video\n")),
 		},
 		{
-			user:     "1000",
-			groups:   []string{},
-			expected: "root",
+			Description: "Test container run as numeric UID only and its fallback to root group",
+			Command:     test.Command("run", "--rm", "--user", "1000", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("root\n")),
 		},
 		{
-			user:     "1000",
-			groups:   []string{"nogroup"},
-			expected: "root nogroup",
+			Description: "Test container run as numeric UID with extra group addition",
+			Command:     test.Command("run", "--rm", "--user", "1000", "--group-add", "nogroup", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("root nogroup\n")),
 		},
 		{
-			user:     "1000:wheel",
-			groups:   []string{"nogroup"},
-			expected: "wheel nogroup",
+			Description: "Test container run as UID:GID pair with extra group addition",
+			Command:     test.Command("run", "--rm", "--user", "1000:wheel", "--group-add", "nogroup", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("wheel nogroup\n")),
 		},
 		{
-			user:     "root",
-			groups:   []string{"nogroup"},
-			expected: "root bin daemon sys adm disk wheel floppy dialout tape video nogroup",
+			Description: "Test container run as root with extra group addition and system group persistence",
+			Command:     test.Command("run", "--rm", "--user", "root", "--group-add", "nogroup", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("root bin daemon sys adm disk wheel floppy dialout tape video nogroup\n")),
 		},
 		{
-			user:     "root:nogroup",
-			groups:   []string{"nogroup"},
-			expected: "nogroup",
+			Description: "Test container run as root:group override and its effect on supplementary groups",
+			Command:     test.Command("run", "--rm", "--user", "root:nogroup", "--group-add", "nogroup", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("nogroup\n")),
 		},
 		{
-			user:     "guest",
-			groups:   []string{"root", "nogroup"},
-			expected: "users root nogroup",
+			Description: "Test container run as named non-root user with multiple group additions",
+			Command:     test.Command("run", "--rm", "--user", "guest", "--group-add", "root", "--group-add", "nogroup", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("users root nogroup\n")),
 		},
 		{
-			user:     "guest:nogroup",
-			groups:   []string{"0"},
-			expected: "nogroup root",
+			Description: "Test container run as named user:group with numeric GID resolution",
+			Command:     test.Command("run", "--rm", "--user", "guest:nogroup", "--group-add", "0", testutil.AlpineImage, "id", "-nG"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("nogroup root\n")),
 		},
 	}
-
-	for _, testCase := range testCases {
-		testCase := testCase
-		t.Run(testCase.user, func(t *testing.T) {
-			t.Parallel()
-			cmd := []string{"run", "--rm"}
-			if testCase.user != "" {
-				cmd = append(cmd, "--user", testCase.user)
-			}
-			for _, group := range testCase.groups {
-				cmd = append(cmd, "--group-add", group)
-			}
-			cmd = append(cmd, testutil.AlpineImage, "id", "-nG")
-			base.Cmd(cmd...).AssertOutExactly(testCase.expected + "\n")
-		})
-	}
+	testCase.Run(t)
 }
 
 // TestRunAddGroup_CVE_2023_25173 tests https://github.com/advisories/GHSA-hmfx-3pcx-653p
 //
 // Equates to https://github.com/containerd/containerd/commit/286a01f350a2298b4fdd7e2a0b31c04db3937ea8
 func TestRunAddGroup_CVE_2023_25173(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	testCases := []struct {
-		user     string
-		groups   []string
-		expected string
-	}{
+	testCase := nerdtest.Setup()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("pull", "--quiet", testutil.BusyboxImage)
+	}
+	testCase.SubTests = []*test.Case{
 		{
-			user:     "",
-			groups:   nil,
-			expected: "groups=0(root),10(wheel)",
+			Description: "Test container run as default root user",
+			Command:     test.Command("run", "--rm", testutil.BusyboxImage, "id"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("groups=0(root),10(wheel)\n")),
 		},
 		{
-			user:     "",
-			groups:   []string{"1", "1234"},
-			expected: "groups=0(root),1(daemon),10(wheel),1234",
+			Description: "Test container run as root with additional groups",
+			Command:     test.Command("run", "--rm", "--group-add", "1", "--group-add", "1234", testutil.BusyboxImage, "id"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("groups=0(root),1(daemon),10(wheel),1234\n")),
 		},
 		{
-			user:     "1234",
-			groups:   nil,
-			expected: "groups=0(root)",
+			Description: "Test container run as custom UID with inherited root group",
+			Command:     test.Command("run", "--rm", "--user", "1234", testutil.BusyboxImage, "id"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("groups=0(root)\n")),
 		},
 		{
-			user:     "1234:1234",
-			groups:   nil,
-			expected: "groups=1234",
+			Description: "Test container run as custom UID and GID pair",
+			Command:     test.Command("run", "--rm", "--user", "1234:1234", testutil.BusyboxImage, "id"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("groups=1234\n")),
 		},
 		{
-			user:     "1234",
-			groups:   []string{"1234"},
-			expected: "groups=0(root),1234",
+			Description: "Test container run as custom UID with explicit group add",
+			Command:     test.Command("run", "--rm", "--user", "1234", "--group-add", "1234", testutil.BusyboxImage, "id"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("groups=0(root),1234\n")),
 		},
 		{
-			user:     "daemon",
-			groups:   nil,
-			expected: "groups=1(daemon)",
+			Description: "Test container run as named non-root user (daemon)",
+			Command:     test.Command("run", "--rm", "--user", "daemon", testutil.BusyboxImage, "id"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("groups=1(daemon)\n")),
 		},
 		{
-			user:     "daemon",
-			groups:   []string{"1234"},
-			expected: "groups=1(daemon),1234",
+			Description: "Test container run as named user with extra groups",
+			Command:     test.Command("run", "--rm", "--user", "daemon", "--group-add", "1234", testutil.BusyboxImage, "id"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("groups=1(daemon),1234\n")),
 		},
 	}
-
-	base.Cmd("pull", "--quiet", testutil.BusyboxImage).AssertOK()
-	for _, testCase := range testCases {
-		cmd := []string{"run", "--rm"}
-		if testCase.user != "" {
-			cmd = append(cmd, "--user", testCase.user)
-		}
-		for _, group := range testCase.groups {
-			cmd = append(cmd, "--group-add", group)
-		}
-		cmd = append(cmd, testutil.BusyboxImage, "id")
-		base.Cmd(cmd...).AssertOutContains(testCase.expected + "\n")
-	}
+	testCase.Run(t)
 }
 
 func TestUsernsMappingRunCmd(t *testing.T) {
