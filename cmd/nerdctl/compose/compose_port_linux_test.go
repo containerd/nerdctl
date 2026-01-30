@@ -172,7 +172,12 @@ services:
 // TestComposeMultiplePorts tests whether it is possible to allocate a large
 // number of ports. (https://github.com/containerd/nerdctl/issues/4027)
 func TestComposeMultiplePorts(t *testing.T) {
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase := nerdtest.Setup()
+
+	testCase.NoParallel = true
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerComposeYAML := fmt.Sprintf(`
 services:
   svc0:
     image: %s
@@ -181,11 +186,10 @@ services:
     - '32000-32060:32000-32060'
 `, testutil.AlpineImage)
 
-	testCase := nerdtest.Setup()
-
-	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		compYamlPath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
 		data.Labels().Set("composeYaml", compYamlPath)
+		projectName := filepath.Base(filepath.Dir(compYamlPath))
+		t.Logf("projectName=%q", projectName)
 
 		helpers.Ensure("compose", "-f", compYamlPath, "up", "-d")
 	}
@@ -197,7 +201,6 @@ services:
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "Issue #4027 - Allocate a large number of ports.",
-			NoParallel:  true,
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "port", "svc0", "32000")
 			},
