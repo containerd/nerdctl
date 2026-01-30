@@ -73,49 +73,36 @@ func TestRunWithSystemdTrueEnabled(t *testing.T) {
 	)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		containerName := testutil.Identifier(t)
-		data.Labels().Set("containerName", containerName)
-		helpers.Ensure("run", "-d", "--name", containerName, "--systemd=true", "--entrypoint=/sbin/init", testutil.SystemdImage)
-		nerdtest.EnsureContainerStarted(helpers, containerName)
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), "--systemd=true", "--entrypoint=/sbin/init", testutil.SystemdImage)
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		containerName := data.Labels().Get("containerName")
-		helpers.Anyhow("container", "rm", "-f", containerName)
+		helpers.Anyhow("container", "rm", "-f", data.Identifier())
 	}
 
-	testCase.SubTests = []*test.Case{
-		{
-			Description: "should expose SIGTERM+3 stop signal labels",
-			NoParallel:  true,
-			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				containerName := data.Labels().Get("containerName")
-				return helpers.Command("inspect", "--format", "{{json .Config.Labels}}", containerName)
-			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("SIGRTMIN+3")),
-		},
-		{
-			Description: "waits for systemd to become ready and lists systemd jobs",
-			NoParallel:  true,
-			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				containerName := data.Labels().Get("containerName")
-				return helpers.Command("exec", containerName, "sh", "-c", "--", `tries=0
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// should expose SIGTERM+3 stop signal labels
+		helpers.Command("inspect", "--format", "{{json .Config.Labels}}", data.Identifier()).
+			Run(&test.Expected{
+				ExitCode: expect.ExitCodeSuccess,
+				Output:   expect.Contains("SIGRTMIN+3"),
+			})
 
-			until systemctl is-system-running >/dev/null 2>&1; do
-
-				>&2 printf "Waiting for systemd to come up...\n"
-				sleep 1s
-				tries=$(( tries + 1))
-				[ $tries -lt 10 ] || {
-					>&2 printf "systemd failed to come up in a reasonable amount of time\n"
-					exit 1
-				}
-			done
-			systemctl list-jobs`)
-			},
-			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("jobs")),
-		},
+		// waits for systemd to become ready and lists systemd jobs
+		return helpers.Command("exec", data.Identifier(), "sh", "-c", "--", `tries=0
+until systemctl is-system-running >/dev/null 2>&1; do
+	>&2 printf "Waiting for systemd to come up...\n"
+	sleep 1s
+	tries=$(( tries + 1))
+	[ $tries -lt 10 ] || {
+		>&2 printf "systemd failed to come up in a reasonable amount of time\n"
+		exit 1
 	}
+done
+systemctl list-jobs`)
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("jobs"))
 
 	testCase.Run(t)
 }
