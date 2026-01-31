@@ -47,8 +47,9 @@ type ImageListOptions struct {
 
 // ImageConvertOptions specifies options for `nerdctl image convert`.
 type ImageConvertOptions struct {
-	Stdout   io.Writer
-	GOptions GlobalCommandOptions
+	Stdout         io.Writer
+	ProgressOutput io.Writer
+	GOptions       GlobalCommandOptions
 
 	// #region generic flags
 	// Uncompress convert tar.gz layers to uncompressed tar layers
