@@ -262,20 +262,29 @@ func withOOMScoreAdj(score int) oci.SpecOpts {
 }
 
 func parseGPUOpts(cdiSpecDirs []string, value []string) (res []oci.SpecOpts, _ error) {
+	if len(value) == 0 {
+		return nil, nil
+	}
+
+	vendor := DetectGPUVendor(cdiSpecDirs)
+	if vendor == "" {
+		return nil, nil
+	}
+
 	for _, gpu := range value {
 		req, err := ParseGPUOptCSV(gpu)
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, withCDIDevices(cdiSpecDirs, req.toCDIDeviceIDS()...))
+		res = append(res, withCDIDevices(cdiSpecDirs, req.toCDIDeviceIDs(vendor)...))
 	}
 	return res, nil
 }
 
-func (req *GPUReq) toCDIDeviceIDS() []string {
+func (req *GPUReq) toCDIDeviceIDs(vendor string) []string {
 	var cdiDeviceIDs []string
 	for _, id := range req.normalizeDeviceIDs() {
-		cdiDeviceIDs = append(cdiDeviceIDs, "nvidia.com/gpu="+id)
+		cdiDeviceIDs = append(cdiDeviceIDs, vendor+"/gpu="+id)
 	}
 	return cdiDeviceIDs
 }

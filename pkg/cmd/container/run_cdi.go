@@ -24,7 +24,44 @@ import (
 	"github.com/containerd/containerd/v2/core/containers"
 	cdispec "github.com/containerd/containerd/v2/pkg/cdi"
 	"github.com/containerd/containerd/v2/pkg/oci"
+	"github.com/containerd/log"
 )
+
+const (
+	vendorNvidia = "nvidia.com"
+	vendorAMD    = "amd.com"
+)
+
+// knownGPUVendors defines the known GPU vendors we support.
+var knownGPUVendors = []string{
+	vendorNvidia,
+	vendorAMD,
+}
+
+// DetectGPUVendor detects the first available GPU vendor from CDI specs.
+// Returns empty string if no known vendor is found.
+func DetectGPUVendor(cdiSpecDirs []string) string {
+	cdi.Configure(
+		cdi.WithSpecDirs(cdiSpecDirs...),
+		cdi.WithAutoRefresh(false),
+	)
+
+	cache := cdi.GetDefaultCache()
+	if err := cache.Refresh(); err != nil {
+		log.L.Warnf("CDI cache refresh failed: %v", err)
+	}
+
+	availableVendors := cache.ListVendors()
+	for _, known := range knownGPUVendors {
+		for _, available := range availableVendors {
+			if known == available {
+				return known
+			}
+		}
+	}
+
+	return ""
+}
 
 // withCDIDevices creates the OCI runtime spec options for injecting CDI devices.
 // Two options are returned: The first ensures that the CDI registry is initialized with
