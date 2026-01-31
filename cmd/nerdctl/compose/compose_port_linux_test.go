@@ -18,6 +18,8 @@ package compose
 
 import (
 	"fmt"
+	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
@@ -25,65 +27,157 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 )
 
 func TestComposePort(t *testing.T) {
-	base := testutil.NewBase(t)
+	const portCount = 2
 
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		for i := 0; i < portCount; i++ {
+			port, err := portlock.Acquire(0)
+			if err != nil {
+				helpers.T().Log(fmt.Sprintf("Failed to acquire port: %v", err))
+				helpers.T().FailNow()
+			}
+			data.Labels().Set(fmt.Sprintf("hostPort%d", i), strconv.Itoa(port))
+		}
+
+		dockerComposeYAML := fmt.Sprintf(`
 services:
   svc0:
     image: %s
     command: "sleep infinity"
     ports:
-    - "12345:10000"
-    - "12346:10001/udp"
-`, testutil.CommonImage)
+    - "%s:10000"
+    - "%s:10001/udp"
+`, testutil.CommonImage, data.Labels().Get("hostPort0"), data.Labels().Get("hostPort1"))
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		compYamlPath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		data.Labels().Set("composeYaml", compYamlPath)
+		projectName := filepath.Base(filepath.Dir(compYamlPath))
+		t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+		helpers.Ensure("compose", "-f", compYamlPath, "up", "-d")
+	}
 
-	// `port` should work for given port and protocol
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "port", "svc0", "10000").AssertOutExactly("0.0.0.0:12345\n")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "port", "--protocol", "udp", "svc0", "10001").AssertOutExactly("0.0.0.0:12346\n")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+		for i := 0; i < portCount; i++ {
+			port, _ := strconv.Atoi(data.Labels().Get(fmt.Sprintf("hostPort%d", i)))
+			_ = portlock.Release(port)
+		}
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "port should return host port for TCP",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "port", "svc0", "10000")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output:   expect.Equals(fmt.Sprintf("0.0.0.0:%s\n", data.Labels().Get("hostPort0"))),
+				}
+			},
+		},
+		{
+			Description: "port should return host port for UDP",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "port", "--protocol", "udp", "svc0", "10001")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output:   expect.Equals(fmt.Sprintf("0.0.0.0:%s\n", data.Labels().Get("hostPort1"))),
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposePortFailure(t *testing.T) {
-	base := testutil.NewBase(t)
+	const portCount = 2
 
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		for i := 0; i < portCount; i++ {
+			port, err := portlock.Acquire(0)
+			if err != nil {
+				helpers.T().Log(fmt.Sprintf("Failed to acquire port: %v", err))
+				helpers.T().FailNow()
+			}
+			data.Labels().Set(fmt.Sprintf("hostPort%d", i), strconv.Itoa(port))
+		}
+
+		dockerComposeYAML := fmt.Sprintf(`
 services:
   svc0:
     image: %s
     command: "sleep infinity"
     ports:
-    - "12345:10000"
-    - "12346:10001/udp"
-`, testutil.CommonImage)
+    - "%s:10000"
+    - "%s:10001/udp"
+`, testutil.CommonImage, data.Labels().Get("hostPort0"), data.Labels().Get("hostPort1"))
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		compYamlPath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		data.Labels().Set("composeYaml", compYamlPath)
+		projectName := filepath.Base(filepath.Dir(compYamlPath))
+		t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").AssertOK()
+		helpers.Ensure("compose", "-f", compYamlPath, "up", "-d")
+	}
 
-	// `port` should fail if given port and protocol don't exist
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "port", "svc0", "9999").AssertFail()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "port", "--protocol", "udp", "svc0", "10000").AssertFail()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "port", "--protocol", "tcp", "svc0", "10001").AssertFail()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+		for i := 0; i < portCount; i++ {
+			port, _ := strconv.Atoi(data.Labels().Get(fmt.Sprintf("hostPort%d", i)))
+			_ = portlock.Release(port)
+		}
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "port should fail for non-existent port",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "port", "svc0", "9999")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "port should fail for wrong protocol (UDP on TCP port)",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "port", "--protocol", "udp", "svc0", "10000")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "port should fail for wrong protocol (TCP on UDP port)",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "port", "--protocol", "tcp", "svc0", "10001")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 // TestComposeMultiplePorts tests whether it is possible to allocate a large
 // number of ports. (https://github.com/containerd/nerdctl/issues/4027)
 func TestComposeMultiplePorts(t *testing.T) {
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase := nerdtest.Setup()
+
+	testCase.NoParallel = true
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerComposeYAML := fmt.Sprintf(`
 services:
   svc0:
     image: %s
@@ -92,11 +186,10 @@ services:
     - '32000-32060:32000-32060'
 `, testutil.AlpineImage)
 
-	testCase := nerdtest.Setup()
-
-	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		compYamlPath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
 		data.Labels().Set("composeYaml", compYamlPath)
+		projectName := filepath.Base(filepath.Dir(compYamlPath))
+		t.Logf("projectName=%q", projectName)
 
 		helpers.Ensure("compose", "-f", compYamlPath, "up", "-d")
 	}
@@ -108,7 +201,6 @@ services:
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "Issue #4027 - Allocate a large number of ports.",
-			NoParallel:  true,
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "port", "svc0", "32000")
 			},
