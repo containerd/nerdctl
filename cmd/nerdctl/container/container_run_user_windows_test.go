@@ -19,27 +19,31 @@ package container
 import (
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRunUserName(t *testing.T) {
-	base := testutil.NewBase(t)
-	testCases := map[string]string{
-		"":                       "ContainerAdministrator",
-		"ContainerAdministrator": "ContainerAdministrator",
-		"ContainerUser":          "ContainerUser",
+	testCase := nerdtest.Setup()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "should run Windows container as ContainerAdministrator by default",
+			Command:     test.Command("run", "--rm", testutil.WindowsNano, "whoami"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("ContainerAdministrator")),
+		},
+		{
+			Description: "should run Windows container as ContainerAdministrator when user is set to ContainerAdministrator",
+			Command:     test.Command("run", "--rm", "--user", "ContainerAdministrator", testutil.WindowsNano, "whoami"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("ContainerAdministrator")),
+		},
+		{
+			Description: "should run Windows container as ContainerUser when user is set to ContainerUser",
+			Command:     test.Command("run", "--rm", "--user", "ContainerUser", testutil.WindowsNano, "whoami"),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("ContainerUser")),
+		},
 	}
-	for userStr, expected := range testCases {
-		userStr := userStr
-		expected := expected
-		t.Run(userStr, func(t *testing.T) {
-			t.Parallel()
-			cmd := []string{"run", "--rm"}
-			if userStr != "" {
-				cmd = append(cmd, "--user", userStr)
-			}
-			cmd = append(cmd, testutil.WindowsNano, "whoami")
-			base.Cmd(cmd...).AssertOutContains(expected)
-		})
-	}
+	testCase.Run(t)
 }
