@@ -19,12 +19,12 @@ package container
 import (
 	"bytes"
 	"os/exec"
-	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -32,94 +32,123 @@ import (
 )
 
 func TestRunHostProcessContainer(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	hostname, err := exec.Command("hostname").Output()
-	if err != nil {
-		t.Fatalf("unable to get hostname: %s", err)
-	}
-	hostname = bytes.TrimSpace(hostname)
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Docker)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		hostname, err := exec.Command("hostname").Output()
+		if err != nil {
+			t.Fatalf("unable to get hostname: %s", err)
+		}
+		data.Labels().Set("hostname", string(bytes.TrimSpace(hostname)))
 
-	base.Cmd("run", "--rm", "--isolation=host", testutil.WindowsNano, "hostname").AssertOutContains(string(hostname))
-	output := base.Cmd("run", "--rm", "--isolation=host", testutil.WindowsNano, "whoami").Out()
-	t.Logf("whoami %s", output)
+		whoami := helpers.Capture("run", "--rm", "--isolation=host", testutil.WindowsNano, "whoami")
+		t.Logf("whoami %s", whoami)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run", "--rm", "--isolation=host", testutil.WindowsNano, "hostname")
+	}
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(data.Labels().Get("hostname")))(data, helpers)
+	}
+	testCase.Run(t)
 }
 
 func TestRunHostProcessContainerAsUser(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-
-	hostuser := "nt authority\\system"
-	base.Cmd("run", "--rm", "--isolation=host", "-u", "NT AUTHORITY\\SYSTEM", testutil.WindowsNano, "whoami").AssertOutContains(hostuser)
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Docker)
+	testCase.Command = test.Command("run", "--rm", "--isolation=host", "-u", "NT AUTHORITY\\SYSTEM", testutil.WindowsNano, "whoami")
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("nt authority\\system"))
+	testCase.Run(t)
 }
 
-func TestRunHostProcessContainerAsService(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	hostuser := "nt authority\\local service"
-	base.Cmd("run", "--rm", "--isolation=host", "-u", "NT AUTHORITY\\Local Service", testutil.WindowsNano, "whoami").AssertOutContains(hostuser)
+func TestRunHostProcessContainerAsLocalService(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Docker)
+	testCase.Command = test.Command("run", "--rm", "--isolation=host", "-u", "NT AUTHORITY\\Local Service", testutil.WindowsNano, "whoami")
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("nt authority\\local service"))
+	testCase.Run(t)
 }
 
-func TestRunHostProcessContainerAslocalService(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	hostuser := "nt authority\\network service"
-	base.Cmd("run", "--rm", "--isolation=host", "-u", "NT AUTHORITY\\Network Service", testutil.WindowsNano, "whoami").AssertOutContains(hostuser)
+func TestRunHostProcessContainerAsNetworkService(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Docker)
+	testCase.Command = test.Command("run", "--rm", "--isolation=host", "-u", "NT AUTHORITY\\Network Service", testutil.WindowsNano, "whoami")
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("nt authority\\network service"))
+	testCase.Run(t)
 }
 
 func TestRunProcessIsolated(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-
-	containerUser := "ContainerUser"
-	base.Cmd("run", "--rm", "--isolation=process", "-u", containerUser, testutil.WindowsNano, "whoami").AssertOutContains(containerUser)
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Docker)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Labels().Set("containeruser", "ContainerUser")
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run", "--rm", "--isolation=process", "-u", data.Labels().Get("containeruser"), testutil.WindowsNano, "whoami")
+	}
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(data.Labels().Get("containeruser")))(data, helpers)
+	}
+	testCase.Run(t)
 }
 
 func TestRunHyperVContainer(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-
-	if !testutil.HyperVSupported() {
-		t.Skip("HyperV is not enabled, skipping test")
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		require.Not(nerdtest.Docker),
+		nerdtest.HyperV,
+	)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		// hyperv must not be in the name for this test, the output is parsed for it
+		containerName := "nerdctl-testwcowcontainer"
+		data.Labels().Set("containerName", containerName)
+		helpers.Ensure("run", "--isolation", "hyperv", "--name", containerName, testutil.WindowsNano)
 	}
-
-	// hyperv must not be in the name for this test, the output is parsed for it
-	containerName := "nerdctl-testwcowcontainer"
-	base.Cmd("run", "--isolation", "hyperv", "--name", containerName, testutil.WindowsNano).Out()
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	inspectOutput := base.Cmd("container", "inspect", "--mode", "native", containerName).Out()
-
-	assert.Assert(t, strings.Contains(inspectOutput, "hyperv"))
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Labels().Get("containerName"))
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("container", "inspect", "--mode", "native", data.Labels().Get("containerName"))
+	}
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("hyperv"))(data, helpers)
+	}
+	testCase.Run(t)
 }
 
 func TestRunProcessContainer(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-
-	base.Cmd("run", "--isolation", "process", "--name", containerName, testutil.WindowsNano).Out()
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	inspectOutput := base.Cmd("container", "inspect", "--mode", "native", containerName).Out()
-	t.Log(inspectOutput)
-
-	assert.Assert(t, !strings.Contains(inspectOutput, "hyperv"))
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Docker)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "--isolation", "process", "--name", data.Identifier(), testutil.WindowsNano)
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("container", "inspect", "--mode", "native", data.Identifier())
+	}
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.DoesNotContain("hyperv"))
+	testCase.Run(t)
 }
 
 // Note that the current implementation of this test is not ideal, since it relies on internal HCS details that
 // Microsoft could decide to change in the future (breaking both this unit test and the one in containerd itself):
 // https://github.com/containerd/containerd/pull/6618#discussion_r823302852
 func TestRunProcessContainerWithDevice(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-
-	base.Cmd(
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Docker)
+	testCase.Command = test.Command(
 		"run",
 		"--rm",
 		"--isolation=process",
 		"--device", "class://5B45201D-F2F2-4F3B-85BB-30FF1F953599",
 		testutil.WindowsNano,
 		"cmd", "/S", "/C", "dir C:\\Windows\\System32\\HostDriverStore",
-	).AssertOutContains("FileRepository")
+	)
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("FileRepository"))
+	testCase.Run(t)
 }
 
 func TestRunWithTtyAndDetached(t *testing.T) {
