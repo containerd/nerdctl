@@ -26,6 +26,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/containerd/console"
+	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
@@ -138,9 +139,19 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().String("mac-address", "", "MAC address to assign to the container")
 	// #endregion
 
-	cmd.Flags().String("ipc", "", `IPC namespace to use ("host"|"private")`)
+	cmd.Flags().String("ipc", "", `IPC namespace to use ("host"|"private"|"shareable"|"container:<container>")`)
 	cmd.RegisterFlagCompletionFunc("ipc", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"host", "private"}, cobra.ShellCompDirectiveNoFileComp
+		if strings.HasPrefix(toComplete, "container:") {
+			names, directive := completion.ContainerNames(cmd, func(st containerd.ProcessStatus) bool {
+				return st == containerd.Running
+			})
+			var candidates []string
+			for _, name := range names {
+				candidates = append(candidates, "container:"+name)
+			}
+			return candidates, directive
+		}
+		return []string{"host", "private", "shareable", "container:"}, cobra.ShellCompDirectiveNoSpace
 	})
 	// #region cgroups, namespaces, and ulimits flags
 	cmd.Flags().Float64("cpus", 0.0, "Number of CPUs")
