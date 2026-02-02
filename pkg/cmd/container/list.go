@@ -47,7 +47,7 @@ func List(ctx context.Context, client *containerd.Client, options types.Containe
 	if err != nil {
 		return nil, err
 	}
-	return prepareContainers(ctx, client, containers, cMap, options)
+	return prepareContainers(ctx, client, &containers, cMap, options)
 }
 
 // filterContainers returns containers matching the filters.
@@ -134,11 +134,11 @@ func (x *ListItem) Label(s string) string {
 	return x.LabelsMap[s]
 }
 
-func prepareContainers(ctx context.Context, client *containerd.Client, containers []containerd.Container, statusPerContainer map[string]string, options types.ContainerListOptions) ([]ListItem, error) {
-	listItems := make([]ListItem, len(containers))
+func prepareContainers(ctx context.Context, client *containerd.Client, containers *[]containerd.Container, statusPerContainer map[string]string, options types.ContainerListOptions) ([]ListItem, error) {
+	listItems := make([]ListItem, len(*containers))
 	snapshottersCache := map[string]snapshots.Snapshotter{}
-	for i, c := range containers {
-		info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
+	for i := range *containers {
+		info, err := (*containers)[i].Info(ctx, containerd.WithoutRefreshedMetadata)
 		if err != nil {
 			if errdefs.IsNotFound(err) {
 				log.G(ctx).Warn(err)
@@ -146,38 +146,35 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 			}
 			return nil, err
 		}
-		spec, err := c.Spec(ctx)
-		if err != nil {
-			if errdefs.IsNotFound(err) {
-				log.G(ctx).Warn(err)
-				continue
-			}
-			return nil, err
-		}
-		id := c.ID()
+		id := (*containers)[i].ID()
 		if options.Truncate && len(id) > 12 {
 			id = id[:12]
 		}
 		var status string
-		if s, ok := statusPerContainer[c.ID()]; ok {
+		if s, ok := statusPerContainer[(*containers)[i].ID()]; ok {
 			status = s
 		} else {
-			return nil, fmt.Errorf("can't get container %s status", c.ID())
+			return nil, fmt.Errorf("can't get container %s status", (*containers)[i].ID())
 		}
 		dataStore, err := clientutil.DataStore(options.GOptions.DataRoot, options.GOptions.Address)
 		if err != nil {
 			return nil, err
 		}
-		containerLabels, err := c.Labels(ctx)
+		containerLabels, err := (*containers)[i].Labels(ctx)
 		if err != nil {
 			return nil, err
 		}
-		ports, err := portutil.LoadPortMappings(dataStore, options.GOptions.Namespace, c.ID(), containerLabels)
+		ports, err := portutil.LoadPortMappings(dataStore, options.GOptions.Namespace, (*containers)[i].ID(), containerLabels)
 		if err != nil {
 			return nil, err
+		}
+
+		cmd, err := formatter.GetCommandFromSpec(info.Spec, options.Truncate, true)
+		if err != nil {
+			continue
 		}
 		li := ListItem{
-			Command:   formatter.InspectContainerCommand(spec, options.Truncate, true),
+			Command:   cmd,
 			CreatedAt: info.CreatedAt,
 			ID:        id,
 			Image:     info.Image,
@@ -201,6 +198,7 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 			}
 			li.Size = containerSize
 		}
+		(*containers)[i] = nil
 		listItems[i] = li
 	}
 	return listItems, nil
