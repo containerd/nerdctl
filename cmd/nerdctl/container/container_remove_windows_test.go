@@ -21,34 +21,53 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRemoveHyperVContainer(t *testing.T) {
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	if !testutil.HyperVSupported() {
-		t.Skip("HyperV is not enabled, skipping test")
+	testCase.Require = nerdtest.HyperV
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--isolation", "hyperv", "--name", testutil.Identifier(t), testutil.CommonImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, testutil.Identifier(t))
+
+		inspect := nerdtest.InspectContainer(helpers, testutil.Identifier(t))
+		//check with HCS if the container is ineed a VM
+		isHypervContainer, err := testutil.HyperVContainer(inspect)
+		assert.NilError(t, err)
+		assert.Assert(t, isHypervContainer, true)
 	}
 
-	// ignore error
-	base.Cmd("rm", tID, "-f").AssertOK()
-
-	base.Cmd("run", "-d", "--isolation", "hyperv", "--name", tID, testutil.NginxAlpineImage).AssertOK()
-	defer base.Cmd("rm", tID, "-f").AssertOK()
-
-	base.EnsureContainerStarted(tID)
-	inspect := base.InspectContainer(tID)
-	//check with HCS if the container is ineed a VM
-	isHypervContainer, err := testutil.HyperVContainer(inspect)
-	if err != nil {
-		t.Fatalf("unable to list HCS containers: %s", err)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", testutil.Identifier(t))
 	}
 
-	assert.Assert(t, isHypervContainer, true)
-	base.Cmd("rm", tID).AssertFail()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "should fail to remove when still running",
+			NoParallel:  true,
+			Command:     test.Command("rm", testutil.Identifier(t)),
+			Expected:    test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "should kill the container",
+			NoParallel:  true,
+			Command:     test.Command("kill", testutil.Identifier(t)),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "should remove the container when terminated",
+			NoParallel:  true,
+			Command:     test.Command("rm", testutil.Identifier(t)),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+	}
 
-	base.Cmd("kill", tID).AssertOK()
-	base.Cmd("rm", tID).AssertOK()
+	testCase.Run(t)
 }
