@@ -17,6 +17,7 @@
 package image
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -32,6 +33,11 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
 )
+
+type registryTagList struct {
+	Name string   `json:"name"`
+	Tags []string `json:"tags"`
+}
 
 func TestPush(t *testing.T) {
 	nerdtest.Setup()
@@ -144,6 +150,79 @@ func TestPush(t *testing.T) {
 					return helpers.Command("push", "--insecure-registry", data.Labels().Get("testImageRef"))
 				},
 				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "all-tags pushes all tags for a repository",
+				Require:     require.Not(nerdtest.Docker),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+
+					repo := fmt.Sprintf("%s:%d/%s",
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier())
+					data.Labels().Set("testImageRepo", repo)
+
+					tag1 := repo + ":v1"
+					tag2 := repo + ":v2"
+					data.Labels().Set("testImageRefV1", tag1)
+					data.Labels().Set("testImageRefV2", tag2)
+
+					helpers.Ensure("tag", testutil.CommonImage, tag1)
+					helpers.Ensure("tag", testutil.CommonImage, tag2)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					if v := data.Labels().Get("testImageRefV1"); v != "" {
+						helpers.Anyhow("rmi", "-f", v)
+					}
+					if v := data.Labels().Get("testImageRefV2"); v != "" {
+						helpers.Anyhow("rmi", "-f", v)
+					}
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command(
+						"push",
+						"--insecure-registry",
+						"--all-tags",
+						data.Labels().Get("testImageRepo"),
+					)
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						ExitCode: 0,
+						Output: func(stdout string, t tig.T) {
+							tagsURL := fmt.Sprintf("http://%s:%d/v2/%s/tags/list",
+								registryNoAuthHTTPRandom.IP.String(),
+								registryNoAuthHTTPRandom.Port,
+								data.Identifier(),
+							)
+							resp, err := http.Get(tagsURL)
+							assert.NilError(t, err, "error making HTTP request for tag list")
+							defer func() {
+								if resp.Body != nil {
+									_ = resp.Body.Close()
+								}
+							}()
+
+							assert.Equal(t, resp.StatusCode, http.StatusOK, "expected tag list endpoint to be available")
+
+							var tl registryTagList
+							err = json.NewDecoder(resp.Body).Decode(&tl)
+							assert.NilError(t, err, "failed to decode tag list JSON")
+
+							foundV1 := false
+							foundV2 := false
+							for _, tag := range tl.Tags {
+								if tag == "v1" {
+									foundV1 = true
+								}
+								if tag == "v2" {
+									foundV2 = true
+								}
+							}
+							assert.Assert(t, foundV1, "expected tag v1 to be pushed")
+							assert.Assert(t, foundV2, "expected tag v2 to be pushed")
+						},
+					}
+				},
 			},
 			{
 				Description: "with insecure, with login",
@@ -277,6 +356,81 @@ func TestPush(t *testing.T) {
 					return helpers.Command("push", "--snapshotter=soci", "--insecure-registry", "--soci-span-size=2097152", "--soci-min-layer-size=20971520", data.Labels().Get("testImageRef"))
 				},
 				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "soci with all-tags pushes multiple tags without duplicate index failure",
+				Require: require.All(
+					nerdtest.Soci,
+					require.Not(nerdtest.Docker),
+				),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					helpers.Ensure("pull", "--quiet", testutil.UbuntuImage)
+
+					repo := fmt.Sprintf("%s:%d/%s",
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier())
+					data.Labels().Set("testImageRepo", repo)
+
+					tag1 := repo + ":image_tag"
+					tag2 := repo + ":latest"
+					data.Labels().Set("testImageRef1", tag1)
+					data.Labels().Set("testImageRef2", tag2)
+
+					helpers.Ensure("tag", testutil.UbuntuImage, tag1)
+					helpers.Ensure("tag", testutil.UbuntuImage, tag2)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					if v := data.Labels().Get("testImageRef1"); v != "" {
+						helpers.Anyhow("rmi", "-f", v)
+					}
+					if v := data.Labels().Get("testImageRef2"); v != "" {
+						helpers.Anyhow("rmi", "-f", v)
+					}
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command(
+						"push",
+						"--snapshotter=soci",
+						"--insecure-registry",
+						"--all-tags",
+						"--soci-span-size=2097152",
+						"--soci-min-layer-size=0",
+						data.Labels().Get("testImageRepo"),
+					)
+				},
+				Expected: test.Expects(0, nil, nil),
+			},
+			{
+				Description: "all-tags with explicit tag returns error",
+				Require:     require.Not(nerdtest.Docker),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+					testImageRef := fmt.Sprintf("%s:%d/%s:v1",
+						registryNoAuthHTTPRandom.IP.String(),
+						registryNoAuthHTTPRandom.Port,
+						data.Identifier(),
+					)
+					data.Labels().Set("testImageRef", testImageRef)
+
+					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					if ref := data.Labels().Get("testImageRef"); ref != "" {
+						helpers.Anyhow("rmi", "-f", ref)
+					}
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command(
+						"push",
+						"--insecure-registry",
+						"--all-tags",
+						data.Labels().Get("testImageRef"),
+					)
+				},
+				Expected: test.Expects(
+					1,
+					[]error{errors.New("tag can't be used with --all-tags/-a")},
+					nil,
+				),
 			},
 		},
 	}
