@@ -154,6 +154,10 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		return types.GlobalCommandOptions{}, err
 	}
 
+	selinuxEnabled, err := cmd.Flags().GetBool("selinux-enabled")
+	if err != nil {
+		return types.GlobalCommandOptions{}, err
+	}
 	// Point to dataRoot for filesystem-helpers implementing rollback / backups.
 	err = fs.InitFS(dataRoot)
 	if err != nil {
@@ -180,6 +184,7 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 		DNS:              dns,
 		DNSOpts:          dnsOpts,
 		DNSSearch:        dnsSearch,
+		SelinuxEnabled:   selinuxEnabled,
 	}, nil
 }
 
