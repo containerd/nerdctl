@@ -64,7 +64,9 @@ var (
 // usage was derived from https://github.com/spf13/cobra/blob/v1.2.1/command.go#L491-L514
 func usage(c *cobra.Command) error {
 	s := "Usage: "
-	if c.Runnable() {
+	if c.HasSubCommands() {
+		s += c.CommandPath() + " [command]\n"
+	} else if c.Runnable() {
 		s += c.UseLine() + "\n"
 	} else {
 		s += c.CommandPath() + " [command]\n"
