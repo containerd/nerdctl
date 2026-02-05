@@ -17,16 +17,17 @@
 package container
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"gotest.tools/v3/assert"
-	"gotest.tools/v3/icmd"
+
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -35,14 +36,11 @@ import (
 // because of their complexity
 
 func TestCopyAcid(t *testing.T) {
-	t.Parallel()
+	testCase := nerdtest.Setup()
 
-	t.Run("Travelling along volumes w/o read-only", func(t *testing.T) {
-		t.Parallel()
-		testID := testutil.Identifier(t)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		testID := data.Identifier()
 		tempDir := t.TempDir()
-		base := testutil.NewBase(t)
-		base.Dir = tempDir
 
 		sourceFile := filepath.Join(tempDir, "hostfile")
 		sourceFileContent := []byte(testID)
@@ -50,133 +48,166 @@ func TestCopyAcid(t *testing.T) {
 		roContainer := testID + "-ro"
 		rwContainer := testID + "-rw"
 
-		setup := func() {
-			base.Cmd("volume", "create", testID+"-1-ro").AssertOK()
-			base.Cmd("volume", "create", testID+"-2-rw").AssertOK()
-			base.Cmd("volume", "create", testID+"-3-rw").AssertOK()
-			base.Cmd("run", "-d", "-w", containerCwd, "--name", roContainer, "--read-only",
-				"-v", fmt.Sprintf("%s:%s:ro", testID+"-1-ro", "/vol1/dir1/ro"),
-				"-v", fmt.Sprintf("%s:%s", testID+"-2-rw", "/vol2/dir2/rw"),
-				testutil.CommonImage, "sleep", "Inf",
-			).AssertOK()
-			base.Cmd("run", "-d", "-w", containerCwd, "--name", rwContainer,
-				"-v", fmt.Sprintf("%s:%s:ro", testID+"-1-ro", "/vol1/dir1/ro"),
-				"-v", fmt.Sprintf("%s:%s", testID+"-3-rw", "/vol3/dir3/rw"),
-				testutil.CommonImage, "sleep", "Inf",
-			).AssertOK()
+		data.Labels().Set("sourceFile", sourceFile)
+		data.Labels().Set("sourceFileContent", string(sourceFileContent))
+		data.Labels().Set("roContainer", roContainer)
+		data.Labels().Set("rwContainer", rwContainer)
 
-			base.Cmd("exec", rwContainer, "sh", "-euxc", "cd /vol3/dir3/rw; ln -s ../../../ relativelinktoroot").AssertOK()
-			base.Cmd("exec", rwContainer, "sh", "-euxc", "cd /vol3/dir3/rw; ln -s / absolutelinktoroot").AssertOK()
-			base.Cmd("exec", roContainer, "sh", "-euxc", "cd /vol2/dir2/rw; ln -s ../../../ relativelinktoroot").AssertOK()
-			base.Cmd("exec", roContainer, "sh", "-euxc", "cd /vol2/dir2/rw; ln -s / absolutelinktoroot").AssertOK()
-			// Create file on the host
-			err := os.WriteFile(sourceFile, sourceFileContent, filePerm)
-			assert.NilError(t, err)
-		}
+		helpers.Ensure("volume", "create", testID+"-1-ro")
+		helpers.Ensure("volume", "create", testID+"-2-ro")
+		helpers.Ensure("volume", "create", testID+"-3-ro")
 
-		tearDown := func() {
-			base.Cmd("rm", "-f", roContainer).Run()
-			base.Cmd("rm", "-f", rwContainer).Run()
-			base.Cmd("volume", "rm", testID+"-1-ro").Run()
-			base.Cmd("volume", "rm", testID+"-2-rw").Run()
-			base.Cmd("volume", "rm", testID+"-3-rw").Run()
-		}
+		helpers.Ensure("run", "-d", "-w", containerCwd, "--name", roContainer, "--read-only",
+			"-v", fmt.Sprintf("%s:%s:ro", testID+"-1-ro", "/vol1/dir1/ro"),
+			"-v", fmt.Sprintf("%s:%s", testID+"-2-rw", "/vol2/dir2/rw"),
+			testutil.CommonImage, "sleep", nerdtest.Infinity,
+		)
+		nerdtest.EnsureContainerStarted(helpers, roContainer)
 
-		t.Cleanup(tearDown)
-		tearDown()
+		helpers.Ensure("run", "-d", "-w", containerCwd, "--name", rwContainer,
+			"-v", fmt.Sprintf("%s:%s:ro", testID+"-1-ro", "/vol1/dir1/ro"),
+			"-v", fmt.Sprintf("%s:%s", testID+"-3-rw", "/vol3/dir3/rw"),
+			testutil.CommonImage, "sleep", nerdtest.Infinity,
+		)
+		nerdtest.EnsureContainerStarted(helpers, rwContainer)
 
-		setup()
+		helpers.Ensure("exec", rwContainer, "sh", "-euxc", "cd /vol3/dir3/rw; ln -s ../../../ relativelinktoroot")
+		helpers.Ensure("exec", rwContainer, "sh", "-euxc", "cd /vol3/dir3/rw; ln -s / absolutelinktoroot")
+		helpers.Ensure("exec", roContainer, "sh", "-euxc", "cd /vol2/dir2/rw; ln -s ../../../ relativelinktoroot")
+		helpers.Ensure("exec", roContainer, "sh", "-euxc", "cd /vol2/dir2/rw; ln -s / absolutelinktoroot")
+
+		// Create file on the host
+		err := os.WriteFile(sourceFile, sourceFileContent, filePerm)
+		assert.NilError(t, err)
 
 		expectedErr := containerutil.ErrTargetIsReadOnly.Error()
 		if nerdtest.IsDocker() {
 			expectedErr = ""
 		}
+		data.Labels().Set("expectedErr", expectedErr)
+	}
 
-		t.Run("Cannot copy into a read-only root", func(t *testing.T) {
-			t.Parallel()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		testID := data.Identifier()
+		helpers.Anyhow("rm", "-f", testID+"-ro")
+		helpers.Anyhow("rm", "-f", testID+"-rw")
+		helpers.Anyhow("volume", "rm", testID+"-1-ro")
+		helpers.Anyhow("volume", "rm", testID+"-2-rw")
+		helpers.Anyhow("volume", "rm", testID+"-3-rw")
+	}
 
-			base.Cmd("cp", sourceFile, roContainer+":/").Assert(icmd.Expected{
-				ExitCode: 1,
-				Err:      expectedErr,
-			})
-		})
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Cannot copy into a read-only root",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("cp", data.Labels().Get("sourceFile"), data.Labels().Get("roContainer")+":/")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 1,
+					Errors:   []error{errors.New(data.Labels().Get("expectedErr"))},
+				}
+			},
+		},
+		{
+			Description: "Cannot copy into a read-only mount, in a rw container",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("cp", data.Labels().Get("sourceFile"), data.Labels().Get("rwContainer")+":/vol1/dir1/ro")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 1,
+					Errors:   []error{errors.New(data.Labels().Get("expectedErr"))},
+				}
+			},
+		},
+		{
+			Description: "Can copy into a read-write mount in a read-only container",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("cp", data.Labels().Get("sourceFile"), data.Labels().Get("roContainer")+":/vol2/dir2/rw")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+				}
+			},
+		},
+		{
+			Description: "Traverse read-only locations to a read-write location",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("cp", data.Labels().Get("sourceFile"), data.Labels().Get("roContainer")+":/vol1/dir1/ro/../../../vol2/dir2/rw")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+				}
+			},
+		},
+		{
+			Description: "Follow an absolute symlink inside a read-write mount to a read-only root",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("cp", data.Labels().Get("sourceFile"), data.Labels().Get("roContainer")+":/vol2/dir2/rw/absolutelinktoroot")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 1,
+					Errors:   []error{errors.New(data.Labels().Get("expectedErr"))},
+				}
+			},
+		},
+		{
+			Description: "Follow am absolute symlink inside a read-write mount to a read-only mount",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("cp", data.Labels().Get("sourceFile"), data.Labels().Get("rwContainer")+":/vol3/dir3/rw/absolutelinktoroot/vol1/dir1/ro")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 1,
+					Errors:   []error{errors.New(data.Labels().Get("expectedErr"))},
+				}
+			},
+		},
+		{
+			Description: "Follow a relative symlink inside a read-write location to a read-only root",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("cp", data.Labels().Get("sourceFile"), data.Labels().Get("roContainer")+":/vol2/dir2/rw/relativelinktoroot")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 1,
+					Errors:   []error{errors.New(data.Labels().Get("expectedErr"))},
+				}
+			},
+		},
+		{
+			Description: "Follow a relative symlink inside a read-write location to a read-only mount",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("cp", data.Labels().Get("sourceFile"), data.Labels().Get("rwContainer")+":/vol3/dir3/rw/relativelinktoroot/vol1/dir1/ro")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 1,
+					Errors:   []error{errors.New(data.Labels().Get("expectedErr"))},
+				}
+			},
+		},
+		{
+			Description: "Cannot copy into a HOST read-only location",
+			Require:     nerdtest.Rootless,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				tempDir := t.TempDir()
+				err := os.MkdirAll(filepath.Join(tempDir, "rotest"), 0o000)
+				assert.NilError(t, err)
+				return helpers.Command("cp", data.Labels().Get("roContainer")+":/etc/issue", filepath.Join(tempDir, "rotest"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 1,
+					Errors:   []error{errors.New(data.Labels().Get("expectedErr"))},
+				}
+			},
+		},
+	}
 
-		t.Run("Cannot copy into a read-only mount, in a rw container", func(t *testing.T) {
-			t.Parallel()
-
-			base.Cmd("cp", sourceFile, rwContainer+":/vol1/dir1/ro").Assert(icmd.Expected{
-				ExitCode: 1,
-				Err:      expectedErr,
-			})
-		})
-
-		t.Run("Can copy into a read-write mount in a read-only container", func(t *testing.T) {
-			t.Parallel()
-
-			base.Cmd("cp", sourceFile, roContainer+":/vol2/dir2/rw").Assert(icmd.Expected{
-				ExitCode: 0,
-			})
-		})
-
-		t.Run("Traverse read-only locations to a read-write location", func(t *testing.T) {
-			t.Parallel()
-
-			base.Cmd("cp", sourceFile, roContainer+":/vol1/dir1/ro/../../../vol2/dir2/rw").Assert(icmd.Expected{
-				ExitCode: 0,
-			})
-		})
-
-		t.Run("Follow an absolute symlink inside a read-write mount to a read-only root", func(t *testing.T) {
-			t.Parallel()
-
-			base.Cmd("cp", sourceFile, roContainer+":/vol2/dir2/rw/absolutelinktoroot").Assert(icmd.Expected{
-				ExitCode: 1,
-				Err:      expectedErr,
-			})
-		})
-
-		t.Run("Follow am absolute symlink inside a read-write mount to a read-only mount", func(t *testing.T) {
-			t.Parallel()
-
-			base.Cmd("cp", sourceFile, rwContainer+":/vol3/dir3/rw/absolutelinktoroot/vol1/dir1/ro").Assert(icmd.Expected{
-				ExitCode: 1,
-				Err:      expectedErr,
-			})
-		})
-
-		t.Run("Follow a relative symlink inside a read-write location to a read-only root", func(t *testing.T) {
-			t.Parallel()
-
-			base.Cmd("cp", sourceFile, roContainer+":/vol2/dir2/rw/relativelinktoroot").Assert(icmd.Expected{
-				ExitCode: 1,
-				Err:      expectedErr,
-			})
-		})
-
-		t.Run("Follow a relative symlink inside a read-write location to a read-only mount", func(t *testing.T) {
-			t.Parallel()
-
-			base.Cmd("cp", sourceFile, rwContainer+":/vol3/dir3/rw/relativelinktoroot/vol1/dir1/ro").Assert(icmd.Expected{
-				ExitCode: 1,
-				Err:      expectedErr,
-			})
-		})
-
-		t.Run("Cannot copy into a HOST read-only location", func(t *testing.T) {
-			t.Parallel()
-
-			// Root will just ignore the 000 permission on the host directory.
-			if !rootlessutil.IsRootless() {
-				t.Skip("This test does not work rootful")
-			}
-
-			err := os.MkdirAll(filepath.Join(tempDir, "rotest"), 0o000)
-			assert.NilError(t, err)
-			base.Cmd("cp", roContainer+":/etc/issue", filepath.Join(tempDir, "rotest")).Assert(icmd.Expected{
-				ExitCode: 1,
-				Err:      expectedErr,
-			})
-		})
-
-	})
+	testCase.Run(t)
 }
