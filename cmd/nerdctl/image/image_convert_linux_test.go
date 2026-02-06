@@ -97,6 +97,12 @@ func TestImageConvert(t *testing.T) {
 					nerdtest.Soci,
 					nerdtest.SociVersion("0.10.0"),
 				),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					// Clean up any existing SOCI indices to avoid stale ztoc data
+					helpers.Anyhow("rmi", "-f", testutil.CommonImage)
+					helpers.Anyhow("system", "prune", "--force")
+					helpers.Ensure("pull", "--quiet", "--all-platforms", testutil.CommonImage)
+				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
 				},
@@ -115,6 +121,12 @@ func TestImageConvert(t *testing.T) {
 					nerdtest.Soci,
 					nerdtest.SociVersion("0.10.0"),
 				),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					// Clean up any existing SOCI indices to avoid stale ztoc data
+					helpers.Anyhow("rmi", "-f", testutil.CommonImage)
+					helpers.Anyhow("system", "prune", "--force")
+					helpers.Ensure("pull", "--quiet", "--all-platforms", testutil.CommonImage)
+				},
 				Cleanup: func(data test.Data, helpers test.Helpers) {
 					helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
 				},
@@ -130,7 +142,6 @@ func TestImageConvert(t *testing.T) {
 	}
 
 	testCase.Run(t)
-
 }
 
 func TestImageConvertNydusVerify(t *testing.T) {
