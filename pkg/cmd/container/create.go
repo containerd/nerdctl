@@ -129,7 +129,14 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	opts = append(opts, platformOpts...)
 
-	opts = append(opts, withCDIDevices(options.GOptions.CDISpecDirs, options.CDIDevices...))
+	if len(options.CDIDevices) > 0 || len(options.GPUs) > 0 {
+		opts = append(opts, withStaticCDIRegistry(options.GOptions.CDISpecDirs))
+	}
+
+	opts = append(opts,
+		withGPUs(options.GPUs...),
+		withCDIDevices(options.CDIDevices...),
+	)
 
 	if _, err := referenceutil.Parse(args[0]); errors.Is(err, referenceutil.ErrLoadOCIArchiveRequired) {
 		imageRef := args[0]

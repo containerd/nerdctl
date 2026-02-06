@@ -31,6 +31,29 @@ type GPUReq struct {
 	Capabilities []string
 }
 
+func (req *GPUReq) toCDIDeviceIDs(vendor string) []string {
+	var cdiDeviceIDs []string
+	for _, id := range req.normalizeDeviceIDs() {
+		cdiDeviceIDs = append(cdiDeviceIDs, vendor+"/gpu="+id)
+	}
+	return cdiDeviceIDs
+}
+
+func (req *GPUReq) normalizeDeviceIDs() []string {
+	if len(req.DeviceIDs) > 0 {
+		return req.DeviceIDs
+	}
+	if req.Count < 0 {
+		return []string{"all"}
+	}
+	var ids []string
+	for i := 0; i < req.Count; i++ {
+		ids = append(ids, fmt.Sprintf("%d", i))
+	}
+
+	return ids
+}
+
 // ParseGPUOptCSV parses a GPU option from CSV.
 func ParseGPUOptCSV(value string) (*GPUReq, error) {
 	csvReader := csv.NewReader(strings.NewReader(value))
@@ -91,6 +114,27 @@ func ParseGPUOptCSV(value string) (*GPUReq, error) {
 	}
 
 	return &req, nil
+}
+
+func parseGPUOpts(gpuOpts []string) ([]string, error) {
+	if len(gpuOpts) == 0 {
+		return nil, nil
+	}
+
+	vendor := detectGPUVendorFromCDI()
+	if vendor == "" {
+		return nil, fmt.Errorf("no known GPU vendor found in CDI specs")
+	}
+
+	gpuCDIDevices := []string{}
+	for _, gpu := range gpuOpts {
+		req, err := ParseGPUOptCSV(gpu)
+		if err != nil {
+			return nil, err
+		}
+		gpuCDIDevices = append(gpuCDIDevices, req.toCDIDeviceIDs(vendor)...)
+	}
+	return gpuCDIDevices, nil
 }
 
 func parseCount(s string) (int, error) {

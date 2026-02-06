@@ -98,11 +98,6 @@ func setPlatformOptions(ctx context.Context, client *containerd.Client, id, uts 
 	if options.Sysctl != nil {
 		opts = append(opts, WithSysctls(strutil.ConvertKVStringsToMap(options.Sysctl)))
 	}
-	gpuOpt, err := parseGPUOpts(options.GOptions.CDISpecDirs, options.GPUs)
-	if err != nil {
-		return nil, err
-	}
-	opts = append(opts, gpuOpt...)
 
 	if options.RDTClass != "" {
 		opts = append(opts, oci.WithRdt(options.RDTClass, "", ""))
@@ -259,38 +254,4 @@ func withOOMScoreAdj(score int) oci.SpecOpts {
 		s.Process.OOMScoreAdj = &score
 		return nil
 	}
-}
-
-func parseGPUOpts(cdiSpecDirs []string, value []string) (res []oci.SpecOpts, _ error) {
-	for _, gpu := range value {
-		req, err := ParseGPUOptCSV(gpu)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, withCDIDevices(cdiSpecDirs, req.toCDIDeviceIDS()...))
-	}
-	return res, nil
-}
-
-func (req *GPUReq) toCDIDeviceIDS() []string {
-	var cdiDeviceIDs []string
-	for _, id := range req.normalizeDeviceIDs() {
-		cdiDeviceIDs = append(cdiDeviceIDs, "nvidia.com/gpu="+id)
-	}
-	return cdiDeviceIDs
-}
-
-func (req *GPUReq) normalizeDeviceIDs() []string {
-	if len(req.DeviceIDs) > 0 {
-		return req.DeviceIDs
-	}
-	if req.Count < 0 {
-		return []string{"all"}
-	}
-	var ids []string
-	for i := 0; i < req.Count; i++ {
-		ids = append(ids, fmt.Sprintf("%d", i))
-	}
-
-	return ids
 }
