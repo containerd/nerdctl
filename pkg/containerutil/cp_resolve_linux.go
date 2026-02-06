@@ -48,13 +48,16 @@ var (
 // besides exposing relevant properties (endsWithSeparator, etc), it also provides a fully resolved *host* path to
 // access the resource
 type pathSpecifier struct {
-	originalPath         string
+	originalPath string
+	resolvedPath string
+
 	endsWithSeparator    bool
 	endsWithSeparatorDot bool
 	exists               bool
 	isADir               bool
 	readOnly             bool
-	resolvedPath         string
+	fromStdin            bool
+	toStdout             bool
 }
 
 // getPathSpecFromHost builds a pathSpecifier from a host location
@@ -132,7 +135,7 @@ func getPathSpecFromHost(originalPath string) (*pathSpecifier, error) {
 	return pathSpec, nil
 }
 
-// getPathSpecFromHost builds a pathSpecifier from a container location
+// getPathSpecFromContainer builds a pathSpecifier from a container location
 func getPathSpecFromContainer(originalPath string, conSpec *oci.Spec, containerHostRoot string) (*pathSpecifier, error) {
 	pathSpec := &pathSpecifier{
 		originalPath:         originalPath,
