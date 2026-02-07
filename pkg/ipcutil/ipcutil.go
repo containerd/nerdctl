@@ -207,6 +207,11 @@ func GenerateIPCOpts(ctx context.Context, ipc IPC, client *containerd.Client) ([
 		}
 
 		opts = append(opts, withBindMountHostOtherSourceIPC(*targetConIPC.HostShmPath))
+		ns := specs.LinuxNamespace{
+			Type: specs.IPCNamespace,
+			Path: fmt.Sprintf("/proc/%d/ns/ipc", task.Pid()),
+		}
+		opts = append(opts, oci.WithLinuxNamespace(ns))
 	}
 
 	return opts, nil
