@@ -73,6 +73,9 @@ type BuilderBuildOptions struct {
 	Pull *bool
 	// ExtraHosts is a set of custom host-to-IP mappings.
 	ExtraHosts []string
+	// SourcePolicyFile is the path to a BuildKit source policy file.
+	// Passed through to buildctl as --source-policy-file.
+	SourcePolicyFile string
 }
 
 // BuilderPruneOptions specifies options for `nerdctl builder prune`.

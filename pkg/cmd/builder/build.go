@@ -194,6 +194,16 @@ func loadImage(ctx context.Context, in io.Reader, namespace, address, snapshotte
 	return nil
 }
 
+// GetEffectiveSourcePolicyFile returns the effective source policy file path.
+// If optionValue is set, it takes precedence. Otherwise, the EXPERIMENTAL_BUILDKIT_SOURCE_POLICY
+// environment variable is used for Docker Buildx compatibility.
+func GetEffectiveSourcePolicyFile(optionValue string) string {
+	if optionValue != "" {
+		return optionValue
+	}
+	return os.Getenv("EXPERIMENTAL_BUILDKIT_SOURCE_POLICY")
+}
+
 func generateBuildctlArgs(ctx context.Context, client *containerd.Client, options types.BuilderBuildOptions) (buildCtlBinary string,
 	buildctlArgs []string, needsLoading bool, metaFile string, tags []string, cleanup func(), err error) {
 
@@ -470,6 +480,11 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 			return "", nil, false, "", nil, nil, err
 		}
 		buildctlArgs = append(buildctlArgs, "--opt=add-hosts="+strings.Join(extraHosts, ","))
+	}
+
+	// Source policy file: use explicit option if set, otherwise fallback to env var for Buildx compatibility
+	if sourcePolicyFile := GetEffectiveSourcePolicyFile(options.SourcePolicyFile); sourcePolicyFile != "" {
+		buildctlArgs = append(buildctlArgs, "--source-policy-file="+sourcePolicyFile)
 	}
 
 	return buildctlBinary, buildctlArgs, needsLoading, metaFile, tags, cleanup, nil
