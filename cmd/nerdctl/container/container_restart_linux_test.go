@@ -17,6 +17,7 @@
 package container
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -30,102 +31,190 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRestart(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base.Cmd("run", "-d", "--name", tID, testutil.NginxAlpineImage).AssertOK()
-	defer base.Cmd("rm", "-f", tID).AssertOK()
-	base.EnsureContainerStarted(tID)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", testutil.Identifier(t), testutil.NginxAlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, testutil.Identifier(t))
 
-	inspect := base.InspectContainer(tID)
-	pid := inspect.State.Pid
+		inspect := nerdtest.InspectContainer(helpers, testutil.Identifier(t))
+		data.Labels().Set("pid", strconv.Itoa(inspect.State.Pid))
 
-	base.Cmd("restart", tID).AssertOK()
-	base.EnsureContainerStarted(tID)
+		helpers.Ensure("restart", testutil.Identifier(t))
+		nerdtest.EnsureContainerStarted(helpers, testutil.Identifier(t))
+	}
 
-	newInspect := base.InspectContainer(tID)
-	newPid := newInspect.State.Pid
-	assert.Assert(t, pid != newPid)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", testutil.Identifier(t))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", testutil.Identifier(t))
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				var dc []dockercompat.Container
+
+				err := json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(t, err)
+				assert.Equal(t, 1, len(dc))
+
+				assert.Assert(t, data.Labels().Get("pid") != strconv.Itoa(dc[0].State.Pid))
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestRestartPIDContainer(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	baseContainerName := testutil.Identifier(t)
-	base.Cmd("run", "-d", "--name", baseContainerName, testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
-	defer base.Cmd("rm", "-f", baseContainerName).Run()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		baseContainerName := testutil.Identifier(t)
+		helpers.Ensure("run", "-d", "--name", baseContainerName, testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, baseContainerName)
 
-	sharedContainerName := fmt.Sprintf("%s-shared", baseContainerName)
-	base.Cmd("run", "-d", "--name", sharedContainerName, fmt.Sprintf("--pid=container:%s", baseContainerName), testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
-	defer base.Cmd("rm", "-f", sharedContainerName).Run()
+		sharedContainerName := fmt.Sprintf("%s-shared", baseContainerName)
+		helpers.Ensure("run", "-d", "--name", sharedContainerName, fmt.Sprintf("--pid=container:%s", baseContainerName), testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, sharedContainerName)
 
-	base.Cmd("restart", baseContainerName).AssertOK()
-	base.Cmd("restart", sharedContainerName).AssertOK()
+		helpers.Ensure("restart", baseContainerName)
+		nerdtest.EnsureContainerStarted(helpers, baseContainerName)
+		helpers.Ensure("restart", sharedContainerName)
+		nerdtest.EnsureContainerStarted(helpers, sharedContainerName)
 
-	// output format : <inode number> /proc/1/ns/pid
-	// example output: 4026532581 /proc/1/ns/pid
-	basePSResult := base.Cmd("exec", baseContainerName, "ls", "-Li", "/proc/1/ns/pid").Run()
-	baseOutput := strings.TrimSpace(basePSResult.Stdout())
-	sharedPSResult := base.Cmd("exec", sharedContainerName, "ls", "-Li", "/proc/1/ns/pid").Run()
-	sharedOutput := strings.TrimSpace(sharedPSResult.Stdout())
+		// output format : <inode number> /proc/1/ns/pid
+		// example output: 4026532581 /proc/1/ns/pid
+		basePSResult := helpers.Capture("exec", baseContainerName, "ls", "-Li", "/proc/1/ns/pid")
+		baseOutput := strings.TrimSpace(basePSResult)
 
-	assert.Equal(t, baseOutput, sharedOutput)
+		data.Labels().Set("baseContainerName", baseContainerName)
+		data.Labels().Set("sharedContainerName", sharedContainerName)
+		data.Labels().Set("baseOutput", baseOutput)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Labels().Get("baseContainerName"))
+		helpers.Anyhow("rm", "-f", data.Labels().Get("sharedContainerName"))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("exec", data.Labels().Get("sharedContainerName"), "ls", "-Li", "/proc/1/ns/pid")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				assert.Equal(t, strings.TrimSpace(stdout), data.Labels().Get("baseOutput"))
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestRestartIPCContainer(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	const shmSize = "32m"
-	baseContainerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", baseContainerName).Run()
-	base.Cmd("run", "-d", "--shm-size", shmSize, "--ipc", "shareable", "--name", baseContainerName, testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		const shmSize = "32m"
+		baseContainerName := testutil.Identifier(t)
+		helpers.Ensure("run", "-d", "--shm-size", shmSize, "--ipc", "shareable", "--name", baseContainerName, testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, baseContainerName)
 
-	sharedContainerName := fmt.Sprintf("%s-shared", baseContainerName)
-	defer base.Cmd("rm", "-f", sharedContainerName).Run()
-	base.Cmd("run", "-d", "--name", sharedContainerName, fmt.Sprintf("--ipc=container:%s", baseContainerName), testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
+		sharedContainerName := fmt.Sprintf("%s-shared", baseContainerName)
+		helpers.Ensure("run", "-d", "--name", sharedContainerName, fmt.Sprintf("--ipc=container:%s", baseContainerName), testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, sharedContainerName)
 
-	base.Cmd("stop", baseContainerName).Run()
-	base.Cmd("stop", sharedContainerName).Run()
+		helpers.Ensure("stop", baseContainerName)
+		helpers.Ensure("stop", sharedContainerName)
 
-	base.Cmd("restart", baseContainerName).AssertOK()
-	base.Cmd("restart", sharedContainerName).AssertOK()
+		helpers.Ensure("restart", baseContainerName)
+		nerdtest.EnsureContainerStarted(helpers, baseContainerName)
+		helpers.Ensure("restart", sharedContainerName)
+		nerdtest.EnsureContainerStarted(helpers, sharedContainerName)
 
-	baseShmSizeResult := base.Cmd("exec", baseContainerName, "/bin/grep", "shm", "/proc/self/mounts").Run()
-	baseOutput := strings.TrimSpace(baseShmSizeResult.Stdout())
-	sharedShmSizeResult := base.Cmd("exec", sharedContainerName, "/bin/grep", "shm", "/proc/self/mounts").Run()
-	sharedOutput := strings.TrimSpace(sharedShmSizeResult.Stdout())
+		baseShmSizeResult := helpers.Capture("exec", baseContainerName, "/bin/grep", "shm", "/proc/self/mounts")
+		baseOutput := strings.TrimSpace(baseShmSizeResult)
 
-	assert.Equal(t, baseOutput, sharedOutput)
+		data.Labels().Set("baseContainerName", baseContainerName)
+		data.Labels().Set("sharedContainerName", sharedContainerName)
+		data.Labels().Set("baseOutput", baseOutput)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Labels().Get("baseContainerName"))
+		helpers.Anyhow("rm", "-f", data.Labels().Get("sharedContainerName"))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("exec", data.Labels().Get("sharedContainerName"), "/bin/grep", "shm", "/proc/self/mounts")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				assert.Equal(t, strings.TrimSpace(stdout), data.Labels().Get("baseOutput"))
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestRestartWithTime(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base.Cmd("run", "-d", "--name", tID, testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
-	defer base.Cmd("rm", "-f", tID).AssertOK()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		containerName := testutil.Identifier(t)
+		helpers.Ensure("run", "-d", "--name", containerName, testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, containerName)
 
-	inspect := base.InspectContainer(tID)
-	pid := inspect.State.Pid
+		inspect := nerdtest.InspectContainer(helpers, containerName)
+		pid := inspect.State.Pid
 
-	timePreRestart := time.Now()
-	base.Cmd("restart", "-t", "5", tID).AssertOK()
-	timePostRestart := time.Now()
+		data.Labels().Set("containerName", containerName)
+		data.Labels().Set("pid", strconv.Itoa(pid))
+	}
 
-	newInspect := base.InspectContainer(tID)
-	newPid := newInspect.State.Pid
-	assert.Assert(t, pid != newPid)
-	// ensure that stop took at least 5 seconds
-	assert.Assert(t, timePostRestart.Sub(timePreRestart) >= time.Second*5)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Labels().Get("containerName"))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		data.Labels().Set("timePreRestart", time.Now().Format(time.RFC3339))
+		return helpers.Command("restart", "-t", "5", data.Labels().Get("containerName"))
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				timePostRestart := time.Now()
+				timePreRestart, err := time.Parse(time.RFC3339, data.Labels().Get("timePreRestart"))
+				assert.NilError(t, err)
+				// ensure that stop took at least 5 seconds
+				assert.Assert(t, timePostRestart.Sub(timePreRestart) >= time.Second*5)
+
+				inspect := nerdtest.InspectContainer(helpers, data.Labels().Get("containerName"))
+				assert.Assert(t, strconv.Itoa(inspect.State.Pid) != data.Labels().Get("pid"))
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestRestartWithSignal(t *testing.T) {
