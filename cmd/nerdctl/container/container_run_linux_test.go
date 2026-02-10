@@ -674,7 +674,16 @@ func TestRunDeviceCDI(t *testing.T) {
 	// Although CDI injection is supported by Docker, specifying the --cdi-spec-dirs on the command line is not.
 	testutil.DockerIncompatible(t)
 	cdiSpecDir := filepath.Join(t.TempDir(), "cdi")
-	writeTestCDISpec(t, cdiSpecDir)
+	const testCDIVendor1 = `
+cdiVersion: "0.3.0"
+kind: "vendor1.com/device"
+devices:
+- name: foo
+  containerEdits:
+    env:
+    - FOO=injected
+`
+	writeTestCDISpec(t, testCDIVendor1, "vendor1.yaml", cdiSpecDir)
 
 	base := testutil.NewBase(t)
 	base.Cmd("--cdi-spec-dirs", cdiSpecDir, "run",
@@ -689,7 +698,16 @@ func TestRunDeviceCDIWithNerdctlConfig(t *testing.T) {
 	// Although CDI injection is supported by Docker, specifying the --cdi-spec-dirs on the command line is not.
 	testutil.DockerIncompatible(t)
 	cdiSpecDir := filepath.Join(t.TempDir(), "cdi")
-	writeTestCDISpec(t, cdiSpecDir)
+	const testCDIVendor1 = `
+cdiVersion: "0.3.0"
+kind: "vendor1.com/device"
+devices:
+- name: foo
+  containerEdits:
+    env:
+    - FOO=injected
+`
+	writeTestCDISpec(t, testCDIVendor1, "vendor1.yaml", cdiSpecDir)
 
 	tomlPath := filepath.Join(t.TempDir(), "nerdctl.toml")
 	err := os.WriteFile(tomlPath, []byte(fmt.Sprintf(`
@@ -706,8 +724,128 @@ cdi_spec_dirs = ["%s"]
 	).AssertOutContains("FOO=injected")
 }
 
-func writeTestCDISpec(t *testing.T, cdiSpecDir string) {
-	const testCDIVendor1 = `
+// TestRunGPU tests GPU injection using the --gpus flag.
+func TestRunGPU(t *testing.T) {
+	t.Parallel()
+	// Although CDI injection is supported by Docker, specifying the --cdi-spec-dirs on the command line is not.
+	testutil.DockerIncompatible(t)
+	const nvidiaSpec = `
+cdiVersion: "0.5.0"
+kind: "nvidia.com/gpu"
+devices:
+- name: "0"
+  containerEdits:
+    env:
+    - NVIDIA_GPU_0=injected
+- name: "1"
+  containerEdits:
+    env:
+    - NVIDIA_GPU_1=injected
+`
+	const amdSpec = `
+cdiVersion: "0.5.0"
+kind: "amd.com/gpu"
+devices:
+- name: "0"
+  containerEdits:
+    env:
+    - AMD_GPU_0=injected
+- name: "1"
+  containerEdits:
+    env:
+    - AMD_GPU_1=injected
+`
+	const unknownSpec = `
+cdiVersion: "0.5.0"
+kind: "unknown.com/gpu"
+devices:
+- name: "0"
+  containerEdits:
+    env:
+    - UNKNOWN_GPU_0=injected
+`
+
+	testCases := []struct {
+		name         string
+		specs        map[string]string
+		gpuFlags     []string
+		expectedEnvs []string
+		expectFail   bool
+	}{
+		{
+			name:         "nvidia device injection",
+			specs:        map[string]string{"nvidia.yaml": nvidiaSpec},
+			gpuFlags:     []string{"--gpus", "2"},
+			expectedEnvs: []string{"NVIDIA_GPU_0=injected", "NVIDIA_GPU_1=injected"},
+		},
+		{
+			name:         "amd device injection",
+			specs:        map[string]string{"amd.yaml": amdSpec},
+			gpuFlags:     []string{"--gpus", "2"},
+			expectedEnvs: []string{"AMD_GPU_0=injected", "AMD_GPU_1=injected"},
+		},
+		{
+			name:         "multiple vendors",
+			specs:        map[string]string{"nvidia.yaml": nvidiaSpec, "amd.yaml": amdSpec},
+			gpuFlags:     []string{"--gpus", "1"},
+			expectedEnvs: []string{"NVIDIA_GPU_0=injected"},
+		},
+		{
+			name:       "unknown vendor fails",
+			specs:      map[string]string{"unknown.yaml": unknownSpec},
+			gpuFlags:   []string{"--gpus", "1"},
+			expectFail: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			tmpDir := t.TempDir()
+			for fileName, spec := range tc.specs {
+				writeTestCDISpec(t, spec, fileName, tmpDir)
+			}
+
+			base := testutil.NewBase(t)
+			args := []string{"--cdi-spec-dirs", tmpDir, "run", "--rm"}
+			args = append(args, tc.gpuFlags...)
+			args = append(args, testutil.AlpineImage, "env")
+
+			if tc.expectFail {
+				base.Cmd(args...).AssertFail()
+			} else {
+				base.Cmd(args...).AssertOutWithFunc(func(stdout string) error {
+					for _, expectedEnv := range tc.expectedEnvs {
+						if !strings.Contains(stdout, expectedEnv) {
+							return fmt.Errorf("%s not found", expectedEnv)
+						}
+					}
+					return nil
+				})
+			}
+		})
+	}
+}
+
+// TestRunGPUWithOtherCDIDevices tests GPU CDI injection along with other CDI devices.
+func TestRunGPUWithOtherCDIDevices(t *testing.T) {
+	t.Parallel()
+	// Although CDI injection is supported by Docker, specifying the --cdi-spec-dirs on the command line is not.
+	testutil.DockerIncompatible(t)
+	const amdSpec = `
+cdiVersion: "0.5.0"
+kind: "amd.com/gpu"
+devices:
+- name: "0"
+  containerEdits:
+    env:
+    - AMD_GPU_0=injected
+- name: "1"
+  containerEdits:
+    env:
+    - AMD_GPU_1=injected
+`
+	const vendor1Spec = `
 cdiVersion: "0.3.0"
 kind: "vendor1.com/device"
 devices:
@@ -716,10 +854,33 @@ devices:
     env:
     - FOO=injected
 `
+	tmpDir := t.TempDir()
+	writeTestCDISpec(t, amdSpec, "amd.yaml", tmpDir)
+	writeTestCDISpec(t, vendor1Spec, "vendor1.yaml", tmpDir)
 
+	base := testutil.NewBase(t)
+	base.Cmd("--cdi-spec-dirs", tmpDir, "run", "--rm",
+		"--gpus", "2",
+		"--device", "vendor1.com/device=foo",
+		testutil.AlpineImage, "env",
+	).AssertOutWithFunc(func(stdout string) error {
+		if !strings.Contains(stdout, "AMD_GPU_0=injected") {
+			return errors.New("AMD_GPU_0=injected not found")
+		}
+		if !strings.Contains(stdout, "AMD_GPU_1=injected") {
+			return errors.New("AMD_GPU_1=injected not found")
+		}
+		if !strings.Contains(stdout, "FOO=injected") {
+			return errors.New("FOO=injected not found")
+		}
+		return nil
+	})
+}
+
+func writeTestCDISpec(t *testing.T, spec string, fileName string, cdiSpecDir string) {
 	err := os.MkdirAll(cdiSpecDir, 0700)
 	assert.NilError(t, err)
-	cdiSpecPath := filepath.Join(cdiSpecDir, "vendor1.yaml")
-	err = os.WriteFile(cdiSpecPath, []byte(testCDIVendor1), 0400)
+	cdiSpecPath := filepath.Join(cdiSpecDir, fileName)
+	err = os.WriteFile(cdiSpecPath, []byte(spec), 0400)
 	assert.NilError(t, err)
 }
