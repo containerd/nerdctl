@@ -929,9 +929,9 @@ type Network struct {
 type EndpointResource struct {
 	Name string `json:"Name"`
 	// EndpointID  string `json:"EndpointID"`
-	// MacAddress  string `json:"MacAddress"`
-	// IPv4Address string `json:"IPv4Address"`
-	// IPv6Address string `json:"IPv6Address"`
+	MacAddress  string `json:"MacAddress"`
+	IPv4Address string `json:"IPv4Address"`
+	IPv6Address string `json:"IPv6Address"`
 }
 
 type structuredCNI struct {
@@ -947,6 +947,88 @@ type MemorySetting struct {
 	Limit            int64 `json:"limit"`
 	Swap             int64 `json:"swap"`
 	DisableOOMKiller bool  `json:"disableOOMKiller"`
+}
+
+// parseNetworkSubnets extracts and parses subnet configurations from IPAM config
+func parseNetworkSubnets(ipamConfigs []IPAMConfig) []*net.IPNet {
+	var subnets []*net.IPNet
+	for _, config := range ipamConfigs {
+		if config.Subnet != "" {
+			_, subnet, err := net.ParseCIDR(config.Subnet)
+			if err != nil {
+				log.L.WithError(err).Warnf("failed to parse subnet %q", config.Subnet)
+				continue
+			}
+			subnets = append(subnets, subnet)
+		}
+	}
+	return subnets
+}
+
+// isUsableInterface checks if a network interface is usable (not loopback and up)
+func isUsableInterface(iface *native.NetInterface) bool {
+	return iface.Interface.Flags&net.FlagLoopback == 0 &&
+		iface.Interface.Flags&net.FlagUp != 0
+}
+
+// setIPAddresses assigns IPv4 or IPv6 addresses from CIDR notation to the endpoint
+func setIPAddresses(endpoint *EndpointResource, cidr string) {
+	ip, _, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return
+	}
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+		return
+	}
+
+	if ip.To4() != nil {
+		endpoint.IPv4Address = cidr
+	} else if ip.To16() != nil {
+		endpoint.IPv6Address = cidr
+	}
+}
+
+// matchInterfaceToSubnets tries to match an interface to network subnets
+func matchInterfaceToSubnets(endpoint *EndpointResource, iface *native.NetInterface, subnets []*net.IPNet) bool {
+	for _, addr := range iface.Addrs {
+		ip, _, err := net.ParseCIDR(addr)
+		if err != nil || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+			continue
+		}
+
+		for _, subnet := range subnets {
+			if subnet.Contains(ip) {
+				endpoint.MacAddress = iface.HardwareAddr
+				setIPAddresses(endpoint, addr)
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// populateEndpointFromNetNS finds and populates endpoint info from network namespace interfaces
+func populateEndpointFromNetNS(endpoint *EndpointResource, interfaces []native.NetInterface, subnets []*net.IPNet) {
+	for _, iface := range interfaces {
+		if !isUsableInterface(&iface) {
+			continue
+		}
+
+		if len(subnets) > 0 {
+			if matchInterfaceToSubnets(endpoint, &iface, subnets) {
+				return // Found matching interface
+			}
+			// Continue to next interface if this one doesn't match any subnets
+			continue
+		}
+
+		// Fallback: use first usable interface (for networks without explicit subnets)
+		endpoint.MacAddress = iface.HardwareAddr
+		for _, addr := range iface.Addrs {
+			setIPAddresses(endpoint, addr)
+		}
+		return
+	}
 }
 
 func NetworkFromNative(n *native.Network) (*Network, error) {
@@ -973,15 +1055,20 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 		res.Labels = *n.NerdctlLabels
 	}
 
+	// Parse network subnets for interface matching
+	networkSubnets := parseNetworkSubnets(res.IPAM.Config)
+
 	res.Containers = make(map[string]EndpointResource)
 	for _, container := range n.Containers {
-		res.Containers[container.ID] = EndpointResource{
+		endpoint := EndpointResource{
 			Name: container.Labels[labels.Name],
-			// EndpointID:  container.EndpointID,
-			// MacAddress:  container.MacAddress,
-			// IPv4Address: container.IPv4Address,
-			// IPv6Address: container.IPv6Address,
 		}
+
+		if container.Process != nil && container.Process.NetNS != nil {
+			populateEndpointFromNetNS(&endpoint, container.Process.NetNS.Interfaces, networkSubnets)
+		}
+
+		res.Containers[container.ID] = endpoint
 	}
 
 	return &res, nil
