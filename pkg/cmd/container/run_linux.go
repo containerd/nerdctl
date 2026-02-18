@@ -71,7 +71,7 @@ func setPlatformOptions(ctx context.Context, client *containerd.Client, id, uts 
 	}
 	opts = append(opts, capOpts...)
 	securityOptsMaps := strutil.ConvertKVStringsToMap(strutil.DedupeStrSlice(options.SecurityOpt))
-	secOpts, err := generateSecurityOpts(options.Privileged, securityOptsMaps)
+	secOpts, err := generateSecurityOpts(options.Privileged, options.GOptions.SelinuxEnabled, securityOptsMaps)
 	if err != nil {
 		return nil, err
 	}

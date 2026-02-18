@@ -17,14 +17,19 @@
 package container
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/selinux/go-selinux/label"
+
 	"github.com/containerd/containerd/v2/contrib/apparmor"
 	"github.com/containerd/containerd/v2/contrib/seccomp"
+	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/cap"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/log"
@@ -51,10 +56,10 @@ const (
 	systemPathsUnconfined = "unconfined"
 )
 
-func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([]oci.SpecOpts, error) {
+func generateSecurityOpts(privileged bool, selinuxEnabled bool, securityOptsMap map[string]string) ([]oci.SpecOpts, error) {
 	for k := range securityOptsMap {
 		switch k {
-		case "seccomp", "apparmor", "no-new-privileges", "systempaths", "privileged-without-host-devices", "writable-cgroups":
+		case "seccomp", "apparmor", "no-new-privileges", "systempaths", "privileged-without-host-devices", "writable-cgroups", "label":
 		default:
 			log.L.Warnf("unknown security-opt: %q", k)
 		}
@@ -94,6 +99,24 @@ func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([
 		if apparmorutil.CanApplySpecificExistingProfile(defaults.AppArmorProfileName) {
 			opts = append(opts, apparmor.WithProfile(defaults.AppArmorProfileName))
 		}
+	}
+	var labelOpts []string
+	// TODO: should set unique MCS categorie.
+	if selinuxLabel, ok := securityOptsMap["label"]; ok {
+		labelOpts = append(labelOpts, selinuxLabel)
+		processLabel, mountLabel, err := label.InitLabels(labelOpts)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, WithSelinuxLabel(processLabel, mountLabel))
+	}
+	// if selinux-enabled=true and security-opt selinux label is not set.
+	if selinuxEnabled && len(labelOpts) == 0 {
+		processLabel, mountLabel, err := label.InitLabels(labelOpts)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, WithSelinuxLabel(processLabel, mountLabel))
 	}
 
 	nnp, err := maputil.MapBoolValueAsOpt(securityOptsMap, "no-new-privileges")
@@ -139,6 +162,21 @@ func generateSecurityOpts(privileged bool, securityOptsMap map[string]string) ([
 	}
 
 	return opts, nil
+}
+
+// WithSelinuxLabels sets the mount and process labels
+func WithSelinuxLabel(process, mount string) oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		if s.Linux == nil {
+			s.Linux = &specs.Linux{}
+		}
+		if s.Process == nil {
+			s.Process = &specs.Process{}
+		}
+		s.Linux.MountLabel = mount
+		s.Process.SelinuxLabel = process
+		return nil
+	}
 }
 
 func canonicalizeCapName(s string) string {
