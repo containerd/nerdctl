@@ -17,6 +17,7 @@
 package containerutil
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -147,9 +148,25 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 	var sourceErr, destErr error
 	if options.Container2Host {
 		sourceSpec, sourceErr = getPathSpecFromContainer(options.SrcPath, conSpec, root)
-		destinationSpec, destErr = getPathSpecFromHost(options.DestPath)
+		if options.ToStdout {
+			destinationSpec = &pathSpecifier{
+				exists:   true,
+				isADir:   true,
+				toStdout: true,
+			}
+		} else {
+			destinationSpec, destErr = getPathSpecFromHost(options.DestPath)
+		}
 	} else {
-		sourceSpec, sourceErr = getPathSpecFromHost(options.SrcPath)
+		if options.FromStdin {
+			sourceSpec = &pathSpecifier{
+				exists:    true,
+				isADir:    true,
+				fromStdin: true,
+			}
+		} else {
+			sourceSpec, sourceErr = getPathSpecFromHost(options.SrcPath)
+		}
 		destinationSpec, destErr = getPathSpecFromContainer(options.DestPath, conSpec, root)
 	}
 
@@ -212,7 +229,7 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 			tarCDir = filepath.Dir(sourceSpec.resolvedPath)
 			tarCArg = filepath.Base(sourceSpec.resolvedPath)
 		}
-	} else {
+	} else if !sourceSpec.fromStdin {
 		// Prepare a single-file directory to create an archive of the source file
 		td, err := os.MkdirTemp("", "nerdctl-cp")
 		if err != nil {
@@ -224,7 +241,7 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 		if options.FollowSymLink {
 			cp = append(cp, "-L")
 		}
-		if destinationSpec.endsWithSeparator || (destinationSpec.exists && destinationSpec.isADir) {
+		if destinationSpec.toStdout || destinationSpec.endsWithSeparator || (destinationSpec.exists && destinationSpec.isADir) {
 			tarCArg = filepath.Base(sourceSpec.resolvedPath)
 		} else {
 			// Handle `nerdctl cp /path/to/file some-container:/path/to/file-with-another-name`
@@ -237,21 +254,31 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 			return fmt.Errorf("failed to execute %v: %w (out=%q)", cpCmd.Args, err, string(out))
 		}
 	}
-	tarC := []string{tarBinary}
-	if options.FollowSymLink {
-		tarC = append(tarC, "-h")
+	var tarC []string
+	if sourceSpec.fromStdin {
+		tarC = []string{"echo", "reading tar from stdin"}
+	} else {
+		tarC = []string{tarBinary}
+		if options.FollowSymLink {
+			tarC = append(tarC, "-h")
+		}
+		tarC = append(tarC, "-c", "-f", "-", tarCArg)
 	}
-	tarC = append(tarC, "-c", "-f", "-", tarCArg)
 
 	tarXDir := destinationSpec.resolvedPath
 	if !sourceSpec.isADir && !destinationSpec.endsWithSeparator && !(destinationSpec.exists && destinationSpec.isADir) {
 		tarXDir = filepath.Dir(destinationSpec.resolvedPath)
 	}
-	tarX := []string{tarBinary, "-x"}
-	if options.Container2Host && isGNUTar {
-		tarX = append(tarX, "--no-same-owner")
+	var tarX []string
+	if destinationSpec.toStdout {
+		tarX = []string{"echo", "writing tar to stdout"}
+	} else {
+		tarX = []string{tarBinary, "-x"}
+		if options.Container2Host && isGNUTar {
+			tarX = append(tarX, "--no-same-owner")
+		}
+		tarX = append(tarX, "-f", "-")
 	}
-	tarX = append(tarX, "-f", "-")
 
 	if rootlessutil.IsRootless() {
 		nsenter := []string{"nsenter", "-t", strconv.Itoa(pid), "-U", "--preserve-credentials", "--"}
@@ -272,11 +299,23 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 
 	tarXCmd := exec.CommandContext(ctx, tarX[0], tarX[1:]...)
 	tarXCmd.Dir = tarXDir
-	tarXCmd.Stdin, err = tarCCmd.StdoutPipe()
-	if err != nil {
-		return err
+	if sourceSpec.fromStdin {
+		// Reading from tar should pipe stdin into dst
+		tarXCmd.Stdin = bufio.NewReader(os.Stdin)
+		tarXCmd.Stdout = os.Stderr
+	} else if destinationSpec.toStdout {
+		// Writing to tar should just write output to stdout. (Really we don't even need tarXCmd for this case.)
+		tarXCmd.Stdin = nil
+		tarXCmd.Stdout = nil
+		tarCCmd.Stdout = os.Stdout
+	} else {
+		tarXCmd.Stdin, err = tarCCmd.StdoutPipe()
+		if err != nil {
+			return err
+		}
+		tarXCmd.Stdout = tarCCmd.Stderr
 	}
-	tarXCmd.Stdout = os.Stderr
+
 	var tarErr bytes.Buffer
 	tarXCmd.Stderr = &tarErr
 

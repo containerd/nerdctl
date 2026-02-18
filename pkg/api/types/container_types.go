@@ -541,6 +541,10 @@ type ContainerCpOptions struct {
 	SrcPath string
 	// Follow symbolic links in SRC_PATH
 	FollowSymLink bool
+	// true if copying to container from tarball in stdin
+	FromStdin bool
+	// true if copying from container to stdout in tarball format
+	ToStdout bool
 }
 
 // ContainerStatsOptions specifies options for `nerdctl stats`.
