@@ -288,6 +288,7 @@ Volume flags:
   - :whale:     option `rshared`, `rslave`, `rprivate`: Recursive "shared" / "slave" / "private" propagation
   - :nerd_face: option `bind`: Not-recursively bind-mounted
   - :nerd_face: option `rbind`: Recursively bind-mounted
+  - unimplemented options: `:z` and `:Z` (SELinux relabeling)
 - :whale: `--tmpfs`: Mount a tmpfs directory, e.g. `--tmpfs /tmp:size=64m,exec`.
 - :whale: `--mount`: Attach a filesystem mount to the container.
   Consists of multiple key-value pairs, separated by commas and each
@@ -296,6 +297,7 @@ Volume flags:
   - :whale: `type`: Current supported mount types are `bind`, `volume`, `tmpfs`.
     The default type will be set to `volume` if not specified.
     i.e., `--mount src=vol-1,dst=/app,readonly` equals `--mount type=volume,src=vol-1,dst=/app,readonly`
+    - unimplemented type: `image`
   - Common Options:
     - :whale: `src`, `source`: Mount source spec for bind and volume. Mandatory for bind.
     - :whale: `dst`, `destination`, `target`: Mount destination spec.
@@ -451,7 +453,7 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--device-cgroup-rule`, `--disable-content-trust`, `--expose`, `--isolation`,
+    `--device-cgroup-rule`, `--disable-content-trust`, `--expose`,
     `--link*`, `--publish-all`, `--storage-opt`, `--volume-driver`
 
 ### :whale: nerdctl exec
@@ -622,8 +624,6 @@ Flags:
 - :whale: `--detach-keys`: Override the default detach keys
 - :whale: `--checkpoint`: checkpoint name
 - :whale: `--detach-keys`: checkpoint directory
-
-Unimplemented `docker start` flags: `--interactive`
 
 ### :whale: nerdctl restart
 
@@ -1983,10 +1983,6 @@ See [`./config.md`](./config.md).
 
 ## Unimplemented Docker commands
 
-Container management:
-
-- `docker diff`
-
 Image:
 
 - `docker trust *` (Instead, nerdctl supports `nerdctl pull --verify=cosign|notation` and `nerdctl push --sign=cosign|notation`. See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md).)
@@ -1999,6 +1995,10 @@ Network management:
 Compose:
 
 - `docker-compose events|scale`
+
+Builder:
+
+- `docker buildx debug` (buildx debugger)
 
 Others:
 
