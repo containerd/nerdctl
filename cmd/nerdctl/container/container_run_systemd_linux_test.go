@@ -74,6 +74,7 @@ func TestRunWithSystemdTrueEnabled(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("run", "-d", "--name", data.Identifier(), "--systemd=true", "--entrypoint=/sbin/init", testutil.SystemdImage)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
