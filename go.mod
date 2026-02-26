@@ -1,7 +1,7 @@
 //gomodjail:confined
 module github.com/containerd/nerdctl/v2
 
-go 1.24.3
+go 1.25.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
