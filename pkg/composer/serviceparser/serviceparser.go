@@ -19,6 +19,7 @@ package serviceparser
 import (
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -33,6 +34,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/identifiers"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 )
 
@@ -595,6 +597,8 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		return nil, err
 	}
 	netTypeContainer := false
+	// Collect per-network static IPs to determine if we need a per-network IP map.
+	networkIPMap := make(map[string]string)
 	for _, net := range networks {
 		if strings.HasPrefix(net.fullName, "container:") {
 			netTypeContainer = true
@@ -602,11 +606,25 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		c.RunArgs = append(c.RunArgs, "--net="+net.fullName)
 		if value, ok := svc.Networks[net.shortNetworkName]; ok {
 			if value != nil && value.Ipv4Address != "" {
-				c.RunArgs = append(c.RunArgs, "--ip="+value.Ipv4Address)
+				networkIPMap[net.fullName] = value.Ipv4Address
 			}
 			if value != nil && value.MacAddress != "" {
 				c.RunArgs = append(c.RunArgs, "--mac-address="+value.MacAddress)
 			}
+		}
+	}
+	// When multiple networks have static IPs, pass a per-network IP map as an annotation
+	// so that each CNI plugin receives only the IP for its own network.
+	// For a single IP, use the legacy --ip= flag for backward compatibility.
+	if len(networkIPMap) > 1 {
+		ipMapJSON, err := json.Marshal(networkIPMap)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal per-network IP map: %w", err)
+		}
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--annotation=%s=%s", labels.IPAddressPerNetwork, string(ipMapJSON)))
+	} else if len(networkIPMap) == 1 {
+		for _, ip := range networkIPMap {
+			c.RunArgs = append(c.RunArgs, "--ip="+ip)
 		}
 	}
 
