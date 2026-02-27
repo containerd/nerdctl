@@ -272,6 +272,7 @@ type handlerOpts struct {
 	cniNames          []string
 	cniPluginDir      string
 	cniNetConfigs     [][]byte
+	fullID            string
 	rootlessKitClient rlkclient.Client
 	bypassClient      b4nndclient.Client
 	extraHosts        map[string]string // host:ip
