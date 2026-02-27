@@ -24,6 +24,19 @@ readonly root
 
 GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
 
+# Identify consistently failing tests: those that failed but never passed, even on retry.
+# Tests that failed then passed on retry (flaky) are excluded.
+failing_tests="$(jq -rc 'select(.Test) | select(.Action == "fail" or .Action == "pass") | [.Action, .Test] | @tsv' < "$GOTESTSUM_JSONFILE" \
+  | awk -F'\t' '
+    $1 == "fail" { failed[$2] = 1 }
+    $1 == "pass" { passed[$2] = 1 }
+    END {
+      for (t in failed) {
+        if (!(t in passed)) print t
+      }
+    }
+  ' | sort)"
+
 {
   github::md::h3 "Total number of tests: $TESTS_TOTAL"
   github::md::pie "Status" "Skipped" "$TESTS_SKIPPED" "Failed" "$TESTS_FAILED" "Passed" "$(( TESTS_TOTAL - TESTS_FAILED - TESTS_SKIPPED ))"
@@ -34,7 +47,7 @@ GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
 
   github::md::h3 "Failing tests"
   echo '```'
-  jq -rc 'select(.Action == "fail") | select(.Test) | .Test' < "$GOTESTSUM_JSONFILE"
+  echo "${failing_tests:-}"
   echo '```'
 
   github::md::h3 "Tests taking more than 15 seconds"
@@ -42,3 +55,12 @@ GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
   gotestsum tool slowest --threshold 15s --jsonfile "$GOTESTSUM_JSONFILE"
   echo '```'
 } >> "$GITHUB_STEP_SUMMARY"
+
+# Print failing tests to stdout so they are visible at the end of the job log.
+if [ -n "${failing_tests:-}" ]; then
+  printf '\n=== Failing tests ===\n%s\n=====================\n' "$failing_tests"
+  # Also emit as a GitHub Actions error annotation (visible in PR checks and annotations panel).
+  # GitHub Actions uses %0A for newlines inside annotation messages.
+  encoded="${failing_tests//$'\n'/%0A}"
+  echo "::error title=Failing tests::${encoded}"
+fi
