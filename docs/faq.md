@@ -218,6 +218,7 @@ The default value is automatically detected by checking the following candidates
 - `~/opt/cni/bin`
 - `/usr/local/libexec/cni`
 - `/usr/local/lib/cni`
+- `/home/linuxbrew/.linuxbrew/opt/cni-plugins/bin`
 - `/usr/libexec/cni`
 - `/usr/lib/cni`
 - `/opt/cni/bin`
