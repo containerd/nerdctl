@@ -116,6 +116,7 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 	if err != nil {
 		return types.ImageConvertOptions{}, err
 	}
+	progressOutput := cmd.ErrOrStderr()
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
 		return types.ImageConvertOptions{}, err
@@ -261,8 +262,9 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 	}
 	// #endregion
 	return types.ImageConvertOptions{
-		GOptions: globalOptions,
-		Format:   format,
+		GOptions:       globalOptions,
+		Format:         format,
+		ProgressOutput: progressOutput,
 		// #region generic flags
 		Uncompress: uncompress,
 		Oci:        oci,
