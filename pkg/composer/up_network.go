@@ -36,7 +36,7 @@ func (c *Composer) upNetwork(ctx context.Context, shortName string) error {
 		return nil
 	}
 
-	if unknown := reflectutil.UnknownNonEmptyFields(&net, "Name", "Ipam", "Driver", "DriverOpts"); len(unknown) > 0 {
+	if unknown := reflectutil.UnknownNonEmptyFields(&net, "Name", "Ipam", "Driver", "DriverOpts", "EnableIPv6"); len(unknown) > 0 {
 		log.G(ctx).Warnf("Ignoring: network %s: %+v", shortName, unknown)
 	}
 
@@ -81,6 +81,10 @@ func (c *Composer) upNetwork(ctx context.Context, shortName string) error {
 			if ipamConfig.IPRange != "" {
 				createArgs = append(createArgs, fmt.Sprintf("--ip-range=%s", ipamConfig.IPRange))
 			}
+		}
+
+		if *net.EnableIPv6 {
+			createArgs = append(createArgs, "--ipv6")
 		}
 
 		createArgs = append(createArgs, fullName)
