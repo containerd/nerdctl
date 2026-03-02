@@ -119,9 +119,15 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		return nil, nil, err
 	}
 
-	opts = append(opts,
-		oci.WithDefaultSpec(),
-	)
+	if options.Platform == "" {
+		opts = append(opts,
+			oci.WithDefaultSpec(),
+		)
+	} else {
+		opts = append(opts,
+			oci.WithDefaultSpecForPlatform(options.Platform),
+		)
+	}
 
 	platformOpts, err := setPlatformOptions(ctx, client, id, netManager.NetworkOptions().UTSNamespace, &internalLabels, options)
 	if err != nil {
@@ -311,7 +317,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	// The OCI hooks we define (whose logic can be found in pkg/ocihook) primarily
 	// perform network setup and teardown when using CNI networking.
 	// On Windows, we are forced to set up and tear down the networking from within nerdctl.
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
 		hookOpt, err := withNerdctlOCIHook(options.NerdctlCmd, options.NerdctlArgs)
 		if err != nil {
 			return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
