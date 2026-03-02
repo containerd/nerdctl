@@ -47,6 +47,7 @@ type Config struct {
 	DNSOpts          []string `toml:"dns_opts,omitempty"`
 	DNSSearch        []string `toml:"dns_search,omitempty"`
 	DisableHCSystemd bool     `toml:"disable_hc_systemd"`
+	SelinuxEnabled   bool     `toml:"selinux_enabled"`
 }
 
 // New creates a default Config object statically,
@@ -63,6 +64,7 @@ func New() *Config {
 		DataRoot:         ncdefaults.DataRoot(),
 		CgroupManager:    ncdefaults.CgroupManager(),
 		InsecureRegistry: false,
+		SelinuxEnabled:   false,
 		HostsDir:         ncdefaults.HostsDirs(),
 		Experimental:     true,
 		HostGatewayIP:    ncdefaults.HostGatewayIP(),
