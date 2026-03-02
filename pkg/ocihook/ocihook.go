@@ -30,6 +30,7 @@ import (
 	"strings"
 	"time"
 
+	cnilibrary "github.com/containernetworking/cni/libcni"
 	types100 "github.com/containernetworking/cni/pkg/types/100"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	b4nndclient "github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
@@ -185,6 +186,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath, brid
 		cniOpts := []cni.Opt{
 			cni.WithPluginDir([]string{cniPath}),
 		}
+		o.cniPluginDir = cniPath
 		var netw *netutil.NetworkConfig
 		for _, netstr := range networks {
 			if netw, err = e.NetworkByNameOrID(netstr); err != nil {
@@ -192,6 +194,7 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath, brid
 			}
 			cniOpts = append(cniOpts, cni.WithConfListBytes(netw.Bytes))
 			o.cniNames = append(o.cniNames, netstr)
+			o.cniNetConfigs = append(o.cniNetConfigs, netw.Bytes)
 		}
 		o.cni, err = cni.New(cniOpts...)
 		if err != nil {
@@ -228,6 +231,15 @@ func newHandlerOpts(state *specs.State, dataStore, cniPath, cniNetconfPath, brid
 		o.containerIP6 = ip6Address
 	}
 
+	// Parse per-network IP map if present (for multi-network containers with per-network static IPs)
+	if ipPerNetJSON, ok := o.state.Annotations[labels.IPAddressPerNetwork]; ok && ipPerNetJSON != "" {
+		var ipPerNetwork map[string]string
+		if err := json.Unmarshal([]byte(ipPerNetJSON), &ipPerNetwork); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal per-network IP map: %w", err)
+		}
+		o.ipPerNetwork = ipPerNetwork
+	}
+
 	if rootlessutil.IsRootlessChild() {
 		o.rootlessKitClient, err = rootlessutil.NewRootlessKitClient()
 		if err != nil {
@@ -258,6 +270,8 @@ type handlerOpts struct {
 	ports             []cni.PortMapping
 	cni               cni.CNI
 	cniNames          []string
+	cniPluginDir      string
+	cniNetConfigs     [][]byte
 	fullID            string
 	rootlessKitClient rlkclient.Client
 	bypassClient      b4nndclient.Client
@@ -265,6 +279,7 @@ type handlerOpts struct {
 	containerIP       string
 	containerMAC      string
 	containerIP6      string
+	ipPerNetwork      map[string]string
 }
 
 // hookSpec is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/containerd/command/oci-hook.go#L59-L64
@@ -460,6 +475,64 @@ func portReserverPidFilePath(opts *handlerOpts) string {
 	return filepath.Join("/run/nerdctl/", opts.state.Annotations[labels.Namespace], opts.state.ID, "port-reserver.pid")
 }
 
+// perNetworkIfName returns the container-side interface name for a given network index
+// (e.g., "eth0", "eth1", "eth2").
+func perNetworkIfName(index int) string {
+	return fmt.Sprintf("eth%d", index)
+}
+
+// perNetworkAdd calls cnilibrary.AddNetworkList directly for a single network
+// with the correct interface name (ethN) and per-network args.
+func perNetworkAdd(ctx context.Context, opts *handlerOpts, networkIndex int, nsPath string, extraArgs [][2]string, portMappings []cni.PortMapping) (*types100.Result, error) {
+	if networkIndex < 0 || networkIndex >= len(opts.cniNetConfigs) {
+		return nil, fmt.Errorf("network index %d out of range (have %d networks)", networkIndex, len(opts.cniNetConfigs))
+	}
+	confList, err := cnilibrary.ConfListFromBytes(opts.cniNetConfigs[networkIndex])
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse conflist for network %d: %w", networkIndex, err)
+	}
+	cniConfig := cnilibrary.NewCNIConfig([]string{opts.cniPluginDir}, nil)
+	rt := &cnilibrary.RuntimeConf{
+		ContainerID:    opts.fullID,
+		NetNS:          nsPath,
+		IfName:         perNetworkIfName(networkIndex),
+		Args:           extraArgs,
+		CapabilityArgs: make(map[string]interface{}),
+	}
+	if len(portMappings) > 0 {
+		rt.CapabilityArgs["portMappings"] = portMappings
+	}
+	result, err := cniConfig.AddNetworkList(ctx, confList, rt)
+	if err != nil {
+		return nil, err
+	}
+	return types100.NewResultFromResult(result)
+}
+
+// perNetworkDel calls cnilibrary.DelNetworkList directly for a single network
+// with the correct interface name (ethN).
+func perNetworkDel(ctx context.Context, opts *handlerOpts, networkIndex int, nsPath string, extraArgs [][2]string, portMappings []cni.PortMapping) error {
+	if networkIndex < 0 || networkIndex >= len(opts.cniNetConfigs) {
+		return fmt.Errorf("network index %d out of range (have %d networks)", networkIndex, len(opts.cniNetConfigs))
+	}
+	confList, err := cnilibrary.ConfListFromBytes(opts.cniNetConfigs[networkIndex])
+	if err != nil {
+		return fmt.Errorf("failed to parse conflist for network %d: %w", networkIndex, err)
+	}
+	cniConfig := cnilibrary.NewCNIConfig([]string{opts.cniPluginDir}, nil)
+	rt := &cnilibrary.RuntimeConf{
+		ContainerID:    opts.fullID,
+		NetNS:          nsPath,
+		IfName:         perNetworkIfName(networkIndex),
+		Args:           extraArgs,
+		CapabilityArgs: make(map[string]interface{}),
+	}
+	if len(portMappings) > 0 {
+		rt.CapabilityArgs["portMappings"] = portMappings
+	}
+	return cniConfig.DelNetworkList(ctx, confList, rt)
+}
+
 func applyNetworkSettings(opts *handlerOpts) (err error) {
 	portMapOpts, err := getPortMapOpts(opts)
 	if err != nil {
@@ -530,17 +603,18 @@ func applyNetworkSettings(opts *handlerOpts) (err error) {
 	if err != nil {
 		return err
 	}
-	var namespaceOpts []cni.NamespaceOpts
-	namespaceOpts = append(namespaceOpts, portMapOpts...)
-	namespaceOpts = append(namespaceOpts, ipAddressOpts...)
-	namespaceOpts = append(namespaceOpts, macAddressOpts...)
-	namespaceOpts = append(namespaceOpts, ip6AddressOpts...)
-	namespaceOpts = append(namespaceOpts,
+
+	commonOpts := []cni.NamespaceOpts{}
+	commonOpts = append(commonOpts, portMapOpts...)
+	commonOpts = append(commonOpts, macAddressOpts...)
+	commonOpts = append(commonOpts, ip6AddressOpts...)
+	commonOpts = append(commonOpts,
 		cni.WithLabels(map[string]string{
 			"IgnoreUnknown": "1",
 		}),
 		cni.WithArgs("NERDCTL_CNI_DHCP_HOSTNAME", opts.state.Annotations[labels.Hostname]),
 	)
+
 	hsMeta := hostsstore.Meta{
 		ID:         opts.state.ID,
 		Networks:   make(map[string]*types100.Result, len(opts.cniNames)),
@@ -550,33 +624,88 @@ func applyNetworkSettings(opts *handlerOpts) (err error) {
 		Name:       opts.state.Annotations[labels.Name],
 	}
 
-	// When containerd gets bounced, containers that were previously running and that are restarted will go again
-	// through onCreateRuntime (*unlike* in a normal stop/start flow).
-	// As such, a container may very well have an ip already. The bridge plugin would thus refuse to loan a new one
-	// and error out, thus making the onCreateRuntime hook fail. In turn, runc (or containerd) will mis-interpret this,
-	// and subsequently call onPostStop (although the container will not get deleted), and we will release the name...
-	// leading to a bricked system where multiple containers may share the same name.
-	// Thus, we do pre-emptively clean things up - error is not checked, as in the majority of cases, that would
-	// legitimately error (and that does not matter)
-	// See https://github.com/containerd/nerdctl/issues/3355
-	_ = opts.cni.Remove(ctx, opts.fullID, "", namespaceOpts...)
-
-	// Defer CNI configuration removal to ensure idempotency of oci-hook.
-	defer func() {
-		if err != nil {
-			log.L.Warn("Container failed starting. Removing allocated network configuration.")
-			_ = opts.cni.Remove(ctx, opts.fullID, nsPath, namespaceOpts...)
+	// When per-network IPs are specified (multi-network with different static IPs),
+	// we must set up each network individually so each CNI plugin receives only its own IP.
+	// We use cnilibrary directly (instead of go-cni's Setup) so that each network
+	// gets the correct interface name (eth0, eth1, eth2, ...) rather than all getting eth0.
+	if len(opts.ipPerNetwork) > 0 {
+		// Pre-emptively clean up (see comment below for rationale)
+		for i := range opts.cniNames {
+			_ = perNetworkDel(ctx, opts, i, "", nil, nil)
 		}
-	}()
 
-	cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, namespaceOpts...)
-	if err != nil {
-		return fmt.Errorf("failed to call cni.Setup: %w", err)
-	}
+		defer func() {
+			if err != nil {
+				log.L.Warn("Container failed starting. Removing allocated network configuration.")
+				for i, cniName := range opts.cniNames {
+					if delErr := perNetworkDel(ctx, opts, i, nsPath, nil, nil); delErr != nil {
+						log.L.WithError(delErr).Warnf("failed to remove network %s during cleanup", cniName)
+					}
+				}
+			}
+		}()
 
-	cniResRaw := cniRes.Raw()
-	for i, cniName := range opts.cniNames {
-		hsMeta.Networks[cniName] = cniResRaw[i]
+		// Convert port mappings for cnilibrary RuntimeConf capability args
+		var capPortMappings []cni.PortMapping
+		if len(opts.ports) > 0 {
+			capPortMappings = opts.ports
+		}
+
+		for i, cniName := range opts.cniNames {
+			// Build per-network CNI_ARGS
+			extraArgs := [][2]string{
+				{"IgnoreUnknown", "1"},
+				{"NERDCTL_CNI_DHCP_HOSTNAME", opts.state.Annotations[labels.Hostname]},
+			}
+			if ip, ok := opts.ipPerNetwork[cniName]; ok && ip != "" {
+				extraArgs = append(extraArgs, [2]string{"IP", ip})
+			}
+			if opts.containerMAC != "" {
+				extraArgs = append(extraArgs, [2]string{"MAC", opts.containerMAC})
+			}
+
+			cniRes, setupErr := perNetworkAdd(ctx, opts, i, nsPath, extraArgs, capPortMappings)
+			if setupErr != nil {
+				return fmt.Errorf("failed to call cni.Setup for network %s: %w", cniName, setupErr)
+			}
+			if cniRes != nil {
+				hsMeta.Networks[cniName] = cniRes
+			}
+		}
+	} else {
+		// Legacy path: single IP (or no IP) shared across all networks
+		var namespaceOpts []cni.NamespaceOpts
+		namespaceOpts = append(namespaceOpts, commonOpts...)
+		namespaceOpts = append(namespaceOpts, ipAddressOpts...)
+
+		// When containerd gets bounced, containers that were previously running and that are restarted will go again
+		// through onCreateRuntime (*unlike* in a normal stop/start flow).
+		// As such, a container may very well have an ip already. The bridge plugin would thus refuse to loan a new one
+		// and error out, thus making the onCreateRuntime hook fail. In turn, runc (or containerd) will mis-interpret this,
+		// and subsequently call onPostStop (although the container will not get deleted), and we will release the name...
+		// leading to a bricked system where multiple containers may share the same name.
+		// Thus, we do pre-emptively clean things up - error is not checked, as in the majority of cases, that would
+		// legitimately error (and that does not matter)
+		// See https://github.com/containerd/nerdctl/issues/3355
+		_ = opts.cni.Remove(ctx, opts.fullID, "", namespaceOpts...)
+
+		// Defer CNI configuration removal to ensure idempotency of oci-hook.
+		defer func() {
+			if err != nil {
+				log.L.Warn("Container failed starting. Removing allocated network configuration.")
+				_ = opts.cni.Remove(ctx, opts.fullID, nsPath, namespaceOpts...)
+			}
+		}()
+
+		cniRes, err := opts.cni.Setup(ctx, opts.fullID, nsPath, namespaceOpts...)
+		if err != nil {
+			return fmt.Errorf("failed to call cni.Setup: %w", err)
+		}
+
+		cniResRaw := cniRes.Raw()
+		for i, cniName := range opts.cniNames {
+			hsMeta.Networks[cniName] = cniResRaw[i]
+		}
 	}
 
 	b4nnEnabled, b4nnBindEnabled, err := bypass4netnsutil.IsBypass4netnsEnabled(opts.state.Annotations)
@@ -708,14 +837,35 @@ func onPostStop(opts *handlerOpts) error {
 		if err != nil {
 			return err
 		}
-		var namespaceOpts []cni.NamespaceOpts
-		namespaceOpts = append(namespaceOpts, portMapOpts...)
-		namespaceOpts = append(namespaceOpts, ipAddressOpts...)
-		namespaceOpts = append(namespaceOpts, macAddressOpts...)
-		namespaceOpts = append(namespaceOpts, ip6AddressOpts...)
-		if err := opts.cni.Remove(ctx, opts.fullID, "", namespaceOpts...); err != nil {
-			log.L.WithError(err).Errorf("failed to call cni.Remove")
-			return err
+
+		if len(opts.ipPerNetwork) > 0 {
+			// Per-network cleanup: remove each network individually with its own IP
+			// and the correct interface name (ethN).
+			var capPortMappings []cni.PortMapping
+			if len(opts.ports) > 0 {
+				capPortMappings = opts.ports
+			}
+			for i, cniName := range opts.cniNames {
+				extraArgs := [][2]string{
+					{"IgnoreUnknown", "1"},
+				}
+				if ip, ok := opts.ipPerNetwork[cniName]; ok && ip != "" {
+					extraArgs = append(extraArgs, [2]string{"IP", ip})
+				}
+				if delErr := perNetworkDel(ctx, opts, i, "", extraArgs, capPortMappings); delErr != nil {
+					log.L.WithError(delErr).Errorf("failed to call cni.Remove for network %s", cniName)
+				}
+			}
+		} else {
+			var namespaceOpts []cni.NamespaceOpts
+			namespaceOpts = append(namespaceOpts, portMapOpts...)
+			namespaceOpts = append(namespaceOpts, ipAddressOpts...)
+			namespaceOpts = append(namespaceOpts, macAddressOpts...)
+			namespaceOpts = append(namespaceOpts, ip6AddressOpts...)
+			if err := opts.cni.Remove(ctx, opts.fullID, "", namespaceOpts...); err != nil {
+				log.L.WithError(err).Errorf("failed to call cni.Remove")
+				return err
+			}
 		}
 
 		// opts.cni.Remove has trouble removing network configurations when netns is empty.
