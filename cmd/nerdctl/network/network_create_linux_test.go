@@ -156,6 +156,126 @@ func TestNetworkCreate(t *testing.T) {
 				}
 			},
 		},
+		{
+			Description: "with static IPv4 address",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				networkName := data.Identifier()
+				staticIP := "172.19.0.100"
+				data.Labels().Set("networkName", networkName)
+				data.Labels().Set("staticIP", staticIP)
+				helpers.Ensure("network", "create", networkName, "--driver", "bridge", "--subnet", "172.19.0.0/24")
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Labels().Get("networkName"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--net", data.Labels().Get("networkName"), "--ip", data.Labels().Get("staticIP"), testutil.CommonImage, "ip", "addr", "show", "eth0")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, t tig.T) {
+						assert.Assert(t, strings.Contains(stdout, fmt.Sprintf("inet %s/24", data.Labels().Get("staticIP"))))
+					},
+				}
+			},
+		},
+		{
+			Description: "with static IPv6 address",
+			Require:     nerdtest.OnlyIPv6,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				networkName := data.Identifier()
+				staticIPv6 := "2001:db8:1::100"
+				data.Labels().Set("networkName", networkName)
+				data.Labels().Set("staticIPv6", staticIPv6)
+				helpers.Ensure("network", "create", networkName, "--driver", "bridge", "--ipv6", "--subnet", "2001:db8:1::/64")
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Labels().Get("networkName"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--net", data.Labels().Get("networkName"), "--ip", data.Labels().Get("staticIPv6"), testutil.CommonImage, "ip", "addr", "show", "eth0")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, t tig.T) {
+						assert.Assert(t, strings.Contains(stdout, fmt.Sprintf("inet6 %s/64", data.Labels().Get("staticIPv6"))))
+					},
+				}
+			},
+		},
+		{
+			Description: "with dual-stack static IP addresses",
+			Require:     nerdtest.OnlyIPv6,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				networkName := data.Identifier()
+				staticIPv4 := "172.20.0.100"
+				staticIPv6 := "2001:db8:2::100"
+				data.Labels().Set("networkName", networkName)
+				data.Labels().Set("staticIPv4", staticIPv4)
+				data.Labels().Set("staticIPv6", staticIPv6)
+				helpers.Ensure("network", "create", networkName, "--driver", "bridge", "--subnet", "172.20.0.0/24", "--ipv6", "--subnet", "2001:db8:2::/64")
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Labels().Get("networkName"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--net", data.Labels().Get("networkName"), "--ip", data.Labels().Get("staticIPv4"), "--ip", data.Labels().Get("staticIPv6"), testutil.CommonImage, "ip", "addr", "show", "eth0")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, t tig.T) {
+						assert.Assert(t, strings.Contains(stdout, fmt.Sprintf("inet %s/24", data.Labels().Get("staticIPv4"))))
+						assert.Assert(t, strings.Contains(stdout, fmt.Sprintf("inet6 %s/64", data.Labels().Get("staticIPv6"))))
+					},
+				}
+			},
+		},
+		{
+			Description: "with static IPv6 address on macvlan",
+			Require:     nerdtest.OnlyIPv6,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				dummyLinkName := "dummy-" + data.Identifier()
+				networkName := data.Identifier()
+				staticIPv6 := "2001:db8:3::100"
+				subnet := "2001:db8:3::/64"
+
+				data.Labels().Set("dummyLinkName", dummyLinkName)
+				data.Labels().Set("networkName", networkName)
+				data.Labels().Set("staticIPv6", staticIPv6)
+
+				// Create a dummy interface to be the parent of the macvlan network
+				helpers.Custom("ip", "link", "add", dummyLinkName, "type", "dummy").Run(&test.Expected{ExitCode: 0})
+				helpers.Custom("ip", "link", "set", dummyLinkName, "up").Run(&test.Expected{ExitCode: 0})
+
+				// Create the macvlan network
+				helpers.Ensure("network", "create", networkName,
+					"--driver", "macvlan",
+					"--parent", dummyLinkName,
+					"--ipv6",
+					"--subnet", subnet)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Labels().Get("networkName"))
+				helpers.Anyhow("ip", "link", "del", data.Labels().Get("dummyLinkName"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--net", data.Labels().Get("networkName"),
+					"--ip6", data.Labels().Get("staticIPv6"),
+					testutil.CommonImage, "ip", "addr", "show", "eth0")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, t tig.T) {
+						assert.Assert(t, strings.Contains(stdout, fmt.Sprintf("inet6 %s/64", data.Labels().Get("staticIPv6"))))
+					},
+				}
+			},
+		},
 	}
 
 	testCase.Run(t)
