@@ -18,12 +18,14 @@ package jsonfile
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	timetypes "github.com/docker/docker/api/types/time"
@@ -43,8 +45,26 @@ func Path(dataStore, ns, id string) string {
 	return filepath.Join(dataStore, "containers", ns, id, id+"-json.log")
 }
 
+type discardWriter struct {
+	writer io.Writer
+}
+
+func (pw *discardWriter) Write(p []byte) (int, error) {
+	n, err := pw.writer.Write(p)
+	if err != nil && errors.Is(err, syscall.ENOSPC) {
+		return len(p), nil
+	}
+
+	return n, err
+}
+
+func newdiscardWriter(w io.Writer) *discardWriter {
+	return &discardWriter{writer: w}
+}
+
 func Encode(stdout <-chan string, stderr <-chan string, writer io.Writer) error {
-	enc := json.NewEncoder(writer)
+	discardWriter := newdiscardWriter(writer)
+	enc := json.NewEncoder(discardWriter)
 	var encMu sync.Mutex
 	var wg sync.WaitGroup
 	wg.Add(2)
