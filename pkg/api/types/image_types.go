@@ -183,7 +183,11 @@ type ImageInspectOptions struct {
 
 // ImagePushOptions specifies options for `nerdctl (image) push`.
 type ImagePushOptions struct {
-	Stdout      io.Writer
+	Stdout io.Writer
+	Stderr io.Writer
+	// ProgressOutputToStdout directs progress output to stdout instead of stderr
+	ProgressOutputToStdout bool
+
 	GOptions    GlobalCommandOptions
 	SignOptions ImageSignOptions
 	SociOptions SociOptions
@@ -202,6 +206,12 @@ type ImagePushOptions struct {
 	Quiet bool
 	// AllowNondistributableArtifacts allow pushing non-distributable artifacts
 	AllowNondistributableArtifacts bool
+
+	// AllTags if true, push all local tags for the repository when no tag is specified
+	AllTags bool
+
+	// SkipSoci when true, skip creating/pushing SOCI index (used when pushing multiple tags to avoid overwriting)
+	SkipSoci bool
 }
 
 // RemoteSnapshotterFlags are used for pulling with remote snapshotters

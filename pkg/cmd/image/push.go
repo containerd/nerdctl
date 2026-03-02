@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -64,7 +65,18 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return err
 	}
 
+	// Disallow tag (or digest) together with --all-tags
+	if options.AllTags {
+		if parsedReference.Tag != "" || parsedReference.Digest != "" {
+			return fmt.Errorf("tag can't be used with --all-tags/-a")
+		}
+	}
+
 	if parsedReference.Protocol != "" {
+		if options.AllTags {
+			return fmt.Errorf("--all-tags is not supported for %q references", parsedReference.Protocol)
+		}
+
 		if parsedReference.Protocol != referenceutil.IPFSProtocol {
 			return fmt.Errorf("ipfs scheme is only supported but got %q", parsedReference.Protocol)
 		}
@@ -108,10 +120,43 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		return nil
 	}
 
-	parsedReference, err = referenceutil.Parse(rawRef)
-	if err != nil {
-		return err
+	// Handle --all-tags
+	if options.AllTags {
+		repo := ""
+		if parsedReference.Domain != "" {
+			repo = parsedReference.Domain + "/"
+		}
+		repo += parsedReference.Path
+
+		imgList, err := client.ImageService().List(ctx)
+		if err != nil {
+			return err
+		}
+
+		var tagRefs []string
+		for _, img := range imgList {
+			if strings.HasPrefix(img.Name, repo+":") {
+				tagRefs = append(tagRefs, img.Name)
+			}
+		}
+
+		if len(tagRefs) == 0 {
+			return fmt.Errorf("no local tags found for repository %q", repo)
+		}
+
+		for i, tagRef := range tagRefs {
+			tagOpts := options
+			tagOpts.AllTags = false  // avoid infinite recursion
+			tagOpts.SkipSoci = i > 0 // avoid SOCI indexing for the same image
+
+			if err := Push(ctx, client, tagRef, tagOpts); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
+
 	ref := parsedReference.String()
 
 	platMC, err := platformutil.NewMatchComparer(options.AllPlatforms, options.Platforms)
@@ -185,7 +230,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		options.SignOptions); err != nil {
 		return err
 	}
-	if options.GOptions.Snapshotter == "soci" {
+	if options.GOptions.Snapshotter == "soci" && !options.SkipSoci {
 		if err = snapshotterutil.CreateSociIndexV1(ref, options.GOptions, options.AllPlatforms, options.Platforms, options.SociOptions); err != nil {
 			return err
 		}
