@@ -70,6 +70,8 @@ func TestRunWithSystemdTrueEnabled(t *testing.T) {
 	testCase.Require = require.All(
 		require.Amd64,
 		require.Not(nerdtest.Docker),
+		// // runc exec can permanently fail with "exec: already started" (https://github.com/opencontainers/runc/issues/4437)
+		// nerdtest.IsFlaky("https://github.com/opencontainers/runc/issues/4437"),
 	)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
@@ -89,18 +91,11 @@ func TestRunWithSystemdTrueEnabled(t *testing.T) {
 				Output:   expect.Contains("SIGRTMIN+3"),
 			})
 
-		// waits for systemd to become ready and lists systemd jobs
-		return helpers.Command("exec", data.Identifier(), "sh", "-c", "--", `tries=0
-until systemctl is-system-running >/dev/null 2>&1; do
-	>&2 printf "Waiting for systemd to come up...\n"
-	sleep 1s
-	tries=$(( tries + 1))
-	[ $tries -lt 10 ] || {
-		>&2 printf "systemd failed to come up in a reasonable amount of time\n"
-		exit 1
-	}
-done
-systemctl list-jobs`)
+		helpers.Command("exec", data.Identifier(), "sh", "-c", "--", "ps").Run(&test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+		})
+
+		return helpers.Command("exec", data.Identifier(), "sh", "-c", "--", "systemctl list-jobs")
 	}
 
 	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("jobs"))
