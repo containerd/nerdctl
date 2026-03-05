@@ -92,6 +92,7 @@ func TestImageConvert(t *testing.T) {
 			},
 			{
 				Description: "soci",
+				NoParallel:  true,
 				Require: require.All(
 					require.Not(nerdtest.Docker),
 					nerdtest.Soci,
@@ -110,6 +111,7 @@ func TestImageConvert(t *testing.T) {
 			},
 			{
 				Description: "soci with all-platforms",
+				NoParallel:  true,
 				Require: require.All(
 					require.Not(nerdtest.Docker),
 					nerdtest.Soci,
