@@ -19,8 +19,8 @@ package container
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -29,162 +29,249 @@ import (
 
 	"github.com/containerd/continuity/testutil/loopback"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
-	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 )
 
 func TestContainerInspectContainsPortConfig(t *testing.T) {
-	testContainer := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
-
-	base.Cmd("run", "-d", "--name", testContainer, "-p", "8080:80", testutil.NginxAlpineImage).AssertOK()
-	inspect := base.InspectContainer(testContainer)
-	inspect80TCP := (*inspect.NetworkSettings.Ports)["80/tcp"]
-	expected := nat.PortBinding{
-		HostIP:   "0.0.0.0",
-		HostPort: "8080",
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		_, err := portlock.Acquire(8080)
+		if err != nil {
+			t.Logf("Failed to acquire port: %v", err)
+			t.FailNow()
+		}
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), "-p", "8080:80", testutil.NginxAlpineImage)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 	}
-	assert.Equal(base.T, expected, inspect80TCP[0])
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		portlock.Release(8080)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, tt tig.T) {
+		var dc []dockercompat.Container
+
+		err := json.Unmarshal([]byte(stdout), &dc)
+		assert.NilError(tt, err)
+		assert.Equal(tt, 1, len(dc))
+
+		inspect80TCP := (*dc[0].NetworkSettings.Ports)["80/tcp"]
+		expected := nat.PortBinding{
+			HostIP:   "0.0.0.0",
+			HostPort: "8080",
+		}
+		assert.Equal(tt, expected, inspect80TCP[0])
+	})
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectContainsMounts(t *testing.T) {
-	testContainer := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		testContainer := data.Identifier()
+		testVolume := data.Identifier()
 
-	testVolume := testutil.Identifier(t)
+		helpers.Ensure("volume", "create", "--label", "tag=testVolume", testVolume)
+		inspectVolume := nerdtest.InspectVolume(helpers, testVolume)
+		namedVolumeSource := inspectVolume.Mountpoint
 
-	defer base.Cmd("volume", "rm", "-f", testVolume).Run()
-	base.Cmd("volume", "create", "--label", "tag=testVolume", testVolume).AssertOK()
-	inspectVolume := base.InspectVolume(testVolume)
-	namedVolumeSource := inspectVolume.Mountpoint
+		helpers.Ensure("run", "-d", "--privileged",
+			"--name", testContainer,
+			"--network", "none",
+			"-v", "/anony-vol",
+			"--tmpfs", "/app1:size=64m",
+			"--mount", "type=bind,src=/tmp,dst=/app2,ro",
+			"--mount", fmt.Sprintf("type=volume,src=%s,dst=/app3,readonly=false", testVolume),
+			testutil.NginxAlpineImage)
+		nerdtest.EnsureContainerStarted(helpers, testContainer)
 
-	defer base.Cmd("rm", "-f", testContainer).Run()
-	base.Cmd("run", "-d", "--privileged",
-		"--name", testContainer,
-		"--network", "none",
-		"-v", "/anony-vol",
-		"--tmpfs", "/app1:size=64m",
-		"--mount", "type=bind,src=/tmp,dst=/app2,ro",
-		"--mount", fmt.Sprintf("type=volume,src=%s,dst=/app3,readonly=false", testVolume),
-		testutil.NginxAlpineImage).AssertOK()
-
-	inspect := base.InspectContainer(testContainer)
-	// convert array to map to get by key of Destination
-	actual := make(map[string]dockercompat.MountPoint)
-	for i := range inspect.Mounts {
-		actual[inspect.Mounts[i].Destination] = inspect.Mounts[i]
-	}
-	t.Logf("actual in TestContainerInspectContainsMounts: %+v", actual)
-	const localDriver = "local"
-
-	expected := []struct {
-		dest       string
-		mountPoint dockercompat.MountPoint
-	}{
-		// anonymous volume
-		{
-			dest: "/anony-vol",
-			mountPoint: dockercompat.MountPoint{
-				Type:        "volume",
-				Name:        "",
-				Source:      "", // source of anonymous volume is a generated path, so here will not check it.
-				Destination: "/anony-vol",
-				Driver:      localDriver,
-				RW:          true,
-			},
-		},
-
-		// bind
-		{
-			dest: "/app2",
-			mountPoint: dockercompat.MountPoint{
-				Type:        "bind",
-				Name:        "",
-				Source:      "/tmp",
-				Destination: "/app2",
-				Driver:      "",
-				RW:          false,
-			},
-		},
-
-		// named volume
-		{
-			dest: "/app3",
-			mountPoint: dockercompat.MountPoint{
-				Type:        "volume",
-				Name:        testVolume,
-				Source:      namedVolumeSource,
-				Destination: "/app3",
-				Driver:      localDriver,
-				RW:          true,
-			},
-		},
+		data.Labels().Set("namedVolumeSource", namedVolumeSource)
+		data.Labels().Set("testVolume", testVolume)
 	}
 
-	for i := range expected {
-		testCase := expected[i]
-		t.Logf("test volume[dest=%q]", testCase.dest)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		helpers.Anyhow("volume", "rm", data.Identifier())
+	}
 
-		mountPoint, ok := actual[testCase.dest]
-		assert.Assert(base.T, ok)
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
 
-		assert.Equal(base.T, testCase.mountPoint.Type, mountPoint.Type)
-		assert.Equal(base.T, testCase.mountPoint.Driver, mountPoint.Driver)
-		assert.Equal(base.T, testCase.mountPoint.RW, mountPoint.RW)
-		assert.Equal(base.T, testCase.mountPoint.Destination, mountPoint.Destination)
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, tt tig.T) {
+				var dc []dockercompat.Container
 
-		if testCase.mountPoint.Source != "" {
-			assert.Equal(base.T, testCase.mountPoint.Source, mountPoint.Source)
+				err := json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(tt, err)
+				assert.Equal(tt, 1, len(dc))
+
+				inspect := dc[0]
+				// convert array to map to get by key of Destination
+				actual := make(map[string]dockercompat.MountPoint)
+				for i := range inspect.Mounts {
+					actual[inspect.Mounts[i].Destination] = inspect.Mounts[i]
+				}
+
+				t.Logf("actual in TestContainerInspectContainsMounts: %+v", actual)
+				const localDriver = "local"
+
+				expected := []struct {
+					dest       string
+					mountPoint dockercompat.MountPoint
+				}{
+					// anonymous volume
+					{
+						dest: "/anony-vol",
+						mountPoint: dockercompat.MountPoint{
+							Type:        "volume",
+							Name:        "",
+							Source:      "", // source of anonymous volume is a generated path, so here will not check it.
+							Destination: "/anony-vol",
+							Driver:      localDriver,
+							RW:          true,
+						},
+					},
+
+					// bind
+					{
+						dest: "/app2",
+						mountPoint: dockercompat.MountPoint{
+							Type:        "bind",
+							Name:        "",
+							Source:      "/tmp",
+							Destination: "/app2",
+							Driver:      "",
+							RW:          false,
+						},
+					},
+
+					// named volume
+					{
+						dest: "/app3",
+						mountPoint: dockercompat.MountPoint{
+							Type:        "volume",
+							Name:        data.Labels().Get("testVolume"),
+							Source:      data.Labels().Get("namedVolumeSource"),
+							Destination: "/app3",
+							Driver:      localDriver,
+							RW:          true,
+						},
+					},
+				}
+
+				for i := range expected {
+					mountCase := expected[i]
+					t.Logf("test volume[dest=%q]", mountCase.dest)
+
+					mountPoint, ok := actual[mountCase.dest]
+					assert.Assert(tt, ok)
+
+					assert.Equal(tt, mountCase.mountPoint.Type, mountPoint.Type)
+					assert.Equal(tt, mountCase.mountPoint.Driver, mountPoint.Driver)
+					assert.Equal(tt, mountCase.mountPoint.RW, mountPoint.RW)
+					assert.Equal(tt, mountCase.mountPoint.Destination, mountPoint.Destination)
+
+					if mountCase.mountPoint.Source != "" {
+						assert.Equal(tt, mountCase.mountPoint.Source, mountPoint.Source)
+					}
+					if mountCase.mountPoint.Name != "" {
+						assert.Equal(tt, mountCase.mountPoint.Name, mountPoint.Name)
+					}
+				}
+			},
 		}
-		if testCase.mountPoint.Name != "" {
-			assert.Equal(base.T, testCase.mountPoint.Name, mountPoint.Name)
-		}
 	}
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectContainsLabel(t *testing.T) {
-	t.Parallel()
-	testContainer := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), "--label", "foo=foo", "--label", "bar=bar", testutil.NginxAlpineImage)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+	}
 
-	base.Cmd("run", "-d", "--name", testContainer, "--label", "foo=foo", "--label", "bar=bar", testutil.NginxAlpineImage).AssertOK()
-	base.EnsureContainerStarted(testContainer)
-	inspect := base.InspectContainer(testContainer)
-	lbs := inspect.Config.Labels
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
 
-	assert.Equal(base.T, "foo", lbs["foo"])
-	assert.Equal(base.T, "bar", lbs["bar"])
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, tt tig.T) {
+		var dc []dockercompat.Container
+
+		err := json.Unmarshal([]byte(stdout), &dc)
+		assert.NilError(tt, err)
+		assert.Equal(tt, 1, len(dc))
+
+		inspect := dc[0]
+		lbs := inspect.Config.Labels
+
+		assert.Equal(tt, "foo", lbs["foo"])
+		assert.Equal(tt, "bar", lbs["bar"])
+	})
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectContainsInternalLabel(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	t.Parallel()
-	testContainer := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	testCase.Require = require.Not(nerdtest.Docker)
 
-	base.Cmd("run", "-d", "--name", testContainer, "--mount", "type=bind,src=/tmp,dst=/app,readonly=false,bind-propagation=rprivate", testutil.NginxAlpineImage).AssertOK()
-	base.EnsureContainerStarted(testContainer)
-	inspect := base.InspectContainer(testContainer)
-	lbs := inspect.Config.Labels
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), "--mount", "type=bind,src=/tmp,dst=/app,readonly=false,bind-propagation=rprivate", testutil.NginxAlpineImage)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+	}
 
-	// TODO: add more internal labels testcases
-	labelMount := lbs[labels.Mounts]
-	expectedLabelMount := "[{\"Type\":\"bind\",\"Source\":\"/tmp\",\"Destination\":\"/app\",\"Mode\":\"rprivate,rbind\",\"RW\":true,\"Propagation\":\"rprivate\"}]"
-	assert.Equal(base.T, expectedLabelMount, labelMount)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, tt tig.T) {
+		var dc []dockercompat.Container
+
+		err := json.Unmarshal([]byte(stdout), &dc)
+		assert.NilError(tt, err)
+		assert.Equal(tt, 1, len(dc))
+
+		inspect := dc[0]
+		lbs := inspect.Config.Labels
+
+		// TODO: add more internal labels testcases
+		labelMount := lbs[labels.Mounts]
+		expectedLabelMount := "[{\"Type\":\"bind\",\"Source\":\"/tmp\",\"Destination\":\"/app\",\"Mode\":\"rprivate,rbind\",\"RW\":true,\"Propagation\":\"rprivate\"}]"
+		assert.Equal(tt, expectedLabelMount, labelMount)
+	})
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectConfigImage(t *testing.T) {
@@ -193,7 +280,7 @@ func TestContainerInspectConfigImage(t *testing.T) {
 	testCase := &test.Case{
 		Description: "Container inspect contains Config.Image field",
 		Setup: func(data test.Data, helpers test.Helpers) {
-			helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.AlpineImage, "sleep", "infinity")
+			helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.AlpineImage, "sleep", nerdtest.Infinity)
 		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rm", "-f", data.Identifier())
@@ -201,15 +288,15 @@ func TestContainerInspectConfigImage(t *testing.T) {
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			return helpers.Command("inspect", data.Identifier())
 		},
-		Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
+		Expected: test.Expects(0, nil, func(stdout string, tt tig.T) {
 			var containers []dockercompat.Container
 			err := json.Unmarshal([]byte(stdout), &containers)
-			assert.NilError(t, err, "Unable to unmarshal output\n")
-			assert.Equal(t, 1, len(containers), "Expected exactly one container in inspect output")
+			assert.NilError(tt, err, "Unable to unmarshal output\n")
+			assert.Equal(tt, 1, len(containers), "Expected exactly one container in inspect output")
 
 			container := containers[0]
-			assert.Assert(t, container.Config != nil, "container Config should not be nil")
-			assert.Assert(t, container.Config.Image != "", "Config.Image should not be empty")
+			assert.Assert(tt, container.Config != nil, "container Config should not be nil")
+			assert.Assert(tt, container.Config.Image != "", "Config.Image should not be empty")
 		}),
 	}
 
@@ -217,344 +304,545 @@ func TestContainerInspectConfigImage(t *testing.T) {
 }
 
 func TestContainerInspectState(t *testing.T) {
-	t.Parallel()
-	testContainer := testutil.Identifier(t)
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	type testCase struct {
-		name, containerName, cmd string
-		want                     dockercompat.ContainerState
-	}
 	// nerdctl: run error produces a nil Task, so the Status is empty because Status comes from Task.
 	// docker : run error gives => `Status=created` as  in docker there is no a separation between container and Task.
-	errStatus := ""
-	if nerdtest.IsDocker() {
-		errStatus = "created"
-	}
-	testCases := []testCase{
+	testCase.SubTests = []*test.Case{
 		{
-			name:          "inspect State with error",
-			containerName: fmt.Sprintf("%s-fail", testContainer),
-			cmd:           "aa",
-			want: dockercompat.ContainerState{
-				Error:  "executable file not found in $PATH",
-				Status: errStatus,
+			Description: "docker inspect State with error",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				testContainer := fmt.Sprintf("%s-fail", data.Identifier())
+				helpers.Fail("run", "--name", testContainer, testutil.AlpineImage, "aa")
+				data.Labels().Set("testContainer", testContainer)
 			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Labels().Get("testContainer"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Labels().Get("testContainer"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, tt tig.T) {
+				var dc []dockercompat.Container
+
+				err := json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(tt, err)
+				assert.Equal(tt, 1, len(dc))
+
+				inspect := dc[0]
+				expectedErrStatus := ""
+				if nerdtest.IsDocker() {
+					expectedErrStatus = "created"
+				}
+				assert.Assert(tt, strings.Contains(inspect.State.Error, "executable file not found in $PATH"), fmt.Sprintf("expected: %s, actual: %s", "executable file not found in $PATH", inspect.State.Error))
+				assert.Equal(tt, expectedErrStatus, inspect.State.Status)
+			}),
 		},
 		{
-			name:          "inspect State without error",
-			containerName: fmt.Sprintf("%s-success", testContainer),
-			cmd:           "ls",
-			want: dockercompat.ContainerState{
-				Error:  "",
-				Status: "exited",
+			Description: "docker inspect State without error",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				testContainer := fmt.Sprintf("%s-success", data.Identifier())
+				helpers.Ensure("run", "--name", testContainer, testutil.AlpineImage, "ls")
+				data.Labels().Set("testContainer", testContainer)
 			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Labels().Get("testContainer"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Labels().Get("testContainer"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, tt tig.T) {
+				var dc []dockercompat.Container
+
+				err := json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(tt, err)
+				assert.Equal(tt, 1, len(dc))
+
+				inspect := dc[0]
+				assert.Assert(tt, strings.Contains(inspect.State.Error, ""), fmt.Sprintf("expected: %s, actual: %s", "", inspect.State.Error))
+				assert.Equal(tt, "exited", inspect.State.Status)
+			}),
 		},
 	}
 
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			defer base.Cmd("rm", "-f", tc.containerName).Run()
-			if tc.want.Error != "" {
-				base.Cmd("run", "--name", tc.containerName, testutil.AlpineImage, tc.cmd).AssertFail()
-			} else {
-				base.Cmd("run", "--name", tc.containerName, testutil.AlpineImage, tc.cmd).AssertOK()
-			}
-			inspect := base.InspectContainer(tc.containerName)
-			assert.Assert(t, strings.Contains(inspect.State.Error, tc.want.Error), fmt.Sprintf("expected: %s, actual: %s", tc.want.Error, inspect.State.Error))
-			assert.Equal(base.T, inspect.State.Status, tc.want.Status)
-		})
-	}
-
+	testCase.Run(t)
 }
 
 func TestContainerInspectHostConfig(t *testing.T) {
-	testContainer := testutil.Identifier(t)
-	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
-		t.Skip("test skipped for rootless containers on cgroup v1")
+	testCase := nerdtest.Setup()
+
+	testCase.Require = require.Not(
+		// skip only if it's rootless AND cgroup v1
+		require.All(
+			nerdtest.Rootless,
+			require.Not(nerdtest.CGroupV2),
+		),
+	)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(),
+			"--cpuset-cpus", "0-1",
+			"--cpuset-mems", "0",
+			"--cpu-shares", "1024",
+			"--cpu-quota", "100000",
+			"--group-add", "1000",
+			"--group-add", "2000",
+			"--add-host", "host1:10.0.0.1",
+			"--add-host", "host2:10.0.0.2",
+			"--ipc", "host",
+			"--memory", "512m",
+			"--read-only",
+			"--shm-size", "256m",
+			"--uts", "host",
+			"--runtime", "io.containerd.runc.v2",
+			testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 	}
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
 
-	// Run a container with various HostConfig options
-	base.Cmd("run", "-d", "--name", testContainer,
-		"--cpuset-cpus", "0-1",
-		"--cpuset-mems", "0",
-		"--cpu-shares", "1024",
-		"--cpu-quota", "100000",
-		"--group-add", "1000",
-		"--group-add", "2000",
-		"--add-host", "host1:10.0.0.1",
-		"--add-host", "host2:10.0.0.2",
-		"--ipc", "host",
-		"--memory", "512m",
-		"--read-only",
-		"--shm-size", "256m",
-		"--uts", "host",
-		"--runtime", "io.containerd.runc.v2",
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
 
-	inspect := base.InspectContainer(testContainer)
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, tt tig.T) {
+		var dc []dockercompat.Container
 
-	assert.Equal(t, "0-1", inspect.HostConfig.CPUSetCPUs)
-	assert.Equal(t, "0", inspect.HostConfig.CPUSetMems)
-	assert.Equal(t, uint64(1024), inspect.HostConfig.CPUShares)
-	assert.Equal(t, int64(100000), inspect.HostConfig.CPUQuota)
-	assert.Assert(t, slices.Contains(inspect.HostConfig.GroupAdd, "1000"), "Expected '1000' to be in GroupAdd")
-	assert.Assert(t, slices.Contains(inspect.HostConfig.GroupAdd, "2000"), "Expected '2000' to be in GroupAdd")
-	expectedExtraHosts := []string{"host1:10.0.0.1", "host2:10.0.0.2"}
-	assert.DeepEqual(t, expectedExtraHosts, inspect.HostConfig.ExtraHosts)
-	assert.Equal(t, "host", inspect.HostConfig.IpcMode)
-	assert.Equal(t, int64(536870912), inspect.HostConfig.Memory)
-	assert.Equal(t, int64(1073741824), inspect.HostConfig.MemorySwap)
-	assert.Equal(t, true, inspect.HostConfig.ReadonlyRootfs)
-	assert.Equal(t, "host", inspect.HostConfig.UTSMode)
-	assert.Equal(t, int64(268435456), inspect.HostConfig.ShmSize)
+		err := json.Unmarshal([]byte(stdout), &dc)
+		assert.NilError(tt, err)
+		assert.Equal(tt, 1, len(dc))
+
+		inspect := dc[0]
+
+		assert.Equal(tt, "0-1", inspect.HostConfig.CPUSetCPUs)
+		assert.Equal(tt, "0", inspect.HostConfig.CPUSetMems)
+		assert.Equal(tt, uint64(1024), inspect.HostConfig.CPUShares)
+		assert.Equal(tt, int64(100000), inspect.HostConfig.CPUQuota)
+		assert.Assert(tt, slices.Contains(inspect.HostConfig.GroupAdd, "1000"), "Expected '1000' to be in GroupAdd")
+		assert.Assert(tt, slices.Contains(inspect.HostConfig.GroupAdd, "2000"), "Expected '2000' to be in GroupAdd")
+		expectedExtraHosts := []string{"host1:10.0.0.1", "host2:10.0.0.2"}
+		assert.DeepEqual(tt, expectedExtraHosts, inspect.HostConfig.ExtraHosts)
+		assert.Equal(tt, "host", inspect.HostConfig.IpcMode)
+		assert.Equal(tt, int64(536870912), inspect.HostConfig.Memory)
+		assert.Equal(tt, int64(1073741824), inspect.HostConfig.MemorySwap)
+		assert.Equal(tt, true, inspect.HostConfig.ReadonlyRootfs)
+		assert.Equal(tt, "host", inspect.HostConfig.UTSMode)
+		assert.Equal(tt, int64(268435456), inspect.HostConfig.ShmSize)
+	})
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectHostConfigDefaults(t *testing.T) {
-	testContainer := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var hc hostConfigValues
 
-	var hc hostConfigValues
+		// Hostconfig default values differ with Docker.
+		// This is because we directly retrieve the configured values instead of using preset defaults.
+		if nerdtest.IsDocker() {
+			hc.Driver = ""
+			hc.GroupAddSize = 0
+			hc.ShmSize = int64(67108864) // Docker default 64M
+			hc.Runtime = "runc"
+		} else {
+			hc.GroupAddSize = 10
+			hc.Driver = "json-file"
+			hc.ShmSize = int64(0)
+			hc.Runtime = "io.containerd.runc.v2"
+		}
 
-	// Hostconfig default values differ with Docker.
-	// This is because we directly retrieve the configured values instead of using preset defaults.
-	if nerdtest.IsDocker() {
-		hc.Driver = ""
-		hc.GroupAddSize = 0
-		hc.ShmSize = int64(67108864) // Docker default 64M
-		hc.Runtime = "runc"
-	} else {
-		hc.GroupAddSize = 10
-		hc.Driver = "json-file"
-		hc.ShmSize = int64(0)
-		hc.Runtime = "io.containerd.runc.v2"
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+
+		jsonHC, err := json.Marshal(hc)
+		assert.NilError(t, err)
+		data.Labels().Set("jsonHC", string(jsonHC))
 	}
 
-	// Run a container without specifying HostConfig options
-	base.Cmd("run", "-d", "--name", testContainer, testutil.AlpineImage, "sleep", "infinity").AssertOK()
-
-	inspect := base.InspectContainer(testContainer)
-	t.Logf("HostConfig in TestContainerInspectHostConfigDefaults: %+v", inspect.HostConfig)
-	assert.Equal(t, "", inspect.HostConfig.CPUSetCPUs)
-	assert.Equal(t, "", inspect.HostConfig.CPUSetMems)
-	assert.Equal(t, uint16(0), inspect.HostConfig.BlkioWeight)
-	assert.Equal(t, 0, len(inspect.HostConfig.BlkioWeightDevice))
-	assert.Equal(t, 0, len(inspect.HostConfig.BlkioDeviceReadBps))
-	assert.Equal(t, 0, len(inspect.HostConfig.BlkioDeviceReadIOps))
-	assert.Equal(t, 0, len(inspect.HostConfig.BlkioDeviceWriteBps))
-	assert.Equal(t, 0, len(inspect.HostConfig.BlkioDeviceWriteIOps))
-	assert.Equal(t, uint64(0), inspect.HostConfig.CPUShares)
-	assert.Equal(t, int64(0), inspect.HostConfig.CPUQuota)
-	assert.Equal(t, hc.GroupAddSize, len(inspect.HostConfig.GroupAdd))
-	assert.Equal(t, 0, len(inspect.HostConfig.ExtraHosts))
-	assert.Equal(t, "private", inspect.HostConfig.IpcMode)
-	assert.Equal(t, hc.Driver, inspect.HostConfig.LogConfig.Driver)
-	assert.Equal(t, int64(0), inspect.HostConfig.Memory)
-	assert.Equal(t, int64(0), inspect.HostConfig.MemorySwap)
-	assert.Equal(t, bool(false), inspect.HostConfig.OomKillDisable)
-	assert.Equal(t, bool(false), inspect.HostConfig.ReadonlyRootfs)
-	assert.Equal(t, "", inspect.HostConfig.UTSMode)
-	assert.Equal(t, hc.ShmSize, inspect.HostConfig.ShmSize)
-	assert.Equal(t, hc.Runtime, inspect.HostConfig.Runtime)
-	assert.Equal(t, 0, len(inspect.HostConfig.Devices))
-	// Sysctls can be empty or contain "net.ipv4.ip_unprivileged_port_start" depending on the environment.
-	got := len(inspect.HostConfig.Sysctls)
-	if got != 0 && got != 1 {
-		t.Fatalf("unexpected number of Sysctls entries: %d (want 0 or 1)", got)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, tt tig.T) {
+				var hc hostConfigValues
+				err := json.Unmarshal([]byte(data.Labels().Get("jsonHC")), &hc)
+				assert.NilError(tt, err)
+
+				var dc []dockercompat.Container
+
+				err = json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(tt, err)
+				assert.Equal(tt, 1, len(dc))
+
+				inspect := dc[0]
+				t.Logf("HostConfig in TestContainerInspectHostConfigDefaults: %+v", inspect.HostConfig)
+				assert.Equal(tt, "", inspect.HostConfig.CPUSetCPUs)
+				assert.Equal(tt, "", inspect.HostConfig.CPUSetMems)
+				assert.Equal(tt, uint16(0), inspect.HostConfig.BlkioWeight)
+				assert.Equal(tt, 0, len(inspect.HostConfig.BlkioWeightDevice))
+				assert.Equal(tt, 0, len(inspect.HostConfig.BlkioDeviceReadBps))
+				assert.Equal(tt, 0, len(inspect.HostConfig.BlkioDeviceReadIOps))
+				assert.Equal(tt, 0, len(inspect.HostConfig.BlkioDeviceWriteBps))
+				assert.Equal(tt, 0, len(inspect.HostConfig.BlkioDeviceWriteIOps))
+				assert.Equal(tt, uint64(0), inspect.HostConfig.CPUShares)
+				assert.Equal(tt, int64(0), inspect.HostConfig.CPUQuota)
+				assert.Equal(tt, hc.GroupAddSize, len(inspect.HostConfig.GroupAdd))
+				assert.Equal(tt, 0, len(inspect.HostConfig.ExtraHosts))
+				assert.Equal(tt, "private", inspect.HostConfig.IpcMode)
+				assert.Equal(tt, hc.Driver, inspect.HostConfig.LogConfig.Driver)
+				assert.Equal(tt, int64(0), inspect.HostConfig.Memory)
+				assert.Equal(tt, int64(0), inspect.HostConfig.MemorySwap)
+				assert.Equal(tt, bool(false), inspect.HostConfig.OomKillDisable)
+				assert.Equal(tt, bool(false), inspect.HostConfig.ReadonlyRootfs)
+				assert.Equal(tt, "", inspect.HostConfig.UTSMode)
+				assert.Equal(tt, hc.ShmSize, inspect.HostConfig.ShmSize)
+				assert.Equal(tt, hc.Runtime, inspect.HostConfig.Runtime)
+				assert.Equal(tt, 0, len(inspect.HostConfig.Devices))
+
+				// Sysctls can be empty or contain "net.ipv4.ip_unprivileged_port_start" depending on the environment.
+				got := len(inspect.HostConfig.Sysctls)
+				if got != 0 && got != 1 {
+					t.Fatalf("unexpected number of Sysctls entries: %d (want 0 or 1)", got)
+				}
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectHostConfigDNS(t *testing.T) {
-	testContainer := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(),
+			"--dns", "8.8.8.8",
+			"--dns", "1.1.1.1",
+			"--dns-search", "example.com",
+			"--dns-search", "test.local",
+			"--dns-option", "ndots:5",
+			"--dns-option", "timeout:3",
+			testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+	}
 
-	// Run a container with DNS options
-	base.Cmd("run", "-d", "--name", testContainer,
-		"--dns", "8.8.8.8",
-		"--dns", "1.1.1.1",
-		"--dns-search", "example.com",
-		"--dns-search", "test.local",
-		"--dns-option", "ndots:5",
-		"--dns-option", "timeout:3",
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
 
-	inspect := base.InspectContainer(testContainer)
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
 
-	// Check DNS servers
-	expectedDNSServers := []string{"8.8.8.8", "1.1.1.1"}
-	assert.DeepEqual(t, expectedDNSServers, inspect.HostConfig.DNS)
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, tt tig.T) {
+		var dc []dockercompat.Container
+		err := json.Unmarshal([]byte(stdout), &dc)
+		assert.NilError(tt, err)
+		assert.Equal(tt, 1, len(dc))
 
-	// Check DNS search domains
-	expectedDNSSearch := []string{"example.com", "test.local"}
-	assert.DeepEqual(t, expectedDNSSearch, inspect.HostConfig.DNSSearch)
+		inspect := dc[0]
+		// Check DNS servers
+		expectedDNSServers := []string{"8.8.8.8", "1.1.1.1"}
+		assert.DeepEqual(tt, expectedDNSServers, inspect.HostConfig.DNS)
 
-	// Check DNS options
-	expectedDNSOptions := []string{"ndots:5", "timeout:3"}
-	assert.DeepEqual(t, expectedDNSOptions, inspect.HostConfig.DNSOptions)
+		// Check DNS search domains
+		expectedDNSSearch := []string{"example.com", "test.local"}
+		assert.DeepEqual(tt, expectedDNSSearch, inspect.HostConfig.DNSSearch)
+
+		// Check DNS options
+		expectedDNSOptions := []string{"ndots:5", "timeout:3"}
+		assert.DeepEqual(tt, expectedDNSOptions, inspect.HostConfig.DNSOptions)
+	})
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectHostConfigDNSDefaults(t *testing.T) {
-	testContainer := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+	}
 
-	// Run a container without specifying DNS options
-	base.Cmd("run", "-d", "--name", testContainer, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
 
-	inspect := base.InspectContainer(testContainer)
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
 
-	// Check that DNS settings are empty by default
-	assert.Equal(t, 0, len(inspect.HostConfig.DNS))
-	assert.Equal(t, 0, len(inspect.HostConfig.DNSSearch))
-	assert.Equal(t, 0, len(inspect.HostConfig.DNSOptions))
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, tt tig.T) {
+		var dc []dockercompat.Container
+
+		err := json.Unmarshal([]byte(stdout), &dc)
+		assert.NilError(tt, err)
+		assert.Equal(tt, 1, len(dc))
+
+		inspect := dc[0]
+
+		// Check that DNS settings are empty by default
+		assert.Equal(tt, 0, len(inspect.HostConfig.DNS))
+		assert.Equal(tt, 0, len(inspect.HostConfig.DNSSearch))
+		assert.Equal(tt, 0, len(inspect.HostConfig.DNSOptions))
+	})
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectHostConfigPID(t *testing.T) {
-	testContainer1 := testutil.Identifier(t) + "-container1"
-	testContainer2 := testutil.Identifier(t) + "-container2"
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer1, testContainer2).Run()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		testContainer1 := data.Identifier() + "-container1"
+		testContainer2 := data.Identifier() + "-container2"
 
-	// Run the first container
-	base.Cmd("run", "-d", "--name", testContainer1, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+		// Run the first container
+		helpers.Ensure("run", "-d", "--name", testContainer1, testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, testContainer1)
 
-	containerID1 := strings.TrimSpace(base.Cmd("inspect", "-f", "{{.Id}}", testContainer1).Out())
+		containerID1 := strings.TrimSpace(helpers.Capture("inspect", "-f", "{{.Id}}", testContainer1))
 
-	var hc hostConfigValues
+		var pidMode string
+		if nerdtest.IsDocker() {
+			pidMode = "container:" + containerID1
+		} else {
+			pidMode = containerID1
+		}
 
-	if nerdtest.IsDocker() {
-		hc.PidMode = "container:" + containerID1
-	} else {
-		hc.PidMode = containerID1
+		helpers.Ensure("run", "-d", "--name", testContainer2, "--pid", fmt.Sprintf("container:%s", testContainer1), testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, testContainer2)
+
+		data.Labels().Set("pidMode", pidMode)
 	}
 
-	base.Cmd("run", "-d", "--name", testContainer2,
-		"--pid", fmt.Sprintf("container:%s", testContainer1),
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier()+"-container1")
+		helpers.Anyhow("rm", "-f", data.Identifier()+"-container2")
+	}
 
-	inspect := base.InspectContainer(testContainer2)
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier()+"-container2")
+	}
 
-	assert.Equal(t, hc.PidMode, inspect.HostConfig.PidMode)
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, tt tig.T) {
+				var dc []dockercompat.Container
+
+				err := json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(tt, err)
+				assert.Equal(tt, 1, len(dc))
+
+				inspect := dc[0]
+				assert.Equal(tt, data.Labels().Get("pidMode"), inspect.HostConfig.PidMode)
+			},
+		}
+	}
+
+	testCase.Run(t)
 
 }
 
 func TestContainerInspectHostConfigPIDDefaults(t *testing.T) {
-	testContainer := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+	}
 
-	base.Cmd("run", "-d", "--name", testContainer, testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
 
-	inspect := base.InspectContainer(testContainer)
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
 
-	assert.Equal(t, "", inspect.HostConfig.PidMode)
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, tt tig.T) {
+		var dc []dockercompat.Container
+
+		err := json.Unmarshal([]byte(stdout), &dc)
+		assert.NilError(tt, err)
+		assert.Equal(tt, 1, len(dc))
+
+		inspect := dc[0]
+
+		assert.Equal(tt, "", inspect.HostConfig.PidMode)
+	})
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectDevices(t *testing.T) {
-	testContainer := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).Run()
+	testCase.Require = nerdtest.CgroupsAccessible
 
-	if rootlessutil.IsRootless() && infoutil.CgroupsVersion() == "1" {
-		t.Skip("test skipped for rootless containers on cgroup v1")
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		// Create a temporary directory
+		dir := data.Temp().Dir(t.TempDir(), "device-dir")
+
+		if nerdtest.IsDocker() {
+			dir = "/dev/zero"
+		}
+
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), "--device", dir+":/dev/xvda", testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+
+		data.Labels().Set("dir", dir)
 	}
 
-	// Create a temporary directory
-	dir, err := os.MkdirTemp(t.TempDir(), "device-dir")
-	if err != nil {
-		t.Fatal(err)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
 
-	if nerdtest.IsDocker() {
-		dir = "/dev/zero"
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
 	}
 
-	// Run the container with the directory mapped as a device
-	base.Cmd("run", "-d", "--name", testContainer,
-		"--device", dir+":/dev/xvda",
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, tt tig.T) {
+				var dc []dockercompat.Container
 
-	inspect := base.InspectContainer(testContainer)
+				err := json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(tt, err)
+				assert.Equal(tt, 1, len(dc))
 
-	expectedDevices := []dockercompat.DeviceMapping{
-		{
-			PathOnHost:        dir,
-			PathInContainer:   "/dev/xvda",
-			CgroupPermissions: "rwm",
-		},
+				inspect := dc[0]
+				expectedDevices := []dockercompat.DeviceMapping{
+					{
+						PathOnHost:        data.Labels().Get("dir"),
+						PathInContainer:   "/dev/xvda",
+						CgroupPermissions: "rwm",
+					},
+				}
+				assert.DeepEqual(tt, expectedDevices, inspect.HostConfig.Devices)
+			},
+		}
 	}
-	assert.DeepEqual(t, expectedDevices, inspect.HostConfig.Devices)
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectBlkioSettings(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	testContainer := testutil.Identifier(t)
+	var lo *loopback.Loopback
+
+	testCase := nerdtest.Setup()
+
 	// Some of the blkio settings are not supported in cgroup v1.
 	// So skip this test if running on cgroup v1
-	if infoutil.CgroupsVersion() == "1" {
-		t.Skip("test skipped for rootless containers or if running with cgroup v1")
-	}
-
-	if rootlessutil.IsRootless() {
-		t.Skip("test requires root privilege to create a dummy device")
-	}
-
-	// See https://github.com/containerd/nerdctl/issues/4185
-	// It is unclear if this is truly a kernel version problem, a runc issue, or a distro (EL9) issue.
-	// For now, disable the test unless on a recent kernel.
-	testutil.RequireKernelVersion(t, ">= 6.0.0-0")
-
-	lo, err := loopback.New(4096)
-	if err != nil {
-		err = fmt.Errorf("cannot find a loop device: %w", err)
-		t.Fatal(err)
-	}
-	defer lo.Close()
-
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainer).AssertOK()
-
-	const (
-		weight    = 500
-		readBps   = 1048576
-		readIops  = 1000
-		writeBps  = 2097152
-		writeIops = 2000
+	testCase.Require = require.All(
+		require.Not(nerdtest.Docker),
+		require.Not(nerdtest.Rootless),
+		require.Not(nerdtest.CGroup),
 	)
-	base.Cmd("run", "-d", "--name", testContainer,
-		"--blkio-weight", fmt.Sprintf("%d", weight),
-		"--blkio-weight-device", fmt.Sprintf("%s:%d", lo.Device, weight),
-		"--device-read-bps", fmt.Sprintf("%s:%d", lo.Device, readBps),
-		"--device-read-iops", fmt.Sprintf("%s:%d", lo.Device, readIops),
-		"--device-write-bps", fmt.Sprintf("%s:%d", lo.Device, writeBps),
-		"--device-write-iops", fmt.Sprintf("%s:%d", lo.Device, writeIops),
-		testutil.AlpineImage, "sleep", "infinity").AssertOK()
 
-	inspect := base.InspectContainer(testContainer)
-	assert.Equal(t, uint16(weight), inspect.HostConfig.BlkioWeight)
-	assert.Equal(t, 1, len(inspect.HostConfig.BlkioWeightDevice))
-	assert.Equal(t, lo.Device, inspect.HostConfig.BlkioWeightDevice[0].Path)
-	assert.Equal(t, uint16(weight), inspect.HostConfig.BlkioWeightDevice[0].Weight)
-	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceReadBps))
-	assert.Equal(t, uint64(readBps), inspect.HostConfig.BlkioDeviceReadBps[0].Rate)
-	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceWriteBps))
-	assert.Equal(t, uint64(writeBps), inspect.HostConfig.BlkioDeviceWriteBps[0].Rate)
-	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceReadIOps))
-	assert.Equal(t, uint64(readIops), inspect.HostConfig.BlkioDeviceReadIOps[0].Rate)
-	assert.Equal(t, 1, len(inspect.HostConfig.BlkioDeviceWriteIOps))
-	assert.Equal(t, uint64(writeIops), inspect.HostConfig.BlkioDeviceWriteIOps[0].Rate)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		// See https://github.com/containerd/nerdctl/issues/4185
+		// It is unclear if this is truly a kernel version problem, a runc issue, or a distro (EL9) issue.
+		// For now, disable the test unless on a recent kernel.
+		testutil.RequireKernelVersion(t, ">= 6.0.0-0")
+
+		var err error
+		lo, err = loopback.New(4096)
+		if err != nil {
+			err = fmt.Errorf("cannot find a loop device: %w", err)
+			t.Fatal(err)
+		}
+
+		const (
+			weight    = 500
+			readBps   = 1048576
+			readIops  = 1000
+			writeBps  = 2097152
+			writeIops = 2000
+		)
+
+		helpers.Ensure("run", "-d", "--name", data.Identifier(),
+			"--blkio-weight", fmt.Sprintf("%d", weight),
+			"--blkio-weight-device", fmt.Sprintf("%s:%d", lo.Device, weight),
+			"--device-read-bps", fmt.Sprintf("%s:%d", lo.Device, readBps),
+			"--device-read-iops", fmt.Sprintf("%s:%d", lo.Device, readIops),
+			"--device-write-bps", fmt.Sprintf("%s:%d", lo.Device, writeBps),
+			"--device-write-iops", fmt.Sprintf("%s:%d", lo.Device, writeIops),
+			testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+
+		data.Labels().Set("weight", strconv.Itoa(weight))
+		data.Labels().Set("readBps", strconv.Itoa(readBps))
+		data.Labels().Set("readIops", strconv.Itoa(readIops))
+		data.Labels().Set("writeBps", strconv.Itoa(writeBps))
+		data.Labels().Set("writeIops", strconv.Itoa(writeIops))
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		if lo != nil {
+			lo.Close()
+		}
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, tt tig.T) {
+				weight, err := strconv.Atoi(data.Labels().Get("weight"))
+				assert.NilError(tt, err)
+				readBps, err := strconv.Atoi(data.Labels().Get("readBps"))
+				assert.NilError(tt, err)
+				writeBps, err := strconv.Atoi(data.Labels().Get("writeBps"))
+				assert.NilError(tt, err)
+				readIops, err := strconv.Atoi(data.Labels().Get("readIops"))
+				assert.NilError(tt, err)
+				writeIops, err := strconv.Atoi(data.Labels().Get("writeIops"))
+				assert.NilError(tt, err)
+
+				var dc []dockercompat.Container
+
+				err = json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(tt, err)
+				assert.Equal(tt, 1, len(dc))
+
+				inspect := dc[0]
+
+				assert.Equal(tt, uint16(weight), inspect.HostConfig.BlkioWeight)
+				assert.Equal(tt, 1, len(inspect.HostConfig.BlkioWeightDevice))
+				assert.Equal(tt, lo.Device, inspect.HostConfig.BlkioWeightDevice[0].Path)
+				assert.Equal(tt, uint16(weight), inspect.HostConfig.BlkioWeightDevice[0].Weight)
+				assert.Equal(tt, 1, len(inspect.HostConfig.BlkioDeviceReadBps))
+				assert.Equal(tt, uint64(readBps), inspect.HostConfig.BlkioDeviceReadBps[0].Rate)
+				assert.Equal(tt, 1, len(inspect.HostConfig.BlkioDeviceWriteBps))
+				assert.Equal(tt, uint64(writeBps), inspect.HostConfig.BlkioDeviceWriteBps[0].Rate)
+				assert.Equal(tt, 1, len(inspect.HostConfig.BlkioDeviceReadIOps))
+				assert.Equal(tt, uint64(readIops), inspect.HostConfig.BlkioDeviceReadIOps[0].Rate)
+				assert.Equal(tt, 1, len(inspect.HostConfig.BlkioDeviceWriteIOps))
+				assert.Equal(tt, uint64(writeIops), inspect.HostConfig.BlkioDeviceWriteIOps[0].Rate)
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestContainerInspectUser(t *testing.T) {
