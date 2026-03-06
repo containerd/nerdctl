@@ -138,6 +138,10 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 		bridge.HairpinMode = true
 		if ipv6 {
 			bridge.Capabilities["ips"] = true
+			// Explicitly declare capabilities that are implicitly lost when
+			// the bridge.Capabilities map becomes non-empty.
+			bridge.Capabilities["dns"] = true
+			bridge.Capabilities["portMappings"] = true
 		}
 
 		// Determine the appropriate firewall ingress policy based on icc setting
@@ -207,6 +211,10 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 		vlan.IPAM = ipam
 		if ipv6 {
 			vlan.Capabilities["ips"] = true
+			// Explicitly declare capabilities that are implicitly lost when
+			// the vlan.Capabilities map becomes non-empty.
+			vlan.Capabilities["dns"] = true
+			vlan.Capabilities["portMappings"] = true
 		}
 		plugins = []CNIPlugin{vlan}
 	default:
@@ -230,7 +238,8 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gatewayStr, ipRan
 			return nil, err
 		}
 		ipamConf.Ranges = append(ipamConf.Ranges, ranges...)
-		if !findIPv4 {
+		// if no subnet is specified, an ipv4 subnet should be added automatically.
+		if !findIPv4 && (len(subnets) == 1 && subnets[0] == "") {
 			ranges, _, _ = e.parseIPAMRanges([]string{""}, gatewayStr, ipRangeStr, ipv6)
 			ipamConf.Ranges = append(ipamConf.Ranges, ranges...)
 		}
