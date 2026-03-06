@@ -18,11 +18,14 @@ package container
 
 import (
 	"errors"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -89,18 +92,35 @@ func TestRunWithSystemdTrueEnabled(t *testing.T) {
 				Output:   expect.Contains("SIGRTMIN+3"),
 			})
 
-		// waits for systemd to become ready and lists systemd jobs
-		return helpers.Command("exec", data.Identifier(), "sh", "-c", "--", `tries=0
-until systemctl is-system-running >/dev/null 2>&1; do
-	>&2 printf "Waiting for systemd to come up...\n"
-	sleep 1s
-	tries=$(( tries + 1))
-	[ $tries -lt 10 ] || {
-		>&2 printf "systemd failed to come up in a reasonable amount of time\n"
-		exit 1
-	}
-done
-systemctl list-jobs`)
+		// Poll for systemd to become ready using the same pattern as EnsureContainerStarted
+		const maxRetry = 30
+		const sleep = time.Second
+		systemdReady := false
+
+		for i := 0; i < maxRetry && !systemdReady; i++ {
+			helpers.Command("exec", data.Identifier(), "sh", "-c", "--", "systemctl is-system-running").
+				Run(&test.Expected{
+					ExitCode: expect.ExitCodeNoCheck,
+					Output: func(stdout string, t tig.T) {
+						// Silent return on error or empty output
+						if stdout == "" {
+							return
+						}
+						// Check for systemd ready states
+						if strings.Contains(stdout, "running") || strings.Contains(stdout, "degraded") {
+							systemdReady = true
+						}
+					},
+				})
+			time.Sleep(sleep)
+		}
+
+		if !systemdReady {
+			helpers.T().Log("systemd did not become ready after 30 seconds")
+			helpers.T().FailNow()
+		}
+
+		return helpers.Command("exec", data.Identifier(), "sh", "-c", "--", "systemctl list-jobs")
 	}
 
 	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("jobs"))
