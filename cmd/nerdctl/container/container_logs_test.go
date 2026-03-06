@@ -60,6 +60,11 @@ bar
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "since 1s",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				// Ensure at least 2 seconds have elapsed since the container ran,
+				// so that --since 1s does not include the container's output.
+				time.Sleep(2 * time.Second)
+			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", "--since", "1s", data.Labels().Get("cID"))
 			},
@@ -81,6 +86,11 @@ bar
 		},
 		{
 			Description: "until 1s",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				// Ensure at least 2 seconds have elapsed since the container ran,
+				// so that --until 1s includes the container's output.
+				time.Sleep(2 * time.Second)
+			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("logs", "--until", "1s", data.Labels().Get("cID"))
 			},
