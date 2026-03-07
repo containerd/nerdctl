@@ -73,14 +73,16 @@ bar
 		{
 			Description: "since 60s",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("logs", "--since", "60s", data.Labels().Get("cID"))
+				since := time.Now().Add(-60 * time.Second).UTC().Format(time.RFC3339Nano)
+				return helpers.Command("logs", "--since", since, data.Labels().Get("cID"))
 			},
 			Expected: test.Expects(0, nil, expect.Equals(expected)),
 		},
 		{
 			Description: "until 60s",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("logs", "--until", "60s", data.Labels().Get("cID"))
+				until := time.Now().Add(-60 * time.Second).UTC().Format(time.RFC3339Nano)
+				return helpers.Command("logs", "--until", until, data.Labels().Get("cID"))
 			},
 			Expected: test.Expects(0, nil, expect.DoesNotContain(expected)),
 		},
