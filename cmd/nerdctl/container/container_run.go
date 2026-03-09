@@ -506,6 +506,16 @@ func runAction(cmd *cobra.Command, args []string) error {
 		io.Wait()
 		isDetached = true
 	case status := <-statusC:
+		// Wait for IO copy goroutines to finish, ensuring all container
+		// output has been written to both stdout and the logging binary's
+		// pipe. Then close IO to allow the logging binary to receive EOF,
+		// drain remaining data, and write it to the log file.
+		// This matches Docker's behavior where logs are fully written
+		// before the run command returns.
+		if io := task.IO(); io != nil {
+			io.Wait()
+			io.Close()
+		}
 		if createOpt.Rm {
 			if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
 				log.L.Error(taskDeleteErr)

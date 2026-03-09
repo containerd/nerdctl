@@ -41,7 +41,7 @@ func (p *pipes) closers() []io.Closer {
 }
 
 // copyIO is from https://github.com/containerd/containerd/blob/148d21b1ae0718b75718a09ecb307bb874270f59/cio/io_unix.go#L55
-func copyIO(cmd *exec.Cmd, fifos *cio.FIFOSet, ioset *cio.Streams) (*ncio, error) {
+func copyIO(cmd *exec.Cmd, fifos *cio.FIFOSet, ioset *cio.Streams, logPipeClosers []io.Closer) (*ncio, error) {
 	var ctx, cancel = context.WithCancel(context.Background())
 	pipes, err := openFifos(ctx, fifos)
 	if err != nil {
@@ -85,10 +85,11 @@ func copyIO(cmd *exec.Cmd, fifos *cio.FIFOSet, ioset *cio.Streams) (*ncio, error
 	}
 
 	return &ncio{
-		cmd:     cmd,
-		config:  fifos.Config,
-		wg:      wg,
-		closers: append(pipes.closers(), fifos),
+		cmd:            cmd,
+		config:         fifos.Config,
+		wg:             wg,
+		closers:        append(pipes.closers(), fifos),
+		logPipeClosers: logPipeClosers,
 		cancel: func() {
 			cancel()
 			for _, c := range pipes.closers() {

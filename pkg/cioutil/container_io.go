@@ -43,6 +43,11 @@ type ncio struct {
 	wg      *sync.WaitGroup
 	closers []io.Closer
 	cancel  context.CancelFunc
+	// logPipeClosers holds the write ends of pipes to the logging binary.
+	// These must be closed before terminating the logging binary so it can
+	// receive EOF and drain any remaining data in the pipe buffer.
+	logPipeClosers []io.Closer
+	closed         bool
 }
 
 var bufPool = sync.Pool{
@@ -63,20 +68,25 @@ func (c *ncio) Wait() {
 }
 
 func (c *ncio) Close() error {
+	if c.closed {
+		return nil
+	}
+	c.closed = true
 
 	var lastErr error
 
-	if c.cmd != nil && c.cmd.Process != nil {
-
-		// Send SIGTERM first, so logger process has a chance to flush and exit properly
-		if err := c.cmd.Process.Signal(syscall.SIGTERM); err != nil {
-			lastErr = fmt.Errorf("failed to send SIGTERM: %w", err)
-
-			if err := c.cmd.Process.Kill(); err != nil {
-				lastErr = errors.Join(lastErr, fmt.Errorf("failed to kill process after faulty SIGTERM: %w", err))
-			}
-
+	// Close the pipe write ends to the logging binary first, so it receives
+	// EOF and can drain any remaining data before being terminated.
+	for _, closer := range c.logPipeClosers {
+		if closer == nil {
+			continue
 		}
+		if err := closer.Close(); err != nil {
+			lastErr = err
+		}
+	}
+
+	if c.cmd != nil && c.cmd.Process != nil {
 
 		done := make(chan error, 1)
 		go func() {
@@ -86,15 +96,26 @@ func (c *ncio) Close() error {
 		select {
 		case err := <-done:
 			if err != nil {
-				lastErr = fmt.Errorf("faied to run cmd.wait: %w", err)
+				lastErr = fmt.Errorf("failed to run cmd.wait: %w", err)
 			}
 		case <-time.After(binaryIOProcTermTimeout):
-
-			err := c.cmd.Process.Kill()
-			if err != nil {
-				lastErr = fmt.Errorf("failed to kill shim logger process: %w", err)
+			// Logger did not exit after pipe EOF; send SIGTERM
+			if err := c.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+				if err := c.cmd.Process.Kill(); err != nil {
+					lastErr = fmt.Errorf("failed to kill shim logger process: %w", err)
+				}
+			} else {
+				select {
+				case err := <-done:
+					if err != nil {
+						lastErr = fmt.Errorf("failed to run cmd.wait: %w", err)
+					}
+				case <-time.After(binaryIOProcTermTimeout):
+					if err := c.cmd.Process.Kill(); err != nil {
+						lastErr = fmt.Errorf("failed to kill shim logger process: %w", err)
+					}
+				}
 			}
-
 		}
 	}
 
@@ -118,9 +139,10 @@ func (c *ncio) Cancel() {
 func NewContainerIO(namespace string, logURI string, tty bool, stdin io.Reader, stdout, stderr io.Writer) cio.Creator {
 	return func(id string) (_ cio.IO, err error) {
 		var (
-			cmd     *exec.Cmd
-			closers []func() error
-			streams = &cio.Streams{
+			cmd            *exec.Cmd
+			closers        []func() error
+			logPipeClosers []io.Closer
+			streams        = &cio.Streams{
 				Terminal: tty,
 			}
 		)
@@ -196,6 +218,7 @@ func NewContainerIO(namespace string, logURI string, tty bool, stdin io.Reader, 
 
 			stdoutWriters = append(stdoutWriters, stdoutw)
 			stderrWriters = append(stderrWriters, stderrw)
+			logPipeClosers = append(logPipeClosers, stdoutw, stderrw)
 		}
 
 		streams.Stdout = io.MultiWriter(stdoutWriters...)
@@ -218,6 +241,6 @@ func NewContainerIO(namespace string, logURI string, tty bool, stdin io.Reader, 
 		if streams.Stderr == nil {
 			fifos.Stderr = ""
 		}
-		return copyIO(cmd, fifos, streams)
+		return copyIO(cmd, fifos, streams, logPipeClosers)
 	}
 }
