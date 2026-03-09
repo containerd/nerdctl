@@ -53,7 +53,7 @@ bar
 	}
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "--quiet", "--name", data.Identifier(), testutil.CommonImage, "sh", "-euxc", "echo foo; echo bar;")
+		helpers.Ensure("run", "--quiet", "--name", data.Identifier(), testutil.CommonImage, "sh", "-euc", "echo foo; echo bar;")
 		data.Labels().Set("cID", data.Identifier())
 	}
 
