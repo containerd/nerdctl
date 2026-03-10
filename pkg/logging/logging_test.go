@@ -23,9 +23,7 @@ import (
 	"math/rand"
 	"strings"
 	"testing"
-	"time"
 
-	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 )
 
@@ -79,20 +77,10 @@ func TestLoggingProcessAdapter(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	var getContainerWaitMock ContainerWaitFunc = func(ctx context.Context, address string, config *logging.Config) (<-chan containerd.ExitStatus, error) {
-		exitChan := make(chan containerd.ExitStatus, 1)
-		time.Sleep(50 * time.Millisecond)
-		exitChan <- containerd.ExitStatus{}
-		return exitChan, nil
-	}
-
-	err := loggingProcessAdapter(ctx, driver, "testDataStore", "", getContainerWaitMock, config)
+	err := loggingProcessAdapter(ctx, driver, "testDataStore", config)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// let bufio read the buffer
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify that the driver methods were called
 	if !driver.processed {
