@@ -26,12 +26,14 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/muesli/cancelreader"
 
+	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
@@ -163,7 +165,49 @@ func WaitForLogger(dataStore, ns, id string) error {
 	})
 }
 
-func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore string, config *logging.Config) error {
+func getContainerWait(ctx context.Context, address string, config *logging.Config) (<-chan containerd.ExitStatus, error) {
+	client, err := containerd.New(strings.TrimPrefix(address, "unix://"), containerd.WithDefaultNamespace(config.Namespace))
+	if err != nil {
+		return nil, err
+	}
+	con, err := client.LoadContainer(ctx, config.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	task, err := con.Task(ctx, nil)
+	if err == nil {
+		return task.Wait(ctx)
+	}
+	if !errdefs.IsNotFound(err) {
+		return nil, err
+	}
+
+	// If task was not found, it's possible that the container runtime is still being created.
+	// Retry every 100ms.
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, errors.New("timed out waiting for container task to start")
+		case <-ticker.C:
+			task, err = con.Task(ctx, nil)
+			if err != nil {
+				if errdefs.IsNotFound(err) {
+					continue
+				}
+				return nil, err
+			}
+			return task.Wait(ctx)
+		}
+	}
+}
+
+type ContainerWaitFunc func(ctx context.Context, address string, config *logging.Config) (<-chan containerd.ExitStatus, error)
+
+func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, address string, getContainerWait ContainerWaitFunc, config *logging.Config) error {
 	if err := driver.PreProcess(ctx, dataStore, config); err != nil {
 		return err
 	}
@@ -192,10 +236,6 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore string,
 		if err != nil {
 			log.G(ctx).Errorf("failed to copy stream: %s", err)
 		}
-		// Close the pipe writer after all data has been copied.
-		// This signals EOF to the downstream processLogFunc reader,
-		// ensuring all data is drained before the pipe is closed.
-		writer.Close()
 	}
 	go copyStream(stdoutR, pipeStdoutW)
 	go copyStream(stderrR, pipeStderrW)
@@ -229,6 +269,18 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore string,
 		defer wg.Done()
 		driver.Process(stdout, stderr)
 	}()
+	go func() {
+		// close pipeStdoutW and pipeStderrW upon container exit
+		defer pipeStdoutW.Close()
+		defer pipeStderrW.Close()
+
+		exitCh, err := getContainerWait(ctx, address, config)
+		if err != nil {
+			log.G(ctx).Errorf("failed to get container task wait channel: %v", err)
+			return
+		}
+		<-exitCh
+	}()
 	wg.Wait()
 	return driver.PostProcess()
 }
@@ -261,7 +313,8 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 				if err := ready(); err != nil {
 					return err
 				}
-				return loggingProcessAdapter(ctx, driver, dataStore, config)
+				// getContainerWait is extracted as parameter to allow mocking in tests.
+				return loggingProcessAdapter(ctx, driver, dataStore, logConfig.Address, getContainerWait, config)
 			})
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// the file does not exist if the container was created with nerdctl < 0.20
