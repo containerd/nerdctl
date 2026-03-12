@@ -102,7 +102,7 @@ CMD ["echo", "nerdctl-build-test-string"]
 					_, pub := nerdtest.GenerateCosignKeyPair(data, helpers, "2")
 					return helpers.Command("pull", "--quiet", "--verify=cosign", "--cosign-key="+pub, data.Labels().Get("image_ref")+":two")
 				},
-				Expected: test.Expects(12, nil, nil),
+				Expected: test.Expects(1, nil, nil),
 			},
 		},
 	}
