@@ -229,7 +229,10 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, addres
 	// initialize goroutines to copy stdout and stderr streams to a closable pipe
 	pipeStdoutR, pipeStdoutW := io.Pipe()
 	pipeStderrR, pipeStderrW := io.Pipe()
+	var copyWg sync.WaitGroup
+	copyWg.Add(2)
 	copyStream := func(reader io.Reader, writer *io.PipeWriter) {
+		defer copyWg.Done()
 		// copy using a buffer of size 32K
 		buf := make([]byte, 32<<10)
 		_, err := io.CopyBuffer(writer, reader, buf)
@@ -280,6 +283,13 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, addres
 			return
 		}
 		<-exitCh
+		// After the container exits, cancel external readers to unblock
+		// copyStream (the pipe write-end may still be held open by the
+		// parent process), then wait for copyStream to finish draining
+		// any remaining data before closing the internal pipe writers.
+		stdoutR.Cancel()
+		stderrR.Cancel()
+		copyWg.Wait()
 	}()
 	wg.Wait()
 	return driver.PostProcess()
