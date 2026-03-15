@@ -281,7 +281,7 @@ type CPUSettings struct {
 // DefaultNetworkSettings is from https://github.com/moby/moby/blob/v20.10.1/api/types/types.go#L405-L414
 type DefaultNetworkSettings struct {
 	// TODO EndpointID          string // EndpointID uniquely represents a service endpoint in a Sandbox
-	// TODO Gateway             string // Gateway holds the gateway address for the network
+	Gateway             string // Gateway holds the gateway address for the network
 	GlobalIPv6Address   string // GlobalIPv6Address holds network's global IPv6 address
 	GlobalIPv6PrefixLen int    // GlobalIPv6PrefixLen represents mask length of network's global IPv6 address
 	IPAddress           string // IPAddress holds the IPv4 address for the network
@@ -743,6 +743,7 @@ func networkSettingsFromNative(n *native.NetNS, _ *specs.Spec) (*NetworkSettings
 		}
 
 	}
+	res.DefaultNetworkSettings.Gateway = n.Gateway
 	if primary != nil {
 		res.DefaultNetworkSettings.MacAddress = primary.MacAddress
 		res.DefaultNetworkSettings.IPAddress = primary.IPAddress

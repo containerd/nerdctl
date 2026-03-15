@@ -23,17 +23,20 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/docker/go-connections/nat"
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/continuity/testutil/loopback"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	inspecttypenative "github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -581,6 +584,85 @@ USER test
 			return helpers.Command("inspect", "--format", "{{.Config.User}}", data.Identifier())
 		},
 		Expected: test.Expects(0, nil, expect.Equals("test\n")),
+	}
+
+	testCase.Run(t)
+}
+
+func TestContainerInspectGateway(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// This test validates nerdctl's inspect conversion path
+	// Running this against Docker would not use this code path
+	testCase.Require = require.All(
+		require.Not(require.Windows),
+		require.Not(nerdtest.Docker),
+		nerdtest.Rootful,
+	)
+
+	// isolated test
+	testCase.NoParallel = true
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("network", "create", data.Identifier("net"))
+
+		helpers.Ensure("run", "-d",
+			"--name", data.Identifier("ctr"),
+			"--network", data.Identifier("net"),
+			testutil.CommonImage, "sleep", nerdtest.Infinity)
+
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier("ctr"))
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier("ctr"))
+		helpers.Anyhow("network", "rm", data.Identifier("net"))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("container", "inspect", data.Identifier("ctr"))
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Output: func(_ string, t tig.T) {
+				const (
+					maxAttempts = 60
+					wait        = 500 * time.Millisecond
+				)
+
+				lastDockerGateway := ""
+				lastNativeGateway := ""
+				for i := 0; i < maxAttempts; i++ {
+					dockerInspect := nerdtest.InspectContainer(helpers, data.Identifier("ctr"))
+					assert.Assert(t, dockerInspect.NetworkSettings != nil)
+					lastDockerGateway = dockerInspect.NetworkSettings.Gateway
+
+					var nativeInspect []inspecttypenative.Container
+					helpers.Command("container", "inspect", "--mode", "native", data.Identifier("ctr")).Run(&test.Expected{
+						Output: expect.JSON([]inspecttypenative.Container{}, func(got []inspecttypenative.Container, t tig.T) {
+							assert.Equal(t, 1, len(got), "Unexpectedly got multiple results")
+							nativeInspect = got
+						}),
+					})
+
+					if len(nativeInspect) == 1 && nativeInspect[0].Process != nil && nativeInspect[0].Process.NetNS != nil {
+						lastNativeGateway = nativeInspect[0].Process.NetNS.Gateway
+					}
+
+					if lastDockerGateway != "" && lastNativeGateway != "" && lastDockerGateway == lastNativeGateway {
+						return
+					}
+
+					time.Sleep(wait)
+				}
+
+				assert.Assert(t, lastNativeGateway != "")
+				assert.Assert(t, lastDockerGateway != "")
+				assert.Equal(t, lastDockerGateway, lastNativeGateway)
+			},
+		}
 	}
 
 	testCase.Run(t)
