@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/vishvananda/netlink"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 )
@@ -55,6 +56,10 @@ func InspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
 			res.Interfaces[i] = x
 		}
 		res.PrimaryInterface = determinePrimaryInterface(res.Interfaces)
+		routes, err := netlink.RouteList(nil, netlink.FAMILY_V4)
+		if err == nil {
+			res.Gateway = selectDefaultGateway(routes, res.PrimaryInterface)
+		}
 		return nil
 	}
 	if err := ns.WithNetNSPath(nsPath, fn); err != nil {
@@ -72,4 +77,28 @@ func determinePrimaryInterface(interfaces []native.NetInterface) int {
 		}
 	}
 	return 0
+}
+
+func selectDefaultGateway(routes []netlink.Route, primaryIfIndex int) string {
+	for _, route := range routes {
+		if route.Dst != nil || route.Gw == nil {
+			continue
+		}
+		if route.Gw.To4() == nil {
+			continue
+		}
+		if route.LinkIndex == primaryIfIndex {
+			return route.Gw.String()
+		}
+	}
+	for _, route := range routes {
+		if route.Dst != nil || route.Gw == nil {
+			continue
+		}
+		if route.Gw.To4() == nil {
+			continue
+		}
+		return route.Gw.String()
+	}
+	return ""
 }
