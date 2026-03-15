@@ -53,6 +53,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/opencontainers/runtime-spec v1.3.0
+	github.com/opencontainers/selinux v1.13.1
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/rootless-containers/bypass4netns v0.4.2 //gomodjail:unconfined
 	github.com/rootless-containers/rootlesskit/v2 v2.3.6 //gomodjail:unconfined
@@ -113,7 +114,6 @@ require (
 	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/multiformats/go-varint v0.1.0 // indirect
 	github.com/opencontainers/runtime-tools v0.9.1-0.20251114084447-edf4cb3d2116 // indirect
-	github.com/opencontainers/selinux v1.13.1 // indirect
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
