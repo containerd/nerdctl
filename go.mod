@@ -1,14 +1,14 @@
 //gomodjail:confined
 module github.com/containerd/nerdctl/v2
 
-go 1.24.3
+go 1.26.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/Microsoft/hcsshim v0.14.0-rc.1
 	github.com/compose-spec/compose-go/v2 v2.10.1 //gomodjail:unconfined
-	github.com/containerd/accelerated-container-image v1.4.1
+	github.com/containerd/accelerated-container-image v1.4.2
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
 	github.com/containerd/containerd/api v1.10.0
