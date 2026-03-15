@@ -332,7 +332,7 @@ WORKDIR /go/src/github.com/containerd/nerdctl
 VOLUME /tmp
 ENV CGO_ENABLED=0
 # copy cosign binary for integration test
-COPY --from=ghcr.io/sigstore/cosign/cosign:v2.2.3@sha256:8fc9cad121611e8479f65f79f2e5bea58949e8a87ffac2a42cb99cf0ff079ba7 /ko-app/cosign /usr/local/bin/cosign
+COPY --from=ghcr.io/sigstore/cosign/cosign:v3.0.5 /ko-app/cosign /usr/local/bin/cosign
 # installing soci for integration test
 ARG SOCI_SNAPSHOTTER_VERSION
 RUN fname="soci-snapshotter-${SOCI_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
