@@ -1,7 +1,7 @@
 //gomodjail:confined
 module github.com/containerd/nerdctl/v2
 
-go 1.24.3
+go 1.25.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
@@ -63,12 +63,12 @@ require (
 	github.com/yuchanns/srslog v1.1.0
 	go.uber.org/mock v0.6.0
 	go.yaml.in/yaml/v3 v3.0.4
-	golang.org/x/crypto v0.48.0
-	golang.org/x/net v0.50.0
-	golang.org/x/sync v0.19.0 //gomodjail:unconfined
-	golang.org/x/sys v0.41.0 //gomodjail:unconfined
-	golang.org/x/term v0.40.0 //gomodjail:unconfined
-	golang.org/x/text v0.34.0
+	golang.org/x/crypto v0.49.0
+	golang.org/x/net v0.51.0
+	golang.org/x/sync v0.20.0 //gomodjail:unconfined
+	golang.org/x/sys v0.42.0 //gomodjail:unconfined
+	golang.org/x/term v0.41.0 //gomodjail:unconfined
+	golang.org/x/text v0.35.0
 	gotest.tools/v3 v3.5.2
 	tags.cncf.io/container-device-interface v1.1.0 //gomodjail:unconfined
 )
@@ -135,7 +135,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
-	golang.org/x/mod v0.32.0 // indirect
+	golang.org/x/mod v0.33.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251029180050-ab9386a59fda // indirect
 	//gomodjail:unconfined
 	google.golang.org/grpc v1.78.0 // indirect
