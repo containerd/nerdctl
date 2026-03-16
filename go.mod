@@ -1,7 +1,7 @@
 //gomodjail:confined
 module github.com/containerd/nerdctl/v2
 
-go 1.24.3
+go 1.25.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
@@ -22,9 +22,9 @@ require (
 	github.com/containerd/nerdctl/mod/tigron v0.0.0
 	github.com/containerd/nydus-snapshotter v0.15.11 //gomodjail:unconfined
 	github.com/containerd/platforms v1.0.0-rc.2 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter v0.18.1 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter/estargz v0.18.1 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter/ipfs v0.18.1 //gomodjail:unconfined
+	github.com/containerd/stargz-snapshotter v0.18.2 //gomodjail:unconfined
+	github.com/containerd/stargz-snapshotter/estargz v0.18.2 //gomodjail:unconfined
+	github.com/containerd/stargz-snapshotter/ipfs v0.18.2 //gomodjail:unconfined
 	github.com/containerd/typeurl/v2 v2.2.3
 	github.com/containernetworking/cni v1.3.0 //gomodjail:unconfined
 	github.com/containernetworking/plugins v1.9.0 //gomodjail:unconfined
@@ -120,7 +120,7 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.1 // indirect
 	github.com/sasha-s/go-deadlock v0.3.5 // indirect
 	//gomodjail:unconfined
-	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/smallstep/pkcs7 v0.1.1 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/stefanberger/go-pkcs11uri v0.0.0-20230803200340-78284954bff6 // indirect
@@ -133,7 +133,7 @@ require (
 	go.opentelemetry.io/otel v1.38.0 // indirect
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
-	go.yaml.in/yaml/v2 v2.4.2 // indirect
+	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251029180050-ab9386a59fda // indirect
