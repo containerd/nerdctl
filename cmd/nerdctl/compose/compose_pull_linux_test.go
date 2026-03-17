@@ -18,14 +18,21 @@ package compose
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposePullWithService(t *testing.T) {
-	base := testutil.NewBase(t)
-	var dockerComposeYAML = fmt.Sprintf(`
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		var composeYAML = fmt.Sprintf(`
 services:
 
   wordpress:
@@ -53,10 +60,24 @@ volumes:
   db:
 `, testutil.WordpressImage, testutil.MariaDBImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "pull", "db").AssertOutNotContains("wordpress")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+
+		data.Labels().Set("composeYAML", composePath)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "pull", "db")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Output:   expect.DoesNotContain("wordpress"),
+		}
+	}
+
+	testCase.Run(t)
 }
