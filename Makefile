@@ -98,6 +98,7 @@ help:
 	@echo " * 'test' - Run basic unit testing."
 	@echo " * 'binaries' - Build nerdctl."
 	@echo " * 'install' - Install binaries to system locations."
+	@echo " * 'uninstall' - Remove installed binaries and documentation."
 	@echo " * 'clean' - Clean artifacts."
 
 ##########################
@@ -116,6 +117,14 @@ install:
 	install -D -m 755 $(MAKEFILE_DIR)/extras/rootless/containerd-rootless.sh $(DESTDIR)$(BINDIR)/containerd-rootless.sh
 	install -D -m 755 $(MAKEFILE_DIR)/extras/rootless/containerd-rootless-setuptool.sh $(DESTDIR)$(BINDIR)/containerd-rootless-setuptool.sh
 	install -D -m 644 -t $(DESTDIR)$(DOCDIR)/nerdctl $(MAKEFILE_DIR)/docs/*.md
+	$(call footer, $@)
+
+uninstall:
+	$(call title, $@)
+	rm -f $(DESTDIR)$(BINDIR)/$(BINARY)
+	rm -f $(DESTDIR)$(BINDIR)/containerd-rootless.sh
+	rm -f $(DESTDIR)$(BINDIR)/containerd-rootless-setuptool.sh
+	rm -rf $(DESTDIR)$(DOCDIR)/nerdctl
 	$(call footer, $@)
 
 clean:
@@ -308,6 +317,7 @@ artifacts: clean
 	help \
 	binaries \
 	install \
+	uninstall \
 	clean \
 	lint-go lint-go-all lint-yaml lint-shell lint-commits lint-mod lint-licenses lint-licenses-all \
 	fix-go fix-go-all fix-mod \
