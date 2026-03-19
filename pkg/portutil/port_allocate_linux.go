@@ -18,6 +18,7 @@ package portutil
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/containerd/nerdctl/v2/pkg/portutil/iptable"
 	"github.com/containerd/nerdctl/v2/pkg/portutil/procnet"
@@ -123,10 +124,16 @@ func getUsedPorts(ip string, protocol string) (map[uint64]bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	destinationPorts := iptable.ParseIPTableRules(ipTableItems)
+	portRules := iptable.ParseIPTableRules(ipTableItems)
 
-	for _, port := range destinationPorts {
-		usedPort[port] = true
+	requestedIP := net.ParseIP(ip)
+	requestedIsWildcard := ip == "" || requestedIP.IsUnspecified()
+	for _, rule := range portRules {
+		ruleIP := net.ParseIP(rule.IP)
+		ruleIsWildcard := rule.IP == "" || ruleIP.IsUnspecified()
+		if requestedIsWildcard || ruleIsWildcard || (requestedIP != nil && ruleIP != nil && requestedIP.Equal(ruleIP)) {
+			usedPort[rule.Port] = true
+		}
 	}
 
 	return usedPort, nil
