@@ -22,26 +22,46 @@ import (
 	"strings"
 )
 
-// ParseIPTableRules takes a slice of iptables rules as input and returns a slice of
-// uint64 containing the parsed destination port numbers from the rules.
-func ParseIPTableRules(rules []string) []uint64 {
-	ports := []uint64{}
+type PortRule struct {
+	IP   string
+	Port uint64
+}
 
-	// Regex to match the '--dports' option followed by the port number
-	dportRegex := regexp.MustCompile(`--dports ((,?\d+)+)`)
+// ParseIPTableRules takes a slice of iptables rules as input and returns a
+// slice of PortRule containing the parsed destination IP and port from the
+// rules. When a rule has no -d flag, IP is empty (meaning the rule applies to
+// all addresses).
+func ParseIPTableRules(rules []string) []PortRule {
+	portRules := []PortRule{}
+
+	dportsRegex := regexp.MustCompile(`--dports ((,?\d+)+)`)
+	dportRegex := regexp.MustCompile(`--dport (\d+)`)
+	destRegex := regexp.MustCompile(`-d (\S+?)(?:/\d+)?\s`)
 
 	for _, rule := range rules {
-		matches := dportRegex.FindStringSubmatch(rule)
-		if len(matches) > 1 {
-			for _, _match := range strings.Split(matches[1], ",") {
-				port64, err := strconv.ParseUint(_match, 10, 16)
-				if err != nil {
-					continue
-				}
-				ports = append(ports, port64)
+		var ports []string
+
+		if matches := dportsRegex.FindStringSubmatch(rule); len(matches) > 1 {
+			ports = strings.Split(matches[1], ",")
+		} else if matches := dportRegex.FindStringSubmatch(rule); len(matches) > 1 {
+			ports = []string{matches[1]}
+		} else {
+			continue
+		}
+
+		var ip string
+		if destMatches := destRegex.FindStringSubmatch(rule); len(destMatches) > 1 {
+			ip = destMatches[1]
+		}
+
+		for _, portStr := range ports {
+			port64, err := strconv.ParseUint(portStr, 10, 16)
+			if err != nil {
+				continue
 			}
+			portRules = append(portRules, PortRule{IP: ip, Port: port64})
 		}
 	}
 
-	return ports
+	return portRules
 }
