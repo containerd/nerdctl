@@ -19,6 +19,7 @@ package container
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -93,7 +94,7 @@ func TestContainerRmIptables(t *testing.T) {
 
 				// Create a container with port mapping to ensure iptables rules are created
 				containerID := helpers.Capture("run", "-d", "--name", data.Identifier(), "-p", fmt.Sprintf("%d:80", port), testutil.NginxAlpineImage)
-				data.Labels().Set("containerID", containerID)
+				data.Labels().Set("containerID", strings.TrimSpace(containerID))
 				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
