@@ -20,7 +20,12 @@
 
 package defaults
 
-import gocni "github.com/containerd/go-cni"
+import (
+	"os"
+	"path/filepath"
+
+	gocni "github.com/containerd/go-cni"
+)
 
 const (
 	AppArmorProfileName = ""
@@ -41,6 +46,9 @@ func CNINetConfPath() string {
 }
 
 func DataRoot() string {
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		return filepath.Join(home, ".local", "share", "nerdctl")
+	}
 	return "/var/lib/nerdctl"
 }
 
