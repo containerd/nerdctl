@@ -6,13 +6,13 @@ go 1.25.0
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/Microsoft/go-winio v0.6.2
-	github.com/Microsoft/hcsshim v0.14.0-rc.1
+	github.com/Microsoft/hcsshim v0.14.1
 	github.com/compose-spec/compose-go/v2 v2.10.2 //gomodjail:unconfined
 	github.com/containerd/accelerated-container-image v1.4.1
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
 	github.com/containerd/containerd/api v1.10.0
-	github.com/containerd/containerd/v2 v2.2.2 //gomodjail:unconfined
+	github.com/containerd/containerd/v2 v2.2.3 //gomodjail:unconfined
 	github.com/containerd/continuity v0.4.5 //gomodjail:unconfined
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
