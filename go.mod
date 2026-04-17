@@ -11,8 +11,8 @@ require (
 	github.com/containerd/accelerated-container-image v1.4.1
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
-	github.com/containerd/containerd/api v1.11.0-beta.1
-	github.com/containerd/containerd/v2 v2.3.0-beta.1 //gomodjail:unconfined
+	github.com/containerd/containerd/api v1.11.0-beta.2
+	github.com/containerd/containerd/v2 v2.3.0-beta.2 //gomodjail:unconfined
 	github.com/containerd/continuity v0.4.5 //gomodjail:unconfined
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
@@ -134,7 +134,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
-	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/mod v0.35.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	//gomodjail:unconfined
 	google.golang.org/grpc v1.80.0 // indirect
