@@ -43,7 +43,7 @@ require (
 	github.com/ipfs/go-cid v0.6.1
 	github.com/klauspost/compress v1.18.5
 	github.com/mattn/go-isatty v0.0.21 //gomodjail:unconfined
-	github.com/moby/moby/client v0.4.0
+	github.com/moby/moby/client v0.4.1
 	github.com/moby/moby/v2 v2.0.0-beta.9
 	github.com/moby/sys/mount v0.3.4
 	github.com/moby/sys/signal v0.7.1
@@ -149,7 +149,7 @@ require (
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/moby/moby/api v1.54.1 // indirect
+	github.com/moby/moby/api v1.54.2 // indirect
 	github.com/moby/sys/capability v0.4.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
 )
