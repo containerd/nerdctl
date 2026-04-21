@@ -283,9 +283,6 @@ func (gc *Command) Wait() (*Result, error) {
 		return gc.result, ErrExecAlreadyFinished
 	}
 
-	// Cancel the context in any case now
-	defer gc.exec.cancel()
-
 	// Wait for the command
 	_ = gc.exec.command.Wait()
 
@@ -326,6 +323,8 @@ func (gc *Command) wrap() error {
 	// Close and drain the pipes
 	pipes.closeCallee()
 	_ = pipes.ioGroup.Wait()
+	<-pipes.stdoutDone
+	<-pipes.stderrDone
 	pipes.closeCaller()
 
 	// Get the status, exitCode, signal, error

@@ -49,6 +49,8 @@ type stdPipes struct {
 	stdin      *pipe
 	stdout     *pipe
 	stderr     *pipe
+	stdoutDone chan struct{}
+	stderrDone chan struct{}
 	fromStdout string
 	fromStderr string
 	log        logger.Logger
@@ -122,10 +124,12 @@ func newStdPipes(
 
 	log = log.Set(">", "pipes")
 	pipes = &stdPipes{
-		stdin:  &pipe{},
-		stdout: &pipe{},
-		stderr: &pipe{},
-		log:    log,
+		stdin:      &pipe{},
+		stdout:     &pipe{},
+		stderr:     &pipe{},
+		stdoutDone: make(chan struct{}),
+		stderrDone: make(chan struct{}),
+		log:        log,
 	}
 
 	var (
@@ -225,6 +229,7 @@ func newStdPipes(
 
 	// Read stdout...
 	pipes.ioGroup.Go(func() error {
+		defer close(pipes.stdoutDone)
 		pipes.log.Log("-> about to read stdout")
 
 		buf := &bytes.Buffer{}
@@ -244,6 +249,7 @@ func newStdPipes(
 
 	// ... and stderr (if not the same - eg: pty)
 	if pipes.stderr.reader != pipes.stdout.reader {
+		defer close(pipes.stderrDone)
 		pipes.ioGroup.Go(func() error {
 			pipes.log.Log("-> about to read stderr")
 
