@@ -43,9 +43,28 @@ func Inspect(ctx context.Context, client *containerd.Client, inspectedNamespaces
 		if err != nil {
 			return err
 		}
+		containers, err := client.Containers(ctx)
+		if err != nil {
+			return err
+		}
+		var containersList []map[string]string
+		for _, container := range containers {
+			containerInfo, err := container.Info(ctx)
+			if err != nil {
+				return err
+			}
+			containersList = append(containersList,
+				map[string]string{
+					"id":    containerInfo.ID,
+					"name":  containerInfo.Runtime.Name,
+					"image": containerInfo.Image,
+				},
+			)
+		}
 		nsInspect := native.Namespace{
-			Name:   ns,
-			Labels: &labels,
+			Name:       ns,
+			Labels:     &labels,
+			Containers: containersList,
 		}
 		result = append(result, nsInspect)
 	}

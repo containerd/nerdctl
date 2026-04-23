@@ -17,6 +17,7 @@
 package native
 
 type Namespace struct {
-	Name   string             `json:"Name"`
-	Labels *map[string]string `json:"Labels,omitempty"`
+	Name       string              `json:"Name"`
+	Labels     *map[string]string  `json:"Labels,omitempty"`
+	Containers []map[string]string `json:"Containers,omitempty"`
 }
