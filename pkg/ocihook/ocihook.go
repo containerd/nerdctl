@@ -502,6 +502,14 @@ func perNetworkAdd(ctx context.Context, opts *handlerOpts, networkIndex int, nsP
 	if len(portMappings) > 0 {
 		rt.CapabilityArgs["portMappings"] = portMappings
 	}
+	// Add ips capability for static IPv6 address allocation per CNI spec:
+	// https://www.cni.dev/docs/conventions/#well-known-capabilities
+	for _, arg := range extraArgs {
+		if arg[0] == "IP" && strings.Contains(arg[1], ":") {
+			rt.CapabilityArgs["ips"] = []string{arg[1]}
+			break
+		}
+	}
 	result, err := cniConfig.AddNetworkList(ctx, confList, rt)
 	if err != nil {
 		return nil, err
@@ -604,17 +612,6 @@ func applyNetworkSettings(opts *handlerOpts) (err error) {
 		return err
 	}
 
-	commonOpts := []cni.NamespaceOpts{}
-	commonOpts = append(commonOpts, portMapOpts...)
-	commonOpts = append(commonOpts, macAddressOpts...)
-	commonOpts = append(commonOpts, ip6AddressOpts...)
-	commonOpts = append(commonOpts,
-		cni.WithLabels(map[string]string{
-			"IgnoreUnknown": "1",
-		}),
-		cni.WithArgs("NERDCTL_CNI_DHCP_HOSTNAME", opts.state.Annotations[labels.Hostname]),
-	)
-
 	hsMeta := hostsstore.Meta{
 		ID:         opts.state.ID,
 		Networks:   make(map[string]*types100.Result, len(opts.cniNames)),
@@ -674,6 +671,16 @@ func applyNetworkSettings(opts *handlerOpts) (err error) {
 		}
 	} else {
 		// Legacy path: single IP (or no IP) shared across all networks
+		commonOpts := []cni.NamespaceOpts{}
+		commonOpts = append(commonOpts, portMapOpts...)
+		commonOpts = append(commonOpts, macAddressOpts...)
+		commonOpts = append(commonOpts, ip6AddressOpts...)
+		commonOpts = append(commonOpts,
+			cni.WithLabels(map[string]string{
+				"IgnoreUnknown": "1",
+			}),
+			cni.WithArgs("NERDCTL_CNI_DHCP_HOSTNAME", opts.state.Annotations[labels.Hostname]),
+		)
 		var namespaceOpts []cni.NamespaceOpts
 		namespaceOpts = append(namespaceOpts, commonOpts...)
 		namespaceOpts = append(namespaceOpts, ipAddressOpts...)
