@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/compose-spec/compose-go/v2/types"
@@ -622,4 +624,68 @@ services:
 
 	c = getContainersFromService("unless_stopped")[0]
 	assert.Assert(t, in(c.RunArgs, "--restart=unless-stopped"))
+}
+
+func TestParseHealthCheck(t *testing.T) {
+	t.Parallel()
+	const dockerComposeYAML = `
+services:
+  cmd_shell:
+    image: alpine:3.14
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+  cmd_exec:
+    image: alpine:3.14
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 1m
+  disabled_flag:
+    image: alpine:3.14
+    healthcheck:
+      disable: true
+      test: ["CMD", "curl", "-f", "http://localhost"]
+  disabled_none:
+    image: alpine:3.14
+    healthcheck:
+      test: ["NONE"]
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	getContainersFromService := func(svcName string) []Container {
+		svcConfig, err := project.GetService(svcName)
+		assert.NilError(t, err)
+		svc, err := Parse(project, svcConfig)
+		assert.NilError(t, err)
+		return svc.Containers
+	}
+
+	var c Container
+
+	c = getContainersFromService("cmd_shell")[0]
+	assert.Assert(t, in(c.RunArgs, "--health-cmd=curl -f http://localhost || exit 1"))
+	assert.Assert(t, in(c.RunArgs, "--health-interval=30s"))
+	assert.Assert(t, in(c.RunArgs, "--health-timeout=10s"))
+	assert.Assert(t, in(c.RunArgs, "--health-retries=3"))
+	assert.Assert(t, in(c.RunArgs, "--health-start-period=5s"))
+
+	c = getContainersFromService("cmd_exec")[0]
+	assert.Assert(t, in(c.RunArgs, "--health-cmd=curl -f http://localhost"))
+	assert.Assert(t, in(c.RunArgs, "--health-interval=1m0s"))
+
+	c = getContainersFromService("disabled_flag")[0]
+	assert.Assert(t, in(c.RunArgs, "--no-healthcheck"))
+	assert.Assert(t, !slices.ContainsFunc(c.RunArgs, func(s string) bool {
+		return strings.HasPrefix(s, "--health-cmd=")
+	}))
+
+	c = getContainersFromService("disabled_none")[0]
+	assert.Assert(t, in(c.RunArgs, "--no-healthcheck"))
 }
