@@ -11,8 +11,8 @@ require (
 	github.com/containerd/accelerated-container-image v1.4.3
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
-	github.com/containerd/containerd/api v1.11.0-beta.2
-	github.com/containerd/containerd/v2 v2.3.0-beta.2 //gomodjail:unconfined
+	github.com/containerd/containerd/api v1.11.0-rc.0
+	github.com/containerd/containerd/v2 v2.3.0-rc.1 //gomodjail:unconfined
 	github.com/containerd/continuity v0.5.0 //gomodjail:unconfined
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
@@ -80,7 +80,7 @@ require (
 	github.com/cilium/ebpf v0.17.3 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/go-runc v1.1.0 // indirect
-	github.com/containerd/plugin v1.0.0 // indirect
+	github.com/containerd/plugin v1.1.0 // indirect
 	github.com/containerd/ttrpc v1.2.8 // indirect
 	github.com/containers/ocicrypt v1.2.1 // indirect
 	github.com/creack/pty v1.1.24 // indirect
