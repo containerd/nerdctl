@@ -4,7 +4,7 @@ module github.com/containerd/nerdctl/v2
 go 1.26.2
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Microsoft/go-winio v0.6.3-0.20251027160822-ad3df93bed29
 	github.com/Microsoft/hcsshim v0.15.0-rc.1
 	github.com/compose-spec/compose-go/v2 v2.10.2 //gomodjail:unconfined
