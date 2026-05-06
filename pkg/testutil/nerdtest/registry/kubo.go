@@ -53,7 +53,7 @@ func NewKuboRegistry(data test.Data, helpers test.Helpers, t *testing.T, current
 		"--entrypoint=/bin/sh",
 		platform.KuboImage,
 		"-c", "--",
-		fmt.Sprintf("ipfs init && ipfs config Addresses.API /ip4/0.0.0.0/tcp/%d && ipfs daemon --offline", port),
+		fmt.Sprintf("rm -f /data/ipfs/repo.lock && ipfs init && ipfs config Addresses.API /ip4/0.0.0.0/tcp/%d && ipfs daemon --offline", port),
 	}
 
 	scheme := "http"
