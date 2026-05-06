@@ -257,16 +257,6 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 		return nil
 	}
 
-	_, restartPolicyExist := lab[restart.PolicyLabel]
-	if restartPolicyExist {
-		if err := UpdateStatusLabel(ctx, container, containerd.Running); err != nil {
-			return err
-		}
-	}
-
-	if err := UpdateExplicitlyStoppedLabel(ctx, container, false); err != nil {
-		return err
-	}
 	if oldTask, err := container.Task(ctx, nil); err == nil {
 		if _, err := oldTask.Delete(ctx); err != nil {
 			log.G(ctx).WithError(err).Debug("failed to delete old task")
@@ -299,6 +289,17 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 		return err
 	}
 	if err := task.Start(ctx); err != nil {
+		return err
+	}
+
+	// Set status label running should call after task is started.
+	_, restartPolicyExist := lab[restart.PolicyLabel]
+	if restartPolicyExist {
+		if err := UpdateStatusLabel(ctx, container, containerd.Running); err != nil {
+			return err
+		}
+	}
+	if err := UpdateExplicitlyStoppedLabel(ctx, container, false); err != nil {
 		return err
 	}
 

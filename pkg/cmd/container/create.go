@@ -280,7 +280,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		internalLabels.logConfig.Driver = "json-file"
 	}
 
-	restartOpts, err := generateRestartOpts(ctx, client, options.Restart, logConfig.LogURI, options.InRun)
+	restartOpts, err := generateRestartOpts(ctx, client, options.Restart, logConfig.LogURI)
 	if err != nil {
 		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
