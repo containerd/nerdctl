@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
@@ -82,35 +83,16 @@ func FromArchive(ctx context.Context, client *containerd.Client, options types.I
 		storeOpts = append(storeOpts, transferimage.WithPlatforms(platUnpack))
 	}
 	storeOpts = append(storeOpts, transferimage.WithUnpack(platUnpack, options.GOptions.Snapshotter))
-	storeOpts = append(storeOpts, transferimage.WithDigestRef("import", true, true))
+	storeOpts = append(storeOpts, transferimage.WithNamedPrefix(fmt.Sprintf("import-%s", time.Now().Format("2006-01-02")), true))
 
-	var loadedImages []images.Image
-	pf, done := transferutil.ProgressHandler(ctx, options.Stdout)
-
+	pf, done, loadedImages := transferutil.ProgressHandlerLoadImage(ctx, client, beforeSet, options)
 	err = client.Transfer(ctx,
 		tarchive.NewImageImportStream(options.Stdin, ""),
 		transferimage.NewStore("", storeOpts...),
-		transfer.WithProgress(func(p transfer.Progress) {
-			if p.Event == "saved" {
-				if img, err := imageService.Get(ctx, p.Name); err == nil {
-					if !beforeSet[img.Name] {
-						loadedImages = append(loadedImages, img)
-					}
-				}
-			}
-			pf(p)
-		}),
+		transfer.WithProgress(pf),
 	)
-
 	done()
-
-	if !options.Quiet {
-		for _, img := range loadedImages {
-			fmt.Fprintf(options.Stdout, "Loaded image: %s\n", img.Name)
-		}
-	}
-
-	return loadedImages, err
+	return *loadedImages, err
 }
 
 // FromOCIArchive loads and unpacks the images from the OCI formatted archive at the provided file system path.
