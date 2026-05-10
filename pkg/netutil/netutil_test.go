@@ -366,3 +366,16 @@ func TestNetworkWithDefaultNameAlreadyExists(t *testing.T) {
 	assert.Assert(t, len(defaultNamedNetworksFileDefinitions) == 1)
 	assert.Assert(t, defaultNamedNetworksFileDefinitions[0] == testConfFile)
 }
+
+func TestFSExistsPropagatesStatError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cni-conf-root")
+	assert.NilError(t, filesystem.WriteFile(path, nil, 0600))
+
+	cniEnv := CNIEnv{
+		NetconfPath: path,
+	}
+
+	exists, err := fsExists(&cniEnv, DefaultNetworkName)
+	assert.Assert(t, !exists)
+	assert.Assert(t, err != nil)
+}
