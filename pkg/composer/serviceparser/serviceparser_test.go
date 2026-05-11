@@ -33,6 +33,15 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
+func getContainersFromService(t *testing.T, project *types.Project, svcName string) []Container {
+	t.Helper()
+	svcConfig, err := project.GetService(svcName)
+	assert.NilError(t, err)
+	svc, err := Parse(project, svcConfig)
+	assert.NilError(t, err)
+	return svc.Containers
+}
+
 func TestServicePortConfigToFlagP(t *testing.T) {
 	t.Parallel()
 	type testCase struct {
@@ -603,26 +612,17 @@ services:
 	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
-	getContainersFromService := func(svcName string) []Container {
-		svcConfig, err := project.GetService(svcName)
-		assert.NilError(t, err)
-		svc, err := Parse(project, svcConfig)
-		assert.NilError(t, err)
-
-		return svc.Containers
-	}
-
 	var c Container
-	c = getContainersFromService("onfailure_no_count")[0]
+	c = getContainersFromService(t, project, "onfailure_no_count")[0]
 	assert.Assert(t, in(c.RunArgs, "--restart=on-failure"))
 
-	c = getContainersFromService("onfailure_with_count")[0]
+	c = getContainersFromService(t, project, "onfailure_with_count")[0]
 	assert.Assert(t, in(c.RunArgs, "--restart=on-failure:10"))
 
-	c = getContainersFromService("onfailure_ignore")[0]
+	c = getContainersFromService(t, project, "onfailure_ignore")[0]
 	assert.Assert(t, !in(c.RunArgs, "--restart=on-failure:3.14"))
 
-	c = getContainersFromService("unless_stopped")[0]
+	c = getContainersFromService(t, project, "unless_stopped")[0]
 	assert.Assert(t, in(c.RunArgs, "--restart=unless-stopped"))
 }
 
@@ -659,33 +659,25 @@ services:
 	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
 	assert.NilError(t, err)
 
-	getContainersFromService := func(svcName string) []Container {
-		svcConfig, err := project.GetService(svcName)
-		assert.NilError(t, err)
-		svc, err := Parse(project, svcConfig)
-		assert.NilError(t, err)
-		return svc.Containers
-	}
-
 	var c Container
 
-	c = getContainersFromService("cmd_shell")[0]
+	c = getContainersFromService(t, project, "cmd_shell")[0]
 	assert.Assert(t, in(c.RunArgs, "--health-cmd=curl -f http://localhost || exit 1"))
 	assert.Assert(t, in(c.RunArgs, "--health-interval=30s"))
 	assert.Assert(t, in(c.RunArgs, "--health-timeout=10s"))
 	assert.Assert(t, in(c.RunArgs, "--health-retries=3"))
 	assert.Assert(t, in(c.RunArgs, "--health-start-period=5s"))
 
-	c = getContainersFromService("cmd_exec")[0]
+	c = getContainersFromService(t, project, "cmd_exec")[0]
 	assert.Assert(t, in(c.RunArgs, "--health-cmd=curl -f http://localhost"))
 	assert.Assert(t, in(c.RunArgs, "--health-interval=1m0s"))
 
-	c = getContainersFromService("disabled_flag")[0]
+	c = getContainersFromService(t, project, "disabled_flag")[0]
 	assert.Assert(t, in(c.RunArgs, "--no-healthcheck"))
 	assert.Assert(t, !slices.ContainsFunc(c.RunArgs, func(s string) bool {
 		return strings.HasPrefix(s, "--health-cmd=")
 	}))
 
-	c = getContainersFromService("disabled_none")[0]
+	c = getContainersFromService(t, project, "disabled_none")[0]
 	assert.Assert(t, in(c.RunArgs, "--no-healthcheck"))
 }
