@@ -288,20 +288,20 @@ func TestCreateWithTty(t *testing.T) {
 			Description: "create with tty - stty succeeds",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("create", "-t", "--name", data.Identifier(), testutil.CommonImage, "stty")
+				// start without -a: tty output is not forwarded over a pipe, so
+				// capturing it via "start -a" is unreliable. Use "logs" instead,
+				// which reads from the containerd log driver regardless of tty.
+				helpers.Ensure("start", data.Identifier())
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("container", "rm", "-f", data.Identifier())
 			},
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("start", "-a", data.Identifier())
+				return helpers.Command("logs", data.Identifier())
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 0,
-					Output: func(stdout string, t tig.T) {
-						assert.Assert(t, strings.Contains(stdout, "speed 38400 baud; line = 0;"),
-							fmt.Sprintf("expected stdout to contain speed info: %q", stdout))
-					},
+					Output: expect.Contains("speed 38400 baud; line = 0;"),
 				}
 			},
 		},
