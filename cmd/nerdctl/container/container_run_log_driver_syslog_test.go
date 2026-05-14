@@ -80,6 +80,11 @@ func buildSyslogSubTests(
 
 					cases = append(cases, &test.Case{
 						Description: subName,
+						// runPacketSyslog reads with 4x100ms deadlines (~400ms total).
+						// Parallel execution on slow arm runners pushes container startup
+						// past that window, causing the server to send "" on the channel.
+						// Sequential matches the original t.Run-based test behaviour.
+						NoParallel: true,
 						Setup: func(data test.Data, helpers test.Helpers) {
 							if !testsyslog.TestableNetwork(network) {
 								if rootlessutil.IsRootless() {
