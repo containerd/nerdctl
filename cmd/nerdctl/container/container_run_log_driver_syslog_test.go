@@ -39,8 +39,9 @@ import (
 
 // buildSyslogSubTests expands the (network x facility x format) cross product
 // into independent Tigron sub-cases. Each sub-case starts its own syslog
-// listener in Setup, runs a detached container in Command, and validates the
-// received frame in Cleanup.
+// listener in Command (immediately before the container launch) to avoid the
+// 300ms goroutine timeout in runPacketSyslog expiring before the container
+// sends its first log entry. Validation happens in Cleanup.
 func buildSyslogSubTests(
 	networks []string,
 	syslogFacilities map[string]syslog.Priority,
@@ -90,10 +91,14 @@ func buildSyslogSubTests(
 							tag = tID + "_syslog_driver"
 							msg = "hello, " + tID + "_syslog_driver"
 							containerName = fmt.Sprintf("%s-%s", tID, fPriK)
-							done = make(chan string)
-							addr, closer = testsyslog.StartServer(network, "", done, *certRef)
 						},
 						Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+							// Start the server here, immediately before launching the
+							// container, so the 300ms goroutine timeout in
+							// runPacketSyslog does not expire before the container
+							// produces its first log entry.
+							done = make(chan string)
+							addr, closer = testsyslog.StartServer(network, "", done, *certRef)
 							args := []string{
 								"run",
 								"-d",
