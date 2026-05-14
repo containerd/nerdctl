@@ -28,10 +28,11 @@ import (
 type DownOptions struct {
 	RemoveVolumes bool
 	RemoveOrphans bool
+	Services      []string
 }
 
-func (c *Composer) Down(ctx context.Context, downOptions DownOptions) error {
-	serviceNames, err := c.ServiceNames()
+func (c *Composer) Down(ctx context.Context, downOptions DownOptions, services []string) error {
+	serviceNames, err := c.ServiceNames(services...)
 	if err != nil {
 		return err
 	}
