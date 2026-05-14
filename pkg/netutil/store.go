@@ -53,7 +53,10 @@ func fsRemove(e *CNIEnv, net *NetworkConfig) error {
 
 func fsExists(e *CNIEnv, name string) (bool, error) {
 	fi, err := os.Stat(getConfigPathForNetworkName(e, name))
-	return !os.IsNotExist(err) && !fi.IsDir(), err
+	if err != nil {
+		return false, err
+	}
+	return !fi.IsDir(), nil
 }
 
 func fsWrite(e *CNIEnv, net *NetworkConfig) error {
