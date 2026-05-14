@@ -18,8 +18,8 @@ package container
 
 import (
 	"fmt"
+	"io"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -27,102 +27,176 @@ import (
 
 	syslog "github.com/yuchanns/srslog"
 
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testca"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testsyslog"
 )
 
-func runSyslogTest(t *testing.T, networks []string, syslogFacilities map[string]syslog.Priority, fmtValidFuncs map[string]func(string, string, string, string, syslog.Priority, bool) error) {
-	if runtime.GOOS == "windows" {
-		t.Skip("syslog container logging is not officially supported on Windows")
-	}
+// buildSyslogSubTests expands the (network x facility x format) cross product
+// into independent Tigron sub-cases. Each sub-case starts its own syslog
+// listener in Setup, runs a detached container in Command, and validates the
+// received frame in Cleanup.
+func buildSyslogSubTests(
+	networks []string,
+	syslogFacilities map[string]syslog.Priority,
+	fmtValidFuncs map[string]func(string, string, string, string, syslog.Priority, bool) error,
+	caRef **testca.CA,
+	certRef **testca.Cert,
+	hostnameRef *string,
+) []*test.Case {
+	var cases []*test.Case
 
-	base := testutil.NewBase(t)
-	base.Cmd("pull", "--quiet", testutil.CommonImage).AssertOK()
-	hostname, err := os.Hostname()
-	if err != nil {
-		t.Fatalf("Error retrieving hostname")
-	}
-	ca := testca.New(base.T)
-	cert := ca.NewCert("127.0.0.1")
-	t.Cleanup(func() {
-		cert.Close()
-		ca.Close()
-	})
-	rI := 0
 	for _, network := range networks {
+		network := network
 		for rFK, rFV := range syslogFacilities {
+			rFK := rFK
 			fPriV := rFV
-			// test both string and number facility
 			for _, fPriK := range []string{rFK, strconv.Itoa(int(fPriV) >> 3)} {
+				fPriK := fPriK
 				for fmtK, fmtValidFunc := range fmtValidFuncs {
+					fmtK := fmtK
+					fmtValidFunc := fmtValidFunc
+
 					fmtKT := "empty"
 					if fmtK != "" {
 						fmtKT = fmtK
 					}
-					subTestName := fmt.Sprintf("%s_%s_%s", strings.ReplaceAll(network, "+", "_"), fPriK, fmtKT)
-					i := rI
-					rI++
-					t.Run(subTestName, func(t *testing.T) {
-						tID := testutil.Identifier(t)
-						tag := tID + "_syslog_driver"
-						msg := "hello, " + tID + "_syslog_driver"
-						if !testsyslog.TestableNetwork(network) {
-							if rootlessutil.IsRootless() {
-								t.Skipf("skipping on %s/%s; '%s' for rootless containers are not supported", runtime.GOOS, runtime.GOARCH, network)
+					subName := fmt.Sprintf("%s_%s_%s", strings.ReplaceAll(network, "+", "_"), fPriK, fmtKT)
+
+					var (
+						addr          string
+						done          chan string
+						closer        io.Closer
+						containerName string
+						tag           string
+						msg           string
+					)
+
+					cases = append(cases, &test.Case{
+						Description: subName,
+						Setup: func(data test.Data, helpers test.Helpers) {
+							if !testsyslog.TestableNetwork(network) {
+								if rootlessutil.IsRootless() {
+									helpers.T().Skip(fmt.Sprintf("%q for rootless containers is not supported", network))
+								}
+								helpers.T().Skip(fmt.Sprintf("%q is not supported", network))
 							}
-							t.Skipf("skipping on %s/%s; '%s' is not supported", runtime.GOOS, runtime.GOARCH, network)
-						}
-						testContainerName := fmt.Sprintf("%s-%d-%s", tID, i, fPriK)
-						done := make(chan string)
-						addr, closer := testsyslog.StartServer(network, "", done, cert)
-						args := []string{
-							"run",
-							"-d",
-							"--name",
-							testContainerName,
-							"--restart=no",
-							"--log-driver=syslog",
-							"--log-opt=syslog-facility=" + fPriK,
-							"--log-opt=tag=" + tag,
-							"--log-opt=syslog-format=" + fmtK,
-							"--log-opt=syslog-address=" + fmt.Sprintf("%s://%s", network, addr),
-						}
-						if network == "tcp+tls" {
-							args = append(args,
-								"--log-opt=syslog-tls-cert="+cert.CertPath,
-								"--log-opt=syslog-tls-key="+cert.KeyPath,
-								"--log-opt=syslog-tls-ca-cert="+ca.CertPath,
-							)
-						}
-						args = append(args, testutil.CommonImage, "echo", msg)
-						base.Cmd(args...).AssertOK()
-						t.Cleanup(func() {
-							base.Cmd("rm", "-f", testContainerName).AssertOK()
-						})
-						defer closer.Close()
-						defer close(done)
-						select {
-						case rcvd := <-done:
-							if err := fmtValidFunc(rcvd, msg, tag, hostname, fPriV, network == "tcp+tls"); err != nil {
-								t.Error(err)
+							tID := data.Identifier()
+							tag = tID + "_syslog_driver"
+							msg = "hello, " + tID + "_syslog_driver"
+							containerName = fmt.Sprintf("%s-%s", tID, fPriK)
+							done = make(chan string)
+							addr, closer = testsyslog.StartServer(network, "", done, *certRef)
+						},
+						Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+							args := []string{
+								"run",
+								"-d",
+								"--name", containerName,
+								"--restart=no",
+								"--log-driver=syslog",
+								"--log-opt=syslog-facility=" + fPriK,
+								"--log-opt=tag=" + tag,
+								"--log-opt=syslog-format=" + fmtK,
+								"--log-opt=syslog-address=" + fmt.Sprintf("%s://%s", network, addr),
 							}
-						case <-time.Tick(time.Second * 3):
-							t.Errorf("timeout with %s", subTestName)
-						}
+							if network == "tcp+tls" {
+								cert := *certRef
+								ca := *caRef
+								args = append(args,
+									"--log-opt=syslog-tls-cert="+cert.CertPath,
+									"--log-opt=syslog-tls-key="+cert.KeyPath,
+									"--log-opt=syslog-tls-ca-cert="+ca.CertPath,
+								)
+							}
+							args = append(args, testutil.CommonImage, "echo", msg)
+							return helpers.Command(args...)
+						},
+						Expected: test.Expects(0, nil, nil),
+						Cleanup: func(data test.Data, helpers test.Helpers) {
+							if containerName != "" {
+								helpers.Anyhow("rm", "-f", containerName)
+							}
+							if closer == nil || done == nil {
+								return
+							}
+							defer closer.Close()
+							defer close(done)
+							select {
+							case rcvd := <-done:
+								if err := fmtValidFunc(rcvd, msg, tag, *hostnameRef, fPriV, network == "tcp+tls"); err != nil {
+									helpers.T().Log(err)
+									helpers.T().Fail()
+								}
+							case <-time.After(time.Second * 3):
+								helpers.T().Log(fmt.Sprintf("timeout with %s", subName))
+								helpers.T().Fail()
+							}
+						},
 					})
 				}
 			}
 		}
 	}
+
+	return cases
+}
+
+// newSyslogTestCase wires the shared outer fixture: skip on Windows, pull the
+// image, generate a CA/cert pair, and expose them to the sub-cases via the
+// returned pointers.
+func newSyslogTestCase(t *testing.T) (*test.Case, **testca.CA, **testca.Cert, *string) {
+	t.Helper()
+
+	testCase := &test.Case{
+		Require: require.Not(require.OS("windows")),
+	}
+
+	var (
+		ca       *testca.CA
+		cert     *testca.Cert
+		hostname string
+	)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+		hn, err := os.Hostname()
+		if err != nil {
+			helpers.T().Log(fmt.Sprintf("retrieving hostname: %v", err))
+			helpers.T().FailNow()
+		}
+		hostname = hn
+		ca = testca.New(t)
+		cert = ca.NewCert("127.0.0.1")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if cert != nil {
+			cert.Close()
+		}
+		if ca != nil {
+			ca.Close()
+		}
+	}
+
+	return testCase, &ca, &cert, &hostname
 }
 
 func TestSyslogNetwork(t *testing.T) {
-	var syslogFacilities = map[string]syslog.Priority{
+	base := nerdtest.Setup()
+	tc, caRef, certRef, hostnameRef := newSyslogTestCase(t)
+	base.Require = tc.Require
+	base.Setup = tc.Setup
+	base.Cleanup = tc.Cleanup
+
+	syslogFacilities := map[string]syslog.Priority{
 		"user": syslog.LOG_USER,
 	}
-
 	networks := []string{
 		"udp",
 		"tcp",
@@ -131,28 +205,22 @@ func TestSyslogNetwork(t *testing.T) {
 		"unixgram",
 	}
 	fmtValidFuncs := map[string]func(string, string, string, string, syslog.Priority, bool) error{
-		"rfc5424": func(rcvd, msg, tag, hostname string, pri syslog.Priority, isTLS bool) error {
-			var parsedHostname, timestamp string
-			var length, version, pid int
-			if !isTLS {
-				exp := fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%d %s %s " + tag + " %d " + tag + " - " + msg + "\n"
-				if n, err := fmt.Sscanf(rcvd, exp, &version, &timestamp, &parsedHostname, &pid); n != 4 || err != nil || hostname != parsedHostname {
-					return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
-				}
-			} else {
-				exp := "%d " + fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%d %s %s " + tag + " %d " + tag + " - " + msg + "\n"
-				if n, err := fmt.Sscanf(rcvd, exp, &length, &version, &timestamp, &parsedHostname, &pid); n != 5 || err != nil || hostname != parsedHostname {
-					return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
-				}
-			}
-			return nil
-		},
+		"rfc5424": rfc5424Validator,
 	}
-	runSyslogTest(t, networks, syslogFacilities, fmtValidFuncs)
+
+	base.SubTests = buildSyslogSubTests(networks, syslogFacilities, fmtValidFuncs, caRef, certRef, hostnameRef)
+
+	base.Run(t)
 }
 
 func TestSyslogFacilities(t *testing.T) {
-	var syslogFacilities = map[string]syslog.Priority{
+	base := nerdtest.Setup()
+	tc, caRef, certRef, hostnameRef := newSyslogTestCase(t)
+	base.Require = tc.Require
+	base.Setup = tc.Setup
+	base.Cleanup = tc.Cleanup
+
+	syslogFacilities := map[string]syslog.Priority{
 		"kern":     syslog.LOG_KERN,
 		"user":     syslog.LOG_USER,
 		"mail":     syslog.LOG_MAIL,
@@ -174,86 +242,72 @@ func TestSyslogFacilities(t *testing.T) {
 		"local6":   syslog.LOG_LOCAL6,
 		"local7":   syslog.LOG_LOCAL7,
 	}
-
 	networks := []string{"unix"}
 	fmtValidFuncs := map[string]func(string, string, string, string, syslog.Priority, bool) error{
-		"rfc5424": func(rcvd, msg, tag, hostname string, pri syslog.Priority, isTLS bool) error {
-			var parsedHostname, timestamp string
-			var length, version, pid int
-			if !isTLS {
-				exp := fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%d %s %s " + tag + " %d " + tag + " - " + msg + "\n"
-				if n, err := fmt.Sscanf(rcvd, exp, &version, &timestamp, &parsedHostname, &pid); n != 4 || err != nil || hostname != parsedHostname {
-					return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
-				}
-			} else {
-				exp := "%d " + fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%d %s %s " + tag + " %d " + tag + " - " + msg + "\n"
-				if n, err := fmt.Sscanf(rcvd, exp, &length, &version, &timestamp, &parsedHostname, &pid); n != 5 || err != nil || hostname != parsedHostname {
-					return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
-				}
-			}
-			return nil
-		},
+		"rfc5424": rfc5424Validator,
 	}
-	runSyslogTest(t, networks, syslogFacilities, fmtValidFuncs)
+
+	base.SubTests = buildSyslogSubTests(networks, syslogFacilities, fmtValidFuncs, caRef, certRef, hostnameRef)
+
+	base.Run(t)
 }
 
 func TestSyslogFormat(t *testing.T) {
-	var syslogFacilities = map[string]syslog.Priority{
+	base := nerdtest.Setup()
+	tc, caRef, certRef, hostnameRef := newSyslogTestCase(t)
+	base.Require = tc.Require
+	base.Setup = tc.Setup
+	base.Cleanup = tc.Cleanup
+
+	syslogFacilities := map[string]syslog.Priority{
 		"user": syslog.LOG_USER,
 	}
-
 	networks := []string{"unix"}
 	fmtValidFuncs := map[string]func(string, string, string, string, syslog.Priority, bool) error{
-		"": func(rcvd, msg, tag, hostname string, pri syslog.Priority, isSTLS bool) error {
-			var mon, day, hrs string
-			var pid int
-			exp := fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%s %s %s " + tag + "[%d]: " + msg + "\n"
-			if n, err := fmt.Sscanf(rcvd, exp, &mon, &day, &hrs, &pid); n != 4 || err != nil {
-				return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
-			}
-			return nil
-		},
-		"rfc3164": func(rcvd, msg, tag, hostname string, pri syslog.Priority, isTLS bool) error {
-			var parsedHostname, mon, day, hrs string
-			var pid int
-			exp := fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%s %s %s %s " + tag + "[%d]: " + msg + "\n"
-			if n, err := fmt.Sscanf(rcvd, exp, &mon, &day, &hrs, &parsedHostname, &pid); n != 5 || err != nil || hostname != parsedHostname {
-				return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
-			}
-			return nil
-		},
-		"rfc5424": func(rcvd, msg, tag, hostname string, pri syslog.Priority, isTLS bool) error {
-			var parsedHostname, timestamp string
-			var length, version, pid int
-			if !isTLS {
-				exp := fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%d %s %s " + tag + " %d " + tag + " - " + msg + "\n"
-				if n, err := fmt.Sscanf(rcvd, exp, &version, &timestamp, &parsedHostname, &pid); n != 4 || err != nil || hostname != parsedHostname {
-					return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
-				}
-			} else {
-				exp := "%d " + fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%d %s %s " + tag + " %d " + tag + " - " + msg + "\n"
-				if n, err := fmt.Sscanf(rcvd, exp, &length, &version, &timestamp, &parsedHostname, &pid); n != 5 || err != nil || hostname != parsedHostname {
-					return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
-				}
-			}
-			return nil
-		},
-		"rfc5424micro": func(rcvd, msg, tag, hostname string, pri syslog.Priority, isTLS bool) error {
-			var parsedHostname, timestamp string
-			var length, version, pid int
-			if !isTLS {
-				exp := fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%d %s %s " + tag + " %d " + tag + " - " + msg + "\n"
-				if n, err := fmt.Sscanf(rcvd, exp, &version, &timestamp, &parsedHostname, &pid); n != 4 || err != nil || hostname != parsedHostname {
-					return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
-				}
-			} else {
-				exp := "%d " + fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%d %s %s " + tag + " %d " + tag + " - " + msg + "\n"
-				if n, err := fmt.Sscanf(rcvd, exp, &length, &version, &timestamp, &parsedHostname, &pid); n != 5 || err != nil || hostname != parsedHostname {
-					return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
-				}
-			}
-			return nil
-		},
+		"":             emptyFormatValidator,
+		"rfc3164":      rfc3164Validator,
+		"rfc5424":      rfc5424Validator,
+		"rfc5424micro": rfc5424Validator,
 	}
-	runSyslogTest(t, networks, syslogFacilities, fmtValidFuncs)
+
+	base.SubTests = buildSyslogSubTests(networks, syslogFacilities, fmtValidFuncs, caRef, certRef, hostnameRef)
+
+	base.Run(t)
+}
+
+func rfc5424Validator(rcvd, msg, tag, hostname string, pri syslog.Priority, isTLS bool) error {
+	var parsedHostname, timestamp string
+	var length, version, pid int
+	if !isTLS {
+		exp := fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%d %s %s " + tag + " %d " + tag + " - " + msg + "\n"
+		if n, err := fmt.Sscanf(rcvd, exp, &version, &timestamp, &parsedHostname, &pid); n != 4 || err != nil || hostname != parsedHostname {
+			return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
+		}
+		return nil
+	}
+	exp := "%d " + fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%d %s %s " + tag + " %d " + tag + " - " + msg + "\n"
+	if n, err := fmt.Sscanf(rcvd, exp, &length, &version, &timestamp, &parsedHostname, &pid); n != 5 || err != nil || hostname != parsedHostname {
+		return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
+	}
+	return nil
+}
+
+func rfc3164Validator(rcvd, msg, tag, hostname string, pri syslog.Priority, _ bool) error {
+	var parsedHostname, mon, day, hrs string
+	var pid int
+	exp := fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%s %s %s %s " + tag + "[%d]: " + msg + "\n"
+	if n, err := fmt.Sscanf(rcvd, exp, &mon, &day, &hrs, &parsedHostname, &pid); n != 5 || err != nil || hostname != parsedHostname {
+		return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
+	}
+	return nil
+}
+
+func emptyFormatValidator(rcvd, msg, tag, _ string, pri syslog.Priority, _ bool) error {
+	var mon, day, hrs string
+	var pid int
+	exp := fmt.Sprintf("<%d>", pri|syslog.LOG_INFO) + "%s %s %s " + tag + "[%d]: " + msg + "\n"
+	if n, err := fmt.Sscanf(rcvd, exp, &mon, &day, &hrs, &pid); n != 4 || err != nil {
+		return fmt.Errorf("s.Info() = '%q', didn't match '%q' (%d %s)", rcvd, exp, n, err)
+	}
+	return nil
 }
