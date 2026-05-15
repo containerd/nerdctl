@@ -152,7 +152,7 @@ Usage: `nerdctl run [OPTIONS] IMAGE [COMMAND] [ARG...]`
 Basic flags:
 
 - :whale: `-a, --attach`: Attach STDIN, STDOUT, or STDERR
-- :whale: `-i, --interactive`: Keep STDIN open even if not attached"
+- :whale: `-i, --interactive`: Keep STDIN open even if not attached
 - :whale: `-t, --tty`: Allocate a pseudo-TTY
   - :warning: WIP: currently `-t` conflicts with `-d`
 - :whale: `-sig-proxy`: Proxy received signals to the process (default true)
