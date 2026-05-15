@@ -32,6 +32,7 @@ import (
 
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/identifiers"
 	"github.com/containerd/nerdctl/v2/pkg/reflectutil"
 )
@@ -78,6 +79,7 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		"Extends", // handled by the loader
 		"Extensions",
 		"ExtraHosts",
+		"HealthCheck",
 		"Hostname",
 		"Image",
 		"Init",
@@ -118,6 +120,21 @@ func warnUnknownFields(svc types.ServiceConfig) {
 			"Weight",
 		); len(unknown) > 0 {
 			log.L.Warnf("Ignoring: service %s: blkio_config: %+v", svc.Name, unknown)
+		}
+	}
+
+	if svc.HealthCheck != nil {
+		if unknown := reflectutil.UnknownNonEmptyFields(svc.HealthCheck,
+			"Test",
+			"Timeout",
+			"Interval",
+			"Retries",
+			"StartPeriod",
+			"Disable",
+			"Extensions",
+			// TODO: add support 'StartInterval'
+		); len(unknown) > 0 {
+			log.L.Warnf("Ignoring: service %s: healthcheck: %+v", svc.Name, unknown)
 		}
 	}
 
@@ -745,6 +762,46 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 
 	if svc.WorkingDir != "" {
 		c.RunArgs = append(c.RunArgs, "-w="+svc.WorkingDir)
+	}
+
+	if svc.HealthCheck != nil {
+		hc := svc.HealthCheck
+		disabled := hc.Disable
+
+		if !disabled && len(hc.Test) > 0 {
+			switch hc.Test[0] {
+			case healthcheck.CmdNone:
+				disabled = true
+			case healthcheck.CmdShell:
+				if len(hc.Test) >= 2 {
+					c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-cmd=%s", hc.Test[1]))
+				}
+			case healthcheck.Cmd:
+				// CMD exec form is converted to CMD-SHELL because --health-cmd always stores
+				// the command as CMD-SHELL (see pkg/cmd/container/create.go: withHealthcheck).
+				// This means the command will be executed via /bin/sh -c instead of exec directly.
+				if len(hc.Test) >= 2 {
+					log.L.Warnf("service %s: healthcheck: CMD exec form is not supported, converting to CMD-SHELL", svc.Name)
+					c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-cmd=%s", strings.Join(hc.Test[1:], " ")))
+				}
+			}
+		}
+		if disabled {
+			c.RunArgs = append(c.RunArgs, "--no-healthcheck")
+		} else {
+			if hc.Interval != nil {
+				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-interval=%s", time.Duration(*hc.Interval).String()))
+			}
+			if hc.Timeout != nil {
+				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-timeout=%s", time.Duration(*hc.Timeout).String()))
+			}
+			if hc.Retries != nil {
+				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-retries=%d", *hc.Retries))
+			}
+			if hc.StartPeriod != nil {
+				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-start-period=%s", time.Duration(*hc.StartPeriod).String()))
+			}
+		}
 	}
 
 	c.RunArgs = append(c.RunArgs, parsed.Image) // NOT svc.Image
