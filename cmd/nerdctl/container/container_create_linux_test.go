@@ -51,7 +51,7 @@ func TestCreateWithLabel(t *testing.T) {
 	}
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
-			ExitCode: 0,
+			ExitCode: expect.ExitCodeSuccess,
 			Output: func(stdout string, t tig.T) {
 				fooLabel := strings.TrimSpace(helpers.Capture("inspect", "--format", `{{index .Config.Labels "foo"}}`, data.Identifier()))
 				assert.Equal(t, "bar", fooLabel)
@@ -126,7 +126,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 			Command: makeCreateCommand("host"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 0,
+					ExitCode: expect.ExitCodeSuccess,
 					Output: func(stdout string, t tig.T) {
 						startOut := helpers.Capture("start", "-a", data.Identifier())
 						assert.Assert(t, strings.Contains(startOut, data.Labels().Get(defaultMacKey)),
@@ -144,7 +144,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 			Command: makeCreateCommand("none"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 0,
+					ExitCode: expect.ExitCodeSuccess,
 					Output: func(stdout string, t tig.T) {
 						helpers.Ensure("start", "-a", data.Identifier())
 					},
@@ -162,18 +162,18 @@ func TestCreateWithMACAddress(t *testing.T) {
 				if nerdtest.IsDocker() {
 					// Docker delays the failure to start time
 					return &test.Expected{
-						ExitCode: 0,
+						ExitCode: expect.ExitCodeSuccess,
 						Output: func(stdout string, t tig.T) {
 							helpers.Command("start", "-i", "-a", data.Identifier()).
 								Run(&test.Expected{
-									ExitCode: 1,
+									ExitCode: expect.ExitCodeGenericFail,
 									Errors:   []error{errors.New("container")},
 								})
 						},
 					}
 				}
 				return &test.Expected{
-					ExitCode: 1,
+					ExitCode: expect.ExitCodeGenericFail,
 					Errors:   []error{errors.New("container")},
 				}
 			},
@@ -187,7 +187,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 			Command: makeCreateCommand("bridge"),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 0,
+					ExitCode: expect.ExitCodeSuccess,
 					Output: func(stdout string, t tig.T) {
 						startOut := helpers.Capture("start", "-a", data.Identifier())
 						assert.Assert(t, strings.Contains(startOut, data.Labels().Get(macAddressKey)),
@@ -205,7 +205,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 			Command: makeDynamicCreateCommand(networkBridgeKey),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 0,
+					ExitCode: expect.ExitCodeSuccess,
 					Output: func(stdout string, t tig.T) {
 						startOut := helpers.Capture("start", "-a", data.Identifier())
 						assert.Assert(t, strings.Contains(startOut, data.Labels().Get(macAddressKey)),
@@ -223,7 +223,7 @@ func TestCreateWithMACAddress(t *testing.T) {
 			Command: makeDynamicCreateCommand(networkMACvlanKey),
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 0,
+					ExitCode: expect.ExitCodeSuccess,
 					Output: func(stdout string, t tig.T) {
 						startOut := helpers.Capture("start", "-a", data.Identifier())
 						assert.Assert(t, strings.Contains(startOut, data.Labels().Get(macAddressKey)),
@@ -243,18 +243,18 @@ func TestCreateWithMACAddress(t *testing.T) {
 				if nerdtest.IsDocker() {
 					// Docker delays the failure to start time
 					return &test.Expected{
-						ExitCode: 0,
+						ExitCode: expect.ExitCodeSuccess,
 						Output: func(stdout string, t tig.T) {
 							helpers.Command("start", "-i", "-a", data.Identifier()).
 								Run(&test.Expected{
-									ExitCode: 1,
+									ExitCode: expect.ExitCodeGenericFail,
 									Errors:   []error{errors.New("not support")},
 								})
 						},
 					}
 				}
 				return &test.Expected{
-					ExitCode: 1,
+					ExitCode: expect.ExitCodeGenericFail,
 					Errors:   []error{errors.New("not support")},
 				}
 			},
@@ -279,7 +279,7 @@ func TestCreateWithTty(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 1,
+					ExitCode: expect.ExitCodeGenericFail,
 					Errors:   []error{errors.New("stty: standard input: Not a tty")},
 				}
 			},
@@ -363,7 +363,7 @@ func TestIssue2993(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 1,
+					ExitCode: expect.ExitCodeGenericFail,
 					Errors:   []error{errors.New("is already used by ID")},
 					Output: func(stdout string, t tig.T) {
 						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
@@ -410,7 +410,7 @@ func TestIssue2993(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 0,
+					ExitCode: expect.ExitCodeSuccess,
 					Errors:   []error{},
 					Output: func(stdout string, t tig.T) {
 						containersDirs, err := os.ReadDir(data.Labels().Get(containersPathKey))
@@ -464,7 +464,7 @@ func TestCreateFromOCIArchive(t *testing.T) {
 	}
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
-			ExitCode: 0,
+			ExitCode: expect.ExitCodeSuccess,
 			Output: func(stdout string, t tig.T) {
 				assert.Assert(t, strings.Contains(stdout, sentinel),
 					fmt.Sprintf("expected stdout to contain %q: %q", sentinel, stdout))
@@ -504,7 +504,7 @@ func TestUsernsMappingCreateCmd(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 0,
+					ExitCode: expect.ExitCodeSuccess,
 					Output: func(stdout string, t tig.T) {
 						actualHostUID, err := getContainerHostUID(helpers, data.Identifier())
 						assert.NilError(t, err, "Failed to get container host UID")
@@ -528,7 +528,7 @@ func TestUsernsMappingCreateCmd(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 1,
+					ExitCode: expect.ExitCodeGenericFail,
 				}
 			},
 		},
@@ -543,7 +543,7 @@ func TestUsernsMappingCreateCmd(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					ExitCode: 1,
+					ExitCode: expect.ExitCodeGenericFail,
 				}
 			},
 		},
@@ -608,9 +608,9 @@ func appendUsernsConfig(userns string, hostUID string, helpers test.Helpers) err
 
 func addUser(username string, hostID string, helpers test.Helpers) {
 	helpers.Custom("groupadd", "-g", hostID, username).Run(&test.Expected{
-		ExitCode: 0})
+		ExitCode: expect.ExitCodeSuccess})
 	helpers.Custom("useradd", "-u", hostID, "-g", hostID, "-s", "/bin/false", username).Run(&test.Expected{
-		ExitCode: 0})
+		ExitCode: expect.ExitCodeSuccess})
 }
 
 func removeUsernsConfig(t tig.T, userns string, helpers test.Helpers) {
