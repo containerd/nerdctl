@@ -7,6 +7,9 @@ on:
       - 'release/**'
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   # Runs golangci to ensure that:
   # 1. the tooling is working on the target platform

@@ -9,6 +9,9 @@ on:
     paths-ignore:
       - '**.md'
 
+permissions:
+  contents: read
+
 jobs:
   test-unit:
     # Note: inputs.hack is undefined - its purpose is to prevent GitHub Actions from displaying all matrix variants as part of the name.
