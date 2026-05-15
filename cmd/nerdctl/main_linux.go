@@ -52,6 +52,7 @@ func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 		case "cp":
 			return false
 		default:
+			//NOP
 		}
 	case "compose":
 		if len(commands) < 3 {
@@ -61,8 +62,10 @@ func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 		case "cp":
 			return false
 		default:
+			//NOP
 		}
 	default:
+		//NOP
 	}
 	return true
 }

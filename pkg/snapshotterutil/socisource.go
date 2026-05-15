@@ -105,6 +105,7 @@ func SociAppendDefaultLabelsHandlerWrapper(indexDigest string, wrapper func(imag
 					}
 				}
 			default:
+				// NOP
 			}
 			return children, nil
 		})

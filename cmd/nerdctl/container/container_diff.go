@@ -100,6 +100,7 @@ func diffAction(cmd *cobra.Command, args []string) error {
 				case fs.ChangeKindDelete:
 					fmt.Fprintln(options.Stdout, "D", change.Path)
 				default:
+					//NOP
 				}
 			}
 

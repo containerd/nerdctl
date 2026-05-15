@@ -29,6 +29,7 @@ func TestComposePauseAndUnpause(t *testing.T) {
 	case "none", "":
 		t.Skip("requires cgroup (for pausing)")
 	default:
+		// NOP
 	}
 
 	var dockerComposeYAML = fmt.Sprintf(`

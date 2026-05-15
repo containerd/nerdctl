@@ -47,7 +47,8 @@ func StartServer(n, la string, done chan<- string, certs ...*testca.Cert) (addr 
 		os.Remove(la)
 	}
 
-	if n == "udp" || n == "unixgram" {
+	switch n {
+	case "udp", "unixgram":
 		l, e := net.ListenPacket(n, la)
 		if e != nil {
 			log.Fatalf("startServer failed: %v", e)
@@ -55,7 +56,7 @@ func StartServer(n, la string, done chan<- string, certs ...*testca.Cert) (addr 
 		addr = l.LocalAddr().String()
 		sock = l
 		go runPacketSyslog(l, done)
-	} else if n == "tcp+tls" {
+	case "tcp+tls":
 		if len(certs) == 0 {
 			log.Fatalf("certificates required.")
 		}
@@ -75,7 +76,7 @@ func StartServer(n, la string, done chan<- string, certs ...*testca.Cert) (addr 
 		addr = l.Addr().String()
 		sock = l
 		go runStreamSyslog(l, done)
-	} else {
+	default:
 		l, e := net.Listen(n, la)
 		if e != nil {
 			log.Fatalf("startServer failed: %v", e)
@@ -104,6 +105,7 @@ func TestableNetwork(network string) bool {
 	case "udp", "tcp", "tcp+tls":
 		return !rootlessutil.IsRootless()
 	default:
+		// NOP
 	}
 	return true
 }

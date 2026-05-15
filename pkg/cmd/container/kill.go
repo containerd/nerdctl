@@ -105,6 +105,7 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 	case containerd.Paused, containerd.Pausing:
 		paused = true
 	default:
+		// NOP
 	}
 
 	if err := task.Kill(ctx, signal); err != nil {

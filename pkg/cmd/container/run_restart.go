@@ -33,6 +33,7 @@ func checkRestartCapabilities(ctx context.Context, client *containerd.Client, re
 	case "", "no":
 		return true, nil
 	default:
+		// NOP
 	}
 	res, err := client.IntrospectionService().Plugins(ctx, "id==restart")
 	if err != nil {
@@ -106,6 +107,7 @@ func UpdateContainerRestartPolicyLabel(ctx context.Context, client *containerd.C
 			case containerd.Created:
 				desireStatus = containerd.Created
 			default:
+				// NOP
 			}
 		}
 		updateOpts = append(updateOpts, restart.WithStatus(desireStatus))

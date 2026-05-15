@@ -65,6 +65,7 @@ func GetRevision() string {
 			case "vcs.modified":
 				vcsModified, _ = strconv.ParseBool(f.Value)
 			default:
+				//NOP
 			}
 		}
 		if vcsRevision == "" {

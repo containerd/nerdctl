@@ -184,7 +184,6 @@ linters:
         - name: add-constant
           # 2605 occurrences. Kind of useful in itself, but unacceptable amount of effort to fix
           disabled: true
-        - name: enforce-switch-style
     depguard:
       rules:
         no-patent:
@@ -195,7 +194,7 @@ linters:
         pkg:
           # pkg files must not depend on cobra nor anything in cmd
           files:
-            - '**/pkg/**/*.go'
+            - "**/pkg/**/*.go"
           deny:
             - pkg: github.com/spf13/cobra
               desc: pkg must not depend on cobra

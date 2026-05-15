@@ -264,6 +264,7 @@ func (gc *Command) Run(parentCtx context.Context) error {
 
 		return err
 	default:
+		// NOP
 	}
 
 	return nil
@@ -282,6 +283,7 @@ func (gc *Command) Wait() (*Result, error) {
 	case gc.result != nil:
 		return gc.result, ErrExecAlreadyFinished
 	default:
+		// NOP
 	}
 
 	// Cancel the context in any case now
@@ -294,6 +296,7 @@ func (gc *Command) Wait() (*Result, error) {
 	select {
 	case <-gc.exec.context.Done():
 	default:
+		// NOP
 	}
 
 	// Wrap the results and return
@@ -361,6 +364,7 @@ func (gc *Command) wrap() error {
 	case context.Canceled:
 		err = errExecutionCancelled
 	default:
+		// NOP
 	}
 
 	// Stuff everything in Result and return err.

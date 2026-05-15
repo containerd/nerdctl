@@ -95,8 +95,6 @@ linters:
             - "fmt.Fprint"
             - "fmt.Fprintln"
             - "fmt.Fprintf"
-        - name: redundant-test-main-exit
-        - name: enforce-switch-style
         - name: var-naming
           disabled: true
     depguard:
