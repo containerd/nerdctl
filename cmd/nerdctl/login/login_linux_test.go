@@ -190,7 +190,7 @@ func TestAgainstNoAuth(t *testing.T) {
 	t.Parallel()
 
 	// Start the registry with the requested options
-	reg := testregistry.NewRegistry(base, nil, 0, &testregistry.NoAuth{}, nil)
+	reg := testregistry.NewRegistry(base, nil, randomPort, &testregistry.NoAuth{}, nil)
 
 	// Register registry cleanup
 	t.Cleanup(func() {
