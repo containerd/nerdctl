@@ -301,7 +301,8 @@ func TestCreateWithTty(t *testing.T) {
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
-					Output: expect.Contains("speed 38400 baud; line = 0;"),
+					ExitCode: expect.ExitCodeSuccess,
+					Output:   expect.Contains("speed 38400 baud; line = 0;"),
 				}
 			},
 		},
