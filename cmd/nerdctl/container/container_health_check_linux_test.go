@@ -20,6 +20,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1208,4 +1211,90 @@ func TestStartHealthcheckedContainerAfterExited(t *testing.T) {
 	}
 
 	testCase.Run(t)
+}
+
+// TestHealthCheckDoesNotLeakShimPipeFDs ensures that running a health check does not leak anonymous pipe files in the containerd shim.
+func TestHealthCheckDoesNotLeakShimPipeFDs(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		require.Not(nerdtest.Rootless),
+		// Docker CLI does not provide a standalone healthcheck command.
+		require.Not(nerdtest.Docker),
+	)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(),
+			"--health-cmd", "true", "--health-interval", "1h",
+			testutil.CommonImage, "sleep", nerdtest.Infinity,
+		)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+
+		inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+		shimPID, err := parentPID(inspect.State.Pid)
+		assert.NilError(helpers.T(), err)
+
+		oldPipes, err := countShimPipeFDs(shimPID)
+		assert.NilError(helpers.T(), err)
+
+		data.Labels().Set("shimPID", strconv.Itoa(shimPID))
+		data.Labels().Set("oldPipes", strconv.Itoa(oldPipes))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("container", "healthcheck", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				shimPID, _ := strconv.Atoi(data.Labels().Get("shimPID"))
+				oldPipes, _ := strconv.Atoi(data.Labels().Get("oldPipes"))
+
+				newPipes, err := countShimPipeFDs(shimPID)
+				assert.NilError(t, err)
+				assert.Equal(t, oldPipes, newPipes,
+					"pipes leaked after health check: was %d, now %d",
+					oldPipes, newPipes)
+			},
+		}
+	}
+
+	testCase.Run(t)
+}
+
+func parentPID(pid int) (int, error) {
+	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
+	if err != nil {
+		return 0, err
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if v, ok := strings.CutPrefix(line, "PPid:"); ok {
+			return strconv.Atoi(strings.TrimSpace(v))
+		}
+	}
+	return 0, fmt.Errorf("PPid not found in /proc/%d/status", pid)
+}
+
+func countShimPipeFDs(shimPID int) (int, error) {
+	fdDir := fmt.Sprintf("/proc/%d/fd", shimPID)
+	entries, err := os.ReadDir(fdDir)
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	for _, e := range entries {
+		target, err := os.Readlink(filepath.Join(fdDir, e.Name()))
+		if err != nil {
+			continue
+		}
+		if strings.HasPrefix(target, "pipe:") {
+			count++
+		}
+	}
+	return count, nil
 }
