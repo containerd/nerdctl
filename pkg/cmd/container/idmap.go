@@ -26,27 +26,23 @@ import (
 
 const invalidID = 1<<32 - 1
 
-var invalidUser = User{Uid: invalidID, Gid: invalidID}
+var invalidUser = User{UID: invalidID, Gid: invalidID}
 
-// User is a Uid and Gid pair of a user
-//
-//nolint:revive
+// User is a UID and Gid pair of a user
 type User struct {
-	Uid uint32
+	UID uint32
 	Gid uint32
 }
 
-// IDMap contains the mappings of Uids and Gids.
-//
-//nolint:revive
+// IDMap contains the mappings of UIDs and Gids.
 type ContainerdIDMap struct {
-	UidMap []specs.LinuxIDMapping `json:"UidMap"`
+	UIDMap []specs.LinuxIDMapping `json:"UIDMap"`
 	GidMap []specs.LinuxIDMapping `json:"GidMap"`
 }
 
 // RootPair returns the ID pair for the root user
 func (i *ContainerdIDMap) RootPair() (User, error) {
-	uid, err := toHost(0, i.UidMap)
+	uid, err := toHost(0, i.UIDMap)
 	if err != nil {
 		return invalidUser, err
 	}
@@ -54,7 +50,7 @@ func (i *ContainerdIDMap) RootPair() (User, error) {
 	if err != nil {
 		return invalidUser, err
 	}
-	return User{Uid: uid, Gid: gid}, nil
+	return User{UID: uid, Gid: gid}, nil
 }
 
 // ToHost returns the host user ID pair for the container ID pair.
@@ -63,7 +59,7 @@ func (i *ContainerdIDMap) ToHost(pair User) (User, error) {
 		target User
 		err    error
 	)
-	target.Uid, err = toHost(pair.Uid, i.UidMap)
+	target.UID, err = toHost(pair.UID, i.UIDMap)
 	if err != nil {
 		return invalidUser, err
 	}
@@ -84,7 +80,7 @@ func (i *ContainerdIDMap) Marshal() (string, string) {
 		}
 		return strings.Join(arr, ",")
 	}
-	return marshal(i.UidMap), marshal(i.GidMap)
+	return marshal(i.UIDMap), marshal(i.GidMap)
 }
 
 // Unmarshal deserialize the passed uidmap and gidmap strings
@@ -104,7 +100,7 @@ func (i *ContainerdIDMap) Unmarshal(uidMap, gidMap string) error {
 		return nil
 	}
 	if err := unmarshal(uidMap, func(m specs.LinuxIDMapping) {
-		i.UidMap = append(i.UidMap, m)
+		i.UIDMap = append(i.UIDMap, m)
 	}); err != nil {
 		return err
 	}
