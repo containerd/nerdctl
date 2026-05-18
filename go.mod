@@ -44,7 +44,7 @@ require (
 	github.com/klauspost/compress v1.18.6
 	github.com/mattn/go-isatty v0.0.22 //gomodjail:unconfined
 	github.com/moby/moby/client v0.4.1
-	github.com/moby/moby/v2 v2.0.0-beta.13
+	github.com/moby/moby/v2 v2.0.0-beta.14
 	github.com/moby/sys/mount v0.3.4
 	github.com/moby/sys/signal v0.7.1
 	github.com/moby/sys/user v0.4.0 //gomodjail:unconfined
