@@ -28,11 +28,13 @@ jobs:
     runs-on: "${{ inputs.runner }}"
     env:
       TARGET: ${{ inputs.target }}
+      GUEST: ${{ inputs.guest }}
     steps:
       - name: "Init: checkout"
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - name: "Init: lima"
         uses: lima-vm/lima-actions/setup@55627e31b78637bf254a8b2a14da8ea7d12564e5  # v1.1.0
@@ -54,7 +56,7 @@ jobs:
             --memory=12 \
             --containerd=none \
             --set '.mounts=null | .portForwards=[{"guestSocket":"/var/run/docker.sock","hostSocket":"{{.Dir}}/sock/docker.sock"}]' \
-            template://${{ inputs.guest }}
+            template://${GUEST}
 
       # FIXME: the tests should be directly executed in the VM without nesting Docker inside it
       # https://github.com/containerd/nerdctl/issues/3858

@@ -7,6 +7,9 @@ on:
       - 'release/**'
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   # Runs golangci to ensure that:
   # 1. the tooling is working on the target platform
@@ -76,3 +79,20 @@ jobs:
       go-version: ${{ matrix.go-version }}
       runner: ubuntu-24.04
       canary: ${{ matrix.canary && true || false }}
+
+  zizmor:
+    name: "zizmor"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: "Run: zizmor"
+        uses: zizmorcore/zizmor-action@b1d7e1fb5de872772f31590499237e7cce841e8e  # v0.5.3
+        with:
+          inputs: .github/workflows
+          # Do not send workflow diagnostics to GitHub Advanced Security code scanning in this project right now.
+          # Keep this as a local CI check.
+          advanced-security: false
