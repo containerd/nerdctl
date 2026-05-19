@@ -19,44 +19,118 @@ package container
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"gotest.tools/v3/assert"
-	"gotest.tools/v3/poll"
 
 	"github.com/containerd/containerd/v2/core/runtime/restart"
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 )
 
-func TestRunRestart(t *testing.T) {
+func daemonSystemctlTarget() string {
+	if nerdtest.IsDocker() {
+		return "docker.service"
+	}
+	return "containerd.service"
+}
+
+func daemonSystemctlArgs() []string {
+	if os.Geteuid() != 0 {
+		return []string{"--user"}
+	}
+	return nil
+}
+
+func killDaemon(t tig.T) {
+	t.Helper()
+	target := daemonSystemctlTarget()
+	t.Log(fmt.Sprintf("killing %q", target))
+	cmd := exec.Command("systemctl", append(daemonSystemctlArgs(), "kill", target)...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Log(fmt.Sprintf("cannot kill %q: %q: %v", target, string(out), err))
+		t.FailNow()
+	}
+	// the daemon should restart automatically
+}
+
+func ensureDaemonActive(t tig.T) {
+	t.Helper()
+	target := daemonSystemctlTarget()
+	t.Log(fmt.Sprintf("checking activity of %q", target))
 	const (
-		hostPort = 8080
+		maxRetry = 30
+		sleep    = 3 * time.Second
 	)
-	testContainerName := testutil.Identifier(t)
+	for i := 0; i < maxRetry; i++ {
+		cmd := exec.Command("systemctl", append(daemonSystemctlArgs(), "is-active", target)...)
+		out, err := cmd.CombinedOutput()
+		t.Log(fmt.Sprintf("(retry=%d) %s", i, string(out)))
+		if err == nil {
+			// The daemon is now running, but the daemon may still refuse connections to containerd.sock
+			t.Log(fmt.Sprintf("daemon %q is now running, checking whether the daemon can handle requests", target))
+			infoOut, infoErr := exec.Command(testutil.GetTarget(), "info").CombinedOutput()
+			if infoErr == nil {
+				t.Log(fmt.Sprintf("daemon %q can now handle requests", target))
+				return
+			}
+			t.Log(fmt.Sprintf("(retry=%d) info failed: %s: %v", i, string(infoOut), infoErr))
+		}
+		time.Sleep(sleep)
+	}
+	t.Log(fmt.Sprintf("daemon %q not running?", target))
+	t.FailNow()
+}
+
+func dumpDaemonLogs(t tig.T, minutes int) {
+	t.Helper()
+	target := daemonSystemctlTarget()
+	cmd := exec.Command("journalctl",
+		append(daemonSystemctlArgs(), "-u", target, "--no-pager", "-S", fmt.Sprintf("%d min ago", minutes))...)
+	t.Log(fmt.Sprintf("===== %v =====", cmd.Args))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Log(fmt.Sprintf("failed to dump daemon logs: %v", err))
+		return
+	}
+	t.Log(string(out))
+	t.Log("==========")
+}
+
+// assertRestartCount asserts that `container inspect` reports the expected RestartCount.
+func assertRestartCount(expected int) test.Comparator {
+	return expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+		assert.Equal(t, 1, len(dc))
+		assert.Equal(t, dc[0].RestartCount, expected)
+	})
+}
+
+func TestRunRestart(t *testing.T) {
 	if testing.Short() {
 		t.Skipf("test is long")
 	}
-	base := testutil.NewBase(t)
-	if !base.DaemonIsKillable {
+	if !testutil.GetDaemonIsKillable() {
 		t.Skip("daemon is not killable (hint: set \"-test.allow-kill-daemon\")")
 	}
 	t.Log("NOTE: this test may take a while")
 
-	defer base.Cmd("rm", "-f", testContainerName).Run()
+	testCase := nerdtest.Setup()
+	testCase.NoParallel = true
 
-	base.Cmd("run", "-d",
-		"--restart=always",
-		"--name", testContainerName,
-		"-p", fmt.Sprintf("127.0.0.1:%d:80", hostPort),
-		testutil.NginxAlpineImage).AssertOK()
-
-	check := func(httpGetRetry int) error {
+	httpCheck := func(data test.Data, httpGetRetry int) error {
+		hostPort, _ := strconv.Atoi(data.Labels().Get("hostPort"))
 		resp, err := nettestutil.HTTPGet(fmt.Sprintf("http://127.0.0.1:%d", hostPort), httpGetRetry, false)
 		if err != nil {
 			return err
@@ -71,132 +145,235 @@ func TestRunRestart(t *testing.T) {
 		}
 		return nil
 	}
-	assert.NilError(t, check(5))
 
-	base.KillDaemon()
-	base.EnsureDaemonActive()
-
-	const (
-		maxRetry = 30
-		sleep    = 3 * time.Second
-	)
-	for i := 0; i < maxRetry; i++ {
-		t.Logf("(retry %d) ps -a: %q", i, base.Cmd("ps", "-a").Run().Combined())
-		err := check(1)
-		if err == nil {
-			t.Logf("test is passing, after %d retries", i)
-			return
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		port, err := portlock.Acquire(0)
+		if err != nil {
+			helpers.T().Log(fmt.Sprintf("failed to acquire port: %v", err))
+			helpers.T().FailNow()
 		}
-		time.Sleep(sleep)
+		data.Labels().Set("hostPort", strconv.Itoa(port))
+
+		helpers.Ensure("run", "-d",
+			"--restart=always",
+			"--name", data.Identifier(),
+			"-p", fmt.Sprintf("127.0.0.1:%d:80", port),
+			testutil.NginxAlpineImage)
+
+		assert.NilError(helpers.T(), httpCheck(data, 5))
 	}
-	base.DumpDaemonLogs(10)
-	t.Fatalf("the container does not seem to be restarted")
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		port, err := strconv.Atoi(data.Labels().Get("hostPort"))
+		if err == nil {
+			portlock.Release(port)
+		}
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		killDaemon(helpers.T())
+		ensureDaemonActive(helpers.T())
+		return helpers.Command("ps", "-a")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				t.Log(fmt.Sprintf("initial ps -a: %q", stdout))
+
+				const (
+					maxRetry = 30
+					sleep    = 3 * time.Second
+				)
+				for i := 0; i < maxRetry; i++ {
+					err := httpCheck(data, 1)
+					if err == nil {
+						t.Log(fmt.Sprintf("test is passing, after %d retries", i))
+						return
+					}
+					time.Sleep(sleep)
+					t.Log(fmt.Sprintf("(retry %d) ps -a: %q", i, helpers.Capture("ps", "-a")))
+				}
+				dumpDaemonLogs(t, 10)
+				t.Log("the container does not seem to be restarted")
+				t.FailNow()
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunRestartWithOnFailure(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 	if !nerdtest.IsDocker() {
-		testutil.RequireContainerdPlugin(base, "io.containerd.internal.v1", "restart", []string{"on-failure"})
+		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"on-failure"})
 	}
-	tID := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", tID).Run()
-	base.Cmd("run", "-d", "--restart=on-failure:2", "--name", tID, testutil.AlpineImage, "sh", "-c", "exit 1").AssertOK()
 
-	check := func(log poll.LogT) poll.Result {
-		inspect := base.InspectContainer(tID)
-		if inspect.State != nil && inspect.State.Status == "exited" {
-			return poll.Success()
-		}
-		return poll.Continue("container is not yet exited")
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--restart=on-failure:2", "--name", data.Identifier(), testutil.AlpineImage, "sh", "-c", "exit 1")
 	}
-	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(60*time.Second))
-	inspect := base.InspectContainer(tID)
-	assert.Equal(t, inspect.RestartCount, 2)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		nerdtest.EnsureContainerExited(helpers, data.Identifier(), -1)
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output:   assertRestartCount(2),
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunRestartWithUnlessStopped(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 	if !nerdtest.IsDocker() {
-		testutil.RequireContainerdPlugin(base, "io.containerd.internal.v1", "restart", []string{"unless-stopped"})
+		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"unless-stopped"})
 	}
-	tID := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", tID).Run()
-	base.Cmd("run", "-d", "--restart=unless-stopped", "--name", tID, testutil.AlpineImage, "sh", "-c", "exit 1").AssertOK()
 
-	check := func(log poll.LogT) poll.Result {
-		inspect := base.InspectContainer(tID)
-		if inspect.State != nil && inspect.State.Status == "exited" {
-			return poll.Success()
-		}
-		if inspect.RestartCount == 2 {
-			base.Cmd("stop", tID).AssertOK()
-		}
-		return poll.Continue("container is not yet exited")
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--restart=unless-stopped", "--name", data.Identifier(), testutil.AlpineImage, "sh", "-c", "exit 1")
 	}
-	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(60*time.Second))
-	inspect := base.InspectContainer(tID)
-	assert.Equal(t, inspect.RestartCount, 2)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		deadline := time.Now().Add(60 * time.Second)
+		for time.Now().Before(deadline) {
+			inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+			if inspect.State != nil && inspect.State.Status == "exited" {
+				break
+			}
+			if inspect.RestartCount == 2 {
+				helpers.Ensure("stop", data.Identifier())
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output:   assertRestartCount(2),
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestUpdateRestartPolicy(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 	if !nerdtest.IsDocker() {
-		testutil.RequireContainerdPlugin(base, "io.containerd.internal.v1", "restart", []string{"on-failure"})
+		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"on-failure"})
 	}
-	tID := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", tID).Run()
-	base.Cmd("run", "-d", "--restart=on-failure:1", "--name", tID, testutil.AlpineImage, "sh", "-c", "exit 1").AssertOK()
-	base.Cmd("update", "--restart=on-failure:2", tID).AssertOK()
-	check := func(log poll.LogT) poll.Result {
-		inspect := base.InspectContainer(tID)
-		if inspect.State != nil && inspect.State.Status == "exited" {
-			return poll.Success()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--restart=on-failure:1", "--name", data.Identifier(), testutil.AlpineImage, "sh", "-c", "exit 1")
+		helpers.Ensure("update", "--restart=on-failure:2", data.Identifier())
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		nerdtest.EnsureContainerExited(helpers, data.Identifier(), -1)
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output:   assertRestartCount(2),
 		}
-		return poll.Continue("container is not yet exited")
 	}
-	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(60*time.Second))
-	inspect := base.InspectContainer(tID)
-	assert.Equal(t, inspect.RestartCount, 2)
+
+	testCase.Run(t)
 }
 
 // The test is to add a restart policy to a container which has not restart policy before,
 // and check it can work correctly.
 func TestAddRestartPolicy(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 	if !nerdtest.IsDocker() {
-		testutil.RequireContainerdPlugin(base, "io.containerd.internal.v1", "restart", []string{"on-failure"})
+		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"on-failure"})
 	}
-	tID := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", tID).Run()
-	base.Cmd("run", "-d", "--name", tID, testutil.NginxAlpineImage).AssertOK()
-	base.Cmd("update", "--restart=on-failure", tID).AssertOK()
-	inspect := base.InspectContainer(tID)
-	orgialPid := inspect.State.Pid
-	exec.Command("kill", "-9", fmt.Sprintf("%v", orgialPid)).Run()
 
-	check := func(log poll.LogT) poll.Result {
-		inspect := base.InspectContainer(tID)
-		if inspect.State != nil && inspect.State.Status == "running" && inspect.State.Pid != orgialPid {
-			return poll.Success()
-		}
-		return poll.Continue("container is not yet running")
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.NginxAlpineImage)
+		helpers.Ensure("update", "--restart=on-failure", data.Identifier())
+		inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+		data.Labels().Set("originalPid", strconv.Itoa(inspect.State.Pid))
+		exec.Command("kill", "-9", strconv.Itoa(inspect.State.Pid)).Run()
 	}
-	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(60*time.Second))
-	inspect = base.InspectContainer(tID)
-	assert.Equal(t, inspect.RestartCount, 1)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		originalPid, _ := strconv.Atoi(data.Labels().Get("originalPid"))
+		deadline := time.Now().Add(60 * time.Second)
+		for time.Now().Before(deadline) {
+			inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+			if inspect.State != nil && inspect.State.Status == "running" && inspect.State.Pid != originalPid {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output:   assertRestartCount(1),
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunRestartStatusLabel(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 	if !nerdtest.IsDocker() {
-		testutil.RequireContainerdPlugin(base, "io.containerd.internal.v1", "restart", []string{"always"})
+		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"always"})
 	}
-	tID := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", tID).Run()
-	base.Cmd("create", "--restart=always", "--name", tID, testutil.CommonImage, "sleep", "infinity").AssertOK()
 
-	inspect := base.InspectContainer(tID)
-	label := inspect.Config.Labels
-	statusLabel := label[restart.StatusLabel]
-	assert.Assert(t, statusLabel == "")
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("create", "--restart=always", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+				assert.Equal(t, 1, len(dc))
+				assert.Assert(t, dc[0].Config.Labels[restart.StatusLabel] == "")
+			}),
+		}
+	}
+
+	testCase.Run(t)
 }

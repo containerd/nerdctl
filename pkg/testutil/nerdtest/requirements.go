@@ -37,6 +37,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/snapshotterutil"
@@ -195,6 +196,44 @@ var RootlessWithoutDetachNetNS = require.All(Rootless, require.Not(RootlessWithD
 
 // Rootful marks a test as suitable only for rootful env
 var Rootful = require.Not(Rootless)
+
+// ContainerdPlugin requires that the given containerd plugin (and capabilities) is available.
+var ContainerdPlugin = func(requiredType, requiredID string, requiredCaps []string) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+			if IsDocker() {
+				return false, "ContainerdPlugin is not applicable for Docker"
+			}
+			stdout := helpers.Capture("info", "--mode", "native", "--format", "{{ json . }}")
+			var info native.Info
+			if err := json.Unmarshal([]byte(stdout), &info); err != nil {
+				return false, fmt.Sprintf("failed to parse info: %v", err)
+			}
+			if info.Daemon == nil || info.Daemon.Plugins == nil {
+				return false, fmt.Sprintf("test requires containerd plugin %q.%q", requiredType, requiredID)
+			}
+			for _, p := range info.Daemon.Plugins.Plugins {
+				if p.Type != requiredType || p.ID != requiredID {
+					continue
+				}
+				capMap := make(map[string]struct{}, len(p.Capabilities))
+				for _, c := range p.Capabilities {
+					capMap[c] = struct{}{}
+				}
+				for _, c := range requiredCaps {
+					if _, ok := capMap[c]; !ok {
+						return false, fmt.Sprintf("test requires containerd plugin %q.%q with capability %q", requiredType, requiredID, c)
+					}
+				}
+				return true, ""
+			}
+			if len(requiredCaps) == 0 {
+				return false, fmt.Sprintf("test requires containerd plugin %q.%q", requiredType, requiredID)
+			}
+			return false, fmt.Sprintf("test requires containerd plugin %q.%q with capabilities %v", requiredType, requiredID, requiredCaps)
+		},
+	}
+}
 
 // Info requires that `nerdctl info` satisfies the condition function passed as argument.
 func Info(f func(dockercompat.Info) error) *test.Requirement {
