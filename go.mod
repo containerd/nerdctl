@@ -11,7 +11,7 @@ require (
 	github.com/containerd/accelerated-container-image v1.4.3
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
-	github.com/containerd/containerd/api v1.11.0
+	github.com/containerd/containerd/api v1.11.1
 	github.com/containerd/containerd/v2 v2.3.0 //gomodjail:unconfined
 	github.com/containerd/continuity v0.5.0 //gomodjail:unconfined
 	github.com/containerd/errdefs v1.0.0
