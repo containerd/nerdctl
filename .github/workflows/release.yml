@@ -24,6 +24,8 @@ jobs:
       attestations: write  # for provenances
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        persist-credentials: false
     # FIXME: setup-qemu-action is depended by `gomodjail pack`
     - name: "Set up QEMU"
       uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a  # v4.0.0
@@ -32,6 +34,7 @@ jobs:
       with:
         go-version: "1.26"
         check-latest: true
+        cache: false
     - name: "Compile binaries"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -86,6 +86,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - if: ${{ inputs.no-hyperv }}
         name: "Init (no-hyperv): Disable Hyper-V"
@@ -96,6 +97,7 @@ jobs:
         name: "Init (canary): retrieve latest go and containerd"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUTS_RUNNER: ${{ inputs.runner }}
         run: |
           latest_go="$(. ./hack/provisioning/version/fetch.sh; go::canary::for::go-setup)"
           latest_containerd="$(. ./hack/provisioning/version/fetch.sh; github::project::latest "containerd/containerd")"
@@ -103,13 +105,13 @@ jobs:
           [ "$latest_go" == "" ] || \
             printf "GO_VERSION=%s\n" "$latest_go" >> "$GITHUB_ENV"
 
-          if [[ "${{ inputs.runner }}" == *windows* ]]; then
+          if [[ "${INPUTS_RUNNER}" == *windows* ]]; then
             containerd_version="$WINDOWS_CONTAINERD_VERSION"
           else
             containerd_version="$LINUX_CONTAINERD_VERSION"
           fi
           [ "${latest_containerd:1}" == "$containerd_version" ] || {
-            if [[ "${{ inputs.runner }}" == *windows* ]]; then
+            if [[ "${INPUTS_RUNNER}" == *windows* ]]; then
               printf "WINDOWS_CONTAINERD_VERSION=%s\n" "${latest_containerd:1}" >> "$GITHUB_ENV"
               printf "WINDOWS_CONTAINERD_SHA=canary is volatile and I accept the risk\n" >> "$GITHUB_ENV"
             else
@@ -139,7 +141,7 @@ jobs:
             sudo mkdir -p /etc/docker
             sudo jq -n '.features.cdi = true | .experimental = true' | sudo tee /etc/docker/daemon.json
             echo "::endgroup::"
-            echo "::group:: downgrade docker to the specific version we want to test (${{ inputs.docker-version }})"
+            echo "::group:: downgrade docker to the specific version we want to test (${INPUTS_DOCKER_VERSION})"
             sudo apt-get update -qq
             sudo apt-get install -qq ca-certificates curl
             sudo install -m 0755 -d /etc/apt/keyrings
@@ -149,16 +151,16 @@ jobs:
               $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" \
               | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
             sudo apt-get update -qq
-            sudo apt-get install -qq --allow-downgrades docker-ce=${{ inputs.docker-version }} docker-ce-cli=${{ inputs.docker-version }}
+            sudo apt-get install -qq --allow-downgrades docker-ce=${INPUTS_DOCKER_VERSION} docker-ce-cli=${INPUTS_DOCKER_VERSION}
             sudo systemctl restart docker
             echo "::endgroup::"
           else
             # FIXME: this is missing runc (see top level workflow note about the state of this)
             echo "::group:: install dependencies"
             sudo ./hack/provisioning/linux/containerd.sh uninstall
-            ./hack/provisioning/linux/containerd.sh rootful "$LINUX_CONTAINERD_VERSION" "amd64" "$LINUX_CONTAINERD_SHA" "${{ inputs.linux-containerd-service-sha }}"
+            ./hack/provisioning/linux/containerd.sh rootful "$LINUX_CONTAINERD_VERSION" "amd64" "$LINUX_CONTAINERD_SHA" "${INPUTS_LINUX_CONTAINERD_SERVICE_SHA}"
             sudo ./hack/provisioning/linux/cni.sh uninstall
-            ./hack/provisioning/linux/cni.sh install "${{ inputs.linux-cni-version }}" "amd64" "${{ inputs.linux-cni-sha }}"
+            ./hack/provisioning/linux/cni.sh install "${INPUTS_LINUX_CNI_VERSION}" "amd64" "${INPUTS_LINUX_CNI_SHA}"
             echo "::endgroup::"
 
             echo "::group:: build nerctl"
@@ -188,16 +190,22 @@ jobs:
 
           # This ensures that bridged traffic goes through netfilter
           sudo modprobe br-netfilter
+        env:
+          INPUTS_DOCKER_VERSION: ${{ inputs.docker-version }}
+          INPUTS_LINUX_CONTAINERD_SERVICE_SHA: ${{ inputs.linux-containerd-service-sha }}
+          INPUTS_LINUX_CNI_VERSION: ${{ inputs.linux-cni-version }}
+          INPUTS_LINUX_CNI_SHA: ${{ inputs.linux-cni-sha }}
 
       - if: ${{ contains(inputs.runner, 'windows') && env.SHOULD_RUN == 'yes' }}
         name: "Init (windows): prepare host"
         env:
           ctrdVersion: ${{ env.WINDOWS_CONTAINERD_VERSION }}
           ctrdSha: ${{ env.WINDOWS_CONTAINERD_SHA }}
+          INPUTS_WINDOWS_CNI_VERSION: ${{ inputs.windows-cni-version }}
         run: |
           # Install WinCNI
           echo "::group:: install wincni"
-          GOPATH=$(go env GOPATH) WINCNI_VERSION=${{ inputs.windows-cni-version }} ./hack/provisioning/windows/cni.sh
+          GOPATH=$(go env GOPATH) WINCNI_VERSION=${INPUTS_WINDOWS_CNI_VERSION} ./hack/provisioning/windows/cni.sh
           echo "::endgroup::"
 
           # Install containerd
@@ -226,7 +234,9 @@ jobs:
           . ./hack/github/action-helpers.sh
           github::md::h2 "ipv6" >> "$GITHUB_STEP_SUMMARY"
 
-          ./hack/test-integration.sh -test.target=${{ inputs.binary }} -test.only-ipv6
+          ./hack/test-integration.sh -test.target=${INPUTS_BINARY} -test.only-ipv6
+        env:
+          INPUTS_BINARY: ${{ inputs.binary }}
 
       - if: ${{ env.SHOULD_RUN == 'yes' }}
         name: "Run: integration tests"
@@ -234,7 +244,9 @@ jobs:
           . ./hack/github/action-helpers.sh
           github::md::h2 "non-flaky" >> "$GITHUB_STEP_SUMMARY"
 
-          ./hack/test-integration.sh -test.target=${{ inputs.binary }} -test.only-flaky=false
+          ./hack/test-integration.sh -test.target=${INPUTS_BINARY} -test.only-flaky=false
+        env:
+          INPUTS_BINARY: ${{ inputs.binary }}
 
       # FIXME: this must go
       - if: ${{ env.SHOULD_RUN == 'yes' }}
@@ -243,4 +255,6 @@ jobs:
           . ./hack/github/action-helpers.sh
           github::md::h2 "flaky" >> "$GITHUB_STEP_SUMMARY"
 
-          ./hack/test-integration.sh -test.target=${{ inputs.binary }} -test.only-flaky=true
+          ./hack/test-integration.sh -test.target=${INPUTS_BINARY} -test.only-flaky=true
+        env:
+          INPUTS_BINARY: ${{ inputs.binary }}
