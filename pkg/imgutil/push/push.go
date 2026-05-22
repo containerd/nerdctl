@@ -48,6 +48,7 @@ func Push(ctx context.Context, client *containerd.Client, resolver remotes.Resol
 	}
 	desc := img.Target
 
+	ctx = withErofsLayerRefKeyPrefixes(ctx)
 	ongoing := newPushJobs(pushTracker)
 
 	eg, ctx := errgroup.WithContext(ctx)
@@ -171,4 +172,10 @@ func (j *pushjobs) status() []jobs.StatusInfo {
 	}
 
 	return statuses
+}
+
+func withErofsLayerRefKeyPrefixes(ctx context.Context) context.Context {
+	ctx = remotes.WithMediaTypeKeyPrefix(ctx, images.MediaTypeErofsLayer, "layer")
+	ctx = remotes.WithMediaTypeKeyPrefix(ctx, images.MediaTypeErofsLayer+"+zstd", "layer")
+	return ctx
 }

@@ -149,6 +149,7 @@ require (
 require (
 	cyphar.com/go-pathrs v0.2.5 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/moby/moby/api v1.55.0 // indirect
 	github.com/moby/sys/capability v0.4.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
