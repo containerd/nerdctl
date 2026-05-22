@@ -21,8 +21,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/docker/docker/pkg/meminfo"
-	"github.com/docker/docker/pkg/sysinfo"
+	"github.com/moby/moby/v2/pkg/meminfo"
+	"github.com/moby/moby/v2/pkg/sysinfo"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 
@@ -194,7 +194,7 @@ func CgroupsVersion() string {
 	return ""
 }
 
-func fulfillPlatformInfo(info *dockercompat.Info) {
+func fulfillPlatformInfo(info *dockercompat.Info, selinuxEnabled bool) {
 	mobySysInfo := mobySysInfo(info)
 
 	// NOTE: cgroup fields are not available on Windows

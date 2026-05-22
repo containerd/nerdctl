@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/docker/go-connections/nat"
+	"github.com/docker/go-units"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -70,15 +71,46 @@ func TestContainerFromNative(t *testing.T) {
 			n: &native.Container{
 				Container: containers.Container{
 					Labels: map[string]string{
-						"nerdctl/mounts":    "[{\"Type\":\"bind\",\"Source\":\"/mnt/foo\",\"Destination\":\"/mnt/foo\",\"Mode\":\"rshared,rw\",\"RW\":true,\"Propagation\":\"rshared\"}]",
-						"nerdctl/state-dir": tempStateDir,
-						"nerdctl/hostname":  "host1",
-						"nerdctl/user":      "test-user",
+						"nerdctl/mounts":               "[{\"Type\":\"bind\",\"Source\":\"/mnt/foo\",\"Destination\":\"/mnt/foo\",\"Mode\":\"rshared,rw\",\"RW\":true,\"Propagation\":\"rshared\"}]",
+						"nerdctl/state-dir":            tempStateDir,
+						"nerdctl/hostname":             "host1",
+						"nerdctl/user":                 "test-user",
+						"nerdctl/networks":             `["my-net"]`,
+						"nerdctl/privileged":           "true",
+						"nerdctl/auto-remove":          "true",
+						"containerd.io/restart.policy": "on-failure:3",
 					},
 				},
 				Spec: &specs.Spec{
 					Process: &specs.Process{
 						Env: []string{"/some/path"},
+						Capabilities: &specs.LinuxCapabilities{
+							Bounding: []string{
+								"CAP_CHOWN", "CAP_DAC_OVERRIDE", "CAP_FSETID", "CAP_FOWNER",
+								"CAP_MKNOD", "CAP_NET_RAW", "CAP_SETGID", "CAP_SETUID",
+								"CAP_SETFCAP", "CAP_SETPCAP", "CAP_NET_BIND_SERVICE",
+								"CAP_SYS_CHROOT", "CAP_KILL", "CAP_AUDIT_WRITE",
+								"CAP_NET_ADMIN",
+							},
+						},
+						Rlimits: []specs.POSIXRlimit{
+							{Type: "RLIMIT_NOFILE", Hard: 65536, Soft: 1024},
+						},
+					},
+					Linux: &specs.Linux{
+						Resources: &specs.LinuxResources{
+							Memory: &specs.LinuxMemory{
+								Reservation: func() *int64 { v := int64(209715200); return &v }(),
+								Swappiness:  func() *uint64 { v := uint64(60); return &v }(),
+							},
+							Pids: &specs.LinuxPids{
+								Limit: func() *int64 { v := int64(100); return &v }(),
+							},
+						},
+					},
+					Annotations: map[string]string{
+						"nerdctl/state-dir": tempStateDir,
+						"com.example.key":   "user-val",
 					},
 				},
 				Process: &native.Process{
@@ -105,9 +137,20 @@ func TestContainerFromNative(t *testing.T) {
 						Driver: "json-file",
 						Opts:   map[string]string{},
 					},
-					UTSMode:       "host",
-					Tmpfs:         map[string]string{},
-					BlkioSettings: getDefaultBlkioSettings(),
+					UTSMode:           "host",
+					Tmpfs:             map[string]string{},
+					BlkioSettings:     getDefaultBlkioSettings(),
+					NetworkMode:       "my-net",
+					Privileged:        true,
+					AutoRemove:        true,
+					RestartPolicy:     RestartPolicy{Name: "on-failure", MaximumRetryCount: 3},
+					CapAdd:            []string{"CAP_NET_ADMIN"},
+					CapDrop:           []string{},
+					Ulimits:           []*units.Ulimit{{Name: "nofile", Hard: 65536, Soft: 1024}},
+					MemoryReservation: 209715200,
+					MemorySwappiness:  func() *int64 { v := int64(60); return &v }(),
+					PidsLimit:         100,
+					Annotations:       map[string]string{"com.example.key": "user-val"},
 				},
 				Mounts: []MountPoint{
 					{
@@ -121,10 +164,14 @@ func TestContainerFromNative(t *testing.T) {
 				},
 				Config: &Config{
 					Labels: map[string]string{
-						"nerdctl/mounts":    "[{\"Type\":\"bind\",\"Source\":\"/mnt/foo\",\"Destination\":\"/mnt/foo\",\"Mode\":\"rshared,rw\",\"RW\":true,\"Propagation\":\"rshared\"}]",
-						"nerdctl/state-dir": tempStateDir,
-						"nerdctl/hostname":  "host1",
-						"nerdctl/user":      "test-user",
+						"nerdctl/mounts":               "[{\"Type\":\"bind\",\"Source\":\"/mnt/foo\",\"Destination\":\"/mnt/foo\",\"Mode\":\"rshared,rw\",\"RW\":true,\"Propagation\":\"rshared\"}]",
+						"nerdctl/state-dir":            tempStateDir,
+						"nerdctl/hostname":             "host1",
+						"nerdctl/user":                 "test-user",
+						"nerdctl/networks":             `["my-net"]`,
+						"nerdctl/privileged":           "true",
+						"nerdctl/auto-remove":          "true",
+						"containerd.io/restart.policy": "on-failure:3",
 					},
 					Hostname: "host1",
 					Env:      []string{"/some/path"},
@@ -367,6 +414,193 @@ func TestContainerFromNative(t *testing.T) {
 		t.Run(tc.name, func(tt *testing.T) {
 			d, _ := ContainerFromNative(tc.n)
 			assert.DeepEqual(tt, d, tc.expected)
+		})
+	}
+}
+
+func TestGetCapabilitiesFromNative(t *testing.T) {
+	// Build the full default bounding set for test fixtures.
+	allDefaults := []string{
+		"CAP_CHOWN", "CAP_DAC_OVERRIDE", "CAP_FSETID", "CAP_FOWNER",
+		"CAP_MKNOD", "CAP_NET_RAW", "CAP_SETGID", "CAP_SETUID",
+		"CAP_SETFCAP", "CAP_SETPCAP", "CAP_NET_BIND_SERVICE",
+		"CAP_SYS_CHROOT", "CAP_KILL", "CAP_AUDIT_WRITE",
+	}
+
+	testcases := []struct {
+		name            string
+		spec            *specs.Spec
+		expectedCapAdd  []string
+		expectedCapDrop []string
+	}{
+		{
+			name: "default container",
+			spec: &specs.Spec{
+				Process: &specs.Process{
+					Capabilities: &specs.LinuxCapabilities{
+						Bounding: allDefaults,
+					},
+				},
+			},
+			expectedCapAdd:  []string{},
+			expectedCapDrop: []string{},
+		},
+		{
+			name: "cap added",
+			spec: &specs.Spec{
+				Process: &specs.Process{
+					Capabilities: &specs.LinuxCapabilities{
+						Bounding: append(allDefaults, "CAP_NET_ADMIN"),
+					},
+				},
+			},
+			expectedCapAdd:  []string{"CAP_NET_ADMIN"},
+			expectedCapDrop: []string{},
+		},
+		{
+			name: "cap dropped",
+			spec: &specs.Spec{
+				Process: &specs.Process{
+					Capabilities: &specs.LinuxCapabilities{
+						Bounding: func() []string {
+							var caps []string
+							for _, c := range allDefaults {
+								if c != "CAP_CHOWN" {
+									caps = append(caps, c)
+								}
+							}
+							return caps
+						}(),
+					},
+				},
+			},
+			expectedCapAdd:  []string{},
+			expectedCapDrop: []string{"CAP_CHOWN"},
+		},
+		{
+			name: "cap added and dropped",
+			spec: &specs.Spec{
+				Process: &specs.Process{
+					Capabilities: &specs.LinuxCapabilities{
+						Bounding: func() []string {
+							var caps []string
+							for _, c := range allDefaults {
+								if c != "CAP_CHOWN" {
+									caps = append(caps, c)
+								}
+							}
+							return append(caps, "CAP_NET_ADMIN")
+						}(),
+					},
+				},
+			},
+			expectedCapAdd:  []string{"CAP_NET_ADMIN"},
+			expectedCapDrop: []string{"CAP_CHOWN"},
+		},
+		{
+			name: "empty bounding set",
+			spec: &specs.Spec{
+				Process: &specs.Process{
+					Capabilities: &specs.LinuxCapabilities{
+						Bounding: []string{},
+					},
+				},
+			},
+			expectedCapAdd:  []string{},
+			expectedCapDrop: allDefaults,
+		},
+		{
+			name:            "nil process",
+			spec:            &specs.Spec{},
+			expectedCapAdd:  nil,
+			expectedCapDrop: nil,
+		},
+		{
+			name: "nil capabilities",
+			spec: &specs.Spec{
+				Process: &specs.Process{},
+			},
+			expectedCapAdd:  nil,
+			expectedCapDrop: nil,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(tt *testing.T) {
+			capAdd, capDrop, err := getCapabilitiesFromNative(tc.spec)
+			assert.NilError(tt, err)
+			assert.DeepEqual(tt, capAdd, tc.expectedCapAdd)
+			// CapDrop order is non-deterministic (map iteration), so check length and contents
+			if tc.expectedCapDrop == nil {
+				assert.Assert(tt, capDrop == nil)
+			} else {
+				assert.Equal(tt, len(capDrop), len(tc.expectedCapDrop))
+				dropSet := make(map[string]struct{}, len(capDrop))
+				for _, c := range capDrop {
+					dropSet[c] = struct{}{}
+				}
+				for _, c := range tc.expectedCapDrop {
+					_, ok := dropSet[c]
+					assert.Assert(tt, ok, "expected %s in CapDrop", c)
+				}
+			}
+		})
+	}
+}
+
+func TestGetUlimitsFromNative(t *testing.T) {
+	testcases := []struct {
+		name     string
+		spec     *specs.Spec
+		expected []*units.Ulimit
+	}{
+		{
+			name: "single rlimit",
+			spec: &specs.Spec{
+				Process: &specs.Process{
+					Rlimits: []specs.POSIXRlimit{
+						{Type: "RLIMIT_NOFILE", Hard: 65536, Soft: 1024},
+					},
+				},
+			},
+			expected: []*units.Ulimit{
+				{Name: "nofile", Hard: 65536, Soft: 1024},
+			},
+		},
+		{
+			name: "multiple rlimits",
+			spec: &specs.Spec{
+				Process: &specs.Process{
+					Rlimits: []specs.POSIXRlimit{
+						{Type: "RLIMIT_NOFILE", Hard: 65536, Soft: 1024},
+						{Type: "RLIMIT_NPROC", Hard: 4096, Soft: 2048},
+					},
+				},
+			},
+			expected: []*units.Ulimit{
+				{Name: "nofile", Hard: 65536, Soft: 1024},
+				{Name: "nproc", Hard: 4096, Soft: 2048},
+			},
+		},
+		{
+			name: "no rlimits",
+			spec: &specs.Spec{
+				Process: &specs.Process{},
+			},
+			expected: nil,
+		},
+		{
+			name:     "nil process",
+			spec:     &specs.Spec{},
+			expected: nil,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(tt *testing.T) {
+			result, err := getUlimitsFromNative(tc.spec)
+			assert.NilError(tt, err)
+			assert.DeepEqual(tt, result, tc.expected)
 		})
 	}
 }

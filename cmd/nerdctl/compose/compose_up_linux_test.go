@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/docker/go-connections/nat"
 	"gotest.tools/v3/assert"
@@ -1310,6 +1311,114 @@ services:
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("compose", "-f", data.Labels().Get("composeYAML"), "down")
+	}
+
+	testCase.Run(t)
+}
+
+func TestComposeUpHealthcheck(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composeYAML := fmt.Sprintf(`
+services:
+  web:
+    image: %s
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 2s
+`, testutil.NginxAlpineImage)
+
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		containerName := serviceparser.DefaultContainerName(projectName, "web", "1")
+
+		data.Labels().Set("composePath", composePath)
+		data.Labels().Set("containerName", containerName)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, containerName)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("container", "inspect", data.Labels().Get("containerName"))
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+				assert.Equal(t, 1, len(dc), "unexpected number of containers")
+				hc := dc[0].Config.Healthcheck
+				assert.Assert(t, hc != nil, "healthcheck config should not be nil")
+				assert.Assert(t, len(hc.Test) >= 2, "healthcheck test should have at least 2 elements")
+				assert.Equal(t, "CMD-SHELL", hc.Test[0])
+				assert.Equal(t, "curl -f http://localhost", hc.Test[1])
+				assert.Equal(t, 10*time.Second, hc.Interval)
+				assert.Equal(t, 5*time.Second, hc.Timeout)
+				assert.Equal(t, 3, hc.Retries)
+				assert.Equal(t, 2*time.Second, hc.StartPeriod)
+			}),
+		}
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composePath") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composePath"), "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
+}
+
+func TestComposeUpHealthcheckDisabled(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composeYAML := fmt.Sprintf(`
+services:
+  web:
+    image: %s
+    command: sleep infinity
+    healthcheck:
+      disable: true
+`, testutil.CommonImage)
+
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		containerName := serviceparser.DefaultContainerName(projectName, "web", "1")
+
+		data.Labels().Set("composePath", composePath)
+		data.Labels().Set("containerName", containerName)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, containerName)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("container", "inspect", data.Labels().Get("containerName"))
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+				assert.Equal(t, 1, len(dc), "unexpected number of containers")
+				hc := dc[0].Config.Healthcheck
+				assert.Assert(t, hc != nil, "healthcheck config should not be nil")
+				assert.Assert(t, len(hc.Test) >= 1, "healthcheck test should have at least 1 element")
+				assert.Equal(t, "NONE", hc.Test[0])
+			}),
+		}
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if data.Labels().Get("composePath") != "" {
+			helpers.Anyhow("compose", "-f", data.Labels().Get("composePath"), "down", "-v")
+		}
 	}
 
 	testCase.Run(t)

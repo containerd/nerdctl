@@ -104,7 +104,6 @@ cmd_entrypoint_check() {
 	init
 	INFO "Checking RootlessKit functionality"
 	if ! rootlesskit \
-		--net=slirp4netns \
 		--disable-host-loopback \
 		--copy-up=/etc --copy-up=/run --copy-up=/var/lib \
 		true; then

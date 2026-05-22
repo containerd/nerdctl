@@ -28,6 +28,7 @@ import (
 	"github.com/docker/go-units"
 	mobymount "github.com/moby/sys/mount"
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/selinux/go-selinux/label"
 	"golang.org/x/sys/unix"
 
 	"github.com/containerd/containerd/v2/core/containers"
@@ -112,6 +113,7 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 		propagationRawOpts []string
 		bindOpts           []string
 	)
+	var specOpts []oci.SpecOpts
 	for _, opt := range strings.Split(optsRaw, ",") {
 		switch opt {
 		case "rw", "ro", "rro":
@@ -121,6 +123,15 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 		case "bind", "rbind":
 			// bind means not recursively bind-mounted, rbind is the opposite
 			bindOpts = append(bindOpts, opt)
+		case "Z", "z":
+			specOpts = append(specOpts, func(ctx context.Context, cli oci.Client, c *containers.Container, s *oci.Spec) error {
+				if s.Linux != nil && s.Linux.MountLabel != "" {
+					if err := label.Relabel(src, s.Linux.MountLabel, opt == "z"); err != nil {
+						return err
+					}
+				}
+				return nil
+			})
 		case "":
 			// NOP
 		default:
@@ -129,7 +140,6 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 	}
 
 	var opts []string
-	var specOpts []oci.SpecOpts
 
 	if len(bindOpts) > 0 && vType != Bind {
 		return nil, nil, fmt.Errorf("volume bind/rbind option is only supported for bind mount: %+v", bindOpts)

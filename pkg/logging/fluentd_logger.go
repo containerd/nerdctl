@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	units "github.com/docker/go-units"
 	"github.com/fluent/fluent-logger-golang/fluent"
 
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
@@ -223,10 +224,14 @@ func parseFluentdConfig(config map[string]string) (fluent.Config, error) {
 	}
 	bufferLimit := defaultBufferLimit
 	if config[fluentdBufferLimit] != "" {
-		bufferLimit, err = strconv.Atoi(config[fluentdBufferLimit])
+		parsedBufferLimit, err := units.RAMInBytes(config[fluentdBufferLimit])
 		if err != nil {
 			return result, fmt.Errorf("error occurs %w,invalid buffer limit (%s)", err, config[fluentdBufferLimit])
 		}
+		if parsedBufferLimit > int64(math.MaxInt) {
+			return result, fmt.Errorf("invalid buffer limit: value %d overflows int", parsedBufferLimit)
+		}
+		bufferLimit = int(parsedBufferLimit)
 	}
 	retryWait := int(defaultRetryWait)
 	if config[fluentdRetryWait] != "" {

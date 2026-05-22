@@ -229,6 +229,27 @@ func TestParseFluentdConfig(t *testing.T) {
 				AsyncReconnectInterval: 0,
 				SubSecondPrecision:     false,
 				RequestAck:             true}, false},
+		{"HumanReadableBufferLimit", args{
+			config: map[string]string{
+				fluentdBufferLimit: "1M",
+			}},
+			fluent.Config{
+				FluentPort:             defaultPort,
+				FluentHost:             defaultHost,
+				FluentNetwork:          defaultProtocol,
+				FluentSocketPath:       "",
+				BufferLimit:            defaultBufferLimit,
+				RetryWait:              int(defaultRetryWait),
+				MaxRetry:               defaultMaxRetries,
+				Async:                  false,
+				AsyncReconnectInterval: 0,
+				SubSecondPrecision:     false,
+				RequestAck:             false}, false},
+		{"InvalidHumanReadableBufferLimit", args{
+			config: map[string]string{
+				fluentdBufferLimit: "not-a-size",
+			}},
+			fluent.Config{}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

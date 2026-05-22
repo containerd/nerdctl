@@ -19,6 +19,7 @@ package container
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -27,30 +28,22 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	iptablesutil "github.com/containerd/nerdctl/v2/pkg/testutil/iptables"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 )
 
 func TestStopStart(t *testing.T) {
-	const (
-		hostPort = 8080
-	)
-	testContainerName := testutil.Identifier(t)
-	base := testutil.NewBase(t)
-	defer base.Cmd("rm", "-f", testContainerName).Run()
+	testCase := nerdtest.Setup()
 
-	base.Cmd("run", "-d",
-		"--restart=no",
-		"--name", testContainerName,
-		"-p", fmt.Sprintf("127.0.0.1:%d:80", hostPort),
-		testutil.NginxAlpineImage).AssertOK()
-
-	check := func(httpGetRetry int) error {
+	httpCheck := func(data test.Data, httpGetRetry int) error {
+		hostPort, _ := strconv.Atoi(data.Labels().Get("hostPort"))
 		resp, err := nettestutil.HTTPGet(fmt.Sprintf("http://127.0.0.1:%d", hostPort), httpGetRetry, false)
 		if err != nil {
 			return err
@@ -66,14 +59,66 @@ func TestStopStart(t *testing.T) {
 		return nil
 	}
 
-	assert.NilError(t, check(5))
-	base.Cmd("stop", testContainerName).AssertOK()
-	base.Cmd("exec", testContainerName, "ps").AssertFail()
-	if check(1) == nil {
-		t.Fatal("expected to get an error")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		port, err := strconv.Atoi(data.Labels().Get("hostPort"))
+		if err == nil {
+			portlock.Release(port)
+		}
 	}
-	base.Cmd("start", testContainerName).AssertOK()
-	assert.NilError(t, check(5))
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		port, err := portlock.Acquire(0)
+		if err != nil {
+			helpers.T().Log(fmt.Sprintf("failed to acquire port: %v", err))
+			helpers.T().FailNow()
+		}
+		data.Labels().Set("hostPort", strconv.Itoa(port))
+		data.Labels().Set("containerName", data.Identifier())
+		helpers.Ensure("run", "-d",
+			"--restart=no",
+			"--name", data.Identifier(),
+			"-p", fmt.Sprintf("127.0.0.1:%d:80", port),
+			testutil.NginxAlpineImage)
+
+		assert.NilError(helpers.T(), httpCheck(data, 5))
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "container is stopped",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("stop", data.Labels().Get("containerName"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						helpers.Fail("exec", data.Labels().Get("containerName"), "ps")
+						assert.Assert(t, httpCheck(data, 1) != nil, "expected HTTP to fail after stop")
+					},
+				}
+			},
+		},
+		{
+			Description: "container is restarted",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("start", data.Labels().Get("containerName"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						assert.NilError(t, httpCheck(data, 5))
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestStopWithStopSignal(t *testing.T) {
@@ -91,131 +136,183 @@ func TestStopWithStopSignal(t *testing.T) {
 	}
 
 	// Verify that SIGQUIT was sent to the container AND that the container did forcefully exit
-	testCase.Expected = test.Expects(137, nil, expect.Contains(nerdtest.SignalCaught))
+	testCase.Expected = test.Expects(expect.ExitCodeSigkill, nil, expect.Contains(nerdtest.SignalCaught))
 
 	testCase.Run(t)
 }
 
 func TestStopCleanupForwards(t *testing.T) {
-	const (
-		hostPort          = 9999
-		testContainerName = "ngx"
-	)
-	base := testutil.NewBase(t)
-	defer func() {
-		base.Cmd("rm", "-f", testContainerName).Run()
-	}()
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Rootless)
 
-	// skip if rootless
-	if rootlessutil.IsRootless() {
-		t.Skip("pkg/testutil/iptables does not support rootless")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		port, err := strconv.Atoi(data.Labels().Get("hostPort"))
+		if err == nil {
+			portlock.Release(port)
+		}
 	}
 
-	ipt, err := iptables.New()
-	assert.NilError(t, err)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		port, err := portlock.Acquire(0)
+		if err != nil {
+			helpers.T().Log(fmt.Sprintf("failed to acquire port: %v", err))
+			helpers.T().FailNow()
+		}
+		data.Labels().Set("hostPort", strconv.Itoa(port))
 
-	containerID := base.Cmd("run", "-d",
-		"--restart=no",
-		"--name", testContainerName,
-		"-p", fmt.Sprintf("127.0.0.1:%d:80", hostPort),
-		testutil.NginxAlpineImage).Run().Stdout()
-	containerID = strings.TrimSuffix(containerID, "\n")
+		containerID := strings.TrimSpace(helpers.Capture("run", "-d",
+			"--restart=no",
+			"--name", data.Identifier(),
+			"-p", fmt.Sprintf("127.0.0.1:%d:80", port),
+			testutil.NginxAlpineImage))
 
-	containerIP := base.Cmd("inspect",
-		"-f",
-		"'{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'",
-		testContainerName).Run().Stdout()
-	containerIP = strings.ReplaceAll(containerIP, "'", "")
-	containerIP = strings.TrimSuffix(containerIP, "\n")
+		containerIP := strings.TrimSpace(helpers.Capture("inspect",
+			"-f", "{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
+			data.Identifier()))
 
-	// define iptables chain name depending on the target (docker/nerdctl)
-	var chain string
-	if nerdtest.IsDocker() {
-		chain = "DOCKER"
-	} else {
-		redirectChain := "CNI-HOSTPORT-DNAT"
-		chain = iptablesutil.GetRedirectedChain(t, ipt, redirectChain, testutil.Namespace, containerID)
+		data.Labels().Set("containerIP", containerIP)
+
+		ipt, err := iptables.New()
+		assert.NilError(helpers.T(), err)
+
+		// define iptables chain name depending on the target (docker/nerdctl)
+		var chain string
+		if nerdtest.IsDocker() {
+			chain = "DOCKER"
+		} else {
+			chain = iptablesutil.GetRedirectedChain(t, ipt, "CNI-HOSTPORT-DNAT", testutil.Namespace, containerID)
+		}
+		data.Labels().Set("chain", chain)
+
+		assert.Equal(helpers.T(), iptablesutil.ForwardExists(t, ipt, chain, containerIP, port), true)
 	}
-	assert.Equal(t, iptablesutil.ForwardExists(t, ipt, chain, containerIP, hostPort), true)
 
-	base.Cmd("stop", testContainerName).AssertOK()
-	assert.Equal(t, iptablesutil.ForwardExists(t, ipt, chain, containerIP, hostPort), false)
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("stop", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, _ tig.T) {
+				ipt, err := iptables.New()
+				assert.NilError(t, err)
+				chain := data.Labels().Get("chain")
+				containerIP := data.Labels().Get("containerIP")
+				port, _ := strconv.Atoi(data.Labels().Get("hostPort"))
+				assert.Equal(t, iptablesutil.ForwardExists(t, ipt, chain, containerIP, port), false)
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 // Regression test for https://github.com/containerd/nerdctl/issues/3353
 func TestStopCreated(t *testing.T) {
-	t.Parallel()
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-
-	tearDown := func() {
-		base.Cmd("rm", "-f", tID).Run()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
-
-	setup := func() {
-		base.Cmd("create", "--name", tID, testutil.CommonImage).AssertOK()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("create", "--name", data.Identifier(), testutil.CommonImage)
 	}
-
-	t.Cleanup(tearDown)
-	tearDown()
-	setup()
-
-	base.Cmd("stop", tID).AssertOK()
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("stop", data.Identifier())
+	}
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+	testCase.Run(t)
 }
 
 func TestStopWithLongTimeoutAndSIGKILL(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	testContainerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", testContainerName).Run()
+	testCase := nerdtest.Setup()
 
-	// Start a container that sleeps forever
-	base.Cmd("run", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", "Inf").AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
 
-	// Stop the container with a 5-second timeout and SIGKILL
-	start := time.Now()
-	base.Cmd("stop", "--time=5", "--signal", "SIGKILL", testContainerName).AssertOK()
-	elapsed := time.Since(start)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		// Start a container that sleeps forever
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+	}
 
-	// The container should be stopped almost immediately, well before the 5-second timeout
-	assert.Assert(t, elapsed < 5*time.Second, "Container wasn't stopped immediately with SIGKILL")
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// Stop the container with a 5-second timeout and SIGKILL
+		// The container should be stopped almost immediately, well before the 5-second timeout
+		cmd := helpers.Command("stop", "--time=5", "--signal", "SIGKILL", data.Identifier())
+		cmd.WithTimeout(5 * time.Second)
+		return cmd
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+
+	testCase.Run(t)
 }
 
 func TestStopWithTimeout(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	testContainerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", testContainerName).Run()
+	testCase := nerdtest.Setup()
 
-	// Start a container that sleeps forever
-	base.Cmd("run", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", "Inf").AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
 
-	// Stop the container with a 3-second timeout
-	start := time.Now()
-	base.Cmd("stop", "--time=3", testContainerName).AssertOK()
-	elapsed := time.Since(start)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		// Start a container that sleeps forever
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+	}
 
-	// The container should get the SIGKILL before the 10s default timeout
-	assert.Assert(t, elapsed < 10*time.Second, "Container did not respect --timeout flag")
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// Stop the container with a 3-second timeout
+		// The container should get the SIGKILL before the 10s default timeout
+		cmd := helpers.Command("stop", "--time=3", data.Identifier())
+		cmd.WithTimeout(10 * time.Second)
+		return cmd
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+
+	testCase.Run(t)
 }
 func TestStopCleanupFIFOs(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("/run/containerd/fifo/ doesn't exist on rootless")
+	testCase := nerdtest.Setup()
+	testCase.NoParallel = true
+	testCase.Require = require.All(
+		require.Not(nerdtest.Rootless),
+		require.Not(nerdtest.Docker),
+	)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	testContainerName := testutil.Identifier(t)
-	oldNumFifos, err := countFIFOFiles("/run/containerd/fifo/")
-	assert.NilError(t, err)
-	// Stop the container after 2 seconds
-	go func() {
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		oldNumFifos, err := countFIFOFiles("/run/containerd/fifo/")
+		assert.NilError(helpers.T(), err)
+		data.Labels().Set("oldNumFifos", strconv.Itoa(oldNumFifos))
+
+		cmd := helpers.Command("run", "--rm", "--name", data.Identifier(), testutil.NginxAlpineImage)
+		cmd.Background()
+
 		time.Sleep(2 * time.Second)
-		base.Cmd("stop", testContainerName).AssertOK()
-		newNumFifos, err := countFIFOFiles("/run/containerd/fifo/")
-		assert.NilError(t, err)
-		assert.Equal(t, oldNumFifos, newNumFifos)
-	}()
-	// Start a container that is automatically removed after it exits
-	base.Cmd("run", "--rm", "--name", testContainerName, testutil.NginxAlpineImage).AssertOK()
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("stop", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, _ tig.T) {
+				oldNumFifos, _ := strconv.Atoi(data.Labels().Get("oldNumFifos"))
+				newNumFifos, err := countFIFOFiles("/run/containerd/fifo/")
+				assert.NilError(t, err)
+				assert.Equal(t, oldNumFifos, newNumFifos)
+			},
+		}
+	}
+
+	testCase.Run(t)
 }

@@ -24,7 +24,7 @@ import (
 	"strconv"
 
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
+	"github.com/rootless-containers/rootlesskit/v3/pkg/api/client"
 )
 
 func IsRootless() bool {

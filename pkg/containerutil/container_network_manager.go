@@ -170,7 +170,7 @@ func NewNetworkingOptionsManager(globalOptions types.GlobalCommandOptions, netOp
 		// put the container in the specified network namespace instead of the root.
 		manager = &hostNetworkManager{globalOptions, netOpts, client}
 	default:
-		return nil, fmt.Errorf("unexpected container networking type: %q", netType)
+		return nil, fmt.Errorf("unexpected container networking type: %v", netType)
 	}
 
 	return manager, nil

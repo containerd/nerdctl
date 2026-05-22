@@ -46,7 +46,6 @@ dependencies=(
   containernetworking/plugins
   rootless-containers/rootlesskit
   opencontainers/runc
-  rootless-containers/slirp4netns
   awslabs/soci-snapshotter
   containerd/stargz-snapshotter
   krallin/tini
@@ -65,7 +64,6 @@ FUSE_OVERLAYFS_CHECKSUM=linux
 # Avoids the full build
 BUILDG_CHECKSUM=buildg-v
 ROOTLESSKIT_CHECKSUM=linux
-SLIRP4NETNS_CHECKSUM=linux
 STARGZ_SNAPSHOTTER_CHECKSUM=linux
 # We specifically want the static ones
 TINI_CHECKSUM=static

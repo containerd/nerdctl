@@ -9,6 +9,9 @@ on:
     paths-ignore:
       - '**.md'
 
+permissions:
+  contents: read
+
 jobs:
   test-unit:
     # Note: inputs.hack is undefined - its purpose is to prevent GitHub Actions from displaying all matrix variants as part of the name.
@@ -30,7 +33,7 @@ jobs:
       canary: ${{ matrix.canary && true || false }}
       # Windows routinely go over 5 minutes
       timeout: 10
-      go-version: 1.25
+      go-version: 1.26
       windows-cni-version: v0.3.1
       linux-cni-version: v1.7.1
       linux-cni-sha: 1a28a0506bfe5bcdc981caf1a49eeab7e72da8321f1119b7be85f22621013098
@@ -143,12 +146,23 @@ jobs:
       runner: ${{ matrix.runner }}
       binary: ${{ matrix.binary != '' && matrix.binary || 'nerdctl' }}
       canary: ${{ matrix.canary && true || false }}
-      go-version: 1.25
+      # Hyper-V is broken on canary.
+      # [v2.3.0-beta.2 regression] The virtual machine or container JSON document is invalid. (Hyper-V container)
+      # https://github.com/containerd/containerd/issues/13254
+      no-hyperv: ${{ matrix.canary && true || false }}
+      go-version: 1.26
       windows-cni-version: v0.3.1
       docker-version: 5:28.0.4-1~ubuntu.24.04~noble
-      containerd-version: 2.2.1
-      # Note: these as for amd64
-      containerd-sha: f5d8e90ecb6c1c7e33ecddf8cc268a93b9e5b54e0e850320d765511d76624f41
-      containerd-service-sha: 1941362cbaa89dd591b99c32b050d82c583d3cd2e5fa63085d7017457ec5fca8
-      linux-cni-version: v1.9.0
-      linux-cni-sha: 58c03705426e929658f45a851df15a86d06ef680cacbf3f2dc127731ca265c28
+      # Windows CI still requires containerd v2.2.
+      # [v2.3.0 regression] The virtual machine or container JSON document is invalid. (Hyper-V container)
+      # https://github.com/containerd/containerd/issues/13254
+      windows-containerd-version: 2.2.3
+      windows-containerd-sha: 81314dd5e3baad958acae0e4d1ff21eb27b7c8f8809232ab06c9f397cd221e02
+      linux-containerd-version: 2.3.1
+      # FIXME: containerd SHAs are not verified for authenticity (only affects tests)
+      # https://github.com/containerd/nerdctl/issues/4666
+      # Note: these are for amd64
+      linux-containerd-sha: 628448bd973610c656c1cbea8e88b32fafd85b23cc1aa4a3372eb7198478c054
+      linux-containerd-service-sha: 1941362cbaa89dd591b99c32b050d82c583d3cd2e5fa63085d7017457ec5fca8
+      linux-cni-version: v1.9.1
+      linux-cni-sha: b98f74a0f8522f0a83867178729c1aa70f2158f90c45a2ca8fa791db1c76b303

@@ -152,3 +152,67 @@ services:
 
 	testCase.Run(t)
 }
+
+func TestComposeDownRemoveSpecifiedService(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerComposeYAML := fmt.Sprintf(`
+services:
+  test1:
+    image: %s
+    command: "sleep infinity"
+  test2:
+    image: %s
+    command: "sleep infinity"
+`, testutil.CommonImage, testutil.CommonImage)
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+
+		projectName := data.Identifier("project")
+		t.Logf("projectName=%q", projectName)
+
+		testContainer1 := serviceparser.DefaultContainerName(projectName, "test1", "1")
+		testContainer2 := serviceparser.DefaultContainerName(projectName, "test2", "1")
+
+		data.Labels().Set("composePath", composePath)
+		data.Labels().Set("projectName", projectName)
+		data.Labels().Set("testContainer1", testContainer1)
+		data.Labels().Set("testContainer2", testContainer2)
+
+		helpers.Ensure("compose", "-p", projectName, "-f", composePath, "up", "-d")
+		nerdtest.EnsureContainerStarted(helpers, testContainer1)
+		nerdtest.EnsureContainerStarted(helpers, testContainer2)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-p", data.Labels().Get("projectName"), "-f", data.Labels().Get("composePath"), "down", "test1")
+	}
+
+	testCase.Expected = test.Expects(0, nil, nil)
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "only specified service is removed",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-p", data.Labels().Get("projectName"), "-f", data.Labels().Get("composePath"), "ps", "-a")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(
+						expect.DoesNotContain(data.Labels().Get("testContainer1")),
+						expect.Contains(data.Labels().Get("testContainer2")),
+					),
+				}
+			},
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if composePath := data.Labels().Get("composePath"); composePath != "" {
+			helpers.Anyhow("compose", "-p", data.Labels().Get("projectName"), "-f", composePath, "down", "-v")
+		}
+	}
+
+	testCase.Run(t)
+}

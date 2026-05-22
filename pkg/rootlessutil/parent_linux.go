@@ -91,10 +91,13 @@ func ParentMain(hostGatewayIP string) error {
 	if err != nil {
 		return err
 	}
-	// args are compatible with both util-linux nsenter and busybox nsenter
-	args := []string{
-		"-r/", // root dir (busybox nsenter wants this to be explicitly specified),
-	}
+	// -r/ (root dir) is intentionally omitted. nsenter would open the host
+	// root fd before setns, then chroot to it after entering the mount
+	// namespace, anchoring the process to host paths. In rootless mode,
+	// host dirs owned by real uid 0 (e.g. /var/lib/containerd) are
+	// inaccessible inside the user namespace and overlay mounts would
+	// fail with EACCES.
+	args := []string{arg0}
 
 	// Only append wd if we do have a working dir
 	// - https://github.com/rootless-containers/usernetes/pull/327

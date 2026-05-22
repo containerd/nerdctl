@@ -105,6 +105,14 @@ func Logs(ctx context.Context, client *containerd.Client, container string, opti
 				}
 			}
 
+			// When follow was requested but the task has already stopped,
+			// wait for the logger to finish writing before reading the log file.
+			if !follow && options.Follow {
+				if err := logging.WaitForLogger(dataStore, l[labels.Namespace], found.Container.ID()); err != nil {
+					log.G(ctx).WithError(err).Warn("failed to wait for logger shutdown")
+				}
+			}
+
 			var detailPrefix string
 			if options.Details {
 				if logConfigJSON, ok := l["nerdctl/log-config"]; ok {

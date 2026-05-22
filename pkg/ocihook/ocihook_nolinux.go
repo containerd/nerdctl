@@ -21,3 +21,8 @@ package ocihook
 func loadAppArmor() {
 	//noop
 }
+
+func cleanupIptablesRules(containerID string, cniNames []string) error {
+	//noop
+	return nil
+}

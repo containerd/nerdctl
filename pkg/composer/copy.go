@@ -14,15 +14,22 @@
    limitations under the License.
 */
 
+/*
+   Portions from https://github.com/moby/moby/blob/v28.5.2/pkg/system/filesys.go
+   Copyright (C) Docker/Moby authors.
+   Licensed under the Apache License, Version 2.0
+   NOTICE: https://github.com/moby/moby/blob/v28.5.2/NOTICE
+*/
+
 package composer
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
-
-	"github.com/docker/docker/pkg/system"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/log"
@@ -144,9 +151,22 @@ func (c *Composer) listContainersTargetedForCopy(ctx context.Context, index int,
 	return containers, err
 }
 
+// isAbs is a platform-agnostic wrapper for filepath.IsAbs.
+// From https://github.com/moby/moby/blob/v28.5.2/pkg/system/filesys.go#L9-L19
+//
+// On Windows, golang filepath.IsAbs does not consider a path \windows\system32
+// as absolute as it doesn't start with a drive-letter/colon combination. However,
+// in docker we need to verify things such as WORKDIR /windows/system32 in
+// a Dockerfile (which gets translated to \windows\system32 when being processed
+// by the daemon). This SHOULD be treated as absolute from a docker processing
+// perspective.
+func isAbs(path string) bool {
+	return filepath.IsAbs(path) || strings.HasPrefix(path, string(os.PathSeparator))
+}
+
 // https://github.com/docker/compose/blob/v2.21.0/pkg/compose/cp.go#L307
 func splitCpArg(arg string) (container, path string) {
-	if system.IsAbs(arg) {
+	if isAbs(arg) {
 		// Explicit local absolute path, e.g., `C:\foo` or `/foo`.
 		return "", arg
 	}

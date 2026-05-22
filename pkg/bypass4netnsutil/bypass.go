@@ -25,7 +25,7 @@ import (
 
 	b4nnapi "github.com/rootless-containers/bypass4netns/pkg/api"
 	"github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
-	rlkclient "github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
+	rlkclient "github.com/rootless-containers/rootlesskit/v3/pkg/api/client"
 
 	"github.com/containerd/errdefs"
 	"github.com/containerd/go-cni"

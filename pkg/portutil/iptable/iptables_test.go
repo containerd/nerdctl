@@ -24,19 +24,19 @@ func TestParseIPTableRules(t *testing.T) {
 	testCases := []struct {
 		name  string
 		rules []string
-		want  []uint64
+		want  []PortRule
 	}{
 		{
 			name:  "Empty input",
 			rules: []string{},
-			want:  []uint64{},
+			want:  []PortRule{},
 		},
 		{
 			name: "Single rule with single port",
 			rules: []string{
 				"-A CNI-HOSTPORT-DNAT -p tcp -m comment --comment \"dnat name: \"bridge\" id: \"some-id\"\" -m multiport --dports 8080 -j CNI-DN-some-hash",
 			},
-			want: []uint64{8080},
+			want: []PortRule{{IP: "", Port: 8080}},
 		},
 		{
 			name: "Multiple rules with multiple ports",
@@ -44,7 +44,45 @@ func TestParseIPTableRules(t *testing.T) {
 				"-A CNI-HOSTPORT-DNAT -p tcp -m comment --comment \"dnat name: \"bridge\" id: \"some-id\"\" -m multiport --dports 8080 -j CNI-DN-some-hash",
 				"-A CNI-HOSTPORT-DNAT -p tcp -m comment --comment \"dnat name: \"bridge\" id: \"some-id\"\" -m multiport --dports 9090 -j CNI-DN-some-hash",
 			},
-			want: []uint64{8080, 9090},
+			want: []PortRule{
+				{IP: "", Port: 8080},
+				{IP: "", Port: 9090},
+			},
+		},
+		{
+			name: "Single rule with comma-separated ports",
+			rules: []string{
+				"-A CNI-HOSTPORT-DNAT -p tcp -m comment --comment \"dnat name: \"bridge\" id: \"some-id\"\" -m multiport --dports 8080,9090 -j CNI-DN-some-hash",
+			},
+			want: []PortRule{
+				{IP: "", Port: 8080},
+				{IP: "", Port: 9090},
+			},
+		},
+		{
+			name: "Sub-chain DNAT rule with destination IP",
+			rules: []string{
+				"-A CNI-DN-some-hash -d 192.168.1.141/32 -p tcp -m tcp --dport 80 -j DNAT --to-destination 10.4.0.2:80",
+			},
+			want: []PortRule{{IP: "192.168.1.141", Port: 80}},
+		},
+		{
+			name: "Multiple sub-chain rules with different IPs same port",
+			rules: []string{
+				"-A CNI-DN-hash1 -d 192.168.1.141/32 -p tcp -m tcp --dport 80 -j DNAT --to-destination 10.4.0.2:80",
+				"-A CNI-DN-hash2 -d 192.168.1.142/32 -p tcp -m tcp --dport 80 -j DNAT --to-destination 10.4.0.3:80",
+			},
+			want: []PortRule{
+				{IP: "192.168.1.141", Port: 80},
+				{IP: "192.168.1.142", Port: 80},
+			},
+		},
+		{
+			name: "Sub-chain rule without CIDR suffix",
+			rules: []string{
+				"-A CNI-DN-hash1 -d 10.0.0.1 -p tcp -m tcp --dport 443 -j DNAT --to-destination 10.4.0.2:443",
+			},
+			want: []PortRule{{IP: "10.0.0.1", Port: 443}},
 		},
 	}
 
@@ -58,12 +96,12 @@ func TestParseIPTableRules(t *testing.T) {
 	}
 }
 
-func equal(a, b []uint64) bool {
+func equal(a, b []PortRule) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	for i, v := range a {
-		if v != b[i] {
+	for i := range a {
+		if a[i] != b[i] {
 			return false
 		}
 	}

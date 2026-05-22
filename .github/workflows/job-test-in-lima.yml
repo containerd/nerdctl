@@ -28,18 +28,20 @@ jobs:
     runs-on: "${{ inputs.runner }}"
     env:
       TARGET: ${{ inputs.target }}
+      GUEST: ${{ inputs.guest }}
     steps:
       - name: "Init: checkout"
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - name: "Init: lima"
         uses: lima-vm/lima-actions/setup@55627e31b78637bf254a8b2a14da8ea7d12564e5  # v1.1.0
         id: lima-actions-setup
 
       - name: "Init: Cache"
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306  # v5.0.3
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: ~/.cache/lima
           key: lima-${{ steps.lima-actions-setup.outputs.version }}
@@ -54,7 +56,7 @@ jobs:
             --memory=12 \
             --containerd=none \
             --set '.mounts=null | .portForwards=[{"guestSocket":"/var/run/docker.sock","hostSocket":"{{.Dir}}/sock/docker.sock"}]' \
-            template://${{ inputs.guest }}
+            template://${GUEST}
 
       # FIXME: the tests should be directly executed in the VM without nesting Docker inside it
       # https://github.com/containerd/nerdctl/issues/3858
@@ -84,7 +86,7 @@ jobs:
           lima sudo modprobe br-netfilter
 
       - name: "Init: expose GitHub Runtime variables for gha"
-        uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124  # v3.1.0
+        uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487  # v4.0.0
 
       - name: "Init: prepare integration tests"
         env:

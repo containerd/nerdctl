@@ -395,6 +395,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	internalLabels.extraHosts = extraHosts
 
 	internalLabels.rm = containerutil.EncodeContainerRmOptLabel(options.Rm)
+	internalLabels.privileged = options.Privileged
 
 	// TODO: abolish internal labels and only use annotations
 	ilOpt, err := withInternalLabels(internalLabels)
@@ -765,6 +766,8 @@ type internalLabels struct {
 	user string
 
 	healthcheck string
+
+	privileged bool
 }
 
 // WithInternalLabels sets the internal labels for a container.
@@ -843,6 +846,10 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 
 	if internalLabels.rm != "" {
 		m[labels.ContainerAutoRemove] = internalLabels.rm
+	}
+
+	if internalLabels.privileged {
+		m[labels.Privileged] = "true"
 	}
 
 	if internalLabels.cidFile != "" {

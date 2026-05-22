@@ -132,4 +132,7 @@ const (
 
 	// HealthState stores the current health state (status and failing streak).
 	HealthState = Prefix + "healthstate"
+
+	// Privileged indicates whether the container was created with --privileged.
+	Privileged = Prefix + "privileged"
 )

@@ -27,9 +27,8 @@ import (
 
 func downCommand() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:           "down",
+		Use:           "down [flags] [SERVICE...]",
 		Short:         "Remove containers and associated resources",
-		Args:          cobra.NoArgs,
 		RunE:          downAction,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -39,7 +38,7 @@ func downCommand() *cobra.Command {
 	return cmd
 }
 
-func downAction(cmd *cobra.Command, args []string) error {
+func downAction(cmd *cobra.Command, services []string) error {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
 	if err != nil {
 		return err
@@ -62,6 +61,8 @@ func downAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	options.Services = services
+
 	c, err := compose.New(client, globalOptions, options, cmd.OutOrStdout(), cmd.ErrOrStderr())
 	if err != nil {
 		return err
@@ -71,5 +72,5 @@ func downAction(cmd *cobra.Command, args []string) error {
 		RemoveVolumes: volumes,
 		RemoveOrphans: removeOrphans,
 	}
-	return c.Down(ctx, downOpts)
+	return c.Down(ctx, downOpts, services)
 }

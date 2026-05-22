@@ -31,7 +31,6 @@ import (
 
 	"github.com/coreos/go-systemd/v22/journal"
 	"github.com/docker/cli/templates"
-	timetypes "github.com/docker/docker/api/types/time"
 
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 	"github.com/containerd/log"
@@ -39,6 +38,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
+	"github.com/containerd/nerdctl/v2/pkg/timestamp"
 )
 
 var JournalDriverLogOpts = []string{
@@ -206,7 +206,7 @@ func viewLogsJournald(lvopts LogViewOptions, stdout, stderr io.Writer, stopChann
 	}
 	if lvopts.Since != "" {
 		// using GetTimestamp from moby to keep time format consistency
-		ts, err := timetypes.GetTimestamp(lvopts.Since, time.Now())
+		ts, err := timestamp.GetTimestamp(lvopts.Since, time.Now())
 		if err != nil {
 			return fmt.Errorf("invalid value for \"since\": %w", err)
 		}
@@ -221,7 +221,7 @@ func viewLogsJournald(lvopts LogViewOptions, stdout, stderr io.Writer, stopChann
 	}
 	if lvopts.Until != "" {
 		// using GetTimestamp from moby to keep time format consistency
-		ts, err := timetypes.GetTimestamp(lvopts.Until, time.Now())
+		ts, err := timestamp.GetTimestamp(lvopts.Until, time.Now())
 		if err != nil {
 			return fmt.Errorf("invalid value for \"until\": %w", err)
 		}

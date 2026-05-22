@@ -34,7 +34,7 @@ import (
 	types100 "github.com/containernetworking/cni/pkg/types/100"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	b4nndclient "github.com/rootless-containers/bypass4netns/pkg/api/daemon/client"
-	rlkclient "github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
+	rlkclient "github.com/rootless-containers/rootlesskit/v3/pkg/api/client"
 
 	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
@@ -471,8 +471,24 @@ func reserveSocket(protocol, hostAddr string) (*os.File, error) {
 }
 
 // portReserverPidFilePath returns /run/nerdctl/<namespace>/<id>/port-reserver.pid
-func portReserverPidFilePath(opts *handlerOpts) string {
-	return filepath.Join("/run/nerdctl/", opts.state.Annotations[labels.Namespace], opts.state.ID, "port-reserver.pid")
+func portReserverPidFilePath(namespace, id string) string {
+	return filepath.Join("/run/nerdctl/", namespace, id, "port-reserver.pid")
+}
+
+func CleanupPortReserverProcess(namespace, id string) error {
+	// In rootless mode, port-reserver is handled by Rootlesskit, so no cleanup is needed.
+	if rootlessutil.IsRootlessChild() {
+		return nil
+	}
+
+	pidFile := portReserverPidFilePath(namespace, id)
+	if err := killProcessByPidFile(pidFile); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(filepath.Dir(pidFile)); err != nil {
+		log.L.WithError(err).Errorf("failed to remove the port-reserver directory %s", filepath.Dir(pidFile))
+	}
+	return nil
 }
 
 // perNetworkIfName returns the container-side interface name for a given network index
@@ -584,9 +600,10 @@ func applyNetworkSettings(opts *handlerOpts) (err error) {
 			if err != nil {
 				log.L.Debugf("killing the port reserver process (pid=%d)", reserverCmdPid)
 				_ = reserverCmd.Process.Kill()
+				_ = os.RemoveAll(filepath.Dir(portReserverPidFilePath(opts.state.Annotations[labels.Namespace], opts.state.ID)))
 			}
 		}()
-		if err := writePidFile(portReserverPidFilePath(opts), reserverCmdPid); err != nil {
+		if err := writePidFile(portReserverPidFilePath(opts.state.Annotations[labels.Namespace], opts.state.ID), reserverCmdPid); err != nil {
 			return fmt.Errorf("cannot write the pid file of the port reserver process: %w", err)
 		}
 	}
@@ -878,7 +895,7 @@ func onPostStop(opts *handlerOpts) error {
 		// opts.cni.Remove has trouble removing network configurations when netns is empty.
 		// Therefore, we force the deletion of iptables rules here to prevent netns exhaustion.
 		// This is a workaround until https://github.com/containernetworking/plugins/pull/1078 is merged.
-		if err := cleanupIptablesRules(opts.fullID); err != nil {
+		if err := cleanupIptablesRules(opts.fullID, opts.cniNames); err != nil {
 			log.L.WithError(err).Warnf("failed to clean up iptables rules for container %s", opts.fullID)
 			// Don't return error here, continue with the rest of the cleanup
 		}
@@ -901,47 +918,9 @@ func onPostStop(opts *handlerOpts) error {
 		return fmt.Errorf("failed to release container name %s: %w", name, err)
 	}
 	// Kill port-reserver process if any
-	portReserverPidFile := portReserverPidFilePath(opts)
-	if err = killProcessByPidFile(portReserverPidFile); err != nil {
+	if err = CleanupPortReserverProcess(ns, opts.state.ID); err != nil {
 		log.L.WithError(err).Errorf("failed to kill the port-reserver process")
 	}
-	return nil
-}
-
-// cleanupIptablesRules cleans up iptables rules related to the container
-func cleanupIptablesRules(containerID string) error {
-	// Check if iptables command exists
-	if _, err := exec.LookPath("iptables"); err != nil {
-		return fmt.Errorf("iptables command not found: %w", err)
-	}
-
-	// Tables to check for rules
-	tables := []string{"nat", "filter", "mangle"}
-
-	for _, table := range tables {
-		// Get all iptables rules for this table
-		cmd := exec.Command("iptables", "-t", table, "-S")
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			log.L.WithError(err).Warnf("failed to list iptables rules for table %s", table)
-			continue
-		}
-
-		// Find and delete rules related to the container
-		rules := strings.Split(string(output), "\n")
-		for _, rule := range rules {
-			if strings.Contains(rule, containerID) {
-				// Execute delete command
-				deleteCmd := exec.Command("sh", "-c", "--", fmt.Sprintf(`iptables -t %s -D %s`, table, rule[3:]))
-				if deleteOutput, err := deleteCmd.CombinedOutput(); err != nil {
-					log.L.WithError(err).Warnf("failed to delete iptables rule: %s, output: %s", rule, string(deleteOutput))
-				} else {
-					log.L.Debugf("deleted iptables rule: %s", rule)
-				}
-			}
-		}
-	}
-
 	return nil
 }
 

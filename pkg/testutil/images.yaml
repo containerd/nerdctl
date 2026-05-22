@@ -32,7 +32,7 @@ fluentd:
 
 golang:
   ref: "golang"
-  tag: "1.25.0-trixie"
+  tag: "1.26.1-trixie"
 
 kubo:
   ref: "ghcr.io/stargz-containers/ipfs/kubo"

@@ -152,10 +152,10 @@ Usage: `nerdctl run [OPTIONS] IMAGE [COMMAND] [ARG...]`
 Basic flags:
 
 - :whale: `-a, --attach`: Attach STDIN, STDOUT, or STDERR
-- :whale: `-i, --interactive`: Keep STDIN open even if not attached"
+- :whale: `-i, --interactive`: Keep STDIN open even if not attached
 - :whale: `-t, --tty`: Allocate a pseudo-TTY
   - :warning: WIP: currently `-t` conflicts with `-d`
-- :whale: `-sig-proxy`: Proxy received signals to the process (default true)
+- :whale: `--sig-proxy`: Proxy received signals to the process (default true)
 - :whale: `-d, --detach`: Run container in background and print container ID
 - :whale: `--restart=(no|always|on-failure|unless-stopped)`: Restart policy to apply when a container exits
   - Default: "no"
@@ -255,6 +255,7 @@ Security flags:
 
 - :whale: `--security-opt seccomp=<PROFILE_JSON_FILE>`: specify custom seccomp profile
 - :whale: `--security-opt apparmor=<PROFILE>`: specify custom AppArmor profile
+- :whale: `--security-opt label=<selinuxlabel>`: specify custom selinux label
 - :whale: `--security-opt no-new-privileges`: disallow privilege escalation, e.g., setuid and file capabilities
 - :whale: `--security-opt systempaths=unconfined`: Turn off confinement for system paths (masked paths, read-only paths) for the container
 - :whale: `--security-opt writable-cgroups`: making the cgroups writeable
@@ -343,7 +344,6 @@ Health check flags:
 - :whale: `--health-timeout`: Time to wait before considering the check failed (e.g., 5s)
 - :whale: `--health-retries`: Number of failures before container is considered unhealthy
 - :whale: `--health-start-period`: Start period for the container to initialize before starting health-retries countdown
-- :whale: `--health-start-interval`: Interval between checks during the start period
 - :whale: `--no-healthcheck`: Disable any health checks defined by image or CLI
 
 Logging flags:
@@ -366,7 +366,7 @@ Logging flags:
     - The `fluentd` logging driver supports the following logging options:
       - :whale: `--log-opt=fluentd-address=<ADDRESS>`: The address of the `fluentd` daemon, tcp(default) and unix sockets are supported..
       - :whale: `--log-opt=fluentd-async=<true|false>`: Enable async mode for fluentd. The default value is false.
-      - :whale: `--log-opt=fluentd-buffer-limit=<LIMIT>`: The buffer limit for fluentd. If the buffer is full, the call to record logs will fail. The default is 8192. (<https://github.com/fluent/fluent-logger-golang/tree/master#bufferlimit>)
+      - :whale: `--log-opt=fluentd-buffer-limit=<LIMIT>`: The buffer limit for fluentd. If the buffer is full, the call to record logs will fail. The default is 1MiB. Accepts human-readable sizes (e.g., `1KiB`, `1MiB`, `1GiB`) or raw byte values. (<https://github.com/fluent/fluent-logger-golang/tree/master#bufferlimit>)
       - :whale: `--log-opt=fluentd-retry-wait=<1s|1ms>`: The time to wait before retrying to send logs to fluentd. The default value is 1s.
       - :whale: `--log-opt=fluentd-max-retries=<1>`: The maximum number of retries to send logs to fluentd. The default value is MaxInt32.
       - :whale: `--log-opt=fluentd-sub-second-precision=<true|false>`: Enable sub-second precision for fluentd. The default value is false.
@@ -454,7 +454,8 @@ IPFS flags:
 
 Unimplemented `docker run` flags:
     `--device-cgroup-rule`, `--disable-content-trust`, `--expose`,
-    `--link*`, `--publish-all`, `--storage-opt`, `--volume-driver`
+    `--health-start-interval`, `--link*`, `--publish-all`, `--storage-opt`,
+    `--volume-driver`
 
 ### :whale: nerdctl exec
 
@@ -1809,7 +1810,7 @@ Push service images
 
 Usage: `nerdctl compose push [OPTIONS] [SERVICE...]`
 
-Unimplemented `docker-compose pull` (V1) flags: `--ignore-push-failures`
+Unimplemented `docker-compose push` (V1) flags: `--ignore-push-failures`
 
 ### :whale: nerdctl compose pause
 
@@ -1977,6 +1978,7 @@ Flags:
 - :nerd_face: `--host-gateway-ip`: IP address that the special 'host-gateway' string in --add-host resolves to. It has no effect without setting --add-host
   - Default: the IP address of the host
 - :nerd_face: `--userns-remap=<username>:<groupname>`: Support idmapping of containers. This options is only supported on rootful linux for container create and run if a user name and optionally group name is passed, it does idmapping based on the uidmap and gidmap ranges specified in /etc/subuid and /etc/subgid respectively. Note: `--userns-remap` is not supported for building containers. Nerdctl Build doesn't support userns-remap feature. (format: <name|uid>[:<group|gid>])
+- :nerd_face: `--selinux-enabled`: Enable selinux support
 
 The global flags can be also specified in `/etc/nerdctl/nerdctl.toml` (rootful) and `~/.config/nerdctl/nerdctl.toml` (rootless).
 See [`./config.md`](./config.md).
@@ -1994,7 +1996,13 @@ Network management:
 
 Compose:
 
-- `docker-compose events|scale`
+- `docker compose attach`
+- `docker compose events`
+- `docker compose ls`
+- `docker compose scale`
+- `docker compose stats`
+- `docker compose wait`
+- `docker compose watch`
 
 Builder:
 

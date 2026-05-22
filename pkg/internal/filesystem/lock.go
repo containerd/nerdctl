@@ -51,7 +51,10 @@ func ReadOnlyLock(path string) (file *os.File, err error) {
 func commonlock(path string, mode lockType) (file *os.File, err error) {
 	defer func() {
 		if err != nil {
-			err = errors.Join(ErrLockFail, err, file.Close())
+			err = errors.Join(ErrLockFail, err)
+			if file != nil {
+				err = errors.Join(err, file.Close())
+			}
 		}
 	}()
 

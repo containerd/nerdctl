@@ -30,7 +30,6 @@ import (
 	"time"
 
 	dockercliopts "github.com/docker/cli/opts"
-	dockeropts "github.com/docker/docker/opts"
 	"github.com/moby/sys/signal"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/term"
@@ -644,6 +643,7 @@ func DecodeContainerRmOptLabel(rmOptLabel string) (bool, error) {
 //
 // Returns a map of host-to-IPs or errors if any mapping strings are not correctly formatted.
 func ParseExtraHosts(extraHosts []string, hostGatewayIP, separator string) ([]string, error) {
+	const hostGatewayName = "host-gateway"
 	hosts := make([]string, 0, len(extraHosts))
 	for _, hostToIP := range strutil.DedupeStrSlice(extraHosts) {
 		if _, err := dockercliopts.ValidateExtraHost(hostToIP); err != nil {
@@ -659,9 +659,9 @@ func ParseExtraHosts(extraHosts []string, hostGatewayIP, separator string) ([]st
 
 		// If the IP address is a string called "host-gateway", replace this value with the IP address stored
 		// in the daemon level HostGatewayIP config variable.
-		if ip == dockeropts.HostGatewayName && hostGatewayIP == "" {
+		if ip == hostGatewayName && hostGatewayIP == "" {
 			return nil, errors.New("unable to derive the IP value for host-gateway")
-		} else if ip == dockeropts.HostGatewayName {
+		} else if ip == hostGatewayName {
 			ip = hostGatewayIP
 		}
 

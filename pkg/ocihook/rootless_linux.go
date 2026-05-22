@@ -19,7 +19,7 @@ package ocihook
 import (
 	"context"
 
-	rlkclient "github.com/rootless-containers/rootlesskit/v2/pkg/api/client"
+	rlkclient "github.com/rootless-containers/rootlesskit/v3/pkg/api/client"
 
 	"github.com/containerd/go-cni"
 

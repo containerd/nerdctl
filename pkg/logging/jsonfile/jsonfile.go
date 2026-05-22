@@ -26,9 +26,9 @@ import (
 	"sync"
 	"time"
 
-	timetypes "github.com/docker/docker/api/types/time"
-
 	"github.com/containerd/log"
+
+	"github.com/containerd/nerdctl/v2/pkg/timestamp"
 )
 
 // Entry is compatible with Docker "json-file" logs
@@ -75,7 +75,7 @@ func writeEntry(e *Entry, stdout, stderr io.Writer, refTime time.Time, timestamp
 	output := []byte{}
 
 	if since != "" {
-		ts, err := timetypes.GetTimestamp(since, refTime)
+		ts, err := timestamp.GetTimestamp(since, refTime)
 		if err != nil {
 			return fmt.Errorf("invalid value for \"since\": %w", err)
 		}
@@ -90,7 +90,7 @@ func writeEntry(e *Entry, stdout, stderr io.Writer, refTime time.Time, timestamp
 	}
 
 	if until != "" {
-		ts, err := timetypes.GetTimestamp(until, refTime)
+		ts, err := timestamp.GetTimestamp(until, refTime)
 		if err != nil {
 			return fmt.Errorf("invalid value for \"until\": %w", err)
 		}

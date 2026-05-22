@@ -142,26 +142,27 @@ type HostConfig struct {
 	// Binds           []string      // List of volume bindings for this container
 	ContainerIDFile string          // File (path) where the containerId is written
 	LogConfig       loggerLogConfig // Configuration of the logs for this container
-	// NetworkMode     NetworkMode   // Network mode to use for the container
-	PortBindings nat.PortMap // Port mapping between the exposed port (container) and the host
-	// RestartPolicy   RestartPolicy // Restart policy to be used for the container
-	// AutoRemove      bool          // Automatically remove container when it exits
+	NetworkMode     string          // Network mode to use for the container
+	PortBindings    nat.PortMap     // Port mapping between the exposed port (container) and the host
+	RestartPolicy   RestartPolicy   // Restart policy to be used for the container
+	AutoRemove      bool            // Automatically remove container when it exits
 	// VolumeDriver    string        // Name of the volume driver used to mount volumes
 	// VolumesFrom     []string      // List of volumes to take from other container
-	// CapAdd          strslice.StrSlice // List of kernel capabilities to add to the container
-	// CapDrop         strslice.StrSlice // List of kernel capabilities to remove from the container
+	CapAdd  []string // List of kernel capabilities to add to the container
+	CapDrop []string // List of kernel capabilities to remove from the container
 
-	CgroupnsMode string   // Cgroup namespace mode to use for the container
-	DNS          []string `json:"Dns"`        // List of DNS server to lookup
-	DNSOptions   []string `json:"DnsOptions"` // List of DNSOption to look for
-	DNSSearch    []string `json:"DnsSearch"`  // List of DNSSearch to look for
-	ExtraHosts   []string // List of extra hosts
-	GroupAdd     []string // GroupAdd specifies additional groups to join
-	IpcMode      string   `json:"IpcMode"` // IPC namespace to use for the container
+	CgroupnsMode string            // Cgroup namespace mode to use for the container
+	DNS          []string          `json:"Dns"`        // List of DNS server to lookup
+	DNSOptions   []string          `json:"DnsOptions"` // List of DNSOption to look for
+	DNSSearch    []string          `json:"DnsSearch"`  // List of DNSSearch to look for
+	ExtraHosts   []string          // List of extra hosts
+	GroupAdd     []string          // GroupAdd specifies additional groups to join
+	IpcMode      string            `json:"IpcMode"`    // IPC namespace to use for the container
+	Annotations  map[string]string `json:",omitempty"` // Arbitrary non-identifying metadata attached to container and provided to the runtime
 	// Cgroup          CgroupSpec        // Cgroup to use for the container
 	OomScoreAdj int    // specifies the tune container’s OOM preferences (-1000 to 1000, rootless: 100 to 1000)
 	PidMode     string // PID namespace to use for the container
-	// Privileged      bool              // Is the container in privileged mode
+	Privileged  bool   // Is the container in privileged mode
 	// PublishAllPorts bool              // Should docker publish all exposed port for the container
 	ReadonlyRootfs bool // Is the container root filesystem in read-only
 	// SecurityOpt     []string          // List of string values to customize labels for MLS systems, such as SELinux.
@@ -180,6 +181,10 @@ type HostConfig struct {
 	CPURealtimeRuntime int64             `json:"CpuRealtimeRuntime"` // Limits the CPU real-time runtime in microseconds
 	Memory             int64             // Memory limit (in bytes)
 	MemorySwap         int64             // Total memory usage (memory + swap); set `-1` to enable unlimited swap
+	MemoryReservation  int64             // Memory soft limit (in bytes)
+	MemorySwappiness   *int64            // Tuning container memory swappiness (0 to 100); nil means not set
+	PidsLimit          int64             // Setting PIDs limit for a container; 0 or -1 for unlimited
+	Ulimits            []*units.Ulimit   // List of ulimits to be set in the container
 	OomKillDisable     bool              // specifies whether to disable OOM Killer
 	Devices            []DeviceMapping   // List of devices to map inside the container
 	BlkioSettings
@@ -268,6 +273,12 @@ type DeviceMapping struct {
 	CgroupPermissions string
 }
 
+// RestartPolicy represents the restart policies of the container.
+type RestartPolicy struct {
+	Name              string
+	MaximumRetryCount int
+}
+
 type CPUSettings struct {
 	CPUSetCpus         string
 	CPUSetMems         string
@@ -307,6 +318,26 @@ type NetworkEndpointSettings struct {
 	GlobalIPv6PrefixLen int
 	MacAddress          string
 	// TODO DriverOpts          map[string]string
+}
+
+// defaultCaps mirrors containerd's defaultUnixCaps() — the 14 capabilities
+// granted to non-privileged containers by default. Used as the baseline for
+// reconstructing CapAdd/CapDrop from the OCI spec's bounding set.
+var defaultCaps = map[string]struct{}{
+	"CAP_CHOWN":            {},
+	"CAP_DAC_OVERRIDE":     {},
+	"CAP_FSETID":           {},
+	"CAP_FOWNER":           {},
+	"CAP_MKNOD":            {},
+	"CAP_NET_RAW":          {},
+	"CAP_SETGID":           {},
+	"CAP_SETUID":           {},
+	"CAP_SETFCAP":          {},
+	"CAP_SETPCAP":          {},
+	"CAP_NET_BIND_SERVICE": {},
+	"CAP_SYS_CHROOT":       {},
+	"CAP_KILL":             {},
+	"CAP_AUDIT_WRITE":      {},
 }
 
 // ContainerFromNative instantiates a Docker-compatible Container from containerd-native Container.
@@ -500,6 +531,11 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	c.HostConfig.OomKillDisable = memorySettings.DisableOOMKiller
 	c.HostConfig.Memory = memorySettings.Limit
 	c.HostConfig.MemorySwap = memorySettings.Swap
+	c.HostConfig.MemoryReservation = memorySettings.Reservation
+	if memorySettings.Swappiness != nil {
+		swappiness := int64(*memorySettings.Swappiness)
+		c.HostConfig.MemorySwappiness = &swappiness
+	}
 
 	dnsSettings, err := getDNSFromNative(n.Labels)
 	if err != nil {
@@ -572,6 +608,63 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	if n.Labels[labels.User] != "" {
 		c.Config.User = n.Labels[labels.User]
 	}
+
+	capAdd, capDrop, err := getCapabilitiesFromNative(n.Spec.(*specs.Spec))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get capabilities: %w", err)
+	}
+	c.HostConfig.CapAdd = capAdd
+	c.HostConfig.CapDrop = capDrop
+
+	ulimits, err := getUlimitsFromNative(n.Spec.(*specs.Spec))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ulimits: %w", err)
+	}
+	c.HostConfig.Ulimits = ulimits
+
+	if policyStr := n.Labels[restart.PolicyLabel]; policyStr != "" {
+		rp, err := restart.NewPolicy(policyStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse restart policy: %w", err)
+		}
+		c.HostConfig.RestartPolicy = RestartPolicy{
+			Name:              rp.Name(),
+			MaximumRetryCount: rp.MaximumRetryCount(),
+		}
+	}
+
+	if len(containerAnnotations) > 0 {
+		userAnnotations := make(map[string]string)
+		for k, v := range containerAnnotations {
+			if !strings.HasPrefix(k, labels.Prefix) {
+				userAnnotations[k] = v
+			}
+		}
+		if len(userAnnotations) > 0 {
+			c.HostConfig.Annotations = userAnnotations
+		}
+	}
+
+	if sp, ok := n.Spec.(*specs.Spec); ok {
+		if sp.Linux != nil && sp.Linux.Resources != nil &&
+			sp.Linux.Resources.Pids != nil && sp.Linux.Resources.Pids.Limit != nil {
+			c.HostConfig.PidsLimit = *sp.Linux.Resources.Pids.Limit
+		}
+	}
+
+	if networksJSON := n.Labels[labels.Networks]; networksJSON != "" {
+		var networks []string
+		if err := json.Unmarshal([]byte(networksJSON), &networks); err != nil {
+			return nil, fmt.Errorf("failed to parse networks label: %v", err)
+		}
+		if len(networks) > 0 {
+			c.HostConfig.NetworkMode = networks[0]
+		}
+	}
+
+	c.HostConfig.Privileged = n.Labels[labels.Privileged] == "true"
+
+	c.HostConfig.AutoRemove = n.Labels[labels.ContainerAutoRemove] == "true"
 
 	// Add health check config if present in labels
 	if hConfig, ok := n.Labels[labels.HealthCheck]; ok && hConfig != "" {
@@ -850,6 +943,15 @@ func getMemorySettingsFromNative(sp *specs.Spec) (*MemorySetting, error) {
 		if sp.Linux.Resources.Memory.Swap != nil {
 			res.Swap = *sp.Linux.Resources.Memory.Swap
 		}
+
+		if sp.Linux.Resources.Memory.Reservation != nil {
+			res.Reservation = *sp.Linux.Resources.Memory.Reservation
+		}
+
+		if sp.Linux.Resources.Memory.Swappiness != nil {
+			v := *sp.Linux.Resources.Memory.Swappiness
+			res.Swappiness = &v
+		}
 	}
 	return res, nil
 }
@@ -904,6 +1006,43 @@ func getSysctlFromNative(sp *specs.Spec) (map[string]string, error) {
 	return res, nil
 }
 
+func getCapabilitiesFromNative(sp *specs.Spec) (capAdd, capDrop []string, err error) {
+	if sp.Process == nil || sp.Process.Capabilities == nil {
+		return nil, nil, nil
+	}
+	capAdd = []string{}
+	capDrop = []string{}
+	boundingSet := make(map[string]struct{}, len(sp.Process.Capabilities.Bounding))
+	for _, cap := range sp.Process.Capabilities.Bounding {
+		boundingSet[cap] = struct{}{}
+		if _, isDefault := defaultCaps[cap]; !isDefault {
+			capAdd = append(capAdd, cap)
+		}
+	}
+	for cap := range defaultCaps {
+		if _, present := boundingSet[cap]; !present {
+			capDrop = append(capDrop, cap)
+		}
+	}
+	return capAdd, capDrop, nil
+}
+
+func getUlimitsFromNative(sp *specs.Spec) ([]*units.Ulimit, error) {
+	if sp.Process == nil || len(sp.Process.Rlimits) == 0 {
+		return nil, nil
+	}
+	ulimits := make([]*units.Ulimit, 0, len(sp.Process.Rlimits))
+	for _, rl := range sp.Process.Rlimits {
+		name := strings.ToLower(strings.TrimPrefix(rl.Type, "RLIMIT_"))
+		ulimits = append(ulimits, &units.Ulimit{
+			Name: name,
+			Hard: int64(rl.Hard),
+			Soft: int64(rl.Soft),
+		})
+	}
+	return ulimits, nil
+}
+
 type IPAMConfig struct {
 	Subnet  string `json:"Subnet,omitempty"`
 	Gateway string `json:"Gateway,omitempty"`
@@ -929,9 +1068,9 @@ type Network struct {
 type EndpointResource struct {
 	Name string `json:"Name"`
 	// EndpointID  string `json:"EndpointID"`
-	// MacAddress  string `json:"MacAddress"`
-	// IPv4Address string `json:"IPv4Address"`
-	// IPv6Address string `json:"IPv6Address"`
+	MacAddress  string `json:"MacAddress"`
+	IPv4Address string `json:"IPv4Address"`
+	IPv6Address string `json:"IPv6Address"`
 }
 
 type structuredCNI struct {
@@ -944,9 +1083,97 @@ type structuredCNI struct {
 }
 
 type MemorySetting struct {
-	Limit            int64 `json:"limit"`
-	Swap             int64 `json:"swap"`
-	DisableOOMKiller bool  `json:"disableOOMKiller"`
+	Limit            int64   `json:"limit"`
+	Swap             int64   `json:"swap"`
+	Reservation      int64   `json:"reservation"`
+	Swappiness       *uint64 `json:"swappiness"`
+	DisableOOMKiller bool    `json:"disableOOMKiller"`
+}
+
+// parseNetworkSubnets extracts and parses subnet configurations from IPAM config
+func parseNetworkSubnets(ipamConfigs []IPAMConfig) []*net.IPNet {
+	var subnets []*net.IPNet
+	for _, config := range ipamConfigs {
+		if config.Subnet != "" {
+			_, subnet, err := net.ParseCIDR(config.Subnet)
+			if err != nil {
+				log.L.WithError(err).Warnf("failed to parse subnet %q", config.Subnet)
+				continue
+			}
+			subnets = append(subnets, subnet)
+		}
+	}
+	return subnets
+}
+
+// isUsableInterface checks if a network interface is usable (not loopback and interface is up)
+func isUsableInterface(iface *native.NetInterface) bool {
+	return iface.Interface.Flags&net.FlagLoopback == 0 &&
+		iface.Interface.Flags&net.FlagUp != 0
+}
+
+// setIPAddresses assigns IPv4 or IPv6 addresses from CIDR notation to the endpoint
+func setIPAddresses(endpoint *EndpointResource, cidr string) {
+	ip, _, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return
+	}
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+		return
+	}
+
+	if ip.To4() != nil {
+		endpoint.IPv4Address = cidr
+	} else if ip.To16() != nil {
+		endpoint.IPv6Address = cidr
+	}
+}
+
+// matchInterfaceToSubnets tries to match an interface to network subnets
+func matchInterfaceToSubnets(endpoint *EndpointResource, iface *native.NetInterface, subnets []*net.IPNet) bool {
+	matched := false
+	for _, addr := range iface.Addrs {
+		ip, _, err := net.ParseCIDR(addr)
+		if err != nil || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+			continue
+		}
+
+		for _, subnet := range subnets {
+			if subnet.Contains(ip) {
+				if !matched {
+					endpoint.MacAddress = iface.HardwareAddr
+					matched = true
+				}
+				setIPAddresses(endpoint, addr)
+				break // Break inner loop, continue checking other addresses
+			}
+		}
+	}
+	return matched
+}
+
+// populateEndpointFromNetNS finds and populates endpoint info from network namespace interfaces
+func populateEndpointFromNetNS(endpoint *EndpointResource, interfaces []native.NetInterface, subnets []*net.IPNet) {
+	for _, iface := range interfaces {
+		if !isUsableInterface(&iface) {
+			continue
+		}
+
+		if len(subnets) > 0 {
+			if matchInterfaceToSubnets(endpoint, &iface, subnets) {
+				return // Found matching interface
+			}
+			// Continue to next interface if this one doesn't match any subnets
+			continue
+		}
+
+		// Fallback: use first usable interface (for networks without explicit subnets)
+		endpoint.MacAddress = iface.HardwareAddr
+		for _, addr := range iface.Addrs {
+			setIPAddresses(endpoint, addr)
+		}
+		return
+	}
 }
 
 func NetworkFromNative(n *native.Network) (*Network, error) {
@@ -973,15 +1200,20 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 		res.Labels = *n.NerdctlLabels
 	}
 
+	// Parse network subnets for interface matching
+	networkSubnets := parseNetworkSubnets(res.IPAM.Config)
+
 	res.Containers = make(map[string]EndpointResource)
 	for _, container := range n.Containers {
-		res.Containers[container.ID] = EndpointResource{
+		endpoint := EndpointResource{
 			Name: container.Labels[labels.Name],
-			// EndpointID:  container.EndpointID,
-			// MacAddress:  container.MacAddress,
-			// IPv4Address: container.IPv4Address,
-			// IPv6Address: container.IPv6Address,
 		}
+
+		if container.Process != nil && container.Process.NetNS != nil {
+			populateEndpointFromNetNS(&endpoint, container.Process.NetNS.Interfaces, networkSubnets)
+		}
+
+		res.Containers[container.ID] = endpoint
 	}
 
 	return &res, nil

@@ -18,13 +18,18 @@ package compose
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposeRestart(t *testing.T) {
-	base := testutil.NewBase(t)
 	var dockerComposeYAML = fmt.Sprintf(`
 services:
   wordpress:
@@ -51,24 +56,65 @@ volumes:
   db:
 `, testutil.WordpressImage, testutil.MariaDBImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	testCase := nerdtest.Setup()
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+		data.Labels().Set("yamlPath", data.Temp().Path("compose.yaml"))
+	}
 
-	// stop and restart a single service.
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "db").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db", "-a").AssertOutContainsAny("Exit", "exited")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "restart", "db").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutContainsAny("Up", "running")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Labels().Get("yamlPath"), "down", "-v")
+	}
 
-	// stop one service and restart all (also check `--timeout` arg).
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "db").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db", "-a").AssertOutContainsAny("Exit", "exited")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "restart", "--timeout", "5").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutContainsAny("Up", "running")
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutContainsAny("Up", "running")
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "restart single service",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("yamlPath"), "stop", "db")
+				ps := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "db", "-a")
+				expect.Match(regexp.MustCompile("Exit|exited"))(ps, helpers.T())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("yamlPath"), "restart", "db")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						ps := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "db")
+						expect.Match(regexp.MustCompile("Up|running"))(ps, t)
+					},
+				}
+			},
+		},
+		{
+			Description: "stop one service and restart all with timeout",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("compose", "-f", data.Labels().Get("yamlPath"), "stop", "db")
+				ps := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "db", "-a")
+				expect.Match(regexp.MustCompile("Exit|exited"))(ps, helpers.T())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("yamlPath"), "restart", "--timeout", "5")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						db := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "db")
+						wp := helpers.Capture("compose", "-f", data.Labels().Get("yamlPath"), "ps", "wordpress")
+						comp := expect.Match(regexp.MustCompile("Up|running"))
+						comp(db, t)
+						comp(wp, t)
+					},
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
 }

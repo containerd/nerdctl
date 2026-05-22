@@ -86,7 +86,6 @@ func FromArchive(ctx context.Context, client *containerd.Client, options types.I
 
 	var loadedImages []images.Image
 	pf, done := transferutil.ProgressHandler(ctx, options.Stdout)
-	defer done()
 
 	err = client.Transfer(ctx,
 		tarchive.NewImageImportStream(options.Stdin, ""),
@@ -96,15 +95,20 @@ func FromArchive(ctx context.Context, client *containerd.Client, options types.I
 				if img, err := imageService.Get(ctx, p.Name); err == nil {
 					if !beforeSet[img.Name] {
 						loadedImages = append(loadedImages, img)
-						if !options.Quiet {
-							fmt.Fprintf(options.Stdout, "Loaded image: %s\n", img.Name)
-						}
 					}
 				}
 			}
 			pf(p)
 		}),
 	)
+
+	done()
+
+	if !options.Quiet {
+		for _, img := range loadedImages {
+			fmt.Fprintf(options.Stdout, "Loaded image: %s\n", img.Name)
+		}
+	}
 
 	return loadedImages, err
 }

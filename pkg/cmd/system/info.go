@@ -69,7 +69,7 @@ func Info(ctx context.Context, client *containerd.Client, options types.SystemIn
 			return err
 		}
 	case "dockercompat":
-		infoCompat, err = infoutil.Info(ctx, client, options.GOptions.Snapshotter, options.GOptions.CgroupManager)
+		infoCompat, err = infoutil.Info(ctx, client, options.GOptions.Snapshotter, options.GOptions.CgroupManager, options.GOptions.SelinuxEnabled)
 		if err != nil {
 			return err
 		}

@@ -50,8 +50,9 @@ func CNIPath() string {
 		cni.DefaultCNIDir, // /opt/cni/bin
 		"/usr/local/libexec/cni",
 		"/usr/local/lib/cni",
-		"/usr/libexec/cni", // Fedora
-		"/usr/lib/cni",     // debian (containernetworking-plugins)
+		"/home/linuxbrew/.linuxbrew/opt/cni-plugins/bin", // Homebrew
+		"/usr/libexec/cni",                               // Fedora
+		"/usr/lib/cni",                                   // debian (containernetworking-plugins)
 	}
 	if rootlessutil.IsRootless() {
 		home := os.Getenv("HOME")

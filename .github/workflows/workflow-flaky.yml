@@ -10,6 +10,9 @@ on:
     paths-ignore:
       - '**.md'
 
+permissions:
+  contents: read
+
 jobs:
   test-integration-el:
     name: "EL${{ inputs.hack }}"
@@ -49,6 +52,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 1
+          persist-credentials: false
       - name: "Run"
         run: |
           # FIXME: this should be a bit more elegant to use.

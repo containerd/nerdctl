@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/pkg/sysinfo"
+	"github.com/moby/moby/v2/pkg/sysinfo"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/introspection"
@@ -62,7 +62,7 @@ func NativeDaemonInfo(ctx context.Context, client *containerd.Client) (*native.D
 	return daemonInfo, nil
 }
 
-func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupManager string) (*dockercompat.Info, error) {
+func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupManager string, selinuxEnabled bool) (*dockercompat.Info, error) {
 	daemonVersion, err := client.Version(ctx)
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupMan
 		return nil, err
 	}
 	info.ServerVersion = daemonVersion.Version
-	fulfillPlatformInfo(&info)
+	fulfillPlatformInfo(&info, selinuxEnabled)
 	return &info, nil
 }
 

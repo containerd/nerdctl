@@ -28,14 +28,13 @@
 # External dependencies:
 # * newuidmap and newgidmap needs to be installed.
 # * /etc/subuid and /etc/subgid needs to be configured for the current user.
-# * RootlessKit (>= v0.10.0) needs to be installed. RootlessKit >= v2.0.0 is recommended.
-# * Either one of slirp4netns (>= v0.4.0), VPNKit, lxc-user-nic needs to be installed. slirp4netns >= v1.1.7 is recommended.
+# * RootlessKit (>= v0.10.0) needs to be installed. RootlessKit >= v3.0.0 is recommended.
 #
 # Recognized environment variables:
 # * CONTAINERD_ROOTLESS_ROOTLESSKIT_STATE_DIR=DIR: the rootlesskit state dir. Defaults to "$XDG_RUNTIME_DIR/containerd-rootless".
-# * CONTAINERD_ROOTLESS_ROOTLESSKIT_NET=(slirp4netns|vpnkit|lxc-user-nic): the rootlesskit network driver. Defaults to "slirp4netns" if slirp4netns (>= v0.4.0) is installed. Otherwise defaults to "vpnkit".
-# * CONTAINERD_ROOTLESS_ROOTLESSKIT_MTU=NUM: the MTU value for the rootlesskit network driver. Defaults to 65520 for slirp4netns, 1500 for other drivers.
-# * CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=(builtin|slirp4netns): the rootlesskit port driver. Defaults to "builtin".
+# * CONTAINERD_ROOTLESS_ROOTLESSKIT_NET=(slirp4netns|vpnkit|pasta|gvisor-tap-vsock|lxc-user-nic): the rootlesskit network driver. Defaults to "slirp4netns" if slirp4netns (>= v0.4.0) is installed. Otherwise defaults to "gvisor-tap-vsock".
+# * CONTAINERD_ROOTLESS_ROOTLESSKIT_MTU=NUM: the MTU value for the rootlesskit network driver. Defaults to 65520 or 1500, depending on the network driver.
+# * CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=(builtin|slirp4netns|implicit|gvisor-tap-vsock): the rootlesskit port driver. Defaults to "builtin".
 # * CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX=(auto|true|false): whether to protect slirp4netns with a dedicated mount namespace. Defaults to "auto".
 # * CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP=(auto|true|false): whether to protect slirp4netns with seccomp. Defaults to "auto".
 # * CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS=(auto|true|false): whether to launch rootlesskit with the "detach-netns" mode.
@@ -90,15 +89,17 @@ if [ -z "$_CONTAINERD_ROOTLESS_CHILD" ]; then
 					mtu=65520
 				fi
 			else
-				echo "slirp4netns found but seems older than v0.4.0. Falling back to VPNKit."
+				echo "slirp4netns found but seems older than v0.4.0. Falling back to other drivers."
 			fi
 		fi
 		if [ -z "$net" ]; then
 			if command -v vpnkit >/dev/null 2>&1; then
 				net=vpnkit
 			else
-				echo "Either slirp4netns (>= v0.4.0) or vpnkit needs to be installed"
-				exit 1
+				net=gvisor-tap-vsock
+				if [ -z "$mtu" ]; then
+					mtu=65520
+				fi
 			fi
 		fi
 	fi

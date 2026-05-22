@@ -113,9 +113,13 @@ func convertCommand() *cobra.Command {
 
 func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
+
 	if err != nil {
 		return types.ImageConvertOptions{}, err
 	}
+
+	progressOutput := cmd.ErrOrStderr()
+
 	format, err := cmd.Flags().GetString("format")
 	if err != nil {
 		return types.ImageConvertOptions{}, err
@@ -313,7 +317,8 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 				AllPlatforms: allPlatforms,
 			},
 		},
-		Stdout: cmd.OutOrStdout(),
+		ProgressOutput: progressOutput,
+		Stdout:         cmd.OutOrStdout(),
 	}, nil
 }
 

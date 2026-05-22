@@ -30,6 +30,7 @@ userns_remap   = ""
 dns            = ["8.8.8.8", "1.1.1.1"]
 dns_opts       = ["ndots:1", "timeout:2"]
 dns_search     = ["example.com", "example.org"]
+selinux_enabled= true
 ```
 
 ## Properties
@@ -56,6 +57,7 @@ dns_search     = ["example.com", "example.org"]
 | `dns`               |                                    |                           | Set global DNS servers for containers                                                                                                                  | Since 2.1.3 |
 | `dns_opts`          |                                    |                           | Set global DNS options for containers                                                                                                                         | Since 2.1.3 |
 | `dns_search`        |                                    |                           | Set global DNS search domains for containers                                                                                                           | Since 2.1.3 |
+| `selinux_enabled`        |                                    |                           |Enable selinux support for containers                                                                                                           | Since 2.3.0 |
 
 The properties are parsed in the following precedence:
 1. CLI flag

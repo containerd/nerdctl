@@ -17,7 +17,7 @@
 package infoutil
 
 import (
-	"github.com/docker/docker/pkg/sysinfo"
+	"github.com/moby/moby/v2/pkg/sysinfo"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 )
@@ -28,7 +28,7 @@ func CgroupsVersion() string {
 	return ""
 }
 
-func fulfillPlatformInfo(info *dockercompat.Info) {
+func fulfillPlatformInfo(info *dockercompat.Info, selinuxEnabled bool) {
 	// unimplemented
 }
 

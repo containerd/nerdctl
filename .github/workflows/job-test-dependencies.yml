@@ -34,21 +34,23 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - name: "Init: expose GitHub Runtime variables for gha"
-        uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124  # v3.1.0
+        uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487  # v4.0.0
 
       - name: "Run: build dependencies for the integration test environment image"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUTS_CONTAINERD_VERSION: ${{ inputs.containerd-version }}
         run: |
           # Cache is sharded per-architecture
           arch=${{ env.RUNNER_ARCH == 'ARM64' && 'arm64' || 'amd64' }}
           docker buildx create --name with-gha --use
           # Honor old containerd if requested
           args=()
-          if [ "${{ inputs.containerd-version }}" != "" ]; then
-            args=(--build-arg CONTAINERD_VERSION=${{ inputs.containerd-version }})
+          if [ "${INPUTS_CONTAINERD_VERSION}" != "" ]; then
+            args=(--build-arg CONTAINERD_VERSION=${INPUTS_CONTAINERD_VERSION})
           fi
           docker buildx build \
             --secret id=github_token,env=GITHUB_TOKEN \

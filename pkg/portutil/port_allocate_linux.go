@@ -17,7 +17,10 @@
 package portutil
 
 import (
+	"errors"
 	"fmt"
+	"net"
+	"os"
 
 	"github.com/containerd/nerdctl/v2/pkg/portutil/iptable"
 	"github.com/containerd/nerdctl/v2/pkg/portutil/procnet"
@@ -86,14 +89,14 @@ func getUsedPorts(ip string, protocol string) (map[uint64]bool, error) {
 	// So we need some trick to process this situation.
 	if protocol == "tcp" {
 		tempTCPV6Data, err := procnet.ReadStatsFileData("tcp6")
-		if err != nil {
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
 		netprocItems = append(netprocItems, procnet.Parse(tempTCPV6Data)...)
 	}
 	if protocol == "udp" {
 		tempUDPV6Data, err := procnet.ReadStatsFileData("udp6")
-		if err != nil {
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
 		netprocItems = append(netprocItems, procnet.Parse(tempUDPV6Data)...)
@@ -123,10 +126,16 @@ func getUsedPorts(ip string, protocol string) (map[uint64]bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	destinationPorts := iptable.ParseIPTableRules(ipTableItems)
+	portRules := iptable.ParseIPTableRules(ipTableItems)
 
-	for _, port := range destinationPorts {
-		usedPort[port] = true
+	requestedIP := net.ParseIP(ip)
+	requestedIsWildcard := ip == "" || requestedIP.IsUnspecified()
+	for _, rule := range portRules {
+		ruleIP := net.ParseIP(rule.IP)
+		ruleIsWildcard := rule.IP == "" || ruleIP.IsUnspecified()
+		if requestedIsWildcard || ruleIsWildcard || (requestedIP != nil && ruleIP != nil && requestedIP.Equal(ruleIP)) {
+			usedPort[rule.Port] = true
+		}
 	}
 
 	return usedPort, nil

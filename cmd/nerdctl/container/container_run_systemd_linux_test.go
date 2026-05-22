@@ -70,10 +70,12 @@ func TestRunWithSystemdTrueEnabled(t *testing.T) {
 	testCase.Require = require.All(
 		require.Amd64,
 		require.Not(nerdtest.Docker),
+		nerdtest.NerdctlNeedsFixing("https://github.com/containerd/nerdctl/issues/4746"),
 	)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("run", "-d", "--name", data.Identifier(), "--systemd=true", "--entrypoint=/sbin/init", testutil.SystemdImage)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {

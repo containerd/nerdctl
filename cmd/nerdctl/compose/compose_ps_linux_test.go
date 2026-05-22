@@ -19,18 +19,27 @@ package compose
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
 	"github.com/containerd/nerdctl/v2/pkg/tabutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestComposePs(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
+
+	testCase.Require = nerdtest.Private
+
 	var dockerComposeYAML = fmt.Sprintf(`
 services:
   wordpress:
@@ -61,56 +70,121 @@ volumes:
   wordpress:
   db:
 `, testutil.WordpressImage, testutil.MariaDBImage, testutil.CommonImage)
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		data.Labels().Set("composeYAML", composePath)
 
-	assertHandler := func(expectedName, expectedImage string) func(stdout string) error {
-		return func(stdout string) error {
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+
+		nerdtest.EnsureContainerStarted(helpers, "wordpress_container")
+		nerdtest.EnsureContainerStarted(helpers, "db_container")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if path := data.Labels().Get("composeYAML"); path != "" {
+			helpers.Anyhow("compose", "-f", path, "down", "-v")
+		}
+	}
+
+	assertHandler := func(expectedName, expectedImage string) test.Comparator {
+		return func(stdout string, t tig.T) {
+
 			lines := strings.Split(strings.TrimSpace(stdout), "\n")
-			if len(lines) < 2 {
-				return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-			}
+			assert.Assert(t, len(lines) >= 2)
 
 			tab := tabutil.NewReader("NAME\tIMAGE\tCOMMAND\tSERVICE\tSTATUS\tPORTS")
-			err := tab.ParseHeader(lines[0])
-			if err != nil {
-				return fmt.Errorf("failed to parse header: %v", err)
-			}
+			assert.NilError(t, tab.ParseHeader(lines[0]))
 
 			container, _ := tab.ReadRow(lines[1], "NAME")
 			assert.Equal(t, container, expectedName)
 
 			image, _ := tab.ReadRow(lines[1], "IMAGE")
 			assert.Equal(t, image, expectedImage)
-
-			return nil
 		}
-
 	}
 
-	time.Sleep(3 * time.Second)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "wordpress").AssertOutWithFunc(assertHandler("wordpress_container", testutil.WordpressImage))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "db").AssertOutWithFunc(assertHandler("db_container", testutil.MariaDBImage))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps").AssertOutNotContains(testutil.CommonImage)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "alpine", "-a").AssertOutWithFunc(assertHandler("alpine_container", testutil.CommonImage))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "-a", "--filter", "status=exited").AssertOutWithFunc(assertHandler("alpine_container", testutil.CommonImage))
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "--services", "-a").AssertOutContainsAll("wordpress\n", "db\n", "alpine\n")
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "compose ps wordpress",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps", "wordpress")
+			},
+			Expected: test.Expects(0, nil,
+				assertHandler("wordpress_container", testutil.WordpressImage),
+			),
+		},
+		{
+			Description: "compose ps db",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps", "db")
+			},
+			Expected: test.Expects(0, nil,
+				assertHandler("db_container", testutil.MariaDBImage),
+			),
+		},
+		{
+			Description: "compose ps should not show alpine unless running",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps")
+			},
+			Expected: test.Expects(0, nil,
+				expect.DoesNotContain(testutil.CommonImage),
+			),
+		},
+		{
+			Description: "compose ps alpine -a",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps", "alpine", "-a")
+			},
+			Expected: test.Expects(0, nil,
+				assertHandler("alpine_container", testutil.CommonImage),
+			),
+		},
+		{
+			Description: "compose ps filter exited",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps", "-a", "--filter", "status=exited")
+			},
+			Expected: test.Expects(0, nil,
+				assertHandler("alpine_container", testutil.CommonImage),
+			),
+		},
+		{
+			Description: "compose ps services",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps", "--services", "-a")
+			},
+			Expected: test.Expects(0, nil,
+				expect.All(
+					expect.Contains("wordpress\n"),
+					expect.Contains("db\n"),
+					expect.Contains("alpine\n"),
+				),
+			),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposePsJSON(t *testing.T) {
-	// docker parses unknown 'format' as a Go template and won't output an error
-	testutil.DockerIncompatible(t)
+	testCase := nerdtest.Setup()
 
-	base := testutil.NewBase(t)
+	// docker parses unknown 'format' as a Go template and won't output an error
+	testCase.Require = require.All(
+		nerdtest.Private,
+		require.Not(nerdtest.Docker),
+	)
+
 	var dockerComposeYAML = fmt.Sprintf(`
 services:
   wordpress:
     image: %s
+    container_name: wordpress_container
     ports:
       - 8080:80
     environment:
@@ -122,6 +196,7 @@ services:
       - wordpress:/var/www/html
   db:
     image: %s
+    container_name: db_container
     environment:
       MYSQL_DATABASE: exampledb
       MYSQL_USER: exampleuser
@@ -135,50 +210,128 @@ volumes:
   db:
 `, testutil.WordpressImage, testutil.MariaDBImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		data.Labels().Set("composeYAML", composePath)
 
-	assertHandler := func(svc string, count int, fields ...string) func(stdout string) error {
-		return func(stdout string) error {
-			// 1. check json output can be unmarshalled back to printables.
-			var printables []composeContainerPrintable
-			if err := json.Unmarshal([]byte(stdout), &printables); err != nil {
-				return fmt.Errorf("[service: %s]failed to unmarshal json output from `compose ps`: %s", svc, stdout)
-			}
-			// 2. check #printables matches expected count.
-			if len(printables) != count {
-				return fmt.Errorf("[service: %s]unmarshal generates %d printables, expected %d: %s", svc, len(printables), count, stdout)
-			}
-			// 3. check marshalled json string has all expected substrings.
-			for _, field := range fields {
-				if !strings.Contains(stdout, field) {
-					return fmt.Errorf("[service: %s]marshalled json output doesn't have expected string (%s): %s", svc, field, stdout)
-				}
-			}
-			return nil
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+
+		nerdtest.EnsureContainerStarted(helpers, "wordpress_container")
+		nerdtest.EnsureContainerStarted(helpers, "db_container")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if path := data.Labels().Get("composeYAML"); path != "" {
+			helpers.Anyhow("compose", "-f", path, "down", "-v")
 		}
 	}
 
-	// check other formats are not supported
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "--format", "yaml").AssertFail()
-	// check all services are up (can be marshalled and unmarshalled) and check Image field exists
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "--format", "json").
-		AssertOutWithFunc(assertHandler("all", 2, `"Service":"wordpress"`, `"Service":"db"`,
-			fmt.Sprintf(`"Image":"%s"`, testutil.WordpressImage), fmt.Sprintf(`"Image":"%s"`, testutil.MariaDBImage)))
-	// check wordpress is running
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "--format", "json", "wordpress").
-		AssertOutWithFunc(assertHandler("wordpress", 1, `"Service":"wordpress"`, `"State":"running"`, `"TargetPort":80`, `"PublishedPort":8080`))
-	// check wordpress is stopped
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "stop", "wordpress").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "--format", "json", "wordpress", "-a").
-		AssertOutWithFunc(assertHandler("wordpress", 1, `"Service":"wordpress"`, `"State":"exited"`))
-	// check wordpress is removed
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "rm", "-f", "wordpress").AssertOK()
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "ps", "--format", "json", "wordpress").
-		AssertOutWithFunc(assertHandler("wordpress", 0))
+	assertHandler := func(svc string, count int, fields ...string) test.Comparator {
+		return func(stdout string, t tig.T) {
+
+			var printables []composeContainerPrintable
+			// 1. check json output can be unmarshalled back to printables.
+			assert.NilError(t, json.Unmarshal([]byte(stdout), &printables))
+			// 2. check #printables matches expected count.
+			assert.Equal(t, len(printables), count)
+			// 3. check marshalled json string has all expected substrings.
+			for _, field := range fields {
+				assert.Assert(t, strings.Contains(stdout, field),
+					fmt.Sprintf("[service: %s] expected %s in %s", svc, field, stdout))
+			}
+		}
+	}
+
+	testCase.SubTests = []*test.Case{
+		{ // check other formats are not supported
+			Description: "unsupported format should fail",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command(
+					"compose",
+					"-f", data.Labels().Get("composeYAML"),
+					"ps",
+					"--format", "yaml",
+				)
+			},
+			Expected: test.Expects(1, nil, nil),
+		},
+		{ // check all services are up (can be marshalled and unmarshalled) and check Image field exists
+			Description: "ps json all services",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "ps", "--format", "json")
+			},
+			Expected: test.Expects(0, nil,
+				assertHandler("all", 2,
+					`"Service":"wordpress"`,
+					`"Service":"db"`,
+					fmt.Sprintf(`"Image":"%s"`, testutil.WordpressImage),
+					fmt.Sprintf(`"Image":"%s"`, testutil.MariaDBImage),
+				),
+			),
+		},
+		{ // check wordpress is running
+			Description: "wordpress running",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"),
+					"ps", "--format", "json", "wordpress")
+			},
+			Expected: test.Expects(0, nil,
+				assertHandler("wordpress", 1,
+					`"Service":"wordpress"`,
+					`"State":"running"`,
+					`"TargetPort":80`,
+					`"PublishedPort":8080`,
+				)),
+		},
+		{
+			Description: "stop wordpress",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"),
+					"stop", "wordpress")
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
+		{ // check wordpress is stopped
+			Description: "wordpress exited",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"),
+					"ps", "--format", "json", "wordpress", "-a")
+			},
+			Expected: test.Expects(0, nil,
+				assertHandler("wordpress", 1,
+					`"Service":"wordpress"`,
+					`"State":"exited"`,
+				)),
+		},
+		{
+			Description: "remove wordpress",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"),
+					"rm", "-f", "wordpress")
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
+		{ // check wordpress is removed
+			Description: "wordpress removed",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYAML"),
+					"ps", "--format", "json", "wordpress")
+			},
+			Expected: test.Expects(0, nil,
+				assertHandler("wordpress", 0),
+			),
+		},
+	}
+
+	testCase.Run(t)
 }

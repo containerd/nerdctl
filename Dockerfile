@@ -17,19 +17,18 @@
 
 # Basic deps
 # @BINARY: the binary checksums are verified via Dockerfile.d/SHA256SUMS.d/<COMPONENT>-<VERSION>
-ARG CONTAINERD_VERSION=v2.2.1@dea7da592f5d1d2b7755e3a161be07f43fad8f75
-ARG RUNC_VERSION=v1.4.0@8bd78a9977e604c4d5f67a7415d7b8b8c109cdc4
-ARG CNI_PLUGINS_VERSION=v1.9.0@BINARY
+ARG CONTAINERD_VERSION=v2.3.1@64b425cf570b3b8dd1d4cc46da7c1fce65c6651a
+ARG RUNC_VERSION=v1.4.2@c241c0bb5e60a8e8c1b2e53d4eca8d0068d8d57e
+ARG CNI_PLUGINS_VERSION=v1.9.1@BINARY
 
 # Extra deps: Build
-ARG BUILDKIT_VERSION=v0.26.3@BINARY
+ARG BUILDKIT_VERSION=v0.30.0@BINARY
 # Extra deps: Lazy-pulling
-ARG STARGZ_SNAPSHOTTER_VERSION=v0.18.1@BINARY
+ARG STARGZ_SNAPSHOTTER_VERSION=v0.18.2@BINARY
 # Extra deps: Encryption
 ARG IMGCRYPT_VERSION=v2.0.2@6892f4df2405cd15acbefd1dca970f53ba38bfda
 # Extra deps: Rootless
-ARG ROOTLESSKIT_VERSION=v2.3.6@BINARY
-ARG SLIRP4NETNS_VERSION=v1.3.3@BINARY
+ARG ROOTLESSKIT_VERSION=v3.0.0@BINARY
 # Extra deps: bypass4netns
 ARG BYPASS4NETNS_VERSION=v0.4.2@aa04bd3dcc48c6dae6d7327ba219bda8fe2a4634
 # Extra deps: FUSE-OverlayFS
@@ -40,17 +39,17 @@ ARG TINI_VERSION=v0.19.0@BINARY
 # Extra deps: Debug
 ARG BUILDG_VERSION=v0.5.3@BINARY
 # Extra deps: gomodjail
-ARG GOMODJAIL_VERSION=v0.1.3@cea529ddd971b677c67d8af7e936fbc62b35b98c
+ARG GOMODJAIL_VERSION=v0.3.2@c145bb1e36fe0939c5fa0467f2477878dea8e3d9
 
 # Test deps
 # Currently, the Docker Official Images and the test deps are not pinned by the hash
-ARG GO_VERSION=1.25
+ARG GO_VERSION=1.26
 ARG UBUNTU_VERSION=24.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
 ARG GOTESTSUM_VERSION=v1.13.0
-ARG NYDUS_VERSION=v2.3.9
-ARG SOCI_SNAPSHOTTER_VERSION=0.12.1
-ARG KUBO_VERSION=v0.39.0
+ARG NYDUS_VERSION=v2.4.1
+ARG SOCI_SNAPSHOTTER_VERSION=0.13.0
+ARG KUBO_VERSION=v0.41.0
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0@sha256:c64defb9ed5a91eacb37f96ccc3d4cd72521c4bd18d5442905b95e2226b0e707 AS xx
 
@@ -97,7 +96,8 @@ WORKDIR /go/src/github.com/opencontainers/runc
 RUN git-checkout-tag-with-hash.sh ${RUNC_VERSION} && \
   mkdir -p /out
 ENV CGO_ENABLED=1
-RUN GO=xx-go CC=$(xx-info)-gcc STRIP=$(xx-info)-strip make static && \
+# FIXME: avoid omitting libpathrs
+RUN set -x ; GO=xx-go CC=$(xx-info)-gcc STRIP=$(xx-info)-strip make RUNC_BUILDTAGS="-libpathrs" static && \
   xx-verify --static runc && cp -v -a runc /out/runc.${TARGETARCH}
 
 FROM build-base AS build-bypass4netns
@@ -193,14 +193,6 @@ RUN git clone --quiet --depth 1 --branch "${IMGCRYPT_VERSION%%@*}" https://githu
   git-checkout-tag-with-hash.sh "${IMGCRYPT_VERSION}" && \
   CGO_ENABLED=0 make && DESTDIR=/out make install && \
   echo "- imgcrypt: ${IMGCRYPT_VERSION%%@*}" >> /out/share/doc/nerdctl-full/README.md
-ARG SLIRP4NETNS_VERSION
-RUN SLIRP4NETNS_VERSION=${SLIRP4NETNS_VERSION%%@*}; \
-  fname="slirp4netns-$(cat /target_uname_m)" && \
-  curl -o "${fname}" -fsSL --retry 5 --retry-delay 5 --retry-max-time 120 --connect-timeout 20 --proto '=https' --tlsv1.2 "https://github.com/rootless-containers/slirp4netns/releases/download/${SLIRP4NETNS_VERSION}/${fname}" && \
-  grep "${fname}" "/SHA256SUMS.d/slirp4netns-${SLIRP4NETNS_VERSION}" | sha256sum -c && \
-  mv "${fname}" /out/bin/slirp4netns && \
-  chmod +x /out/bin/slirp4netns && \
-  echo "- slirp4netns: ${SLIRP4NETNS_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG BYPASS4NETNS_VERSION
 COPY --from=build-bypass4netns /out/${TARGETARCH:-amd64}/* /out/bin/
 RUN echo "- bypass4netns: ${BYPASS4NETNS_VERSION%%@*}" >> /out/share/doc/nerdctl-full/README.md
@@ -255,7 +247,6 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
 
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \
   echo "## License" >> /out/share/doc/nerdctl-full/README.md && \
-  echo "- bin/slirp4netns:    [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/rootless-containers/slirp4netns/blob/${SLIRP4NETNS_VERSION%%@*}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/fuse-overlayfs: [GNU GENERAL PUBLIC LICENSE, Version 2](https://github.com/containers/fuse-overlayfs/blob/${FUSE_OVERLAYFS_VERSION%%@*}/COPYING)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/{runc,bypass4netns,bypass4netnsd}: Apache License 2.0, statically linked with libseccomp ([LGPL 2.1](https://github.com/seccomp/libseccomp/blob/main/LICENSE), source code available at https://github.com/seccomp/libseccomp/)" >> /out/share/doc/nerdctl-full/README.md && \
   echo "- bin/tini: [MIT License](https://github.com/krallin/tini/blob/${TINI_VERSION%%@*}/LICENSE)" >> /out/share/doc/nerdctl-full/README.md && \
@@ -331,7 +322,7 @@ WORKDIR /go/src/github.com/containerd/nerdctl
 VOLUME /tmp
 ENV CGO_ENABLED=0
 # copy cosign binary for integration test
-COPY --from=ghcr.io/sigstore/cosign/cosign:v2.2.3@sha256:8fc9cad121611e8479f65f79f2e5bea58949e8a87ffac2a42cb99cf0ff079ba7 /ko-app/cosign /usr/local/bin/cosign
+COPY --from=ghcr.io/sigstore/cosign/cosign:v3.0.5@sha256:be924970ba7438c22e18067dec5637946d6566eac711f5bedd1584e7137008fb /ko-app/cosign /usr/local/bin/cosign
 # installing soci for integration test
 ARG SOCI_SNAPSHOTTER_VERSION
 RUN fname="soci-snapshotter-${SOCI_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
@@ -370,6 +361,8 @@ RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
   uidmap \
   openssh-server \
   openssh-client
+# Install slirp4netns only if rootlesskit is prior to v3.0
+RUN if ! rootlesskit --help | grep -q gvisor-tap-vsock; then apt-get install -qq --no-install-recommends slirp4netns; fi
 # TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> ssh` here
 RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
   useradd -m -s /bin/bash rootless && \
@@ -387,6 +380,8 @@ CMD ["/test-integration-rootless.sh", "./hack/test-integration.sh"]
 
 # test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns
 FROM test-integration-rootless AS test-integration-rootless-port-slirp4netns
+RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
+  slirp4netns
 COPY ./Dockerfile.d/home_rootless_.config_systemd_user_containerd.service.d_port-slirp4netns.conf /home/rootless/.config/systemd/user/containerd.service.d/port-slirp4netns.conf
 RUN chown -R rootless:rootless /home/rootless/.config
 
