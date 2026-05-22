@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
@@ -52,7 +53,7 @@ func TestImageConvert(t *testing.T) {
 					return helpers.Command("image", "convert", "--oci", "--estargz",
 						testutil.CommonImage, data.Identifier("converted-image"))
 				},
-				Expected: test.Expects(0, nil, nil),
+				Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 			},
 			{
 				Description: "nydus",
@@ -66,7 +67,7 @@ func TestImageConvert(t *testing.T) {
 					return helpers.Command("image", "convert", "--oci", "--nydus",
 						testutil.CommonImage, data.Identifier("converted-image"))
 				},
-				Expected: test.Expects(0, nil, nil),
+				Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 			},
 			{
 				Description: "zstd",
@@ -77,7 +78,7 @@ func TestImageConvert(t *testing.T) {
 					return helpers.Command("image", "convert", "--oci", "--zstd", "--zstd-compression-level", "3",
 						testutil.CommonImage, data.Identifier("converted-image"))
 				},
-				Expected: test.Expects(0, nil, nil),
+				Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 			},
 			{
 				Description: "zstdchunked",
@@ -88,7 +89,35 @@ func TestImageConvert(t *testing.T) {
 					return helpers.Command("image", "convert", "--oci", "--zstdchunked", "--zstdchunked-compression-level", "3",
 						testutil.CommonImage, data.Identifier("converted-image"))
 				},
-				Expected: test.Expects(0, nil, nil),
+				Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+			},
+			{
+				Description: "erofs raw",
+				Require: require.All(
+					require.Binary("mkfs.erofs"),
+				),
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("image", "convert", "--oci", "--erofs", "raw",
+						testutil.CommonImage, data.Identifier("converted-image"))
+				},
+				Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+			},
+			{
+				Description: "erofs zstd",
+				Require: require.All(
+					require.Binary("mkfs.erofs"),
+				),
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rmi", "-f", data.Identifier("converted-image"))
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("image", "convert", "--oci", "--erofs", "zstd",
+						testutil.CommonImage, data.Identifier("converted-image"))
+				},
+				Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 			},
 			{
 				Description: "soci",
@@ -107,7 +136,7 @@ func TestImageConvert(t *testing.T) {
 						"--soci-min-layer-size", "0",
 						testutil.CommonImage, data.Identifier("converted-image"))
 				},
-				Expected: test.Expects(0, nil, nil),
+				Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 			},
 			{
 				Description: "soci with all-platforms",
@@ -126,7 +155,7 @@ func TestImageConvert(t *testing.T) {
 						"--soci-min-layer-size", "0",
 						testutil.CommonImage, data.Identifier("converted-image"))
 				},
-				Expected: test.Expects(0, nil, nil),
+				Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 			},
 		},
 	}
@@ -188,7 +217,7 @@ func TestImageConvertNydusVerify(t *testing.T) {
 			cmd.WithTimeout(30 * time.Second)
 			return cmd
 		},
-		Expected: test.Expects(0, nil, nil),
+		Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 	}
 
 	testCase.Run(t)

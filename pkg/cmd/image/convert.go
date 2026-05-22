@@ -33,6 +33,7 @@ import (
 	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/images/converter"
+	erofsconvert "github.com/containerd/containerd/v2/core/images/converter/erofs"
 	"github.com/containerd/containerd/v2/core/images/converter/uncompress"
 	"github.com/containerd/log"
 	nydusconvert "github.com/containerd/nydus-snapshotter/pkg/converter"
@@ -92,8 +93,9 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 	overlaybd := options.Overlaybd
 	nydus := options.Nydus
 	soci := options.Soci
+	erofs := options.Erofs != ""
 	var finalize func(ctx context.Context, cs content.Store, ref string, desc *ocispec.Descriptor) (*images.Image, error)
-	if estargz || zstd || zstdchunked || overlaybd || nydus || soci {
+	if estargz || zstd || zstdchunked || overlaybd || nydus || soci || erofs {
 		convertCount := 0
 		if estargz {
 			convertCount++
@@ -113,12 +115,16 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 		if soci {
 			convertCount++
 		}
+		if erofs {
+			convertCount++
+		}
 
 		if convertCount > 1 {
-			return errors.New("options --estargz, --zstdchunked, --overlaybd, --nydus and --soci lead to conflict, only one of them can be used")
+			return errors.New("options --estargz, --zstdchunked, --overlaybd, --nydus, --soci and --erofs lead to conflict, only one of them can be used")
 		}
 
 		var convertFunc converter.ConvertFunc
+		var updateManifestFunc converter.UpdateManifestFunc
 		var convertType string
 		switch {
 		case estargz:
@@ -149,6 +155,12 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 			convertFunc = overlaybdconvert.IndexConvertFunc(obdOpts...)
 			convertOpts = append(convertOpts, converter.WithIndexConvertFunc(convertFunc))
 			convertType = "overlaybd"
+		case erofs:
+			convertFunc, updateManifestFunc, err = getErofsConverter(options)
+			if err != nil {
+				return err
+			}
+			convertType = "erofs"
 		case nydus:
 			nydusOpts, err := getNydusConvertOpts(options)
 			if err != nil {
@@ -187,6 +199,9 @@ func Convert(ctx context.Context, client *containerd.Client, srcRawRef, targetRa
 
 		if convertType != "overlaybd" {
 			convertOpts = append(convertOpts, converter.WithLayerConvertFunc(convertFunc))
+		}
+		if updateManifestFunc != nil {
+			convertOpts = append(convertOpts, converter.WithUpdateManifest(updateManifestFunc))
 		}
 		if !options.Oci {
 			if nydus || overlaybd {
@@ -367,6 +382,24 @@ func getZstdchunkedConverter(options types.ImageConvertOptions) (converter.Conve
 		esgzOpts = append(esgzOpts, estargz.WithAllowPrioritizeNotFound(&ignored))
 	}
 	return zstdchunkedconvert.LayerConvertFuncWithCompressionLevel(zstd.EncoderLevelFromZstd(options.ZstdChunkedCompressionLevel), esgzOpts...), nil
+}
+
+func getErofsConverter(options types.ImageConvertOptions) (converter.ConvertFunc, converter.UpdateManifestFunc, error) {
+	var convertOpts []erofsconvert.ConvertOpt
+	switch options.Erofs {
+	case "raw":
+	case "zstd":
+		convertOpts = append(convertOpts, erofsconvert.WithBlobCompression("zstd"))
+	default:
+		return nil, nil, fmt.Errorf("invalid value %q for --erofs, supported values are: raw, zstd", options.Erofs)
+	}
+	if options.ErofsCompressors != "" {
+		convertOpts = append(convertOpts, erofsconvert.WithCompressors(options.ErofsCompressors))
+	}
+	if options.ErofsMkfsOptions != "" {
+		convertOpts = append(convertOpts, erofsconvert.WithMkfsOptions(strings.Fields(options.ErofsMkfsOptions)))
+	}
+	return erofsconvert.LayerConvertFunc(convertOpts...), erofsconvert.UpdateManifestPlatform, nil
 }
 
 func getNydusConvertOpts(options types.ImageConvertOptions) (*nydusconvert.PackOption, error) {

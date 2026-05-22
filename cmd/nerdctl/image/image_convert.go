@@ -97,6 +97,12 @@ func convertCommand() *cobra.Command {
 	cmd.Flags().Int64("soci-span-size", -1, "The size of SOCI spans")
 	// #endregion
 
+	// #region erofs flags
+	cmd.Flags().String("erofs", "", "Convert image layers to EROFS media type. Supported values: raw, zstd")
+	cmd.Flags().String("erofs-compressors", "", "Specify mkfs.erofs compressor options (e.g. 'lz4hc,12')")
+	cmd.Flags().String("erofs-mkfs-options", "", "Specify extra mkfs.erofs options (e.g. '-T0 --mkfs-time')")
+	// #endregion
+
 	// #region generic flags
 	cmd.Flags().Bool("uncompress", false, "Convert tar.gz layers to uncompressed tar layers")
 	cmd.Flags().Bool("oci", false, "Convert Docker media types to OCI media types")
@@ -248,6 +254,21 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 	}
 	// #endregion
 
+	// #region erofs flags
+	erofs, err := cmd.Flags().GetString("erofs")
+	if err != nil {
+		return types.ImageConvertOptions{}, err
+	}
+	erofsCompressors, err := cmd.Flags().GetString("erofs-compressors")
+	if err != nil {
+		return types.ImageConvertOptions{}, err
+	}
+	erofsMkfsOptions, err := cmd.Flags().GetString("erofs-mkfs-options")
+	if err != nil {
+		return types.ImageConvertOptions{}, err
+	}
+	// #endregion
+
 	// #region generic flags
 	uncompress, err := cmd.Flags().GetBool("uncompress")
 	if err != nil {
@@ -322,6 +343,11 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 				Platforms:    platforms,
 				AllPlatforms: allPlatforms,
 			},
+		},
+		ErofsOptions: types.ErofsOptions{
+			Erofs:            erofs,
+			ErofsCompressors: erofsCompressors,
+			ErofsMkfsOptions: erofsMkfsOptions,
 		},
 		ProgressOutput: progressOutput,
 		Stdout:         cmd.OutOrStdout(),
