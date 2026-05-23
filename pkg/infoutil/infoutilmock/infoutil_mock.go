@@ -16,93 +16,50 @@
    limitations under the License.
 */
 
+// Package infoutilmock provides a hand-rolled fake for the windowsInfoUtil
+// interface used in tests. It replaces the previous gomock-generated mock so
+// that nerdctl does not depend on go.uber.org/mock.
 package infoutilmock
 
 import (
-	"reflect"
-
-	"go.uber.org/mock/gomock"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 )
 
-// MockWindowsInfoUtil is a mock of windowsInfoUtil interface
-type MockWindowsInfoUtil struct {
-	ctrl     *gomock.Controller
-	recorder *MockWindowsInfoUtilMockRecorder
+// FakeWindowsInfoUtil is a configurable test double for the windowsInfoUtil
+// interface. Tests assign the function fields to control behavior per call.
+type FakeWindowsInfoUtil struct {
+	RtlGetVersionFunc          func() *windows.OsVersionInfoEx
+	GetRegistryStringValueFunc func(key registry.Key, path string, name string) (string, error)
+	GetRegistryIntValueFunc    func(key registry.Key, path string, name string) (int, error)
 }
 
-// MockWindowsInfoUtilMockRecorder is the mock recorder for MockWindowsInfoUtil
-type MockWindowsInfoUtilMockRecorder struct {
-	mock *MockWindowsInfoUtil
+// NewFakeWindowsInfoUtil returns an empty fake. Callers populate the function
+// fields they need for a given test.
+func NewFakeWindowsInfoUtil() *FakeWindowsInfoUtil {
+	return &FakeWindowsInfoUtil{}
 }
 
-// NewMockWindowsInfoUtil creates a new mock instance
-func NewMockWindowsInfoUtil(ctrl *gomock.Controller) *MockWindowsInfoUtil {
-	mock := &MockWindowsInfoUtil{ctrl: ctrl}
-	mock.recorder = &MockWindowsInfoUtilMockRecorder{mock}
-	return mock
+// RtlGetVersion calls the configured function, or returns nil if unset.
+func (f *FakeWindowsInfoUtil) RtlGetVersion() *windows.OsVersionInfoEx {
+	if f.RtlGetVersionFunc == nil {
+		return nil
+	}
+	return f.RtlGetVersionFunc()
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockWindowsInfoUtil) EXPECT() *MockWindowsInfoUtilMockRecorder {
-	return m.recorder
+// GetRegistryStringValue calls the configured function, or returns ("", nil) if unset.
+func (f *FakeWindowsInfoUtil) GetRegistryStringValue(key registry.Key, path string, name string) (string, error) {
+	if f.GetRegistryStringValueFunc == nil {
+		return "", nil
+	}
+	return f.GetRegistryStringValueFunc(key, path, name)
 }
 
-// Create mocks the RtlGetVersion method of windowsInfoUtil
-func (m *MockWindowsInfoUtil) RtlGetVersion() *windows.OsVersionInfoEx {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RtlGetVersion")
-	ret0, _ := ret[0].(*windows.OsVersionInfoEx)
-	return ret0
-}
-
-// Expected call of RtlGetVersion
-func (m *MockWindowsInfoUtilMockRecorder) RtlGetVersion() *gomock.Call {
-	m.mock.ctrl.T.Helper()
-	return m.mock.ctrl.RecordCallWithMethodType(
-		m.mock,
-		"RtlGetVersion",
-		reflect.TypeOf((*MockWindowsInfoUtil)(nil).RtlGetVersion),
-	)
-}
-
-// Create mocks the GetRegistryStringValue method of windowsInfoUtil
-func (m *MockWindowsInfoUtil) GetRegistryStringValue(key registry.Key, path string, name string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRegistryStringValue", key, path, name)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Expected call of GetRegistryStringValue
-func (m *MockWindowsInfoUtilMockRecorder) GetRegistryStringValue(key any, path any, name any) *gomock.Call {
-	m.mock.ctrl.T.Helper()
-	return m.mock.ctrl.RecordCallWithMethodType(
-		m.mock,
-		"GetRegistryStringValue",
-		reflect.TypeOf((*MockWindowsInfoUtil)(nil).GetRegistryStringValue),
-		key, path, name,
-	)
-}
-
-// Create mocks the GetRegistryIntValue method of windowsInfoUtil
-func (m *MockWindowsInfoUtil) GetRegistryIntValue(key registry.Key, path string, name string) (int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRegistryIntValue", key, path, name)
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Expected call of GetRegistryIntValue
-func (m *MockWindowsInfoUtilMockRecorder) GetRegistryIntValue(key any, path any, name any) *gomock.Call {
-	m.mock.ctrl.T.Helper()
-	return m.mock.ctrl.RecordCallWithMethodType(
-		m.mock,
-		"GetRegistryIntValue",
-		reflect.TypeOf((*MockWindowsInfoUtil)(nil).GetRegistryIntValue),
-		key, path, name,
-	)
+// GetRegistryIntValue calls the configured function, or returns (0, nil) if unset.
+func (f *FakeWindowsInfoUtil) GetRegistryIntValue(key registry.Key, path string, name string) (int, error) {
+	if f.GetRegistryIntValueFunc == nil {
+		return 0, nil
+	}
+	return f.GetRegistryIntValueFunc(key, path, name)
 }

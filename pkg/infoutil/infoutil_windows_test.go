@@ -19,7 +19,6 @@ package infoutil
 import (
 	"testing"
 
-	"go.uber.org/mock/gomock"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 	"gotest.tools/v3/assert"
@@ -27,34 +26,24 @@ import (
 	mocks "github.com/containerd/nerdctl/v2/pkg/infoutil/infoutilmock"
 )
 
-func setUpMocks(t *testing.T) *mocks.MockWindowsInfoUtil {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockInfoUtil := mocks.NewMockWindowsInfoUtil(ctrl)
-
-	// Mock registry value: CurrentBuildNumber
-	mockInfoUtil.
-		EXPECT().
-		GetRegistryStringValue(gomock.Any(), gomock.Any(), "CurrentBuildNumber").
-		Return("19041", nil).
-		AnyTimes()
-
-	// Mock registry value: DisplayVersion
-	mockInfoUtil.
-		EXPECT().
-		GetRegistryStringValue(gomock.Any(), gomock.Any(), "DisplayVersion").
-		Return("22H4", nil).
-		AnyTimes()
-
-	// Mock registry value: UBR
-	mockInfoUtil.
-		EXPECT().
-		GetRegistryIntValue(gomock.Any(), gomock.Any(), "UBR").
-		Return(558, nil).
-		AnyTimes()
-
-	return mockInfoUtil
+func newRegistryFake() *mocks.FakeWindowsInfoUtil {
+	f := mocks.NewFakeWindowsInfoUtil()
+	f.GetRegistryStringValueFunc = func(_ registry.Key, _ string, name string) (string, error) {
+		switch name {
+		case "CurrentBuildNumber":
+			return "19041", nil
+		case "DisplayVersion":
+			return "22H4", nil
+		}
+		return "", nil
+	}
+	f.GetRegistryIntValueFunc = func(_ registry.Key, _ string, name string) (int, error) {
+		if name == "UBR" {
+			return 558, nil
+		}
+		return 0, nil
+	}
+	return f
 }
 
 const (
@@ -63,8 +52,6 @@ const (
 )
 
 func TestDistroName(t *testing.T) {
-	mockInfoUtil := setUpMocks(t)
-
 	baseVersion := windows.OsVersionInfoEx{
 		MajorVersion: 10,
 		MinorVersion: 0,
@@ -86,13 +73,13 @@ func TestDistroName(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		// Mock sys/windows RtlGetVersion
+		fake := newRegistryFake()
 		osvi := baseVersion
 		osvi.ProductType = tt.productType
-		mockInfoUtil.EXPECT().RtlGetVersion().Return(&osvi).Times(1)
+		fake.RtlGetVersionFunc = func() *windows.OsVersionInfoEx { return &osvi }
 
 		t.Run(tt.expected, func(t *testing.T) {
-			actual, err := distroName(mockInfoUtil)
+			actual, err := distroName(fake)
 			assert.Equal(t, tt.expected, actual, "distroName should return the name of the operating system")
 			assert.NilError(t, err)
 		})
@@ -100,73 +87,54 @@ func TestDistroName(t *testing.T) {
 }
 
 func TestDistroNameError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	fake := mocks.NewFakeWindowsInfoUtil()
+	fake.GetRegistryStringValueFunc = func(_ registry.Key, _ string, _ string) (string, error) {
+		return "19041", registry.ErrNotExist
+	}
 
-	mockInfoUtil := mocks.NewMockWindowsInfoUtil(ctrl)
-
-	mockInfoUtil.EXPECT().RtlGetVersion().Return(nil).Times(0)
-	mockInfoUtil.
-		EXPECT().
-		GetRegistryStringValue(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return("19041", registry.ErrNotExist).AnyTimes()
-
-	actual, err := distroName(mockInfoUtil)
+	actual, err := distroName(fake)
 	assert.ErrorContains(t, err, registry.ErrNotExist.Error(), "distroName should return an error on error")
 	assert.Equal(t, "", actual, "distroname should return an empty string on error")
 }
 
 func TestGetKernelVersion(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockInfoUtil := mocks.NewMockWindowsInfoUtil(ctrl)
-
-	// Mock registry value: BuildLabEx
-	mockInfoUtil.
-		EXPECT().
-		GetRegistryStringValue(gomock.Any(), gomock.Any(), "BuildLabEx").
-		Return("10240.16412.amd64fre.th1.150729-1800", nil).
-		Times(1)
+	fake := mocks.NewFakeWindowsInfoUtil()
+	fake.GetRegistryStringValueFunc = func(_ registry.Key, _ string, name string) (string, error) {
+		if name == "BuildLabEx" {
+			return "10240.16412.amd64fre.th1.150729-1800", nil
+		}
+		return "", nil
+	}
 
 	baseVersion := windows.OsVersionInfoEx{
 		MajorVersion: 10,
 		MinorVersion: 0,
 		BuildNumber:  19041,
 	}
+	fake.RtlGetVersionFunc = func() *windows.OsVersionInfoEx {
+		v := baseVersion
+		return &v
+	}
 
 	expected := "10.0 19041 (10240.16412.amd64fre.th1.150729-1800)"
 
-	// Mock sys/windows RtlGetVersion
-	osvi := baseVersion
-	mockInfoUtil.EXPECT().RtlGetVersion().Return(&osvi).Times(1)
-
-	actual, err := getKernelVersion(mockInfoUtil)
+	actual, err := getKernelVersion(fake)
 	assert.NilError(t, err)
 	assert.Equal(t, expected, actual, "getKernelVersion should return the kernel version")
 }
 
 func TestGetKernelVersionError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	fake := mocks.NewFakeWindowsInfoUtil()
+	fake.GetRegistryStringValueFunc = func(_ registry.Key, _ string, _ string) (string, error) {
+		return "", registry.ErrNotExist
+	}
 
-	mockInfoUtil := mocks.NewMockWindowsInfoUtil(ctrl)
-
-	mockInfoUtil.EXPECT().RtlGetVersion().Return(nil).Times(0)
-	mockInfoUtil.
-		EXPECT().
-		GetRegistryStringValue(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return("", registry.ErrNotExist).Times(1)
-
-	actual, err := getKernelVersion(mockInfoUtil)
+	actual, err := getKernelVersion(fake)
 	assert.ErrorContains(t, err, registry.ErrNotExist.Error(), "getKernelVersion should return an error on error")
 	assert.Equal(t, "", actual, "getKernelVersion should return an empty string on error")
 }
 
 func TestIsWindowsServer(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
 	tests := []struct {
 		productType string
 		osvi        windows.OsVersionInfoEx
@@ -189,12 +157,13 @@ func TestIsWindowsServer(t *testing.T) {
 		},
 	}
 
-	mockSysCall := mocks.NewMockWindowsInfoUtil(ctrl)
 	for _, tt := range tests {
-		mockSysCall.EXPECT().RtlGetVersion().Return(&tt.osvi)
+		tt := tt
+		fake := mocks.NewFakeWindowsInfoUtil()
+		fake.RtlGetVersionFunc = func() *windows.OsVersionInfoEx { return &tt.osvi }
 
 		t.Run(tt.productType, func(t *testing.T) {
-			actual := isWindowsServer(mockSysCall)
+			actual := isWindowsServer(fake)
 			assert.Equal(t, tt.expected, actual, "isWindowsServer should return true on Windows Server")
 		})
 	}
