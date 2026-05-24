@@ -25,7 +25,6 @@ package timestamp
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -144,11 +143,16 @@ func parseTimestamp(value string) (seconds int64, nanoseconds int64, _ error) {
 	if !ok {
 		return sec, 0, nil
 	}
+	if len(n) > 9 {
+		n = n[:9]
+	}
 	nsec, err := strconv.ParseInt(n, 10, 64)
 	if err != nil {
 		return sec, nsec, err
 	}
 	// should already be in nanoseconds but just in case convert n to nanoseconds
-	nsec = int64(float64(nsec) * math.Pow(float64(10), float64(9-len(n))))
+	for range 9 - len(n) {
+		nsec *= 10
+	}
 	return sec, nsec, nil
 }

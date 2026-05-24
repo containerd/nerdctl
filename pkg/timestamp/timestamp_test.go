@@ -67,6 +67,7 @@ func TestGetTimestamp(t *testing.T) {
 		// unix timestamps returned as is
 		{"1136073600", "1136073600", false},
 		{"1136073600.000000001", "1136073600.000000001", false},
+		{"1136073600.123456789123456789123", "1136073600.123456789123456789123", false},
 		// Durations
 		{"1m", fmt.Sprintf("%d", now.Add(-1*time.Minute).Unix()), false},
 		{"1.5h", fmt.Sprintf("%d", now.Add(-90*time.Minute).Unix()), false},
@@ -99,6 +100,7 @@ func TestParseTimestamps(t *testing.T) {
 		{"1136073600.0000000010", 0, 1136073600, 1, false},
 		{"1136073600.0000000001", 0, 1136073600, 0, false},
 		{"1136073600.0000000009", 0, 1136073600, 0, false},
+		{"1136073600.123456789123456789123", 0, 1136073600, 123456789, false},
 		{"1136073600.00000001", 0, 1136073600, 10, false},
 		{"foo.bar", 0, 0, 0, true},
 		{"1136073600.bar", 0, 1136073600, 0, true},
