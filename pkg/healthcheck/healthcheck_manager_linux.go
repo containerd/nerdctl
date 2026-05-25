@@ -63,11 +63,22 @@ func CreateTimer(ctx context.Context, container containerd.Container, cfg *confi
 	}
 
 	// Always use health-interval for timer frequency
-	cmdOpts = append(cmdOpts, "--unit", containerID, "--on-unit-inactive="+hc.Interval.String(), "--timer-property=AccuracySec=1s")
+	//
+	// --collect:
+	// Even when the healthcheck fails with the error "container is not running" after the container has
+	// stopped, and the transient service unit enters a failed state, it will still be subject to garbage
+	// collection due to the --collect option. Without this option, `systemctl reset-failed` would explicitly be needed.
+	// See: https://www.freedesktop.org/software/systemd/man/latest/systemd-run.html#-G
+	cmdOpts = append(cmdOpts, "--unit", containerID, "--on-unit-inactive="+hc.Interval.String(), "--timer-property=AccuracySec=1s", "--collect")
 
 	cmdOpts = append(cmdOpts, nerdctlCmd)
 	cmdOpts = append(cmdOpts, nerdctlArgs...)
 	cmdOpts = append(cmdOpts, "container", "healthcheck", containerID)
+
+	// Defensively remove any pre-existing transient timer unit that may have leaked from a previous run
+	// (e.g. when restarted before the self-cleanup in HealthCheck has a chance to run). Without this,
+	// the systemd-run below would fail with "Unit <container-ID>.timer was already loaded".
+	CleanupStaleHealthcheckTimer(ctx, containerID)
 
 	log.G(ctx).Debugf("creating healthcheck timer with: systemd-run %s", strings.Join(cmdOpts, " "))
 	run := exec.Command("systemd-run", cmdOpts...)
@@ -76,6 +87,22 @@ func CreateTimer(ctx context.Context, container containerd.Container, cfg *confi
 	}
 
 	return nil
+}
+
+func createDbusConn(ctx context.Context) (*dbus.Conn, error) {
+	var conn *dbus.Conn
+	var err error
+
+	if rootlessutil.IsRootless() {
+		conn, err = dbus.NewUserConnectionContext(ctx)
+	} else {
+		conn, err = dbus.NewSystemConnectionContext(ctx)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("systemd DBUS connect error: %w", err)
+	}
+
+	return conn, nil
 }
 
 // StartTimer starts the healthcheck timer unit.
@@ -89,13 +116,7 @@ func StartTimer(ctx context.Context, container containerd.Container, cfg *config
 	}
 
 	containerID := container.ID()
-	var conn *dbus.Conn
-	var err error
-	if rootlessutil.IsRootless() {
-		conn, err = dbus.NewUserConnectionContext(ctx)
-	} else {
-		conn, err = dbus.NewSystemConnectionContext(ctx)
-	}
+	conn, err := createDbusConn(ctx)
 	if err != nil {
 		return fmt.Errorf("systemd DBUS connect error: %w", err)
 	}
@@ -122,6 +143,54 @@ func RemoveTransientHealthCheckFiles(ctx context.Context, container containerd.C
 	return ForceRemoveTransientHealthCheckFiles(ctx, container.ID())
 }
 
+func CleanupStaleHealthcheckTimer(ctx context.Context, containerID string) {
+	conn, err := createDbusConn(ctx)
+	if err != nil {
+		log.G(ctx).Warnf("dbus connect failed during stale cleanup: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	timer := containerID + ".timer"
+	units, err := conn.ListUnitsByNamesContext(ctx, []string{timer})
+	if err != nil {
+		log.G(ctx).Warnf("list units failed during stale cleanup: %v", err)
+		return
+	}
+	// The status of a systemd unit is described below:
+	// See: https://github.com/systemd/systemd/blob/v260.1/src/basic/unit-def.c
+	if len(units) == 0 || units[0].LoadState == "not-found" {
+		return
+	}
+	u := units[0]
+
+	log.G(ctx).Warnf("found stale healthcheck timer %s (load=%s, active=%s, sub=%s), cleaning up",
+		timer, u.LoadState, u.ActiveState, u.SubState)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	stopSystemdUnit(ctx, timeoutCtx, conn, timer)
+}
+
+func stopSystemdUnit(ctx context.Context, timeoutCtx context.Context, conn *dbus.Conn, unit string) {
+	if err := timeoutCtx.Err(); err != nil {
+		log.G(ctx).Warnf("context already done before stopping unit %s: %v", unit, err)
+		return
+	}
+	ch := make(chan string, 1)
+	if _, err := conn.StopUnitContext(timeoutCtx, unit, "ignore-dependencies", ch); err != nil {
+		log.G(ctx).Warnf("failed to stop unit %s: %v", unit, err)
+		return
+	}
+	select {
+	case msg := <-ch:
+		if msg != "done" {
+			log.G(ctx).Warnf("stop unit %s: unexpected result %s", unit, msg)
+		}
+	case <-timeoutCtx.Done():
+		log.G(ctx).Warnf("timeout waiting for stop confirmation of unit %s", unit)
+	}
+}
+
 // ForceRemoveTransientHealthCheckFiles forcefully stops and cleans up the transient timer and service
 // using just the container ID. This function is non-blocking and uses timeouts to prevent hanging
 // on systemd operations. It logs errors as warnings but continues cleanup attempts.
@@ -142,13 +211,7 @@ func ForceRemoveTransientHealthCheckFiles(ctx context.Context, containerID strin
 	go func() {
 		defer close(errChan)
 
-		var conn *dbus.Conn
-		var err error
-		if rootlessutil.IsRootless() {
-			conn, err = dbus.NewUserConnectionContext(ctx)
-		} else {
-			conn, err = dbus.NewSystemConnectionContext(ctx)
-		}
+		conn, err := createDbusConn(ctx)
 		if err != nil {
 			log.G(ctx).Warnf("systemd DBUS connect error during force cleanup: %v", err)
 			errChan <- fmt.Errorf("systemd DBUS connect error: %w", err)
@@ -158,25 +221,7 @@ func ForceRemoveTransientHealthCheckFiles(ctx context.Context, containerID strin
 
 		// Stop timer with timeout
 		go func() {
-			select {
-			case <-timeoutCtx.Done():
-				log.G(ctx).Warnf("timeout stopping timer %s during force cleanup", timer)
-				return
-			default:
-				tChan := make(chan string, 1)
-				if _, err := conn.StopUnitContext(timeoutCtx, timer, "ignore-dependencies", tChan); err == nil {
-					select {
-					case msg := <-tChan:
-						if msg != "done" {
-							log.G(ctx).Warnf("timer stop message during force cleanup: %s", msg)
-						}
-					case <-timeoutCtx.Done():
-						log.G(ctx).Warnf("timeout waiting for timer stop confirmation: %s", timer)
-					}
-				} else {
-					log.G(ctx).Warnf("failed to stop timer %s during force cleanup: %v", timer, err)
-				}
-			}
+			stopSystemdUnit(ctx, timeoutCtx, conn, timer)
 		}()
 
 		// Stop service with timeout

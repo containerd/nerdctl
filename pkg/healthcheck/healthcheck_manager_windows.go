@@ -39,6 +39,9 @@ func RemoveTransientHealthCheckFiles(ctx context.Context, container containerd.C
 	return nil
 }
 
+// CleanupStaleHealthcheckTimer removes any pre-existing transient timer unit for the given container.
+func CleanupStaleHealthcheckTimer(ctx context.Context, containerID string) {}
+
 // ForceRemoveTransientHealthCheckFiles forcefully stops and cleans up the transient timer and service
 // using just the container ID. This function is non-blocking and uses timeouts to prevent hanging
 // on systemd operations. On Windows, this is a no-op since systemd is not available.
