@@ -33,7 +33,7 @@ func TestMyThing(t *testing.T) {
 	// Declare your test
 	myTest := nerdtest.Setup()
 	// This is going to run `nerdctl info` (or `docker info`)
-	mytest.Command = test.Command("info")
+	myTest.Command = test.Command("info")
     // Verify the command exits with 0, and stdout contains the word `Kernel`
     myTest.Expected = test.Expects(0, nil, expect.Contains("Kernel"))
 	// Run it
@@ -82,9 +82,10 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/containerd/nerdctl/mod/tigron/test"
-	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 )
 
 func MyComparator(compare string) test.Comparator {
@@ -118,10 +119,12 @@ import (
 
 	"github.com/containerd/errdefs"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/mod/tigron/test"
-	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestMyThing(t *testing.T) {
@@ -229,10 +232,12 @@ import (
 
 	"github.com/containerd/errdefs"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/mod/tigron/test"
-	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestMyThing(t *testing.T) {
@@ -310,10 +315,12 @@ import (
 
 	"github.com/containerd/errdefs"
 
-	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/mod/tigron/test"
-	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestMyThing(t *testing.T) {
@@ -421,7 +428,7 @@ nerdtest.CNIFirewallVersion("1.7.1") // CNI firewall plugin version check
 
 ### About `nerdtest.Private`
 
-While all requirements above are self-descriptive or obvious, `nerdtest.Private` is  a
+While all requirements above are self-descriptive or obvious, `nerdtest.Private` is a
 special case.
 
 If set, it will run tests inside a dedicated namespace that is private to the test.
