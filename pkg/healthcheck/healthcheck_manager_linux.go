@@ -226,38 +226,7 @@ func ForceRemoveTransientHealthCheckFiles(ctx context.Context, containerID strin
 
 		// Stop service with timeout
 		go func() {
-			select {
-			case <-timeoutCtx.Done():
-				log.G(ctx).Warnf("timeout stopping service %s during force cleanup", service)
-				return
-			default:
-				sChan := make(chan string, 1)
-				if _, err := conn.StopUnitContext(timeoutCtx, service, "ignore-dependencies", sChan); err == nil {
-					select {
-					case msg := <-sChan:
-						if msg != "done" {
-							log.G(ctx).Warnf("service stop message during force cleanup: %s", msg)
-						}
-					case <-timeoutCtx.Done():
-						log.G(ctx).Warnf("timeout waiting for service stop confirmation: %s", service)
-					}
-				} else {
-					log.G(ctx).Warnf("failed to stop service %s during force cleanup: %v", service, err)
-				}
-			}
-		}()
-
-		// Reset failed units (best effort, non-blocking)
-		go func() {
-			select {
-			case <-timeoutCtx.Done():
-				log.G(ctx).Warnf("timeout resetting failed unit %s during force cleanup", service)
-				return
-			default:
-				if err := conn.ResetFailedUnitContext(timeoutCtx, service); err != nil {
-					log.G(ctx).Warnf("failed to reset failed unit %s during force cleanup: %v", service, err)
-				}
-			}
+			stopSystemdUnit(ctx, timeoutCtx, conn, service)
 		}()
 
 		// Wait a short time for operations to complete, but don't block indefinitely
