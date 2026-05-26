@@ -63,7 +63,6 @@ require (
 	github.com/vishvananda/netlink v1.3.1 //gomodjail:unconfined
 	github.com/vishvananda/netns v0.0.5 //gomodjail:unconfined
 	github.com/yuchanns/srslog v1.1.0
-	go.uber.org/mock v0.6.0
 	go.yaml.in/yaml/v3 v3.0.4
 	golang.org/x/crypto v0.52.0
 	golang.org/x/net v0.55.0
