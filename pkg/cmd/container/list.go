@@ -36,6 +36,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
+	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/portutil"
@@ -161,6 +162,19 @@ func prepareContainers(ctx context.Context, client *containerd.Client, container
 		var status string
 		if s, ok := statusPerContainer[c.ID()]; ok {
 			status = s
+			if strings.HasPrefix(status, "Up") && info.Labels[labels.HealthState] != "" {
+				healthState, err := healthcheck.HealthStateFromJSON(info.Labels[labels.HealthState])
+				if err != nil {
+					log.G(ctx).WithError(err).Debugf("failed to parse health state for container %s", c.ID())
+				} else {
+					switch healthState.Status {
+					case healthcheck.Healthy, healthcheck.Unhealthy:
+						status = fmt.Sprintf("%s (%s)", status, healthState.Status)
+					case healthcheck.Starting:
+						status = fmt.Sprintf("%s (health: %s)", status, healthState.Status)
+					}
+				}
+			}
 		} else {
 			return nil, fmt.Errorf("can't get container %s status", c.ID())
 		}

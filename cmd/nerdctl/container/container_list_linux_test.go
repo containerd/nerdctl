@@ -26,10 +26,13 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
+	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 	"github.com/containerd/nerdctl/v2/pkg/tabutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -692,6 +695,121 @@ func TestContainerListStatusFilter(t *testing.T) {
 					Output: func(stdout string, t tig.T) {
 						assert.Assert(t, strings.Contains(stdout, data.Labels().Get("cID")), "No container found with status created")
 					},
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestContainerListWithHealthStatus(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Require = require.All(
+		// Docker CLI does not provide a standalone healthcheck command.
+		require.Not(nerdtest.Docker),
+		require.Not(nerdtest.Rootless),
+	)
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "ps shows healthy status after a successful probe",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "true", "--health-interval", "3s",
+					testutil.CommonImage, "sleep", nerdtest.Infinity,
+				)
+				helpers.Ensure("container", "healthcheck", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "--filter", "name="+data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output:   expect.Contains(fmt.Sprintf("(%s)", healthcheck.Healthy)),
+				}
+			},
+		},
+		{
+			Description: "ps shows starting status",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "exit 1",
+					"--health-interval", "1s",
+					"--health-start-period", "60s",
+					"--health-retries", "2",
+					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+				helpers.Ensure("container", "healthcheck", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "--filter", "name="+data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output:   expect.Contains(fmt.Sprintf("(health: %s)", healthcheck.Starting)),
+				}
+			},
+		},
+		{
+			Description: "ps shows unhealthy status",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "not-a-real-cmd",
+					"--health-interval", "1s",
+					"--health-retries", "1",
+					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+				helpers.Ensure("container", "healthcheck", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "--filter", "name="+data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output:   expect.Contains(fmt.Sprintf("(%s)", healthcheck.Unhealthy)),
+				}
+			},
+		},
+		{
+			Description: "ps does not show health suffix for stopped containers",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "true",
+					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("container", "healthcheck", data.Identifier())
+				helpers.Ensure("stop", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-a", "--filter", "name="+data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: expect.All(
+						expect.Contains("Exited"),
+						expect.DoesNotContain(
+							"(health:",
+							fmt.Sprintf("(%s)", healthcheck.Healthy),
+							fmt.Sprintf("(%s)", healthcheck.Unhealthy),
+						),
+					),
 				}
 			},
 		},
