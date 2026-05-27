@@ -1155,3 +1155,57 @@ func TestHealthCheck_SystemdIntegration_Advanced(t *testing.T) {
 	}
 	testCase.Run(t)
 }
+
+func TestStartHealthcheckedContainerAfterExited(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		require.Not(nerdtest.Rootless),
+		// Docker CLI does not provide a standalone healthcheck command.
+		require.Not(nerdtest.Docker),
+	)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(),
+			"--health-cmd", "true", "--health-interval", "1s",
+			testutil.CommonImage, "sleep", "1",
+		)
+		nerdtest.EnsureContainerExited(helpers, data.Identifier(), expect.ExitCodeSuccess)
+
+		data.Labels().Set("containerName", data.Identifier())
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "transient service unit is garbage-collected from systemd after container exit",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				containerID := nerdtest.InspectContainer(helpers, data.Labels().Get("containerName")).ID
+				return helpers.Custom("systemctl", "list-units", "--all", containerID+".service", containerID+".timer")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeNoCheck,
+					Output: func(stdout string, t tig.T) {
+						containerID := nerdtest.InspectContainer(helpers, data.Labels().Get("containerName")).ID
+						assert.Assert(t, !strings.Contains(stdout, containerID),
+							"expected transient service unit to be cleaned up, but got: %s", stdout)
+					},
+				}
+			},
+		},
+		{
+			Description: "exited container with healthcheck can be started again",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("start", data.Labels().Get("containerName"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
+}

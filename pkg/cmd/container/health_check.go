@@ -29,10 +29,21 @@ import (
 
 // HealthCheck executes the health check command for a container
 func HealthCheck(ctx context.Context, client *containerd.Client, container containerd.Container) error {
-	// verify container status and get task
-	task, err := isContainerRunning(ctx, container)
+	task, err := container.Task(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get container task: %w", err)
+	}
+	// Check if container is running
+	status, err := task.Status(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get container status: %w", err)
+	}
+	s := status.Status
+	if s != containerd.Running {
+		if s == containerd.Stopped {
+			healthcheck.CleanupStaleHealthcheckTimer(ctx, container.ID())
+		}
+		return fmt.Errorf("container is not running (status: %s)", status.Status)
 	}
 
 	// Check if container has health check configured
@@ -65,25 +76,6 @@ func HealthCheck(ctx context.Context, client *containerd.Client, container conta
 
 	// Execute the health check
 	return healthcheck.ExecuteHealthCheck(ctx, task, container, hcConfig)
-}
-
-func isContainerRunning(ctx context.Context, container containerd.Container) (containerd.Task, error) {
-	// Get container task to check status
-	task, err := container.Task(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get container task: %w", err)
-	}
-
-	// Check if container is running
-	status, err := task.Status(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get container status: %w", err)
-	}
-	if status.Status != containerd.Running {
-		return nil, fmt.Errorf("container is not running (status: %s)", status.Status)
-	}
-
-	return task, nil
 }
 
 // If configuredValue is zero, use defaultValue instead.
