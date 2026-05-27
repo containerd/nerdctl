@@ -19,6 +19,7 @@ package formatter
 import (
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"gotest.tools/v3/assert"
 
@@ -188,6 +189,52 @@ func TestFormatPorts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := FormatPorts(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestEllipsis(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		input           string
+		maxDisplayWidth int
+		expected        string
+	}{
+		{
+			name:            "ascii under limit",
+			input:           "hello",
+			maxDisplayWidth: 5,
+			expected:        "hello",
+		},
+		{
+			name:            "ascii truncated",
+			input:           "hello",
+			maxDisplayWidth: 4,
+			expected:        "hel…",
+		},
+		{
+			name:            "unicode truncated",
+			input:           "éclair",
+			maxDisplayWidth: 4,
+			expected:        "écl…",
+		},
+		{
+			name:            "unicode truncated to single rune",
+			input:           "éclair",
+			maxDisplayWidth: 1,
+			expected:        "é",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := Ellipsis(tt.input, tt.maxDisplayWidth)
+			assert.Assert(t, utf8.ValidString(result), "expected valid UTF-8, got %q", result)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

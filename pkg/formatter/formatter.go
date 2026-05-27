@@ -97,18 +97,19 @@ func Ellipsis(str string, maxDisplayWidth int) string {
 		return ""
 	}
 
-	lenStr := len(str)
+	runes := []rune(str)
+	lenStr := len(runes)
 	if maxDisplayWidth == 1 {
 		if lenStr <= maxDisplayWidth {
 			return str
 		}
-		return string(str[0])
+		return string(runes[0])
 	}
 
 	if lenStr <= maxDisplayWidth {
 		return str
 	}
-	return str[:maxDisplayWidth-1] + "…"
+	return string(runes[:maxDisplayWidth-1]) + "…"
 }
 
 func formatRange(startHost, endHost, startContainer, endContainer int32) string {
