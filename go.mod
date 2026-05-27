@@ -57,7 +57,7 @@ require (
 	github.com/opencontainers/selinux v1.15.0
 	github.com/pelletier/go-toml/v2 v2.3.1
 	github.com/rootless-containers/bypass4netns v0.4.2 //gomodjail:unconfined
-	github.com/rootless-containers/rootlesskit/v3 v3.0.0 //gomodjail:unconfined
+	github.com/rootless-containers/rootlesskit/v3 v3.0.1 //gomodjail:unconfined
 	github.com/spf13/cobra v1.10.2 //gomodjail:unconfined
 	github.com/spf13/pflag v1.0.10 //gomodjail:unconfined
 	github.com/vishvananda/netlink v1.3.1 //gomodjail:unconfined
