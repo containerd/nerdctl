@@ -25,7 +25,7 @@ require (
 	github.com/containerd/stargz-snapshotter v0.18.2 //gomodjail:unconfined
 	github.com/containerd/stargz-snapshotter/estargz v0.18.2 //gomodjail:unconfined
 	github.com/containerd/stargz-snapshotter/ipfs v0.18.2 //gomodjail:unconfined
-	github.com/containerd/typeurl/v2 v2.2.3
+	github.com/containerd/typeurl/v2 v2.3.0
 	github.com/containernetworking/cni v1.3.0 //gomodjail:unconfined
 	github.com/containernetworking/plugins v1.9.1 //gomodjail:unconfined
 	github.com/coreos/go-iptables v0.8.0 //gomodjail:unconfined
@@ -90,7 +90,6 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
