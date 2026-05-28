@@ -27,6 +27,8 @@ import (
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/poll"
 
+	"github.com/containerd/containerd/v2/core/runtime/restart"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
@@ -182,4 +184,19 @@ func TestAddRestartPolicy(t *testing.T) {
 	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(60*time.Second))
 	inspect = base.InspectContainer(tID)
 	assert.Equal(t, inspect.RestartCount, 1)
+}
+
+func TestRunRestartStatusLabel(t *testing.T) {
+	base := testutil.NewBase(t)
+	if !nerdtest.IsDocker() {
+		testutil.RequireContainerdPlugin(base, "io.containerd.internal.v1", "restart", []string{"always"})
+	}
+	tID := testutil.Identifier(t)
+	defer base.Cmd("rm", "-f", tID).Run()
+	base.Cmd("create", "--restart=always", "--name", tID, testutil.CommonImage, "sleep", "infinity").AssertOK()
+
+	inspect := base.InspectContainer(tID)
+	label := inspect.Config.Labels
+	statusLabel := label[restart.StatusLabel]
+	assert.Assert(t, statusLabel == "")
 }

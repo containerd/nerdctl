@@ -27,6 +27,7 @@ import (
 
 	"github.com/containerd/console"
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
@@ -464,6 +465,18 @@ func runAction(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := task.Start(ctx); err != nil {
+		return err
+	}
+
+	// Set status label running should call after task is started.
+	_, restartPolicyExist := lab[restart.PolicyLabel]
+	if restartPolicyExist {
+		if err := containerutil.UpdateStatusLabel(ctx, c, containerd.Running); err != nil {
+			return err
+		}
+	}
+
+	if err := containerutil.UpdateExplicitlyStoppedLabel(ctx, c, false); err != nil {
 		return err
 	}
 
