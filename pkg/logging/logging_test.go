@@ -18,14 +18,13 @@ package logging
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 )
 
@@ -68,37 +67,38 @@ func TestLoggingProcessAdapter(t *testing.T) {
 
 	// Prepare mock driver and logging config
 	driver := &MockDriver{}
-	stdoutBuffer := bytes.NewBufferString(normalString)
-	stderrBuffer := bytes.NewBufferString(hugeString)
+	stdoutReader, stdoutWriter, _ := os.Pipe()
+	stderrReader, stderrWriter, _ := os.Pipe()
 	config := &logging.Config{
-		Stdout: stdoutBuffer,
-		Stderr: stderrBuffer,
+		Stdout: stdoutReader,
+		Stderr: stderrReader,
 	}
-
 	// Execute the logging process adapter
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	var getContainerWaitMock ContainerWaitFunc = func(ctx context.Context, address string, config *logging.Config) (<-chan containerd.ExitStatus, error) {
-		exitChan := make(chan containerd.ExitStatus, 1)
-		time.Sleep(50 * time.Millisecond)
-		exitChan <- containerd.ExitStatus{}
-		return exitChan, nil
-	}
+	go func() {
+		stdoutWriter.Write([]byte(normalString))
+	}()
+	go func() {
+		stderrWriter.Write([]byte(hugeString))
+	}()
 
-	err := loggingProcessAdapter(ctx, driver, "testDataStore", "", getContainerWaitMock, config)
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		stdoutWriter.Close()
+		stderrWriter.Close()
+	}()
+
+	err := loggingProcessAdapter(ctx, driver, "testDataStore", config)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// let bufio read the buffer
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify that the driver methods were called
 	if !driver.processed {
 		t.Fatal("process should be processed")
 	}
-
 	// Verify that the driver received the expected data
 	stdout := strings.Join(driver.receivedStdout, "\n")
 	stderr := strings.Join(driver.receivedStderr, "\n")
