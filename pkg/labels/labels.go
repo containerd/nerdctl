@@ -86,6 +86,9 @@ const (
 	// Mounts is the mount points for the container.
 	Mounts = Prefix + "mounts"
 
+	// MountsKeyFormat is used to dynamically store individual mounts
+	MountsKeyFormat = Prefix + "mounts.%d"
+
 	// StopTimeout is seconds to wait for stop a container.
 	StopTimeout = Prefix + "stop-timeout"
 

@@ -825,11 +825,13 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 
 	if len(internalLabels.mountPoints) > 0 {
 		mounts := dockercompatMounts(internalLabels.mountPoints)
-		mountPointsJSON, err := json.Marshal(mounts)
+		jsonMountBytes, err := json.Marshal(mounts)
 		if err != nil {
+			return nil, fmt.Errorf("failed to marshal mounts: %w", err)
+		}
+		if err := labels.SetMount(m, jsonMountBytes); err != nil {
 			return nil, err
 		}
-		m[labels.Mounts] = string(mountPointsJSON)
 	}
 
 	if internalLabels.macAddress != "" {

@@ -92,8 +92,9 @@ func usedVolumes(ctx context.Context, containers []containerd.Container) (map[st
 			}
 			return nil, err
 		}
-		mountsJSON, ok := l[labels.Mounts]
-		if !ok {
+
+		mountsJSON := labels.GetMount(l)
+		if mountsJSON == "" {
 			continue
 		}
 
