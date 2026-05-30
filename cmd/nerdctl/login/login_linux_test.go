@@ -23,20 +23,22 @@ package login
 import (
 	"fmt"
 	"net"
-	"os"
 	"strconv"
 	"testing"
 
-	"gotest.tools/v3/icmd"
-
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/utils"
+	"github.com/containerd/nerdctl/mod/tigron/utils/testca"
 
 	"github.com/containerd/nerdctl/v2/pkg/imgutil/dockerconfigresolver"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/testca"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
 )
+
+// randomPort tells the registry helpers to acquire a free port automatically.
+const randomPort = 0
 
 type Client struct {
 	args       []string
@@ -68,106 +70,118 @@ func (ag *Client) WithConfigPath(value string) *Client {
 	return ag
 }
 
-func (ag *Client) GetConfigPath() string {
-	return ag.configPath
-}
-
-func (ag *Client) Run(base *testutil.Base, host string) *testutil.Cmd {
+func (ag *Client) Cmd(helpers test.Helpers, host string) test.TestableCommand {
 	if ag.configPath == "" {
-		ag.configPath, _ = os.MkdirTemp(base.T.TempDir(), "docker-config")
+		ag.configPath = helpers.T().TempDir()
 	}
 	args := []string{"login"}
 	if !nerdtest.IsDocker() {
 		args = append(args, "--debug-full")
 	}
 	args = append(args, ag.args...)
-	icmdCmd := icmd.Command(base.Binary, append(base.Args, append(args, host)...)...)
-	icmdCmd.Env = append(base.Env, "HOME="+os.Getenv("HOME"), "DOCKER_CONFIG="+ag.configPath)
-
-	return &testutil.Cmd{
-		Cmd:  icmdCmd,
-		Base: base,
-	}
+	args = append(args, host)
+	cmd := helpers.Command(args...)
+	cmd.Setenv("DOCKER_CONFIG", ag.configPath)
+	return cmd
 }
 
 func TestLoginPersistence(t *testing.T) {
-	base := testutil.NewBase(t)
-	t.Parallel()
+	nerdtest.Setup()
 
-	// Retrieve from the store
-	testCases := []struct {
-		auth string
-	}{
-		{
-			"basic",
-		},
-		{
-			"token",
+	var basicReg *registry.Server
+	var tokenReg *registry.Server
+	var tokenAS *registry.TokenAuthServer
+
+	testCase := &test.Case{
+		Require: require.All(
+			require.Linux,
+			nerdtest.Registry,
+		),
+		SubTests: []*test.Case{
+			{
+				Description: "basic",
+				Setup: func(data test.Data, helpers test.Helpers) {
+					username := utils.RandomStringBase64(30) + "∞"
+					password := utils.RandomStringBase64(30) + ":∞"
+
+					basicReg = nerdtest.RegistryWithBasicAuth(data, helpers, username, password, randomPort, false)
+					basicReg.Setup(data, helpers)
+
+					host := fmt.Sprintf("localhost:%d", basicReg.Port)
+					configPath := helpers.T().TempDir()
+
+					(&Client{configPath: configPath}).
+						WithCredentials(username, password).
+						Cmd(helpers, host).
+						Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+
+					(&Client{configPath: configPath}).
+						Cmd(helpers, host).
+						Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+
+					(&Client{configPath: configPath}).
+						WithCredentials("invalid", "invalid").
+						Cmd(helpers, host).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
+
+					(&Client{configPath: configPath}).
+						Cmd(helpers, host).
+						Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					if basicReg != nil {
+						basicReg.Cleanup(data, helpers)
+					}
+				},
+			},
+			{
+				Description: "token",
+				Setup: func(data test.Data, helpers test.Helpers) {
+					username := utils.RandomStringBase64(30) + "∞"
+					password := utils.RandomStringBase64(30) + ":∞"
+
+					// Use HTTP registry (nil CA) so localhost is trusted without explicit hosts-dir,
+					// matching the original test behaviour. The auth server still uses a CA for JWT
+					// signing even without TLS on the auth server itself.
+					rca := testca.NewX509(data, helpers)
+					tokenAS = registry.NewCesantaAuthServer(data, helpers, rca, randomPort, username, password, false)
+					tokenAS.Setup(data, helpers)
+					tokenReg = registry.NewDockerRegistry(data, helpers, nil, randomPort, tokenAS.Auth)
+					tokenReg.Setup(data, helpers)
+
+					host := fmt.Sprintf("localhost:%d", tokenReg.Port)
+					configPath := helpers.T().TempDir()
+
+					(&Client{configPath: configPath}).
+						WithCredentials(username, password).
+						Cmd(helpers, host).
+						Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+
+					(&Client{configPath: configPath}).
+						Cmd(helpers, host).
+						Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+
+					(&Client{configPath: configPath}).
+						WithCredentials("invalid", "invalid").
+						Cmd(helpers, host).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
+
+					(&Client{configPath: configPath}).
+						Cmd(helpers, host).
+						Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					if tokenReg != nil {
+						tokenReg.Cleanup(data, helpers)
+					}
+					if tokenAS != nil {
+						tokenAS.Cleanup(data, helpers)
+					}
+				},
+			},
 		},
 	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(fmt.Sprintf("Server %s", tc.auth), func(t *testing.T) {
-			t.Parallel()
-
-			username := utils.RandomStringBase64(30) + "∞"
-			password := utils.RandomStringBase64(30) + ":∞"
-
-			// Add the requested authentication
-			var auth testregistry.Auth
-			var dependentCleanup func(error)
-
-			auth = &testregistry.NoAuth{}
-			if tc.auth == "basic" {
-				auth = &testregistry.BasicAuth{
-					Username: username,
-					Password: password,
-				}
-			} else if tc.auth == "token" {
-				authCa := testca.New(base.T)
-				as := testregistry.NewAuthServer(base, authCa, 0, username, password, false)
-				auth = &testregistry.TokenAuth{
-					Address:  as.Scheme + "://" + net.JoinHostPort(as.IP.String(), strconv.Itoa(as.Port)),
-					CertPath: as.CertPath,
-				}
-				dependentCleanup = as.Cleanup
-			}
-
-			// Start the registry with the requested options
-			reg := testregistry.NewRegistry(base, nil, 0, auth, dependentCleanup)
-
-			// Register registry cleanup
-			t.Cleanup(func() {
-				reg.Cleanup(nil)
-			})
-
-			// First, login successfully
-			c := (&Client{}).
-				WithCredentials(username, password)
-
-			c.Run(base, fmt.Sprintf("localhost:%d", reg.Port)).
-				AssertOK()
-
-			// Now, log in successfully without passing any explicit credentials
-			nc := (&Client{}).
-				WithConfigPath(c.GetConfigPath())
-			nc.Run(base, fmt.Sprintf("localhost:%d", reg.Port)).
-				AssertOK()
-
-			// Now fail while using invalid credentials
-			nc.WithCredentials("invalid", "invalid").
-				Run(base, fmt.Sprintf("localhost:%d", reg.Port)).
-				AssertFail()
-
-			// And login again without, reverting to the last saved good state
-			nc = (&Client{}).
-				WithConfigPath(c.GetConfigPath())
-
-			nc.Run(base, fmt.Sprintf("localhost:%d", reg.Port)).
-				AssertOK()
-		})
-	}
+	testCase.Run(t)
 }
 
 /*
@@ -176,7 +190,7 @@ func TestAgainstNoAuth(t *testing.T) {
 	t.Parallel()
 
 	// Start the registry with the requested options
-	reg := testregistry.NewRegistry(base, nil, 0, &testregistry.NoAuth{}, nil)
+	reg := testregistry.NewRegistry(base, nil, randomPort, &testregistry.NoAuth{}, nil)
 
 	// Register registry cleanup
 	t.Cleanup(func() {
@@ -202,10 +216,8 @@ func TestAgainstNoAuth(t *testing.T) {
 func TestLoginAgainstVariants(t *testing.T) {
 	// Skip docker, because Docker doesn't have `--hosts-dir` nor `insecure-registry` option
 	// This will test access to a wide variety of servers, with or without TLS, with basic or token authentication
-	testutil.DockerIncompatible(t)
 
-	base := testutil.NewBase(t)
-	t.Parallel()
+	nerdtest.Setup()
 
 	testCases := []struct {
 		port int
@@ -213,238 +225,145 @@ func TestLoginAgainstVariants(t *testing.T) {
 		auth string
 	}{
 		// Basic auth, no TLS
-		{
-			80,
-			false,
-			"basic",
-		},
-		{
-			443,
-			false,
-			"basic",
-		},
-		{
-			0,
-			false,
-			"basic",
-		},
+		{80, false, "basic"},
+		{443, false, "basic"},
+		{0, false, "basic"},
 		// Token auth, no TLS
-		{
-			80,
-			false,
-			"token",
-		},
-		{
-			443,
-			false,
-			"token",
-		},
-		{
-			0,
-			false,
-			"token",
-		},
+		{80, false, "token"},
+		{443, false, "token"},
+		{0, false, "token"},
 		// Basic auth, with TLS
 		/*
 			// This is not working currently, unless we would force a server https:// in hosts
 			// To be fixed with login rewrite
-			{
-				80,
-				true,
-				"basic",
-			},
+			{80, true, "basic"},
 		*/
-		{
-			443,
-			true,
-			"basic",
-		},
-		{
-			0,
-			true,
-			"basic",
-		},
+		{443, true, "basic"},
+		{0, true, "basic"},
 		// Token auth, with TLS
 		/*
 			// This is not working currently, unless we would force a server https:// in hosts
 			// To be fixed with login rewrite
-			{
-				80,
-				true,
-				"token",
-			},
+			{80, true, "token"},
 		*/
-		{
-			443,
-			true,
-			"token",
-		},
-		{
-			0,
-			true,
-			"token",
-		},
+		{443, true, "token"},
+		{0, true, "token"},
 	}
 
-	// Iterate through all cases, that will present a variety of port (80, 443, random), TLS (yes or no), and authentication (basic, token) type combinations
+	var subtests []*test.Case
 	for _, tc := range testCases {
-		port := tc.port
-		tls := tc.tls
-		auth := tc.auth
+		tc := tc
 
-		t.Run(fmt.Sprintf("Login against `tls: %t port: %d auth: %s`", tls, port, auth), func(t *testing.T) {
-			// Tests with fixed ports should not be parallelized (although the port locking mechanism will prevent conflicts)
-			// as their children tests are parallelized, and this might deadlock given the way `Parallel` works
-			if port == 0 {
-				t.Parallel()
-			}
+		var reg *registry.Server
+		var tokenAuthServer *registry.TokenAuthServer
 
-			// Generate credentials that are specific to each registry, so that we never cross hit another one
-			username := utils.RandomStringBase64(30) + "∞"
-			password := utils.RandomStringBase64(30) + ":∞"
+		subtests = append(subtests, &test.Case{
+			Description: fmt.Sprintf("tls:%t port:%d auth:%s", tc.tls, tc.port, tc.auth),
+			// Fixed-port cases must not run in parallel: children are parallelised,
+			// and mixing Parallel levels can deadlock in Go's test runner.
+			NoParallel: tc.port != 0,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				username := utils.RandomStringBase64(30) + "∞"
+				password := utils.RandomStringBase64(30) + ":∞"
 
-			// Get a CA if we want TLS
-			var ca *testca.CA
-			if tls {
-				ca = testca.New(base.T)
-			}
-
-			// Add the requested authenticator
-			var authenticator testregistry.Auth
-			var dependentCleanup func(error)
-
-			authenticator = &testregistry.NoAuth{}
-			if auth == "basic" {
-				authenticator = &testregistry.BasicAuth{
-					Username: username,
-					Password: password,
+				switch {
+				case tc.auth == "basic":
+					reg = nerdtest.RegistryWithBasicAuth(data, helpers, username, password, tc.port, tc.tls)
+					reg.Setup(data, helpers)
+				case tc.auth == "token" && tc.tls:
+					reg, tokenAuthServer = nerdtest.RegistryWithTokenAuth(data, helpers, username, password, tc.port, tc.tls)
+					tokenAuthServer.Setup(data, helpers)
+					reg.Setup(data, helpers)
+				default: // token auth, no TLS: HTTP registry + HTTP auth server (CA used only for JWT)
+					rca := testca.NewX509(data, helpers)
+					tokenAuthServer = registry.NewCesantaAuthServer(data, helpers, rca, randomPort, username, password, false)
+					tokenAuthServer.Setup(data, helpers)
+					reg = registry.NewDockerRegistry(data, helpers, nil, tc.port, tokenAuthServer.Auth)
+					reg.Setup(data, helpers)
 				}
-			} else if auth == "token" {
-				authCa := ca
-				// We could be on !tls, meaning no ca - but we still need a CA to sign jwt tokens
-				if authCa == nil {
-					authCa = testca.New(base.T)
+
+				regHosts := []string{
+					net.JoinHostPort(reg.IP.String(), strconv.Itoa(reg.Port)),
+					net.JoinHostPort("localhost", strconv.Itoa(reg.Port)),
+					net.JoinHostPort("127.0.0.1", strconv.Itoa(reg.Port)),
+					// TODO: ipv6
 				}
-				as := testregistry.NewAuthServer(base, authCa, 0, username, password, tls)
-				authenticator = &testregistry.TokenAuth{
-					Address:  as.Scheme + "://" + net.JoinHostPort(as.IP.String(), strconv.Itoa(as.Port)),
-					CertPath: as.CertPath,
+				if reg.Port == 443 {
+					regHosts = append(regHosts,
+						reg.IP.String(),
+						"localhost",
+						"127.0.0.1",
+						// TODO: ipv6
+					)
 				}
-				dependentCleanup = as.Cleanup
-			}
 
-			// Start the registry with the requested options
-			reg := testregistry.NewRegistry(base, ca, port, authenticator, dependentCleanup)
+				for _, regHost := range regHosts {
+					rl, _ := dockerconfigresolver.Parse(regHost)
 
-			// Register registry cleanup
-			t.Cleanup(func() {
-				reg.Cleanup(nil)
-			})
+					// 1. valid credentials (no CA)
+					// a. Insecure flag not being set
+					// TODO: remove specialization when we fix the localhost mess
+					if rl.IsLocalhost() && !tc.tls {
+						(&Client{}).
+							WithCredentials(username, password).
+							Cmd(helpers, regHost).
+							Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+					} else {
+						(&Client{}).
+							WithCredentials(username, password).
+							Cmd(helpers, regHost).
+							Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
+					}
 
-			// Any registry is reachable through its ip+port, and localhost variants
-			regHosts := []string{
-				net.JoinHostPort(reg.IP.String(), strconv.Itoa(reg.Port)),
-				net.JoinHostPort("localhost", strconv.Itoa(reg.Port)),
-				net.JoinHostPort("127.0.0.1", strconv.Itoa(reg.Port)),
-				// TODO: ipv6
-				// net.JoinHostPort("::1", strconv.Itoa(reg.Port)),
-			}
+					// b. Insecure flag set to false
+					// TODO: remove specialization when we fix the localhost mess
+					if !rl.IsLocalhost() {
+						(&Client{}).
+							WithCredentials(username, password).
+							WithInsecure(false).
+							Cmd(helpers, regHost).
+							Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
+					}
 
-			// Registries that use port 443 also allow access without specifying a port
-			if reg.Port == 443 {
-				regHosts = append(regHosts, reg.IP.String())
-				regHosts = append(regHosts, "localhost")
-				regHosts = append(regHosts, "127.0.0.1")
-				// TODO: ipv6
-				// regHosts = append(regHosts, "::1")
-			}
+					// c. Insecure flag set to true
+					// TODO: remove specialization when we fix the localhost mess
+					if !rl.IsLocalhost() || !tc.tls {
+						(&Client{}).
+							WithCredentials(username, password).
+							WithInsecure(true).
+							Cmd(helpers, regHost).
+							Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+					}
 
-			// Iterate through these hosts access points, and create a test per-variant
-			for _, value := range regHosts {
-				regHost := value
-				t.Run(regHost, func(t *testing.T) {
-					t.Parallel()
-
-					// 1. test with valid credentials but no access to the CA
-					t.Run("1. valid credentials (no CA) ", func(t *testing.T) {
-						t.Parallel()
-
-						c := (&Client{}).
-							WithCredentials(username, password)
-
-						rl, _ := dockerconfigresolver.Parse(regHost)
-						// a. Insecure flag not being set
-						// TODO: remove specialization when we fix the localhost mess
-						if rl.IsLocalhost() && !tls {
-							c.Run(base, regHost).
-								AssertOK()
-						} else {
-							c.Run(base, regHost).
-								AssertFail()
-						}
-
-						// b. Insecure flag set to false
-						// TODO: remove specialization when we fix the localhost mess
-						if !rl.IsLocalhost() {
-							(&Client{}).
-								WithCredentials(username, password).
-								WithInsecure(false).
-								Run(base, regHost).
-								AssertFail()
-						}
-
-						// c. Insecure flag set to true
-						// TODO: remove specialization when we fix the localhost mess
-						if !rl.IsLocalhost() || !tls {
-							(&Client{}).
-								WithCredentials(username, password).
-								WithInsecure(true).
-								Run(base, regHost).
-								AssertOK()
-						}
-					})
-
-					// 2. test with valid credentials AND access to the CA
-					t.Run("2. valid credentials (with access to server CA)", func(t *testing.T) {
-						t.Parallel()
-
-						rl, _ := dockerconfigresolver.Parse(regHost)
-
+					// 2. valid credentials (with access to server CA)
+					{
 						// a. Insecure flag not being set
 						c := (&Client{}).
 							WithCredentials(username, password).
 							WithHostsDir(reg.HostsDir)
 
-						if tls || rl.IsLocalhost() {
-							c.Run(base, regHost).
-								AssertOK()
+						if tc.tls || rl.IsLocalhost() {
+							c.Cmd(helpers, regHost).Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
 						} else {
-							c.Run(base, regHost).
-								AssertFail()
+							c.Cmd(helpers, regHost).Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 						}
 
 						// b. Insecure flag set to false
-						if tls {
-							c.WithInsecure(false).
-								Run(base, regHost).
-								AssertOK()
+						if tc.tls {
+							c.WithInsecure(false).Cmd(helpers, regHost).Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
 						} else {
 							// TODO: remove specialization when we fix the localhost mess
 							if !rl.IsLocalhost() {
-								c.WithInsecure(false).
-									Run(base, regHost).
-									AssertFail()
+								c.WithInsecure(false).Cmd(helpers, regHost).Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 							}
 						}
 
 						// c. Insecure flag set to true
-						c.WithInsecure(true).
-							Run(base, regHost).
-							AssertOK()
-					})
+						c.WithInsecure(true).Cmd(helpers, regHost).Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+					}
 
-					t.Run("3. valid credentials, any url variant, should always succeed", func(t *testing.T) {
-						t.Parallel()
+					// 3. valid credentials, any url variant, should always succeed
+					{
 						c := (&Client{}).
 							WithCredentials(username, password).
 							WithHostsDir(reg.HostsDir).
@@ -453,98 +372,108 @@ func TestLoginAgainstVariants(t *testing.T) {
 							WithInsecure(true)
 
 						// TODO: remove specialization when we fix the localhost mess
-						rl, _ := dockerconfigresolver.Parse(regHost)
-						if !rl.IsLocalhost() || !tls {
-							c.Run(base, "http://"+regHost).AssertOK()
-							c.Run(base, "https://"+regHost).AssertOK()
-							c.Run(base, "http://"+regHost+"/whatever?foo=bar;foo:bar#foo=bar").AssertOK()
-							c.Run(base, "https://"+regHost+"/whatever?foo=bar&bar=foo;foo=foo+bar:bar#foo=bar").AssertOK()
+						if !rl.IsLocalhost() || !tc.tls {
+							c.Cmd(helpers, "http://"+regHost).Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+							c.Cmd(helpers, "https://"+regHost).Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+							c.Cmd(helpers, "http://"+regHost+"/whatever?foo=bar;foo:bar#foo=bar").Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+							c.Cmd(helpers, "https://"+regHost+"/whatever?foo=bar&bar=foo;foo=foo+bar:bar#foo=bar").Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
 						}
-					})
+					}
 
-					t.Run("4. wrong password should always fail", func(t *testing.T) {
-						t.Parallel()
+					// 4. wrong password should always fail
+					(&Client{}).
+						WithCredentials(username, "invalid").
+						WithHostsDir(reg.HostsDir).
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 
-						(&Client{}).
-							WithCredentials(username, "invalid").
-							WithHostsDir(reg.HostsDir).
-							Run(base, regHost).
-							AssertFail()
+					(&Client{}).
+						WithCredentials(username, "invalid").
+						WithHostsDir(reg.HostsDir).
+						WithInsecure(false).
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 
-						(&Client{}).
-							WithCredentials(username, "invalid").
-							WithHostsDir(reg.HostsDir).
-							WithInsecure(false).
-							Run(base, regHost).
-							AssertFail()
+					(&Client{}).
+						WithCredentials(username, "invalid").
+						WithHostsDir(reg.HostsDir).
+						WithInsecure(true).
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 
-						(&Client{}).
-							WithCredentials(username, "invalid").
-							WithHostsDir(reg.HostsDir).
-							WithInsecure(true).
-							Run(base, regHost).
-							AssertFail()
+					(&Client{}).
+						WithCredentials(username, "invalid").
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 
-						(&Client{}).
-							WithCredentials(username, "invalid").
-							Run(base, regHost).
-							AssertFail()
+					(&Client{}).
+						WithCredentials(username, "invalid").
+						WithInsecure(false).
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 
-						(&Client{}).
-							WithCredentials(username, "invalid").
-							WithInsecure(false).
-							Run(base, regHost).
-							AssertFail()
+					(&Client{}).
+						WithCredentials(username, "invalid").
+						WithInsecure(true).
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 
-						(&Client{}).
-							WithCredentials(username, "invalid").
-							WithInsecure(true).
-							Run(base, regHost).
-							AssertFail()
-					})
+					// 5. wrong username should always fail
+					(&Client{}).
+						WithCredentials("invalid", password).
+						WithHostsDir(reg.HostsDir).
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 
-					t.Run("5. wrong username should always fail", func(t *testing.T) {
-						t.Parallel()
+					(&Client{}).
+						WithCredentials("invalid", password).
+						WithHostsDir(reg.HostsDir).
+						WithInsecure(false).
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 
-						(&Client{}).
-							WithCredentials("invalid", password).
-							WithHostsDir(reg.HostsDir).
-							Run(base, regHost).
-							AssertFail()
+					(&Client{}).
+						WithCredentials("invalid", password).
+						WithHostsDir(reg.HostsDir).
+						WithInsecure(true).
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 
-						(&Client{}).
-							WithCredentials("invalid", password).
-							WithHostsDir(reg.HostsDir).
-							WithInsecure(false).
-							Run(base, regHost).
-							AssertFail()
+					(&Client{}).
+						WithCredentials("invalid", password).
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 
-						(&Client{}).
-							WithCredentials("invalid", password).
-							WithHostsDir(reg.HostsDir).
-							WithInsecure(true).
-							Run(base, regHost).
-							AssertFail()
+					(&Client{}).
+						WithCredentials("invalid", password).
+						WithInsecure(false).
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
 
-						(&Client{}).
-							WithCredentials("invalid", password).
-							Run(base, regHost).
-							AssertFail()
-
-						(&Client{}).
-							WithCredentials("invalid", password).
-							WithInsecure(false).
-							Run(base, regHost).
-							AssertFail()
-
-						(&Client{}).
-							WithCredentials("invalid", password).
-							WithInsecure(true).
-							Run(base, regHost).
-							AssertFail()
-					})
-				})
-			}
+					(&Client{}).
+						WithCredentials("invalid", password).
+						WithInsecure(true).
+						Cmd(helpers, regHost).
+						Run(&test.Expected{ExitCode: expect.ExitCodeGenericFail})
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				if reg != nil {
+					reg.Cleanup(data, helpers)
+				}
+				if tokenAuthServer != nil {
+					tokenAuthServer.Cleanup(data, helpers)
+				}
+			},
 		})
 	}
+
+	testCase := &test.Case{
+		Require: require.All(
+			require.Not(nerdtest.Docker),
+			nerdtest.Registry,
+		),
+		SubTests: subtests,
+	}
+	testCase.Run(t)
 }
