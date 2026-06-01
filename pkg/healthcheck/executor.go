@@ -75,6 +75,11 @@ func probeHealthCheck(ctx context.Context, task containerd.Task, hc *Healthcheck
 		log.G(ctx).Debugf("failed to exec health check: %v", err)
 		return nil, fmt.Errorf("exec error: %w", err)
 	}
+	defer func() {
+		if _, err := process.Delete(ctx); err != nil {
+			log.G(ctx).WithError(err).Debug("failed to delete exec process")
+		}
+	}()
 
 	if err := process.Start(ctx); err != nil {
 		log.G(ctx).Debugf("failed to start health check: %v", err)
