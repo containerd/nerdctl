@@ -19,15 +19,16 @@ package compose
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"gotest.tools/v3/assert"
 
-	"github.com/containerd/log"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -68,7 +69,7 @@ services:
 				cmd.WithPseudoTTY()
 				return cmd
 			},
-			Expected: test.Expects(0, nil, expect.Contains(expectedOutput)),
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(expectedOutput)),
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", "-v", data.Identifier())
 				helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
@@ -233,10 +234,7 @@ services:
 }
 
 func TestComposeRunWithEnv(t *testing.T) {
-	base := testutil.NewBase(t)
-	// specify the name of container in order to remove
-	// TODO: when `compose rm` is implemented, replace it.
-	containerName := testutil.Identifier(t)
+	const partialOutput = "bar"
 
 	dockerComposeYAML := fmt.Sprintf(`
 services:
@@ -248,26 +246,42 @@ services:
       - "echo $$FOO"
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	testCase := nerdtest.Setup()
 
-	defer base.Cmd("rm", "-f", "-v", containerName).Run()
-	const partialOutput = "bar"
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	unbuffer := []string{"unbuffer"}
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(),
-		"run", "-e", "FOO=bar", "--name", containerName, "alpine").AssertOutContains(partialOutput)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command(
+			"compose",
+			"-f",
+			data.Temp().Path("compose.yaml"),
+			"run",
+			"-e",
+			"FOO=bar",
+			"--name",
+			data.Identifier(),
+			"alpine",
+		)
+		cmd.WithPseudoTTY()
+		return cmd
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(partialOutput))
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeRunWithUser(t *testing.T) {
-	base := testutil.NewBase(t)
-	// specify the name of container in order to remove
-	// TODO: when `compose rm` is implemented, replace it.
-	containerName := testutil.Identifier(t)
+	const partialOutput = "5000"
 
 	dockerComposeYAML := fmt.Sprintf(`
 services:
@@ -278,25 +292,41 @@ services:
       - -u
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	testCase := nerdtest.Setup()
 
-	defer base.Cmd("rm", "-f", "-v", containerName).Run()
-	const partialOutput = "5000"
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	unbuffer := []string{"unbuffer"}
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(),
-		"run", "--user", "5000", "--name", containerName, "alpine").AssertOutContains(partialOutput)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command(
+			"compose",
+			"-f",
+			data.Temp().Path("compose.yaml"),
+			"run",
+			"--user",
+			"5000",
+			"--name",
+			data.Identifier(),
+			"alpine",
+		)
+		cmd.WithPseudoTTY()
+		return cmd
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(partialOutput))
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeRunWithLabel(t *testing.T) {
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-
 	dockerComposeYAML := fmt.Sprintf(`
 services:
   alpine:
@@ -308,31 +338,54 @@ services:
       - "foo=bar"
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	testCase := nerdtest.Setup()
 
-	defer base.Cmd("rm", "-f", "-v", containerName).Run()
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	unbuffer := []string{"unbuffer"}
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(),
-		"run", "--label", "foo=rab", "--label", "x=y", "--name", containerName, "alpine").AssertOK()
-
-	container := base.InspectContainer(containerName)
-	if container.Config == nil {
-		log.L.Errorf("test failed, cannot fetch container config")
-		t.Fail()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 	}
-	assert.Equal(t, container.Config.Labels["foo"], "rab")
-	assert.Equal(t, container.Config.Labels["x"], "y")
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command(
+			"compose",
+			"-f",
+			data.Temp().Path("compose.yaml"),
+			"run",
+			"--label",
+			"foo=rab",
+			"--label",
+			"x=y",
+			"--name",
+			data.Identifier(),
+			"alpine",
+		)
+		cmd.WithPseudoTTY()
+		return cmd
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, tt tig.T) {
+				container := nerdtest.InspectContainer(helpers, data.Identifier())
+				assert.Assert(tt, container.Config != nil, "cannot fetch container config")
+				assert.Equal(tt, container.Config.Labels["foo"], "rab")
+				assert.Equal(tt, container.Config.Labels["x"], "y")
+			},
+		}
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeRunWithArgs(t *testing.T) {
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
+	const partialOutput = "hello world"
 
 	dockerComposeYAML := fmt.Sprintf(`
 services:
@@ -342,26 +395,41 @@ services:
       - echo
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	testCase := nerdtest.Setup()
 
-	defer base.Cmd("rm", "-f", "-v", containerName).Run()
-	const partialOutput = "hello world"
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	unbuffer := []string{"unbuffer"}
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(),
-		"run", "--name", containerName, "alpine", partialOutput).AssertOutContains(partialOutput)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command(
+			"compose",
+			"-f",
+			data.Temp().Path("compose.yaml"),
+			"run",
+			"--name",
+			data.Identifier(),
+			"alpine",
+			partialOutput,
+		)
+		cmd.WithPseudoTTY()
+		return cmd
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(partialOutput))
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeRunWithEntrypoint(t *testing.T) {
-	base := testutil.NewBase(t)
-	// specify the name of container in order to remove
-	// TODO: when `compose rm` is implemented, replace it.
-	containerName := testutil.Identifier(t)
+	const partialOutput = "hello world"
 
 	dockerComposeYAML := fmt.Sprintf(`
 services:
@@ -371,25 +439,42 @@ services:
       - stty # should be changed
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	testCase := nerdtest.Setup()
 
-	defer base.Cmd("rm", "-f", "-v", containerName).Run()
-	const partialOutput = "hello world"
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	unbuffer := []string{"unbuffer"}
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(),
-		"run", "--entrypoint", "echo", "--name", containerName, "alpine", partialOutput).AssertOutContains(partialOutput)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command(
+			"compose",
+			"-f",
+			data.Temp().Path("compose.yaml"),
+			"run",
+			"--entrypoint",
+			"echo",
+			"--name",
+			data.Identifier(),
+			"alpine",
+			partialOutput,
+		)
+		cmd.WithPseudoTTY()
+		return cmd
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(partialOutput))
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeRunWithVolume(t *testing.T) {
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-
 	dockerComposeYAML := fmt.Sprintf(`
 services:
   alpine:
@@ -398,30 +483,53 @@ services:
     - stty # no meaning, just put any command
 `, testutil.CommonImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	const destinationDir = "/data"
 
-	// The directory is automatically removed by Cleanup
-	tmpDir := t.TempDir()
-	destinationDir := "/data"
-	volumeFlagStr := fmt.Sprintf("%s:%s", tmpDir, destinationDir)
+	testCase := nerdtest.Setup()
 
-	defer base.Cmd("rm", "-f", "-v", containerName).Run()
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	unbuffer := []string{"unbuffer"}
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(),
-		"run", "--volume", volumeFlagStr, "--name", containerName, "alpine").AssertOK()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+	}
 
-	container := base.InspectContainer(containerName)
-	errMsg := fmt.Sprintf("test failed, cannot find volume: %v", container.Mounts)
-	assert.Assert(t, container.Mounts != nil, errMsg)
-	assert.Assert(t, len(container.Mounts) == 1, errMsg)
-	assert.Assert(t, container.Mounts[0].Source == tmpDir, errMsg)
-	assert.Assert(t, container.Mounts[0].Destination == destinationDir, errMsg)
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		volumeFlagStr := fmt.Sprintf("%s:%s", data.Temp().Path(), destinationDir)
+		cmd := helpers.Command(
+			"compose",
+			"-f",
+			data.Temp().Path("compose.yaml"),
+			"run",
+			"--volume",
+			volumeFlagStr,
+			"--name",
+			data.Identifier(),
+			"alpine",
+		)
+		cmd.WithPseudoTTY()
+		return cmd
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, tt tig.T) {
+				container := nerdtest.InspectContainer(helpers, data.Identifier())
+				errMsg := fmt.Sprintf("test failed, cannot find volume: %v", container.Mounts)
+				assert.Assert(tt, container.Mounts != nil, errMsg)
+				assert.Assert(tt, len(container.Mounts) == 1, errMsg)
+				assert.Assert(tt, container.Mounts[0].Source == data.Temp().Path(), errMsg)
+				assert.Assert(tt, container.Mounts[0].Destination == destinationDir, errMsg)
+			},
+		}
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposePushAndPullWithCosignVerify(t *testing.T) {
