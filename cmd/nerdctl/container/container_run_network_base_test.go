@@ -27,7 +27,12 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 )
 
@@ -44,7 +49,7 @@ func baseTestRunPort(t *testing.T, nginxImage string, nginxIndexHTMLSnippet stri
 
 	hostIP, err := nettestutil.NonLoopbackIPv4()
 	assert.NilError(t, err)
-	type testCase struct {
+	type portTestCase struct {
 		listenIP         net.IP
 		connectIP        net.IP
 		hostPort         string
@@ -55,7 +60,7 @@ func baseTestRunPort(t *testing.T, nginxImage string, nginxIndexHTMLSnippet stri
 	}
 	lo := net.ParseIP("127.0.0.1")
 	zeroIP := net.ParseIP("0.0.0.0")
-	testCases := []testCase{
+	testCases := []portTestCase{
 		{
 			listenIP:         lo,
 			connectIP:        lo,
@@ -186,39 +191,54 @@ func baseTestRunPort(t *testing.T, nginxImage string, nginxIndexHTMLSnippet stri
 		},
 	}
 
-	tID := testutil.Identifier(t)
-	for i, tc := range testCases {
-		i := i
+	testCase := nerdtest.Setup()
+	testCase.NoParallel = true
+	for _, tc := range testCases {
 		tc := tc
 		tcName := fmt.Sprintf("%+v", tc)
-		t.Run(tcName, func(t *testing.T) {
-			testContainerName := fmt.Sprintf("%s-%d", tID, i)
-			base := testutil.NewBase(t)
-			defer base.Cmd("rm", "-f", testContainerName).Run()
-			pFlag := fmt.Sprintf("%s:%s:%s", tc.listenIP.String(), tc.hostPort, tc.containerPort)
-			connectURL := fmt.Sprintf("http://%s:%d", tc.connectIP.String(), tc.connectURLPort)
-			t.Logf("pFlag=%q, connectURL=%q", pFlag, connectURL)
-			cmd := base.Cmd("run", "-d",
-				"--name", testContainerName,
-				"-p", pFlag,
-				nginxImage)
-			if tc.runShouldSuccess {
-				cmd.AssertOK()
-			} else {
-				cmd.AssertFail()
-				return
-			}
+		testCase.SubTests = append(testCase.SubTests, &test.Case{
+			Description: tcName,
+			NoParallel:  true,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				pFlag := fmt.Sprintf("%s:%s:%s", tc.listenIP.String(), tc.hostPort, tc.containerPort)
+				helpers.T().Log(fmt.Sprintf("pFlag=%q, connectURL=%q", pFlag, fmt.Sprintf("http://%s:%d", tc.connectIP.String(), tc.connectURLPort)))
+				return helpers.Command("run", "-d",
+					"--name", data.Identifier(),
+					"-p", pFlag,
+					nginxImage)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				exitCode := expect.ExitCodeGenericFail
+				if tc.runShouldSuccess {
+					exitCode = expect.ExitCodeSuccess
+				}
 
-			resp, err := nettestutil.HTTPGet(connectURL, 5, false)
-			if tc.err != "" {
-				assert.ErrorContains(t, err, tc.err)
-				return
-			}
-			assert.NilError(t, err)
-			respBody, err := io.ReadAll(resp.Body)
-			assert.NilError(t, err)
-			assert.Assert(t, strings.Contains(string(respBody), nginxIndexHTMLSnippet))
+				return &test.Expected{
+					ExitCode: exitCode,
+					Errors:   []error{},
+					Output: func(stdout string, t tig.T) {
+						if !tc.runShouldSuccess {
+							return
+						}
+
+						connectURL := fmt.Sprintf("http://%s:%d", tc.connectIP.String(), tc.connectURLPort)
+						resp, err := nettestutil.HTTPGet(connectURL, 5, false)
+						if tc.err != "" {
+							assert.ErrorContains(t, err, tc.err)
+							return
+						}
+						assert.NilError(t, err)
+						respBody, err := io.ReadAll(resp.Body)
+						assert.NilError(t, err)
+						assert.Assert(t, strings.Contains(string(respBody), nginxIndexHTMLSnippet))
+					},
+				}
+			},
 		})
 	}
+	testCase.Run(t)
 
 }
