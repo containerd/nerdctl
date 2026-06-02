@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -192,6 +193,9 @@ func baseTestRunPort(t *testing.T, nginxImage string, nginxIndexHTMLSnippet stri
 	}
 
 	testCase := nerdtest.Setup()
+	if runtime.GOOS == "windows" {
+		testCase.Require = nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/3988")
+	}
 	testCase.NoParallel = true
 	for _, tc := range testCases {
 		tc := tc
