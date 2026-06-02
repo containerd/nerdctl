@@ -299,6 +299,13 @@ func TestNetworkInspectByID(t *testing.T) {
 		},
 	}
 
+	if runtime.GOOS == "windows" {
+		testCase.NoParallel = true
+		for _, subTest := range testCase.SubTests {
+			subTest.NoParallel = true
+		}
+	}
+
 	testCase.Run(t)
 }
 
@@ -487,6 +494,13 @@ func TestNetworkInspectWithContainers(t *testing.T) {
 				}
 			},
 		},
+	}
+
+	if runtime.GOOS == "windows" {
+		testCase.NoParallel = true
+		for _, subTest := range testCase.SubTests {
+			subTest.NoParallel = true
+		}
 	}
 
 	testCase.Run(t)
