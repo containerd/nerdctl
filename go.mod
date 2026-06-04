@@ -32,7 +32,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/cyphar/filepath-securejoin v0.6.1 //gomodjail:unconfined
 	github.com/distribution/reference v0.6.0
-	github.com/docker/cli v29.5.2+incompatible //gomodjail:unconfined
+	github.com/docker/cli v29.5.3+incompatible //gomodjail:unconfined
 	github.com/docker/go-connections v0.7.0
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.3.0 //gomodjail:unconfined
@@ -44,7 +44,7 @@ require (
 	github.com/klauspost/compress v1.18.6
 	github.com/mattn/go-isatty v0.0.22 //gomodjail:unconfined
 	github.com/moby/moby/client v0.4.1
-	github.com/moby/moby/v2 v2.0.0-beta.15
+	github.com/moby/moby/v2 v2.0.0-beta.16
 	github.com/moby/sys/mount v0.3.4
 	github.com/moby/sys/signal v0.7.1
 	github.com/moby/sys/user v0.4.0 //gomodjail:unconfined
