@@ -16,15 +16,25 @@
    limitations under the License.
 */
 
+/*
+   Portions from https://github.com/moby/moby/blob/docker-v29.5.2/daemon/volume/mounts/linux_parser.go
+   Copyright (C) Docker/Moby authors.
+   Licensed under the Apache License, Version 2.0
+   NOTICE: https://github.com/moby/moby/blob/docker-v29.5.2/NOTICE
+*/
+
 package mountutil
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
 )
+
+var ErrVolumeTargetIsRoot = errors.New("invalid specification: destination can't be '/'")
 
 func splitVolumeSpec(s string) ([]string, error) {
 	s = strings.TrimLeft(s, ":")
@@ -48,7 +58,17 @@ func cleanMount(p string) string {
 	return filepath.Clean(p)
 }
 
+func validateNotRoot(p string) error {
+	if cleanMount(p) == "/" {
+		return ErrVolumeTargetIsRoot
+	}
+	return nil
+}
+
 func isValidPath(s string) (bool, error) {
+	if err := validateNotRoot(s); err != nil {
+		return false, err
+	}
 	if filepath.IsAbs(s) {
 		return true, nil
 	}

@@ -161,7 +161,18 @@ func cleanMount(p string) string {
 	return filepath.Clean(p)
 }
 
+func validateNotRoot(p string) error {
+	p = strings.ToLower(cleanMount(p))
+	if p == "c:" || p == `c:\` {
+		return fmt.Errorf(`destination path (%v) cannot be 'c:' or 'c:\'`, p)
+	}
+	return nil
+}
+
 func isValidPath(s string) (bool, error) {
+	if err := validateNotRoot(s); err != nil {
+		return false, err
+	}
 	if isNamedPipe(s) || filepath.IsAbs(s) {
 		return true, nil
 	}

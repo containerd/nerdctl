@@ -32,6 +32,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/pkg/mountutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -761,4 +762,31 @@ func TestBindMountWhenHostFolderDoesNotExist(t *testing.T) {
 		hp), testutil.AlpineImage).AssertFail()
 	_, err = os.Stat(hp)
 	assert.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestRunVolumeWithRootDestination(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run", "-d", "--name", data.Identifier(),
+			"-v", data.Temp().Dir()+":/", testutil.AlpineImage)
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeGenericFail,
+			Errors:   []error{mountutil.ErrVolumeTargetIsRoot},
+			Output: func(stdout string, t tig.T) {
+				psOutput := helpers.Capture("ps", "-a", "--format", "{{.Names}}")
+				assert.Assert(t, !strings.Contains(psOutput, data.Identifier()),
+					"no container should be created when the volume destination is '/'")
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
