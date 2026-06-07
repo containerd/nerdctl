@@ -159,14 +159,22 @@ $ limactl start
 $ lima nerdctl run -d --name nginx -p 127.0.0.1:8080:80 nginx:alpine
 ```
 
-### FreeBSD
-
-See [`./docs/freebsd.md`](docs/freebsd.md).
-
 ### Windows
+
+Install with [Scoop](https://scoop.sh):
+
+```
+scoop install nerdctl
+```
+
+Regarding compatibility, note that:
 
 - Linux containers: Known to work on WSL2
 - Windows containers: experimental support for Windows (see below for features that are currently known to work)
+
+### FreeBSD
+
+See [`./docs/freebsd.md`](docs/freebsd.md).
 
 ### Docker
 
