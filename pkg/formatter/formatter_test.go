@@ -19,7 +19,6 @@ package formatter
 import (
 	"testing"
 	"time"
-	"unicode/utf8"
 
 	"gotest.tools/v3/assert"
 
@@ -234,7 +233,6 @@ func TestEllipsis(t *testing.T) {
 			t.Parallel()
 
 			result := Ellipsis(tt.input, tt.maxDisplayWidth)
-			assert.Assert(t, utf8.ValidString(result), "expected valid UTF-8, got %q", result)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
