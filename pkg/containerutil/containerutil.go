@@ -584,8 +584,15 @@ func GetContainerVolumes(containerLabels map[string]string) []*ContainerVolume {
 	var vols []*ContainerVolume
 	volLabels := []string{labels.AnonymousVolumes, labels.Mounts}
 	for _, volLabel := range volLabels {
-		names, ok := containerLabels[volLabel]
-		if !ok {
+		var names string
+
+		if volLabel == labels.Mounts {
+			names = labels.GetMount(containerLabels)
+		} else {
+			names = containerLabels[volLabel]
+		}
+
+		if names == "" {
 			continue
 		}
 		var (

@@ -266,7 +266,7 @@ func TestContainerInspectContainsInternalLabel(t *testing.T) {
 		lbs := inspect.Config.Labels
 
 		// TODO: add more internal labels testcases
-		labelMount := lbs[labels.Mounts]
+		labelMount := labels.GetMount(lbs)
 		expectedLabelMount := "[{\"Type\":\"bind\",\"Source\":\"/tmp\",\"Destination\":\"/app\",\"Mode\":\"rprivate,rbind\",\"RW\":true,\"Propagation\":\"rprivate\"}]"
 		assert.Equal(tt, expectedLabelMount, labelMount)
 	})

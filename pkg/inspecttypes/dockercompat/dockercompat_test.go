@@ -71,7 +71,7 @@ func TestContainerFromNative(t *testing.T) {
 			n: &native.Container{
 				Container: containers.Container{
 					Labels: map[string]string{
-						"nerdctl/mounts":               "[{\"Type\":\"bind\",\"Source\":\"/mnt/foo\",\"Destination\":\"/mnt/foo\",\"Mode\":\"rshared,rw\",\"RW\":true,\"Propagation\":\"rshared\"}]",
+						"nerdctl/mounts.0":             "{\"Type\":\"bind\",\"Source\":\"/mnt/foo\",\"Destination\":\"/mnt/foo\",\"Mode\":\"rshared,rw\",\"RW\":true,\"Propagation\":\"rshared\"}",
 						"nerdctl/state-dir":            tempStateDir,
 						"nerdctl/hostname":             "host1",
 						"nerdctl/user":                 "test-user",
@@ -164,7 +164,7 @@ func TestContainerFromNative(t *testing.T) {
 				},
 				Config: &Config{
 					Labels: map[string]string{
-						"nerdctl/mounts":               "[{\"Type\":\"bind\",\"Source\":\"/mnt/foo\",\"Destination\":\"/mnt/foo\",\"Mode\":\"rshared,rw\",\"RW\":true,\"Propagation\":\"rshared\"}]",
+						"nerdctl/mounts.0":             `{"Type":"bind","Source":"/mnt/foo","Destination":"/mnt/foo","Mode":"rshared,rw","RW":true,"Propagation":"rshared"}`,
 						"nerdctl/state-dir":            tempStateDir,
 						"nerdctl/hostname":             "host1",
 						"nerdctl/user":                 "test-user",
