@@ -109,6 +109,8 @@ func runPacketSyslog(c net.PacketConn, done chan<- string) {
 	var buf [4096]byte
 	var rcvd string
 	ct := 0
+	// 20 retries (2s) to wait for the first packet; drop to 3 (400ms drain) after.
+	maxRetries := 20
 	for {
 		var n int
 		var err error
@@ -116,9 +118,13 @@ func runPacketSyslog(c net.PacketConn, done chan<- string) {
 		_ = c.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 		n, _, err = c.ReadFrom(buf[:])
 		rcvd += string(buf[:n])
+		if n > 0 {
+			maxRetries = 3
+			ct = 0
+		}
 		if err != nil {
 			if oe, ok := err.(*net.OpError); ok {
-				if ct < 3 && oe.Temporary() {
+				if ct < maxRetries && oe.Temporary() {
 					ct++
 					continue
 				}
