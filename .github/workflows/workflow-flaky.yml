@@ -36,7 +36,7 @@ jobs:
 
   test-integration-freebsd:
     name: "FreeBSD"
-    uses: ./.github/workflows/job-test-in-vagrant.yml
+    uses: ./.github/workflows/job-test-in-lima-freebsd.yml
     with:
       timeout: 15
       runner: ubuntu-24.04
