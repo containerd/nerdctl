@@ -5,7 +5,3 @@ _output
 
 # golangci-lint
 /build
-
-# vagrant
-/.vagrant
-Vagrantfile
