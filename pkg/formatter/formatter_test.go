@@ -192,3 +192,48 @@ func TestFormatPorts(t *testing.T) {
 		})
 	}
 }
+
+func TestEllipsis(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		input           string
+		maxDisplayWidth int
+		expected        string
+	}{
+		{
+			name:            "ascii under limit",
+			input:           "hello",
+			maxDisplayWidth: 5,
+			expected:        "hello",
+		},
+		{
+			name:            "ascii truncated",
+			input:           "hello",
+			maxDisplayWidth: 4,
+			expected:        "hel…",
+		},
+		{
+			name:            "unicode truncated",
+			input:           "éclair",
+			maxDisplayWidth: 4,
+			expected:        "écl…",
+		},
+		{
+			name:            "unicode truncated to single rune",
+			input:           "éclair",
+			maxDisplayWidth: 1,
+			expected:        "é",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := Ellipsis(tt.input, tt.maxDisplayWidth)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
