@@ -146,7 +146,9 @@ func TestCreateWithMACAddress(t *testing.T) {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeSuccess,
 					Output: func(stdout string, t tig.T) {
-						helpers.Ensure("start", "-a", data.Identifier())
+						startOut := helpers.Capture("start", "-a", data.Identifier())
+						assert.Assert(t, !strings.Contains(startOut, data.Labels().Get(macAddressKey)),
+							fmt.Sprintf("expected start output to not contain MAC %q: %q", data.Labels().Get(macAddressKey), startOut))
 					},
 				}
 			},
@@ -441,8 +443,7 @@ func TestCreateFromOCIArchive(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		dockerfile := fmt.Sprintf("FROM %s\nCMD [\"echo\", \"%s\"]", testutil.CommonImage, sentinel)
-		err := os.WriteFile(filepath.Join(data.Temp().Path(), "Dockerfile"), []byte(dockerfile), 0644)
-		assert.NilError(helpers.T(), err)
+		data.Temp().Save(dockerfile, "Dockerfile")
 
 		imageName := data.Identifier("image") + ":latest"
 		tarPath := data.Temp().Path("image.tar")
@@ -458,7 +459,6 @@ func TestCreateFromOCIArchive(t *testing.T) {
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("rm", "-f", data.Identifier())
 		helpers.Anyhow("rmi", "-f", data.Labels().Get("imageName"))
-		helpers.Anyhow("builder", "prune", "--all", "--force")
 	}
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		return helpers.Command("start", "--attach", data.Identifier())
