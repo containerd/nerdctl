@@ -59,15 +59,15 @@ func setupPsTestContainer(identity string, restart bool, hyperv bool) func(data 
 			args = append(args, "--isolation", "hyperv")
 		}
 
+		if !restart {
+			args = append(args, "--restart=no")
+		}
+
 		args = append(args,
 			"--name", containerName,
 			"--label", formatter.FormatLabels(testLabels),
 			testutil.NginxAlpineImage,
 		)
-
-		if !restart {
-			args = append(args, "--restart=no")
-		}
 
 		helpers.Ensure(args...)
 		if restart {
@@ -104,10 +104,11 @@ func TestListProcessContainer(t *testing.T) {
 				image, _ := tab.ReadRow(lines[1], "IMAGE")
 				assert.Equal(t, image, testutil.NginxAlpineImage)
 				size, _ := tab.ReadRow(lines[1], "SIZE")
+				expectedSize := "36.0 MiB (virtual "
 				assert.Assert(
 					t,
-					strings.Contains(size, "(virtual"),
-					fmt.Sprintf("expect container size to contain '(virtual', but got %s", size),
+					strings.Contains(size, expectedSize),
+					fmt.Sprintf("expect container size %s, but got %s", expectedSize, size),
 				)
 			},
 		}
