@@ -38,3 +38,5 @@ For more details about how to build overlaybd image, please refer to [accelerate
 Nerdctl supports to convert an OCI image or docker format v2 image to OverlayBD image by using the `nerdctl image convert` command.
 
 Before the conversion, you should have the `overlaybd-snapshotter` binary installed, which build from [accelerated-container-image](https://github.com/containerd/accelerated-container-image). You can run the command like `nerdctl image convert --overlaybd --oci <source_image> <target_image>` to convert the `<source_image>` to a OverlayBD image whose tag is `<target_image>`.
+
+By default, `nerdctl image convert --overlaybd` uses a 64 GB virtual block device size. You can customize it with `--overlaybd-vsize`.

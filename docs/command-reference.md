@@ -1012,6 +1012,10 @@ Flags:
 - `--zstdchunked-record-in=<FILE>` : read `ctr-remote optimize --record-out=<FILE>` record file. :warning: This flag is experimental and subject to change.
 - `--zstdchunked-compression-level=<LEVEL>`: zstd:chunked compression level (default: 3)
 - `--zstdchunked-chunk-size=<SIZE>`: zstd:chunked chunk size
+- `--overlaybd`                        : convert tar.gz layers to overlaybd layers. Should be used in conjunction with '--oci'
+- `--overlaybd-fs-type=<TYPE>`         : filesystem type for overlaybd (default: `ext4`)
+- `--overlaybd-dbstr=<STRING>`         : database config string for overlaybd
+- `--overlaybd-vsize=<SIZE>`           : virtual block device size in GB for overlaybd (default: 64)
 - `--uncompress`                       : convert tar.gz layers to uncompressed tar layers
 - `--oci`                              : convert Docker media types to OCI media types
 - `--platform=<PLATFORM>`              : convert content for a specific platform

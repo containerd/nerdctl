@@ -88,6 +88,7 @@ func convertCommand() *cobra.Command {
 	cmd.Flags().Bool("overlaybd", false, "Convert tar.gz layers to overlaybd layers")
 	cmd.Flags().String("overlaybd-fs-type", "ext4", "Filesystem type for overlaybd")
 	cmd.Flags().String("overlaybd-dbstr", "", "Database config string for overlaybd")
+	cmd.Flags().Int("overlaybd-vsize", 64, "Virtual block device size in GB for overlaybd")
 	// #endregion
 
 	// #region soci flags
@@ -226,6 +227,10 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 	if err != nil {
 		return types.ImageConvertOptions{}, err
 	}
+	overlaybdVsize, err := cmd.Flags().GetInt("overlaybd-vsize")
+	if err != nil {
+		return types.ImageConvertOptions{}, err
+	}
 	// #endregion
 
 	// #region soci flags
@@ -307,6 +312,7 @@ func convertOptions(cmd *cobra.Command) (types.ImageConvertOptions, error) {
 			Overlaybd:      overlaybd,
 			OverlayFsType:  overlaybdFsType,
 			OverlaydbDBStr: overlaybdDbstr,
+			OverlaybdVsize: overlaybdVsize,
 		},
 		SociConvertOptions: types.SociConvertOptions{
 			Soci: soci,

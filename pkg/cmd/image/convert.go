@@ -394,6 +394,7 @@ func getOBDConvertOpts(options types.ImageConvertOptions) ([]overlaybdconvert.Op
 	obdOpts := []overlaybdconvert.Option{
 		overlaybdconvert.WithFsType(options.OverlayFsType),
 		overlaybdconvert.WithDbstr(options.OverlaydbDBStr),
+		overlaybdconvert.WithVsize(options.OverlaybdVsize),
 	}
 	return obdOpts, nil
 }
