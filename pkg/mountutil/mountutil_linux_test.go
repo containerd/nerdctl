@@ -259,6 +259,10 @@ func TestProcessFlagV(t *testing.T) {
 			rawSpec: `/mnt/foo:./foo`,
 			err:     "expected an absolute path, got \"./foo\"",
 		},
+		{
+			rawSpec: `./:/`,
+			err:     "invalid specification: destination can't be '/'",
+		},
 	}
 
 	for _, tt := range tests {

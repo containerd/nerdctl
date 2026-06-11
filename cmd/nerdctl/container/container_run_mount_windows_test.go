@@ -17,14 +17,21 @@
 package container
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
+
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRunMountVolume(t *testing.T) {
@@ -212,4 +219,31 @@ func TestRunMountVolumeSpec(t *testing.T) {
 
 	// If -v is an empty string, it will be ignored
 	base.Cmd("run", "--rm", "-v", "", testutil.CommonImage).AssertOK()
+}
+
+func TestRunVolumeWithDriveRootDestination(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run", "-d", "--name", data.Identifier(),
+			"-v", data.Temp().Dir()+`:C:\.`, testutil.CommonImage)
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeGenericFail,
+			Errors:   []error{errors.New("destination path (c:\\\\) cannot be 'c:' or 'c:\\\\'")},
+			Output: func(stdout string, t tig.T) {
+				psOutput := helpers.Capture("ps", "-a", "--format", "{{.Names}}")
+				assert.Assert(t, !strings.Contains(psOutput, data.Identifier()),
+					"no container should be created when the volume destination is the drive root")
+			},
+		}
+	}
+
+	testCase.Run(t)
 }

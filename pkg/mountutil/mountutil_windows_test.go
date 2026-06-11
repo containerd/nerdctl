@@ -262,6 +262,10 @@ func TestProcessFlagV(t *testing.T) {
 			rawSpec: `C:\TestVolume\Path:TestVolume`,
 			err:     "expected an absolute path or a named pipe, got \"TestVolume\"",
 		},
+		{
+			rawSpec: `C:\TestVolume\Path:c:\.`,
+			err:     "destination path (c:\\) cannot be 'c:' or 'c:\\'",
+		},
 	}
 
 	for _, tt := range tests {
