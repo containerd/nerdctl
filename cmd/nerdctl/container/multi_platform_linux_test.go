@@ -22,17 +22,39 @@ import (
 	"strings"
 	"testing"
 
-	"gotest.tools/v3/assert"
+	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
+	"github.com/containerd/nerdctl/mod/tigron/test"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
-func testMultiPlatformRun(base *testutil.Base, alpineImage string) {
-	t := base.T
-	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
+// randomPort asks the registry helpers to acquire a free port automatically.
+const randomPort = 0
+
+// requireMultiPlatformExec skips the test when the host cannot execute
+// linux/amd64, linux/arm64 and linux/arm/v7 images (e.g. no binfmt_misc).
+var requireMultiPlatformExec = &test.Requirement{
+	Check: func(_ test.Data, _ test.Helpers) (bool, string) {
+		ok, err := platformutil.CanExecProbably("linux/amd64", "linux/arm64", "linux/arm/v7")
+		if !ok {
+			msg := "requires multi-platform exec support (linux/amd64, linux/arm64, linux/arm/v7)"
+			if err != nil {
+				msg += ": " + err.Error()
+			}
+			return false, msg
+		}
+		return true, ""
+	},
+}
+
+// assertMultiPlatformRun runs uname -m inside image on each platform and
+// asserts the expected machine type string.
+func assertMultiPlatformRun(helpers test.Helpers, image string) {
 	testCases := map[string]string{
 		"amd64":        "x86_64",
 		"arm64":        "aarch64",
@@ -41,92 +63,174 @@ func testMultiPlatformRun(base *testutil.Base, alpineImage string) {
 		"linux/arm/v7": "armv7l",
 	}
 	for plat, expectedUnameM := range testCases {
-		t.Logf("Testing %q (%q)", plat, expectedUnameM)
-		cmd := base.Cmd("run", "--rm", "--platform="+plat, alpineImage, "uname", "-m")
-		cmd.AssertOutExactly(expectedUnameM + "\n")
+		helpers.T().Log(fmt.Sprintf("Testing platform %q (%q)", plat, expectedUnameM))
+		helpers.Command("run", "--rm", "--platform="+plat, image, "uname", "-m").
+			Run(&test.Expected{
+				ExitCode: expect.ExitCodeSuccess,
+				Output:   expect.Equals(expectedUnameM + "\n"),
+			})
 	}
 }
 
 func TestMultiPlatformRun(t *testing.T) {
-	base := testutil.NewBase(t)
-	testMultiPlatformRun(base, testutil.AlpineImage)
+	testCase := nerdtest.Setup()
+
+	testCase.Require = requireMultiPlatformExec
+
+	testCase.Setup = func(_ test.Data, helpers test.Helpers) {
+		assertMultiPlatformRun(helpers, testutil.AlpineImage)
+	}
+
+	testCase.Run(t)
 }
 
 func TestMultiPlatformBuildPush(t *testing.T) {
-	testutil.DockerIncompatible(t) // non-buildx version of `docker build` lacks multi-platform. Also, `docker push` lacks --platform.
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-	reg := testregistry.NewWithNoAuth(base, 0, false)
-	defer reg.Cleanup(nil)
+	testCase := nerdtest.Setup()
 
-	imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.Port, tID)
-	defer base.Cmd("rmi", imageName).Run()
+	testCase.Require = require.All(
+		// non-buildx `docker build` lacks multi-platform support; `docker push` lacks --platform
+		require.Not(nerdtest.Docker),
+		nerdtest.Build,
+		requireMultiPlatformExec,
+		nerdtest.Registry,
+	)
 
-	dockerfile := fmt.Sprintf(`FROM %s
-RUN echo dummy
-	`, testutil.AlpineImage)
+	var reg *registry.Server
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		reg = nerdtest.RegistryWithNoAuth(data, helpers, randomPort, false)
+		reg.Setup(data, helpers)
+		imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.Port, data.Identifier())
+		data.Labels().Set("image", imageName)
 
-	base.Cmd("build", "-t", imageName, "--platform=amd64,arm64,linux/arm/v7", buildCtx).AssertOK()
-	testMultiPlatformRun(base, imageName)
-	base.Cmd("push", "--platform=amd64,arm64,linux/arm/v7", imageName).AssertOK()
+		dockerfile := fmt.Sprintf("FROM %s\nRUN echo dummy\n", testutil.AlpineImage)
+		buildCtx := data.Temp().Dir()
+		data.Temp().Save(dockerfile, "Dockerfile")
+
+		helpers.Ensure("build", "-t", imageName, "--platform=amd64,arm64,linux/arm/v7", buildCtx)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if img := data.Labels().Get("image"); img != "" {
+			helpers.Anyhow("rmi", img)
+		}
+		helpers.Anyhow("builder", "prune", "--all", "--force")
+		if reg != nil {
+			reg.Cleanup(data, helpers)
+		}
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		imageName := data.Labels().Get("image")
+		assertMultiPlatformRun(helpers, imageName)
+		return helpers.Command("push", "--platform=amd64,arm64,linux/arm/v7", imageName)
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+
+	testCase.Run(t)
 }
 
-// TestMultiPlatformBuildPushNoRun tests if the push succeeds in a situation where nerdctl builds
-// a Dockerfile without RUN, COPY, etc commands. In such situation, BuildKit doesn't download the base image
-// so nerdctl needs to ensure these blobs to be locally available.
 func TestMultiPlatformBuildPushNoRun(t *testing.T) {
-	testutil.DockerIncompatible(t) // non-buildx version of `docker build` lacks multi-platform. Also, `docker push` lacks --platform.
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-	reg := testregistry.NewWithNoAuth(base, 0, false)
-	defer reg.Cleanup(nil)
+	testCase := nerdtest.Setup()
 
-	imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.Port, tID)
-	defer base.Cmd("rmi", imageName).Run()
+	testCase.Require = require.All(
+		// non-buildx `docker build` lacks multi-platform support; `docker push` lacks --platform
+		require.Not(nerdtest.Docker),
+		nerdtest.Build,
+		requireMultiPlatformExec,
+		nerdtest.Registry,
+	)
 
-	dockerfile := fmt.Sprintf(`FROM %s
-CMD echo dummy
-	`, testutil.AlpineImage)
+	var reg *registry.Server
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		reg = nerdtest.RegistryWithNoAuth(data, helpers, randomPort, false)
+		reg.Setup(data, helpers)
+		imageName := fmt.Sprintf("localhost:%d/%s:latest", reg.Port, data.Identifier())
+		data.Labels().Set("image", imageName)
 
-	base.Cmd("build", "-t", imageName, "--platform=amd64,arm64,linux/arm/v7", buildCtx).AssertOK()
-	testMultiPlatformRun(base, imageName)
-	base.Cmd("push", "--platform=amd64,arm64,linux/arm/v7", imageName).AssertOK()
+		dockerfile := fmt.Sprintf("FROM %s\nCMD echo dummy\n", testutil.AlpineImage)
+		buildCtx := data.Temp().Dir()
+		data.Temp().Save(dockerfile, "Dockerfile")
+
+		helpers.Ensure("build", "-t", imageName, "--platform=amd64,arm64,linux/arm/v7", buildCtx)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if img := data.Labels().Get("image"); img != "" {
+			helpers.Anyhow("rmi", img)
+		}
+		helpers.Anyhow("builder", "prune", "--all", "--force")
+		if reg != nil {
+			reg.Cleanup(data, helpers)
+		}
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		imageName := data.Labels().Get("image")
+		assertMultiPlatformRun(helpers, imageName)
+		return helpers.Command("push", "--platform=amd64,arm64,linux/arm/v7", imageName)
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+
+	testCase.Run(t)
 }
 
 func TestMultiPlatformPullPushAllPlatforms(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-	reg := testregistry.NewWithNoAuth(base, 0, false)
-	defer reg.Cleanup(nil)
+	testCase := nerdtest.Setup()
 
-	pushImageName := fmt.Sprintf("localhost:%d/%s:latest", reg.Port, tID)
-	defer base.Cmd("rmi", pushImageName).Run()
+	testCase.Require = require.All(
+		require.Not(nerdtest.Docker),
+		requireMultiPlatformExec,
+		nerdtest.Registry,
+	)
 
-	base.Cmd("pull", "--quiet", "--all-platforms", testutil.AlpineImage).AssertOK()
-	base.Cmd("tag", testutil.AlpineImage, pushImageName).AssertOK()
-	base.Cmd("push", "--all-platforms", pushImageName).AssertOK()
-	testMultiPlatformRun(base, pushImageName)
+	var reg *registry.Server
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		reg = nerdtest.RegistryWithNoAuth(data, helpers, randomPort, false)
+		reg.Setup(data, helpers)
+		pushImageName := fmt.Sprintf("localhost:%d/%s:latest", reg.Port, data.Identifier())
+		data.Labels().Set("image", pushImageName)
+		helpers.Ensure("pull", "--quiet", "--all-platforms", testutil.AlpineImage)
+		helpers.Ensure("tag", testutil.AlpineImage, pushImageName)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if img := data.Labels().Get("image"); img != "" {
+			helpers.Anyhow("rmi", img)
+		}
+		if reg != nil {
+			reg.Cleanup(data, helpers)
+		}
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		pushImageName := data.Labels().Get("image")
+		helpers.Ensure("push", "--all-platforms", pushImageName)
+		assertMultiPlatformRun(helpers, pushImageName)
+		return helpers.Command("inspect", "--type=image", pushImageName)
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+
+	testCase.Run(t)
 }
 
 func TestMultiPlatformComposeUpBuild(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	testutil.RequireExecPlatform(t, "linux/amd64", "linux/arm64", "linux/arm/v7")
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	const dockerComposeYAML = `
+	testCase.Require = require.All(
+		require.Not(nerdtest.Docker),
+		nerdtest.Build,
+		requireMultiPlatformExec,
+	)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerfile := fmt.Sprintf("FROM %s\nRUN uname -m > /usr/share/nginx/html/index.html\n", testutil.NginxAlpineImage)
+		composeYAML := `
 services:
   svc0:
     build: .
@@ -144,30 +248,49 @@ services:
     ports:
     - 8082:80
 `
-	dockerfile := fmt.Sprintf(`FROM %s
-RUN uname -m > /usr/share/nginx/html/index.html
-`, testutil.NginxAlpineImage)
+		buildCtx := data.Temp().Dir()
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+		_ = buildCtx
+		data.Temp().Save(dockerfile, "Dockerfile")
+		data.Labels().Set("composePath", composePath)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-
-	comp.WriteFile("Dockerfile", dockerfile)
-
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "-d", "--build").AssertOK()
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
-
-	testCases := map[string]string{
-		"http://127.0.0.1:8080": "x86_64",
-		"http://127.0.0.1:8081": "aarch64",
-		"http://127.0.0.1:8082": "armv7l",
+		helpers.Ensure("compose", "-f", composePath, "up", "-d", "--build")
 	}
 
-	for testURL, expectedIndexHTML := range testCases {
-		resp, err := nettestutil.HTTPGet(testURL, 5, false)
-		assert.NilError(t, err)
-		respBody, err := io.ReadAll(resp.Body)
-		assert.NilError(t, err)
-		t.Logf("respBody=%q", respBody)
-		assert.Assert(t, strings.Contains(string(respBody), expectedIndexHTML))
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		if cp := data.Labels().Get("composePath"); cp != "" {
+			helpers.Anyhow("compose", "-f", cp, "down", "-v")
+		}
+		helpers.Anyhow("builder", "prune", "--all", "--force")
 	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		urlExpected := map[string]string{
+			"http://127.0.0.1:8080": "x86_64",
+			"http://127.0.0.1:8081": "aarch64",
+			"http://127.0.0.1:8082": "armv7l",
+		}
+		for url, expected := range urlExpected {
+			resp, err := nettestutil.HTTPGet(url, 5, false)
+			if err != nil {
+				helpers.T().Log(fmt.Sprintf("GET %s: %v", url, err))
+				helpers.T().FailNow()
+			}
+			body, err := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil {
+				helpers.T().Log(fmt.Sprintf("reading body from %s: %v", url, err))
+				helpers.T().FailNow()
+			}
+			if !strings.Contains(string(body), expected) {
+				helpers.T().Log(fmt.Sprintf("expected %q in body from %s, got %q", expected, url, string(body)))
+				helpers.T().Fail()
+			}
+		}
+		return helpers.Command("compose", "-f", data.Labels().Get("composePath"), "ps")
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+
+	testCase.Run(t)
 }
