@@ -379,3 +379,33 @@ func TestFSExistsPropagatesStatError(t *testing.T) {
 	assert.Assert(t, !exists)
 	assert.Assert(t, err != nil)
 }
+
+func TestListNetworksMatchIncludesPseudoNetworks(t *testing.T) {
+	cniConfTestDir := t.TempDir()
+	cniEnv := CNIEnv{
+		Path:        t.TempDir(),
+		NetconfPath: cniConfTestDir,
+	}
+
+	values := map[string]string{
+		"network_name": "regular-network",
+		"subnet":       "10.7.1.0/24",
+		"gateway":      "10.7.1.1",
+	}
+	tpl, err := template.New("test").Parse(preExistingNetworkConfigTemplate)
+	assert.NilError(t, err)
+	buf := &bytes.Buffer{}
+	assert.NilError(t, tpl.ExecuteTemplate(buf, "test", values))
+
+	testConfFile := filepath.Join(cniConfTestDir, fmt.Sprintf("%s.conf", testutil.Identifier(t)))
+	assert.NilError(t, filesystem.WriteFile(testConfFile, buf.Bytes(), 0600))
+
+	matches, errs := cniEnv.ListNetworksMatch([]string{"host", "none", "regular-network"}, true)
+	assert.Assert(t, len(errs) == 0)
+	assert.Equal(t, len(matches["host"]), 1)
+	assert.Equal(t, matches["host"][0].Name, "host")
+	assert.Equal(t, len(matches["none"]), 1)
+	assert.Equal(t, matches["none"][0].Name, "none")
+	assert.Equal(t, len(matches["regular-network"]), 1)
+	assert.Equal(t, matches["regular-network"][0].Name, "regular-network")
+}
