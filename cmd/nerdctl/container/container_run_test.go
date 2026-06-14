@@ -17,8 +17,6 @@
 package container
 
 import (
-	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -32,15 +30,12 @@ import (
 
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
-	"gotest.tools/v3/poll"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -309,175 +304,237 @@ func TestRunStdin(t *testing.T) {
 }
 
 func TestRunWithJsonFileLogDriver(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("json-file log driver is not yet implemented on Windows")
-	}
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(require.Windows)
 
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	base.Cmd("run", "-d", "--log-driver", "json-file", "--log-opt", "max-size=5K", "--log-opt", "max-file=2", "--name", containerName, testutil.CommonImage,
-		"sh", "-euxc", "hexdump -C /dev/urandom | head -n1000").AssertOK()
-
-	time.Sleep(3 * time.Second)
-	inspectedContainer := base.InspectContainer(containerName)
-	logJSONPath := filepath.Dir(inspectedContainer.LogPath)
-	// matches = current log file + old log files to retain
-	matches, err := filepath.Glob(filepath.Join(logJSONPath, inspectedContainer.ID+"*"))
-	assert.NilError(t, err)
-	if len(matches) != 2 {
-		t.Fatalf("the number of log files is not equal to 2 files, got: %s", matches)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--log-driver", "json-file", "--log-opt", "max-size=5K", "--log-opt", "max-file=2",
+			"--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-euxc", "hexdump -C /dev/urandom | head -n1000")
 	}
-	for _, file := range matches {
-		fInfo, err := os.Stat(file)
-		assert.NilError(t, err)
-		// The log file size is compared to 5200 bytes (instead 5k) to keep docker compatibility.
-		// Docker log rotation lacks precision because the size check is done at the log entry level
-		// and not at the byte level (io.Writer), so docker log files can exceed 5k
-		if fInfo.Size() > 5200 {
-			t.Fatal("file size exceeded 5k")
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		time.Sleep(3 * time.Second)
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+				logJSONPath := filepath.Dir(inspect.LogPath)
+				// matches = current log file + old log files to retain
+				matches, err := filepath.Glob(filepath.Join(logJSONPath, inspect.ID+"*"))
+				assert.NilError(t, err)
+				assert.Equal(t, len(matches), 2, "the number of log files is not equal to 2 files, got: %v", matches)
+				for _, file := range matches {
+					fInfo, err := os.Stat(file)
+					assert.NilError(t, err)
+					// The log file size is compared to 5200 bytes (instead 5k) to keep docker compatibility.
+					// Docker log rotation lacks precision because the size check is done at the log entry level
+					// and not at the byte level (io.Writer), so docker log files can exceed 5k
+					assert.Assert(t, fInfo.Size() <= 5200, "file size exceeded 5k: %s", file)
+				}
+			},
 		}
 	}
+
+	testCase.Run(t)
 }
 
 func TestRunWithJsonFileLogDriverAndLogPathOpt(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("json-file log driver is not yet implemented on Windows")
-	}
-	testutil.DockerIncompatible(t)
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(require.Not(require.Windows), require.Not(nerdtest.Docker))
 
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	customLogJSONPath := filepath.Join(t.TempDir(), containerName, containerName+"-json.log")
-	base.Cmd("run", "-d", "--log-driver", "json-file", "--log-opt", fmt.Sprintf("log-path=%s", customLogJSONPath), "--log-opt", "max-size=5K", "--log-opt", "max-file=2", "--name", containerName, testutil.CommonImage,
-		"sh", "-euxc", "hexdump -C /dev/urandom | head -n1000").AssertOK()
-
-	time.Sleep(3 * time.Second)
-	rawBytes, err := os.ReadFile(customLogJSONPath)
-	assert.NilError(t, err)
-	if len(rawBytes) == 0 {
-		t.Fatalf("logs are not written correctly to log-path: %s", customLogJSONPath)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		customLogJSONPath := filepath.Join(data.Temp().Path(), data.Identifier(), data.Identifier()+"-json.log")
+		data.Labels().Set("logPath", customLogJSONPath)
+		helpers.Ensure("run", "-d", "--log-driver", "json-file",
+			"--log-opt", fmt.Sprintf("log-path=%s", customLogJSONPath),
+			"--log-opt", "max-size=5K", "--log-opt", "max-file=2",
+			"--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-euxc", "hexdump -C /dev/urandom | head -n1000")
 	}
 
-	// matches = current log file + old log files to retain
-	matches, err := filepath.Glob(filepath.Join(filepath.Dir(customLogJSONPath), containerName+"*"))
-	assert.NilError(t, err)
-	if len(matches) != 2 {
-		t.Fatalf("the number of log files is not equal to 2 files, got: %s", matches)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
-	for _, file := range matches {
-		fInfo, err := os.Stat(file)
-		assert.NilError(t, err)
-		if fInfo.Size() > 5200 {
-			t.Fatal("file size exceeded 5k")
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		time.Sleep(3 * time.Second)
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				customLogJSONPath := data.Labels().Get("logPath")
+				rawBytes, err := os.ReadFile(customLogJSONPath)
+				assert.NilError(t, err)
+				assert.Assert(t, len(rawBytes) > 0, "logs are not written correctly to log-path: %s", customLogJSONPath)
+				// matches = current log file + old log files to retain
+				matches, err := filepath.Glob(filepath.Join(filepath.Dir(customLogJSONPath), data.Identifier()+"*"))
+				assert.NilError(t, err)
+				assert.Equal(t, len(matches), 2, "the number of log files is not equal to 2 files, got: %v", matches)
+				for _, file := range matches {
+					fInfo, err := os.Stat(file)
+					assert.NilError(t, err)
+					assert.Assert(t, fInfo.Size() <= 5200, "file size exceeded 5k: %s", file)
+				}
+			},
+		}
+	}
+
+	testCase.Run(t)
+}
+
+func waitForJournaldLogs(since, filter string, expected ...string) {
+	journalctl, _ := exec.LookPath("journalctl")
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		res := icmd.RunCmd(icmd.Command(journalctl, "--no-pager", "--since", since, filter))
+		found := true
+		for _, s := range expected {
+			if !strings.Contains(res.Stdout(), s) {
+				found = false
+				break
+			}
+		}
+		if found {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func journaldRequire() *test.Requirement {
+	return require.All(
+		require.Not(require.Windows),
+		require.Binary("journalctl"),
+		&test.Requirement{
+			Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+				journalctl, _ := exec.LookPath("journalctl")
+				res := icmd.RunCmd(icmd.Command(journalctl, "-xe"))
+				if res.ExitCode != expect.ExitCodeSuccess {
+					return false, fmt.Sprintf("current user is not allowed to access journal logs: %s", res.Combined())
+				}
+				return true, "journald is accessible"
+			},
+		},
+	)
+}
+
+func journaldExpected() func(data test.Data, helpers test.Helpers) *test.Expected {
+	return func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: expect.All(
+				expect.Contains("foo"),
+				expect.Contains("bar"),
+			),
 		}
 	}
 }
 
 func TestRunWithJournaldLogDriver(t *testing.T) {
-	testutil.RequireExecutable(t, "journalctl")
-	journalctl, _ := exec.LookPath("journalctl")
-	res := icmd.RunCmd(icmd.Command(journalctl, "-xe"))
-	if res.ExitCode != 0 {
-		t.Skipf("current user is not allowed to access journal logs: %s", res.Combined())
+	testCase := nerdtest.Setup()
+	testCase.Require = journaldRequire()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		startTime := time.Now().Format("2006-01-02 15:04:05")
+		helpers.Ensure("run", "-d", "--log-driver", "journald", "--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-euxc", "echo foo; echo bar")
+		inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+		data.Labels().Set("startTime", startTime)
+		data.Labels().Set("shortID", inspect.ID[:12])
+		data.Labels().Set("containerName", data.Identifier())
 	}
 
-	if runtime.GOOS == "windows" {
-		t.Skip("journald log driver is not yet implemented on Windows")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
 
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	base.Cmd("run", "-d", "--log-driver", "journald", "--name", containerName, testutil.CommonImage,
-		"sh", "-euxc", "echo foo; echo bar").AssertOK()
-
-	time.Sleep(3 * time.Second)
-
-	inspectedContainer := base.InspectContainer(containerName)
-
-	type testCase struct {
-		name   string
-		filter string
+	type journaldTC struct {
+		description string
+		filter      func(data test.Data) string
 	}
-	testCases := []testCase{
+
+	tcs := []journaldTC{
 		{
-			name:   "filter journald logs using SYSLOG_IDENTIFIER field",
-			filter: fmt.Sprintf("SYSLOG_IDENTIFIER=%s", inspectedContainer.ID[:12]),
+			description: "filter journald logs using SYSLOG_IDENTIFIER field",
+			filter:      func(data test.Data) string { return fmt.Sprintf("SYSLOG_IDENTIFIER=%s", data.Labels().Get("shortID")) },
 		},
 		{
-			name:   "filter journald logs using CONTAINER_NAME field",
-			filter: fmt.Sprintf("CONTAINER_NAME=%s", containerName),
+			description: "filter journald logs using CONTAINER_NAME field",
+			filter: func(data test.Data) string {
+				return fmt.Sprintf("CONTAINER_NAME=%s", data.Labels().Get("containerName"))
+			},
 		},
 		{
-			name:   "filter journald logs using IMAGE_NAME field",
-			filter: fmt.Sprintf("IMAGE_NAME=%s", testutil.CommonImage),
+			description: "filter journald logs using IMAGE_NAME field",
+			filter:      func(data test.Data) string { return fmt.Sprintf("IMAGE_NAME=%s", testutil.CommonImage) },
 		},
 	}
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			found := 0
-			check := func(log poll.LogT) poll.Result {
-				res := icmd.RunCmd(icmd.Command(journalctl, "--no-pager", "--since", "2 minutes ago", tc.filter))
-				assert.Equal(t, 0, res.ExitCode, res)
-				if strings.Contains(res.Stdout(), "bar") && strings.Contains(res.Stdout(), "foo") {
-					found = 1
-					return poll.Success()
-				}
-				return poll.Continue("reading from journald is not yet finished")
-			}
-			poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(20*time.Second))
-			assert.Equal(t, 1, found)
+
+	for _, tc := range tcs {
+		testCase.SubTests = append(testCase.SubTests, &test.Case{
+			Description: tc.description,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				journalctl, _ := exec.LookPath("journalctl")
+				filter := tc.filter(data)
+				since := data.Labels().Get("startTime")
+				waitForJournaldLogs(since, filter, "foo", "bar")
+				return helpers.Custom(journalctl, "--no-pager", "--since", since, filter)
+			},
+			Expected: journaldExpected(),
 		})
 	}
+
+	testCase.Run(t)
 }
 
 func TestRunWithJournaldLogDriverAndLogOpt(t *testing.T) {
-	testutil.RequireExecutable(t, "journalctl")
-	journalctl, _ := exec.LookPath("journalctl")
-	res := icmd.RunCmd(icmd.Command(journalctl, "-xe"))
-	if res.ExitCode != 0 {
-		t.Skipf("current user is not allowed to access journal logs: %s", res.Combined())
+	testCase := nerdtest.Setup()
+	testCase.Require = journaldRequire()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		startTime := time.Now().Format("2006-01-02 15:04:05")
+		helpers.Ensure("run", "-d", "--log-driver", "journald", "--log-opt", "tag={{.FullID}}", "--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-euxc", "echo foo; echo bar")
+		inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+		data.Labels().Set("startTime", startTime)
+		data.Labels().Set("fullID", inspect.ID)
+		waitForJournaldLogs(startTime, fmt.Sprintf("SYSLOG_IDENTIFIER=%s", inspect.ID), "foo", "bar")
 	}
 
-	if runtime.GOOS == "windows" {
-		t.Skip("journald log driver is not yet implemented on Windows")
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
 
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	base.Cmd("run", "-d", "--log-driver", "journald", "--log-opt", "tag={{.FullID}}", "--name", containerName, testutil.CommonImage,
-		"sh", "-euxc", "echo foo; echo bar").AssertOK()
-
-	time.Sleep(3 * time.Second)
-	inspectedContainer := base.InspectContainer(containerName)
-	found := 0
-	check := func(log poll.LogT) poll.Result {
-		res := icmd.RunCmd(icmd.Command(journalctl, "--no-pager", "--since", "2 minutes ago", fmt.Sprintf("SYSLOG_IDENTIFIER=%s", inspectedContainer.ID)))
-		assert.Equal(t, 0, res.ExitCode, res)
-		if strings.Contains(res.Stdout(), "bar") && strings.Contains(res.Stdout(), "foo") {
-			found = 1
-			return poll.Success()
-		}
-		return poll.Continue("reading from journald is not yet finished")
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		journalctl, _ := exec.LookPath("journalctl")
+		return helpers.Custom(journalctl, "--no-pager", "--since", data.Labels().Get("startTime"),
+			fmt.Sprintf("SYSLOG_IDENTIFIER=%s", data.Labels().Get("fullID")))
 	}
-	poll.WaitOn(t, check, poll.WithDelay(100*time.Microsecond), poll.WithTimeout(20*time.Second))
-	assert.Equal(t, 1, found)
+
+	testCase.Expected = journaldExpected()
+
+	testCase.Run(t)
 }
 
 func TestRunWithLogBinary(t *testing.T) {
-	testutil.RequiresBuild(t)
-	if runtime.GOOS == "windows" {
-		t.Skip("buildkit is not enabled on windows, this feature may work on windows.")
-	}
-	testutil.DockerIncompatible(t)
-	t.Parallel()
-	base := testutil.NewBase(t)
-	imageName := testutil.Identifier(t) + "-image"
-	containerName := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		nerdtest.Build,
+		require.Not(require.Windows),
+		require.Not(nerdtest.Docker),
+	)
 
 	var dockerfile = `
 FROM ` + testutil.GolangImage + ` as builder
@@ -539,312 +596,323 @@ FROM scratch
 COPY --from=builder /go/src/logger/logger /
 	`
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-	tmpDir := t.TempDir()
-	base.Cmd("build", buildCtx, "--output", fmt.Sprintf("type=local,src=/go/src/logger/logger,dest=%s", tmpDir)).AssertOK()
-	defer base.Cmd("image", "rm", "-f", imageName).AssertOK()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Temp().Save(dockerfile, "Dockerfile")
+		helpers.Ensure("build", data.Temp().Path(),
+			"--output", fmt.Sprintf("type=local,src=/go/src/logger/logger,dest=%s", data.Temp().Path()))
+		helpers.Anyhow("container", "rm", "-f", data.Identifier())
+	}
 
-	base.Cmd("container", "rm", "-f", containerName).AssertOK()
-	base.Cmd("run", "-d", "--log-driver", fmt.Sprintf("binary://%s/logger", tmpDir), "--name", containerName, testutil.CommonImage,
-		"sh", "-euxc", "echo foo; echo bar").AssertOK()
-	defer base.Cmd("container", "rm", "-f", containerName).AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("container", "rm", "-f", data.Identifier())
+		helpers.Anyhow("builder", "prune", "--all", "--force")
+	}
 
-	inspectedContainer := base.InspectContainer(containerName)
-	bytes, err := os.ReadFile(filepath.Join(os.TempDir(), fmt.Sprintf("%s_%s.log", inspectedContainer.ID, "stdout")))
-	assert.NilError(t, err)
-	log := string(bytes)
-	assert.Check(t, strings.Contains(log, "foo"))
-	assert.Check(t, strings.Contains(log, "bar"))
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run", "-d",
+			"--log-driver", fmt.Sprintf("binary://%s/logger", data.Temp().Path()),
+			"--name", data.Identifier(), testutil.CommonImage,
+			"sh", "-euxc", "echo foo; echo bar")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				containerID := strings.TrimSpace(stdout)
+				logBytes, err := os.ReadFile(filepath.Join(os.TempDir(),
+					fmt.Sprintf("%s_stdout.log", containerID)))
+				assert.NilError(t, err)
+				log := string(logBytes)
+				assert.Assert(t, strings.Contains(log, "foo"))
+				assert.Assert(t, strings.Contains(log, "bar"))
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 // history: There was a bug that the --add-host items disappear when the another container created.
 // This test ensures that it doesn't happen.
 // (https://github.com/containerd/nerdctl/issues/2560)
 func TestRunAddHostRemainsWhenAnotherContainerCreated(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("ocihook is not yet supported on Windows")
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(require.Windows)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--add-host", "test-add-host:10.0.0.1", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+		helpers.Ensure("exec", data.Identifier(), "grep", "10.0.0.1.*test-add-host", "/etc/hosts")
 	}
-	base := testutil.NewBase(t)
 
-	containerName := testutil.Identifier(t)
-	hostMapping := "test-add-host:10.0.0.1"
-	base.Cmd("run", "-d", "--add-host", hostMapping, "--name", containerName, testutil.CommonImage, "sleep", nerdtest.Infinity).AssertOK()
-	defer base.Cmd("container", "rm", "-f", containerName).Run()
-
-	checkEtcHosts := func(stdout string) error {
-		matcher, err := regexp.Compile(`^10.0.0.1\s+test-add-host$`)
-		if err != nil {
-			return err
-		}
-		var found bool
-		sc := bufio.NewScanner(bytes.NewBufferString(stdout))
-		for sc.Scan() {
-			if matcher.Match(sc.Bytes()) {
-				found = true
-			}
-		}
-		if !found {
-			return fmt.Errorf("host not found")
-		}
-		return nil
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("container", "rm", "-f", data.Identifier())
 	}
-	base.Cmd("exec", containerName, "cat", "/etc/hosts").AssertOutWithFunc(checkEtcHosts)
 
-	// run another container
-	base.Cmd("run", "--rm", testutil.CommonImage).AssertOK()
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		// run another container to verify --add-host entry is not disturbed
+		helpers.Ensure("run", "--rm", testutil.CommonImage)
+		return helpers.Command("exec", data.Identifier(), "cat", "/etc/hosts")
+	}
 
-	base.Cmd("exec", containerName, "cat", "/etc/hosts").AssertOutWithFunc(checkEtcHosts)
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil,
+		expect.Match(regexp.MustCompile(`(?m)^10\.0\.0\.1\s+test-add-host$`)),
+	)
+
+	testCase.Run(t)
 }
 
 // https://github.com/containerd/nerdctl/issues/2726
 func TestRunRmTime(t *testing.T) {
-	base := testutil.NewBase(t)
-	base.Cmd("pull", "--quiet", testutil.CommonImage)
-	t0 := time.Now()
-	base.Cmd("run", "--rm", testutil.CommonImage, "true").AssertOK()
-	t1 := time.Now()
-	took := t1.Sub(t0)
-	var deadline = 3 * time.Second
-	// FIXME: Investigate? it appears that since the move to containerd 2 on Windows, this is taking longer.
-	if runtime.GOOS == "windows" {
-		deadline = 10 * time.Second
-	}
-	if took > deadline {
-		t.Fatalf("expected to have completed in %v, took %v", deadline, took)
-	}
-}
+	testCase := nerdtest.Setup()
 
-func runAttachStdin(t *testing.T, testStr string, args []string) string {
-	if runtime.GOOS == "windows" {
-		t.Skip("run attach test is not yet implemented on Windows")
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 	}
 
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-
-	opts := []func(*testutil.Cmd){
-		testutil.WithStdin(strings.NewReader("echo " + testStr + "\nexit\n")),
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		data.Labels().Set("start", time.Now().Format(time.RFC3339Nano))
+		return helpers.Command("run", "--rm", testutil.CommonImage, "true")
 	}
 
-	fullArgs := []string{"run", "--rm", "-i"}
-	fullArgs = append(fullArgs, args...)
-	fullArgs = append(fullArgs,
-		"--name",
-		containerName,
-		testutil.CommonImage,
-	)
-
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	result := base.Cmd(fullArgs...).CmdOption(opts...).Run()
-
-	return result.Combined()
-}
-
-func runAttach(t *testing.T, testStr string, args []string) string {
-	if runtime.GOOS == "windows" {
-		t.Skip("run attach test is not yet implemented on Windows")
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				start, _ := time.Parse(time.RFC3339Nano, data.Labels().Get("start"))
+				took := time.Since(start)
+				deadline := 3 * time.Second
+				// FIXME: Investigate? it appears that since the move to containerd 2 on Windows, this is taking longer.
+				if runtime.GOOS == "windows" {
+					deadline = 10 * time.Second
+				}
+				assert.Assert(t, took <= deadline, "expected to have completed in %v, took %v", deadline, took)
+			},
+		}
 	}
 
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t)
-
-	fullArgs := []string{"run"}
-	fullArgs = append(fullArgs, args...)
-	fullArgs = append(fullArgs,
-		"--name",
-		containerName,
-		testutil.CommonImage,
-		"sh",
-		"-euxc",
-		"echo "+testStr,
-	)
-
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	result := base.Cmd(fullArgs...).Run()
-
-	return result.Combined()
+	testCase.Run(t)
 }
 
 func TestRunAttachFlag(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(require.Windows)
 
-	type testCase struct {
-		name        string
+	type attachTC struct {
+		description string
 		args        []string
-		testFunc    func(t *testing.T, testStr string, args []string) string
+		useStdin    bool
+		isError     bool
 		testStr     string
 		expectedOut string
 		dockerOut   string
 	}
-	testCases := []testCase{
+
+	tcs := []attachTC{
 		{
-			name:        "AttachFlagStdin",
+			description: "AttachFlagStdin",
 			args:        []string{"-a", "STDIN", "-a", "STDOUT"},
-			testFunc:    runAttachStdin,
+			useStdin:    true,
 			testStr:     "test-run-stdio",
 			expectedOut: "test-run-stdio",
 			dockerOut:   "test-run-stdio",
 		},
 		{
-			name:        "AttachFlagStdOut",
+			description: "AttachFlagStdOut",
 			args:        []string{"-a", "STDOUT"},
-			testFunc:    runAttach,
 			testStr:     "foo",
 			expectedOut: "foo",
 			dockerOut:   "foo",
 		},
 		{
-			name:        "AttachFlagMixedValue",
+			description: "AttachFlagMixedValue",
 			args:        []string{"-a", "STDIN", "-a", "invalid-value"},
-			testFunc:    runAttach,
+			isError:     true,
 			testStr:     "foo",
 			expectedOut: "invalid stream specified with -a flag. Valid streams are STDIN, STDOUT, and STDERR",
 			dockerOut:   "valid streams are STDIN, STDOUT and STDERR",
 		},
 		{
-			name:        "AttachFlagInvalidValue",
+			description: "AttachFlagInvalidValue",
 			args:        []string{"-a", "invalid-stream"},
-			testFunc:    runAttach,
+			isError:     true,
 			testStr:     "foo",
 			expectedOut: "invalid stream specified with -a flag. Valid streams are STDIN, STDOUT, and STDERR",
 			dockerOut:   "valid streams are STDIN, STDOUT and STDERR",
 		},
 		{
-			name:        "AttachFlagCaseInsensitive",
+			description: "AttachFlagCaseInsensitive",
 			args:        []string{"-a", "stdin", "-a", "stdout"},
-			testFunc:    runAttachStdin,
+			useStdin:    true,
 			testStr:     "test-run-stdio",
 			expectedOut: "test-run-stdio",
 			dockerOut:   "test-run-stdio",
 		},
 	}
 
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			actualOut := tc.testFunc(t, tc.testStr, tc.args)
-			errorMsg := fmt.Sprintf("%s failed;\nExpected: '%s'\nActual: '%s'", tc.name, tc.expectedOut, actualOut)
-			if nerdtest.IsDocker() {
-				assert.Equal(t, true, strings.Contains(actualOut, tc.dockerOut), errorMsg)
-			} else {
-				assert.Equal(t, true, strings.Contains(actualOut, tc.expectedOut), errorMsg)
-			}
+	for _, tc := range tcs {
+		testCase.SubTests = append(testCase.SubTests, &test.Case{
+			Description: tc.description,
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				var args []string
+				if tc.useStdin {
+					args = append([]string{"run", "--rm", "-i"}, tc.args...)
+				} else {
+					args = append([]string{"run"}, tc.args...)
+				}
+				args = append(args, "--name", data.Identifier(), testutil.CommonImage)
+				if !tc.useStdin {
+					args = append(args, "sh", "-euxc", "echo "+tc.testStr)
+				}
+				cmd := helpers.Command(args...)
+				if tc.useStdin {
+					cmd.Feed(strings.NewReader("echo " + tc.testStr + "\nexit\n"))
+				}
+				return cmd
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				out := tc.expectedOut
+				if nerdtest.IsDocker() {
+					out = tc.dockerOut
+				}
+				if tc.isError {
+					return &test.Expected{
+						ExitCode: expect.ExitCodeGenericFail,
+						Errors:   []error{errors.New(out)},
+					}
+				}
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output:   expect.Contains(out),
+				}
+			},
 		})
 	}
+
+	testCase.Run(t)
 }
 
 func TestRunQuiet(t *testing.T) {
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
 
-	teardown := func() {
-		base.Cmd("rmi", "-f", testutil.CommonImage).Run()
-	}
-	defer teardown()
-	teardown()
-
-	sentinel := "test run quiet"
-	result := base.Cmd("run", "--rm", "--quiet", testutil.CommonImage, fmt.Sprintf(`echo "%s"`, sentinel)).Run()
-	assert.Assert(t, strings.Contains(result.Combined(), sentinel))
-
-	wasQuiet := func(output, sentinel string) bool {
-		return !strings.Contains(output, sentinel)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rmi", "-f", testutil.CommonImage)
 	}
 
-	// Docker and nerdctl image pulls are not 1:1.
-	if nerdtest.IsDocker() {
-		sentinel = "Pull complete"
-	} else {
-		sentinel = "resolved"
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rmi", "-f", testutil.CommonImage)
 	}
 
-	assert.Assert(t, wasQuiet(result.Combined(), sentinel), "Found %s in container run output", sentinel)
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run", "--rm", "--quiet", testutil.CommonImage, "echo", "test run quiet")
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		// Docker and nerdctl image pulls are not 1:1.
+		pullSentinel := "resolved"
+		if nerdtest.IsDocker() {
+			pullSentinel = "Pull complete"
+		}
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: expect.All(
+				expect.Contains("test run quiet"),
+				expect.DoesNotContain(pullSentinel),
+			),
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunFromOCIArchive(t *testing.T) {
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-
-	// Docker does not support running container images from OCI archive.
-	testutil.DockerIncompatible(t)
-
-	base := testutil.NewBase(t)
-	imageName := testutil.Identifier(t)
-
-	teardown := func() {
-		base.Cmd("rmi", "-f", imageName).Run()
-	}
-	defer teardown()
-	teardown()
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(nerdtest.Build, require.Not(nerdtest.Docker))
 
 	const sentinel = "test-nerdctl-run-from-oci-archive"
-	dockerfile := fmt.Sprintf(`FROM %s
-	CMD ["echo", "%s"]`, testutil.CommonImage, sentinel)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
-	tag := fmt.Sprintf("%s:latest", imageName)
-	tarPath := fmt.Sprintf("%s/%s.tar", buildCtx, imageName)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		tag := fmt.Sprintf("%s:latest", data.Identifier())
+		helpers.Anyhow("rmi", "-f", tag)
 
-	base.Cmd("build", "--tag", tag, fmt.Sprintf("--output=type=oci,dest=%s", tarPath), buildCtx).AssertOK()
-	base.Cmd("run", "--rm", fmt.Sprintf("oci-archive://%s", tarPath)).AssertOutContainsAll(tag, sentinel)
+		dockerfile := fmt.Sprintf("FROM %s\nCMD [\"echo\", \"%s\"]", testutil.CommonImage, sentinel)
+		data.Temp().Save(dockerfile, "Dockerfile")
+		tarPath := data.Temp().Path(data.Identifier() + ".tar")
+		helpers.Ensure("build", "--tag", tag, fmt.Sprintf("--output=type=oci,dest=%s", tarPath), data.Temp().Path())
+		data.Labels().Set("tag", tag)
+		data.Labels().Set("tarPath", tarPath)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rmi", "-f", data.Labels().Get("tag"))
+		helpers.Anyhow("builder", "prune", "--all", "--force")
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run", "--rm", fmt.Sprintf("oci-archive://%s", data.Labels().Get("tarPath")))
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(sentinel))
+
+	testCase.Run(t)
 }
 
 func TestRunDomainname(t *testing.T) {
-	t.Parallel()
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(require.Windows)
 
-	if runtime.GOOS == "windows" {
-		t.Skip("run --hostname not implemented on Windows yet")
-	}
-
-	testCases := []struct {
-		name        string
+	type domainnameTC struct {
+		description string
 		hostname    string
 		domainname  string
-		Cmd         string
-		CmdFlag     string
+		cmd         string
+		cmdFlag     string
 		expectedOut string
-	}{
+	}
+
+	tcs := []domainnameTC{
 		{
-			name:        "Check domain name",
+			description: "Check domain name",
 			hostname:    "foobar",
 			domainname:  "example.com",
-			Cmd:         "hostname",
-			CmdFlag:     "-d",
+			cmd:         "hostname",
+			cmdFlag:     "-d",
 			expectedOut: "example.com",
 		},
 		{
-			name:        "check fqdn",
+			description: "check fqdn",
 			hostname:    "foobar",
 			domainname:  "example.com",
-			Cmd:         "hostname",
-			CmdFlag:     "-f",
+			cmd:         "hostname",
+			cmdFlag:     "-f",
 			expectedOut: "foobar.example.com",
 		},
 	}
 
-	for _, tc := range testCases {
-		tc := tc // capture range variable
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			base := testutil.NewBase(t)
-
-			base.Cmd("run",
-				"--rm",
-				"--hostname", tc.hostname,
-				"--domainname", tc.domainname,
-				testutil.CommonImage,
-				tc.Cmd,
-				tc.CmdFlag,
-			).AssertOutContains(tc.expectedOut)
+	for _, tc := range tcs {
+		testCase.SubTests = append(testCase.SubTests, &test.Case{
+			Description: tc.description,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--hostname", tc.hostname,
+					"--domainname", tc.domainname,
+					testutil.CommonImage,
+					tc.cmd, tc.cmdFlag,
+				)
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(tc.expectedOut)),
 		})
 	}
+
+	testCase.Run(t)
 }
 
 func TestRunHealthcheckFlags(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("healthcheck tests are skipped in rootless environment")
-	}
 	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Rootless)
 
 	testCases := []struct {
 		name              string
@@ -940,8 +1008,6 @@ func TestRunHealthcheckFlags(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-
 		testCase.SubTests = append(testCase.SubTests, &test.Case{
 			Description: tc.name,
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -993,72 +1059,66 @@ func TestRunHealthcheckFlags(t *testing.T) {
 }
 
 func TestRunHealthcheckFromImage(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("healthcheck tests are skipped in rootless environment")
-	}
-	nerdtest.Setup()
-
 	dockerfile := fmt.Sprintf(`FROM %s
 HEALTHCHECK --interval=30s --timeout=10s CMD wget -q --spider http://localhost:8080 || exit 1
 	`, testutil.CommonImage)
 
-	testCase := &test.Case{
-		Require: nerdtest.Build,
-		Setup: func(data test.Data, helpers test.Helpers) {
-			data.Temp().Save(dockerfile, "Dockerfile")
-			data.Labels().Set("image", data.Identifier())
-			helpers.Ensure("build", "-t", data.Labels().Get("image"), data.Temp().Path())
-		},
-		SubTests: []*test.Case{
-			{
-				Description: "merge_with_image",
-				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Command("run", "-d", "--name", data.Identifier(),
-						"--health-retries=5",
-						"--health-interval=45s",
-						data.Labels().Get("image"))
-				},
-				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-					return &test.Expected{
-						ExitCode: expect.ExitCodeSuccess,
-						Output: expect.All(func(stdout string, t tig.T) {
-							inspect := nerdtest.InspectContainer(helpers, data.Identifier())
-							hc := inspect.Config.Healthcheck
-							assert.Assert(t, hc != nil, "expected healthcheck config to be present")
-							assert.DeepEqual(t, hc.Test, []string{"CMD-SHELL", "wget -q --spider http://localhost:8080 || exit 1"})
-							assert.Equal(t, 5, hc.Retries)               // From CLI flags
-							assert.Equal(t, 45*time.Second, hc.Interval) // From CLI flags
-							assert.Equal(t, 10*time.Second, hc.Timeout)  // From Dockerfile
-						}),
-					}
-				},
-				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("rm", "-f", data.Identifier())
-				},
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(nerdtest.Build, require.Not(nerdtest.Rootless))
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Temp().Save(dockerfile, "Dockerfile")
+		data.Labels().Set("image", data.Identifier())
+		helpers.Ensure("build", "-t", data.Labels().Get("image"), data.Temp().Path())
+	}
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "merge_with_image",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-d", "--name", data.Identifier(),
+					"--health-retries=5",
+					"--health-interval=45s",
+					data.Labels().Get("image"))
 			},
-			{
-				Description: "Disable image health checks via runtime flag",
-				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-					return helpers.Command(
-						"run", "-d", "--name", data.Identifier(),
-						"--no-healthcheck",
-						data.Labels().Get("image"),
-					)
-				},
-				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-					return &test.Expected{
-						ExitCode: expect.ExitCodeSuccess,
-						Output: expect.All(func(stdout string, t tig.T) {
-							inspect := nerdtest.InspectContainer(helpers, data.Identifier())
-							hc := inspect.Config.Healthcheck
-							assert.Assert(t, hc != nil, "expected healthcheck config to be present")
-							assert.DeepEqual(t, hc.Test, []string{"NONE"})
-						}),
-					}
-				},
-				Cleanup: func(data test.Data, helpers test.Helpers) {
-					helpers.Anyhow("rm", "-f", data.Identifier())
-				},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: expect.All(func(stdout string, t tig.T) {
+						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+						hc := inspect.Config.Healthcheck
+						assert.Assert(t, hc != nil, "expected healthcheck config to be present")
+						assert.DeepEqual(t, hc.Test, []string{"CMD-SHELL", "wget -q --spider http://localhost:8080 || exit 1"})
+						assert.Equal(t, 5, hc.Retries)               // From CLI flags
+						assert.Equal(t, 45*time.Second, hc.Interval) // From CLI flags
+						assert.Equal(t, 10*time.Second, hc.Timeout)  // From Dockerfile
+					}),
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+		},
+		{
+			Description: "Disable image health checks via runtime flag",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command(
+					"run", "-d", "--name", data.Identifier(),
+					"--no-healthcheck",
+					data.Labels().Get("image"),
+				)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: expect.All(func(stdout string, t tig.T) {
+						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+						hc := inspect.Config.Healthcheck
+						assert.Assert(t, hc != nil, "expected healthcheck config to be present")
+						assert.DeepEqual(t, hc.Test, []string{"NONE"})
+					}),
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
 			},
 		},
 	}
@@ -1080,20 +1140,18 @@ func countFIFOFiles(root string) (int, error) {
 	return count, err
 }
 func TestCleanupFIFOs(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("/run/containerd/fifo/ doesn't exist on rootless")
-	}
-	if runtime.GOOS == "windows" {
-		t.Skip("test is not compatible with windows")
-	}
-	testutil.DockerIncompatible(t)
 	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		require.Not(require.Windows),
+		require.Not(nerdtest.Docker),
+		require.Not(nerdtest.Rootless), // /run/containerd/fifo/ doesn't exist on rootless
+	)
 	testCase.NoParallel = true
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		cmd := helpers.Command("run", "-it", "--rm", testutil.CommonImage, "date")
 		cmd.WithPseudoTTY()
 		cmd.Run(&test.Expected{
-			ExitCode: 0,
+			ExitCode: expect.ExitCodeSuccess,
 		})
 		oldNumFifos, err := countFIFOFiles("/run/containerd/fifo/")
 		assert.NilError(t, err)
@@ -1101,7 +1159,7 @@ func TestCleanupFIFOs(t *testing.T) {
 		cmd = helpers.Command("run", "-it", "--rm", testutil.CommonImage, "date")
 		cmd.WithPseudoTTY()
 		cmd.Run(&test.Expected{
-			ExitCode: 0,
+			ExitCode: expect.ExitCodeSuccess,
 		})
 		newNumFifos, err := countFIFOFiles("/run/containerd/fifo/")
 		assert.NilError(t, err)
