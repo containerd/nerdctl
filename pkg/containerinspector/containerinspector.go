@@ -57,6 +57,9 @@ func Inspect(ctx context.Context, container containerd.Container) (*native.Conta
 		log.G(ctx).WithError(err).WithField("id", id).Warnf("failed to inspect Status")
 		return n, nil
 	}
+	if st.Status == containerd.Stopped {
+		n.Process.Pid = 0
+	}
 	n.Process.Status = st
 	netNS, err := InspectNetNS(ctx, n.Process.Pid)
 	if err != nil {
