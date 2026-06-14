@@ -45,7 +45,7 @@ require (
 	github.com/mattn/go-isatty v0.0.22 //gomodjail:unconfined
 	github.com/moby/moby/client v0.4.1
 	github.com/moby/moby/v2 v2.0.0-beta.16
-	github.com/moby/sys/mount v0.3.4
+	github.com/moby/sys/mount v0.3.5
 	github.com/moby/sys/signal v0.7.1
 	github.com/moby/sys/user v0.4.0 //gomodjail:unconfined
 	github.com/moby/sys/userns v0.1.0 //gomodjail:unconfined
