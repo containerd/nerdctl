@@ -1,0 +1,72 @@
+# See https://github.com/containerd/nerdctl/blob/main/MAINTAINERS_GUIDE.md for how to make a release.
+name: Release
+on:
+  push:
+    tags:
+    - 'v*'
+    - 'test-action-release-*'
+  pull_request:
+    paths-ignore:
+    - '**.md'
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    # The maximum access is "read" for PRs from public forked repos
+    # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token
+    permissions:
+      contents: write  # for releases
+      id-token: write  # for provenances
+      attestations: write  # for provenances
+    steps:
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      with:
+        persist-credentials: false
+    # FIXME: setup-qemu-action is depended by `gomodjail pack`
+    - name: "Set up QEMU"
+      uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3  # v4.1.0
+    - name: "Install go"
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
+      with:
+        go-version: "1.26"
+        check-latest: true
+        cache: false
+    - name: "Compile binaries"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: make artifacts
+    - name: "SHA256SUMS"
+      run: |
+        ( cd _output; sha256sum nerdctl-* ) | tee /tmp/SHA256SUMS
+        mv /tmp/SHA256SUMS _output/SHA256SUMS
+    - name: "The sha256sum of the SHA256SUMS file"
+      run: (cd _output; sha256sum SHA256SUMS)
+    - name: "Prepare the release note"
+      run: |
+        shasha=$(sha256sum _output/SHA256SUMS | awk '{print $1}')
+        cat <<-EOF | tee /tmp/release-note.txt
+        $(hack/generate-release-note.sh)
+        - - -
+        The binaries were built automatically on GitHub Actions.
+        The build log is available for 90 days: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+        The sha256sum of the SHA256SUMS file itself is \`${shasha}\` .
+        - - -
+        Release manager: [ADD YOUR NAME HERE] (@[ADD YOUR GITHUB ID HERE])
+        EOF
+    - name: "Generate artifact attestation"
+      uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4.1.0
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      with:
+        subject-path: _output/*
+    - name: "Create release"
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        tag="${GITHUB_REF##*/}"
+        gh release create -F /tmp/release-note.txt --draft --title "${tag}" "${tag}" _output/*

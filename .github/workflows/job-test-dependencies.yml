@@ -1,0 +1,59 @@
+# This job pre-heats the cache for the test image by building all dependencies
+name: job-test-dependencies
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      runner:
+        required: true
+        type: string
+      containerd-version:
+        required: false
+        default: ''
+        type: string
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  # This job builds the dependency target of the test docker image for all supported architectures and cache it in GHA
+  build-dependencies:
+    # Note: for whatever reason, you cannot access env.RUNNER_ARCH here
+    name: "${{ contains(inputs.runner, 'arm') && 'arm64' || 'amd64' }}${{ inputs.containerd-version && format(' | {0}', inputs.containerd-version) || ''}}"
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: "${{ inputs.runner }}"
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: "Init: expose GitHub Runtime variables for gha"
+        uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487  # v4.0.0
+
+      - name: "Run: build dependencies for the integration test environment image"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUTS_CONTAINERD_VERSION: ${{ inputs.containerd-version }}
+        run: |
+          # Cache is sharded per-architecture
+          arch=${{ env.RUNNER_ARCH == 'ARM64' && 'arm64' || 'amd64' }}
+          docker buildx create --name with-gha --use
+          # Honor old containerd if requested
+          args=()
+          if [ "${INPUTS_CONTAINERD_VERSION}" != "" ]; then
+            args=(--build-arg CONTAINERD_VERSION=${INPUTS_CONTAINERD_VERSION})
+          fi
+          docker buildx build \
+            --secret id=github_token,env=GITHUB_TOKEN \
+            --cache-to type=gha,compression=zstd,mode=max,scope=test-integration-dependencies-"$arch" \
+            --cache-from type=gha,scope=test-integration-dependencies-"$arch" \
+            --target build-dependencies "${args[@]}" .

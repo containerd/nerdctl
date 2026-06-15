@@ -1,0 +1,323 @@
+/*
+   Copyright The containerd Authors.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
+package infoutil
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"runtime"
+	"strings"
+	"time"
+
+	"github.com/moby/moby/v2/pkg/sysinfo"
+	"github.com/rootless-containers/rootlesskit/v3/pkg/api"
+
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/introspection"
+	ptypes "github.com/containerd/containerd/v2/pkg/protobuf/types"
+	"github.com/containerd/log"
+
+	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+	"github.com/containerd/nerdctl/v2/pkg/version"
+)
+
+func NativeDaemonInfo(ctx context.Context, client *containerd.Client) (*native.DaemonInfo, error) {
+	introService := client.IntrospectionService()
+	plugins, err := introService.Plugins(ctx)
+	if err != nil {
+		return nil, err
+	}
+	server, err := introService.Server(ctx)
+	if err != nil {
+		return nil, err
+	}
+	versionService := client.VersionService()
+	version, err := versionService.Version(ctx, &ptypes.Empty{})
+	if err != nil {
+		return nil, err
+	}
+
+	daemonInfo := &native.DaemonInfo{
+		Plugins: plugins,
+		Server:  server,
+		Version: version,
+	}
+	return daemonInfo, nil
+}
+
+func Info(ctx context.Context, client *containerd.Client, snapshotter, cgroupManager string, selinuxEnabled bool) (*dockercompat.Info, error) {
+	daemonVersion, err := client.Version(ctx)
+	if err != nil {
+		return nil, err
+	}
+	introService := client.IntrospectionService()
+	daemonIntro, err := introService.Server(ctx)
+	if err != nil {
+		return nil, err
+	}
+	snapshotterPlugins, err := GetSnapshotterNames(ctx, introService)
+	if err != nil {
+		return nil, err
+	}
+
+	var info dockercompat.Info
+	info.ID = daemonIntro.UUID
+	// Storage drivers and logging drivers are not really Server concept for nerdctl, but mimics `docker info` output
+	info.Driver = snapshotter
+	info.Plugins.Storage = snapshotterPlugins
+	info.SystemTime = time.Now().Format(time.RFC3339Nano)
+	info.LoggingDriver = "json-file" // hard-coded
+	info.CgroupDriver = cgroupManager
+	info.CgroupVersion = CgroupsVersion()
+	info.KernelVersion = UnameR()
+	info.OperatingSystem = DistroName()
+	info.OSType = runtime.GOOS
+	info.Architecture = UnameM()
+	info.Name, err = os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+	info.ServerVersion = daemonVersion.Version
+	fulfillPlatformInfo(&info, selinuxEnabled)
+	return &info, nil
+}
+
+func GetSnapshotterNames(ctx context.Context, introService introspection.Service) ([]string, error) {
+	var names []string
+	plugins, err := introService.Plugins(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range plugins.Plugins {
+		if strings.HasPrefix(p.Type, "io.containerd.snapshotter.") && p.InitErr == nil {
+			names = append(names, p.ID)
+		}
+	}
+	return names, nil
+}
+
+func ClientVersion(ctx context.Context) dockercompat.ClientVersion {
+	v := dockercompat.ClientVersion{
+		Version:   version.GetVersion(),
+		GitCommit: version.GetRevision(),
+		GoVersion: runtime.Version(),
+		Os:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
+		Components: []dockercompat.ComponentVersion{
+			buildctlVersion(),
+		},
+	}
+	if rk := rootlesskitVersion(ctx); rk != nil {
+		v.Components = append(v.Components, *rk)
+	}
+	return v
+}
+
+func ServerVersion(ctx context.Context, client *containerd.Client) (*dockercompat.ServerVersion, error) {
+	daemonVersion, err := client.Version(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	v := &dockercompat.ServerVersion{
+		Components: []dockercompat.ComponentVersion{
+			{
+				Name:    "containerd",
+				Version: daemonVersion.Version,
+				Details: map[string]string{"GitCommit": daemonVersion.Revision},
+			},
+			runcVersion(),
+		},
+	}
+	return v, nil
+}
+
+func buildctlVersion() dockercompat.ComponentVersion {
+	buildctlBinary, err := buildkitutil.BuildctlBinary()
+	if err != nil {
+		log.L.WithError(err).Warnf("unable to determine buildctl version")
+		return dockercompat.ComponentVersion{Name: "buildctl"}
+	}
+
+	stdout, err := exec.Command(buildctlBinary, "--version").Output()
+	if err != nil {
+		log.L.WithError(err).Warnf("unable to determine buildctl version")
+		return dockercompat.ComponentVersion{Name: "buildctl"}
+	}
+
+	v, err := parseBuildctlVersion(stdout)
+	if err != nil {
+		log.L.Warn(err)
+		return dockercompat.ComponentVersion{Name: "buildctl"}
+	}
+	return *v
+}
+
+func parseBuildctlVersion(buildctlVersionStdout []byte) (*dockercompat.ComponentVersion, error) {
+	fields := strings.Fields(strings.TrimSpace(string(buildctlVersionStdout)))
+	var v *dockercompat.ComponentVersion
+	switch len(fields) {
+	case 4:
+		v = &dockercompat.ComponentVersion{
+			Name:    fields[0],
+			Version: fields[2],
+			Details: map[string]string{"GitCommit": fields[3]},
+		}
+	case 3:
+		v = &dockercompat.ComponentVersion{
+			Name:    fields[0],
+			Version: fields[2],
+		}
+	default:
+		return nil, fmt.Errorf("unable to determine buildctl version, got %q", string(buildctlVersionStdout))
+	}
+	if v.Name != "buildctl" {
+		return nil, fmt.Errorf("unable to determine buildctl version, got %q", string(buildctlVersionStdout))
+	}
+	return v, nil
+}
+
+// rootlesskitVersion returns the RootlessKit version info.
+// It returns nil when not running rootless.
+func rootlesskitVersion(ctx context.Context) *dockercompat.ComponentVersion {
+	if !rootlessutil.IsRootless() {
+		return nil
+	}
+	rlkClient, err := rootlessutil.NewRootlessKitClient()
+	if err != nil {
+		log.L.WithError(err).Warnf("unable to determine rootlesskit version")
+		return &dockercompat.ComponentVersion{Name: "rootlesskit"}
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	info, err := rlkClient.Info(ctx)
+	if err != nil {
+		log.L.WithError(err).Warnf("unable to determine rootlesskit version")
+		return &dockercompat.ComponentVersion{Name: "rootlesskit"}
+	}
+	return parseRootlesskitVersion(info)
+}
+
+func parseRootlesskitVersion(info *api.Info) *dockercompat.ComponentVersion {
+	v := &dockercompat.ComponentVersion{
+		Name:    "rootlesskit",
+		Version: info.Version,
+		Details: map[string]string{
+			"ApiVersion": info.APIVersion,
+			"StateDir":   info.StateDir,
+		},
+	}
+	if nd := info.NetworkDriver; nd != nil {
+		v.Details["NetworkDriver"] = nd.Driver
+	}
+	if pd := info.PortDriver; pd != nil {
+		v.Details["PortDriver"] = pd.Driver
+	}
+	return v
+}
+
+func runcVersion() dockercompat.ComponentVersion {
+	stdout, err := exec.Command("runc", "--version").Output()
+	if err != nil {
+		log.L.WithError(err).Warnf("unable to determine runc version")
+		return dockercompat.ComponentVersion{Name: "runc"}
+	}
+	v, err := parseRuncVersion(stdout)
+	if err != nil {
+		log.L.Warn(err)
+		return dockercompat.ComponentVersion{Name: "runc"}
+	}
+	return *v
+}
+
+func parseRuncVersion(runcVersionStdout []byte) (*dockercompat.ComponentVersion, error) {
+	var versionList = strings.Split(strings.TrimSpace(string(runcVersionStdout)), "\n")
+	firstLine := strings.Fields(versionList[0])
+	if len(firstLine) != 3 || firstLine[0] != "runc" {
+		return nil, fmt.Errorf("unable to determine runc version, got: %s", string(runcVersionStdout))
+	}
+	version := firstLine[2]
+
+	details := map[string]string{}
+	for _, detailsLine := range versionList[1:] {
+		detail := strings.SplitN(detailsLine, ":", 2)
+		if len(detail) != 2 {
+			log.L.Warnf("unable to determine one of runc details, got: %s, %d", detail, len(detail))
+			continue
+		}
+		switch strings.TrimSpace(detail[0]) {
+		case "commit":
+			details["GitCommit"] = strings.TrimSpace(detail[1])
+		}
+	}
+
+	return &dockercompat.ComponentVersion{
+		Name:    "runc",
+		Version: version,
+		Details: details,
+	}, nil
+}
+
+// getMobySysInfo returns the moby system info for the given cgroup manager
+func getMobySysInfo(cgroupManager string) *sysinfo.SysInfo {
+	var info dockercompat.Info
+	info.CgroupVersion = CgroupsVersion()
+	info.CgroupDriver = cgroupManager
+	return mobySysInfo(&info)
+}
+
+// BlockIOWeight returns whether Block IO weight is supported or not
+func BlockIOWeight(cgroupManager string) bool {
+	// blkio weight is not available on cgroup v1 since kernel 5.0.
+	// On cgroup v2, blkio weight is implemented using io.weight
+	return getMobySysInfo(cgroupManager).BlkioWeight
+}
+
+// BlockIOWeightDevice returns whether Block IO weight device is supported or not
+func BlockIOWeightDevice(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).BlkioWeightDevice
+}
+
+// BlockIOReadBpsDevice returns whether Block IO read limit in bytes per second is supported or not
+func BlockIOReadBpsDevice(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).BlkioReadBpsDevice
+}
+
+// BlockIOWriteBpsDevice returns whether Block IO write limit in bytes per second is supported or not
+func BlockIOWriteBpsDevice(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).BlkioWriteBpsDevice
+}
+
+// BlockIOReadIOpsDevice returns whether Block IO read limit in IO per second is supported or not
+func BlockIOReadIOpsDevice(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).BlkioReadIOpsDevice
+}
+
+// BlockIOWriteIOpsDevice returns whether Block IO write limit in IO per second is supported or not
+func BlockIOWriteIOpsDevice(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).BlkioWriteIOpsDevice
+}
+
+// CPURealtime returns whether CPU realtime period is supported or not
+func CPURealtime(cgroupManager string) bool {
+	return getMobySysInfo(cgroupManager).CPURealtime
+}

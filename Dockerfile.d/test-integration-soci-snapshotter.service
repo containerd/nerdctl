@@ -1,0 +1,15 @@
+[Unit]
+Description=soci snapshotter containerd plugin for integration test
+Documentation=https://github.com/awslabs/soci-snapshotter
+After=network.target
+Before=containerd.service
+
+[Service]
+Type=notify
+ExecStartPre=/bin/bash -c 'mkdir -p /var/lib/soci-snapshotter-grpc && mount -t tmpfs none /var/lib/soci-snapshotter-grpc'
+ExecStart=/usr/local/bin/soci-snapshotter-grpc
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=docker-entrypoint.target

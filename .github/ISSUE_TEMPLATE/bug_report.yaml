@@ -1,0 +1,57 @@
+name: Bug report
+description: Create a bug report to help improve nerdctl
+labels: kind/unconfirmed-bug-claim
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If you are reporting a new issue, make sure that we do not have any duplicates
+        already open. You can ensure this by searching the issue list for this
+        repository. If there is a duplicate, please close your issue and add a comment
+        to the existing issue instead.
+
+        Please also see [the FAQs and Troubleshooting](https://github.com/containerd/nerdctl/blob/main/docs/faq.md).
+
+  - type: textarea
+    attributes:
+      label: Description
+      description: |
+        Briefly describe the problem you are having in a few paragraphs.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Steps to reproduce the issue
+      value: |
+        1.
+        2.
+        3.
+
+  - type: textarea
+    attributes:
+      label: Describe the results you received and expected
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: What version of nerdctl are you using?
+      placeholder: nerdctl version
+    validations:
+      required: true
+
+  - type: dropdown
+    attributes:
+      label: Are you using a variant of nerdctl? (e.g., Rancher Desktop)
+      options:
+        - Rancher Desktop for Windows
+        - Rancher Desktop for macOS
+        - Lima
+        - Colima
+        - Others
+
+  - type: textarea
+    attributes:
+      label: Host information
+      placeholder: nerdctl info

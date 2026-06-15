@@ -1,0 +1,61 @@
+# This workflow puts together all known "flaky" and experimental targets
+name: "[flaky, see #3988]"
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: read
+
+jobs:
+  test-integration-el:
+    name: "EL${{ inputs.hack }}"
+    uses: ./.github/workflows/job-test-in-lima.yml
+    strategy:
+      fail-fast: false
+      # EL8 is used for testing compatibility with cgroup v1.
+      # Unfortunately, EL8 is hard to debug for ARM Mac users (as Lima+ARM Mac+EL8 is not runnable because of page size),
+      # and it currently shows numerous issues.
+      # ARM Mac users may use oraclelinux-8 instead for debugging cgroup v1 issues, although its kernel is different from
+      # other EL8 variants.
+      matrix:
+        guest: ["almalinux-8"]
+        target: ["rootful", "rootless"]
+    with:
+      timeout: 60
+      runner: ubuntu-24.04
+      guest: ${{ matrix.guest }}
+      target: ${{ matrix.target }}
+      skip-flaky: true  # skip the most flaky ones for now
+
+  test-integration-freebsd:
+    name: "FreeBSD"
+    uses: ./.github/workflows/job-test-in-lima-freebsd.yml
+    with:
+      timeout: 15
+      runner: ubuntu-24.04
+
+  kube:
+    name: "kubernetes"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      ROOTFUL: true
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: "Run"
+        run: |
+          # FIXME: this should be a bit more elegant to use.
+          ./hack/provisioning/kube/kind.sh
+          # See https://github.com/containerd/nerdctl/blob/main/docs/testing/README.md#about-parallelization
+          sudo ./_output/nerdctl exec nerdctl-test-control-plane bash -c -- 'export TMPDIR="$HOME"/tmp; mkdir -p "$TMPDIR"; cd /nerdctl-source; /usr/local/go/bin/go test -p 1 ./cmd/nerdctl/... -test.only-kubernetes'

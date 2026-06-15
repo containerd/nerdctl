@@ -1,0 +1,85 @@
+/*
+   Copyright The containerd Authors.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
+package filesystem_test
+
+import (
+	"fmt"
+	"runtime"
+	"testing"
+
+	"gotest.tools/v3/assert"
+
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
+)
+
+func TestFilesystemRestrictions(t *testing.T) {
+	t.Parallel()
+
+	invalid := []string{
+		"/",
+		"/start",
+		"mid/dle",
+		"end/",
+		".",
+		"..",
+		"",
+		fmt.Sprintf("A%0255s", "A"),
+	}
+
+	valid := []string{
+		fmt.Sprintf("A%0254s", "A"),
+		"test",
+		"test-hyphen",
+		".start.dot",
+		"mid.dot",
+		"∞",
+	}
+
+	if runtime.GOOS == "windows" {
+		invalid = append(invalid, []string{
+			"\\start",
+			"mid\\dle",
+			"end\\",
+			"\\",
+			"\\.",
+			"com².whatever",
+			"lpT2",
+			"Prn.",
+			"nUl",
+			"AUX",
+			"A<A",
+			"A>A",
+			"A:A",
+			"A\"A",
+			"A|A",
+			"A?A",
+			"A*A",
+			"end.dot.",
+			"end.space ",
+		}...)
+	}
+
+	for _, v := range invalid {
+		err := filesystem.ValidatePathComponent(v)
+		assert.ErrorIs(t, err, filesystem.ErrInvalidPath, v)
+	}
+
+	for _, v := range valid {
+		err := filesystem.ValidatePathComponent(v)
+		assert.NilError(t, err, v)
+	}
+}
