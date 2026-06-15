@@ -83,3 +83,31 @@ libseccomp: 2.5.1`: {
 		}
 	}
 }
+
+func TestParseRootlesskitVersion(t *testing.T) {
+	testCases := map[string]*dockercompat.ComponentVersion{
+		`rootlesskit version 2.0.2
+commit: 8d573c0b4b4b6e2e1c8e9044c4f8b4f3e2c1a0b1`: {
+			Name:    "rootlesskit",
+			Version: "2.0.2",
+			Details: map[string]string{
+				"GitCommit": "8d573c0b4b4b6e2e1c8e9044c4f8b4f3e2c1a0b1",
+			},
+		},
+		`rootlesskit version 1.1.1`: {
+			Name:    "rootlesskit",
+			Version: "1.1.1",
+		},
+		"foo bar baz": nil,
+	}
+
+	for s, expected := range testCases {
+		got, err := parseRootlesskitVersion([]byte(s))
+		if expected != nil {
+			assert.NilError(t, err)
+			assert.DeepEqual(t, expected, got)
+		} else {
+			assert.Assert(t, err != nil)
+		}
+	}
+}

@@ -122,6 +122,7 @@ func ClientVersion() dockercompat.ClientVersion {
 		Arch:      runtime.GOARCH,
 		Components: []dockercompat.ComponentVersion{
 			buildctlVersion(),
+			rootlesskitVersion(),
 		},
 	}
 }
@@ -231,6 +232,52 @@ func parseRuncVersion(runcVersionStdout []byte) (*dockercompat.ComponentVersion,
 		Details: details,
 	}, nil
 }
+
+func rootlesskitVersion() dockercompat.ComponentVersion {
+	stdout, err := exec.Command("rootlesskit", "--version").Output()
+	if err != nil {
+		log.L.WithError(err).Warnf("unable to determine rootlesskit version")
+		return dockercompat.ComponentVersion{Name: "rootlesskit"}
+	}
+	v, err := parseRootlesskitVersion(stdout)
+	if err != nil {
+		log.L.Warn(err)
+		return dockercompat.ComponentVersion{Name: "rootlesskit"}
+	}
+	return *v
+}
+
+func parseRootlesskitVersion(rootlesskitVersionStdout []byte) (*dockercompat.ComponentVersion, error) {
+	var versionList = strings.Split(strings.TrimSpace(string(rootlesskitVersionStdout)), "\n")
+	if len(versionList) == 0 {
+		return nil, fmt.Errorf("unable to determine rootlesskit version, got: %s", string(rootlesskitVersionStdout))
+	}
+	firstLine := strings.Fields(versionList[0])
+	if len(firstLine) != 3 || firstLine[0] != "rootlesskit" {
+		return nil, fmt.Errorf("unable to determine rootlesskit version, got: %s", string(rootlesskitVersionStdout))
+	}
+	version := firstLine[2]
+
+	details := map[string]string{}
+	for _, detailsLine := range versionList[1:] {
+		detail := strings.SplitN(detailsLine, ":", 2)
+		if len(detail) != 2 {
+			log.L.Warnf("unable to determine one of rootlesskit details, got: %s, %d", detail, len(detail))
+			continue
+		}
+		switch strings.TrimSpace(detail[0]) {
+		case "commit":
+			details["GitCommit"] = strings.TrimSpace(detail[1])
+		}
+	}
+
+	return &dockercompat.ComponentVersion{
+		Name:    "rootlesskit",
+		Version: version,
+		Details: details,
+	}, nil
+}
+
 
 // getMobySysInfo returns the moby system info for the given cgroup manager
 func getMobySysInfo(cgroupManager string) *sysinfo.SysInfo {
