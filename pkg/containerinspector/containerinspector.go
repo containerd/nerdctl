@@ -58,11 +58,13 @@ func Inspect(ctx context.Context, container containerd.Container) (*native.Conta
 		return n, nil
 	}
 	n.Process.Status = st
-	netNS, err := InspectNetNS(ctx, n.Process.Pid)
-	if err != nil {
-		log.G(ctx).WithError(err).WithField("id", id).Warnf("failed to inspect NetNS")
-		return n, nil
+	if st.Status == containerd.Running || st.Status == containerd.Paused {
+		netNS, err := InspectNetNS(ctx, n.Process.Pid)
+		if err != nil {
+			log.G(ctx).WithError(err).WithField("id", id).Warnf("failed to inspect NetNS")
+			return n, nil
+		}
+		n.Process.NetNS = netNS
 	}
-	n.Process.NetNS = netNS
 	return n, nil
 }
