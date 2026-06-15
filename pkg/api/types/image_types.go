@@ -139,6 +139,8 @@ type OverlaybdOptions struct {
 	OverlayFsType string
 	// OverlaydbDBStr database config string for overlaybd
 	OverlaydbDBStr string
+	// OverlaybdVsize virtual block device size in GB for overlaybd
+	OverlaybdVsize int
 	// #endregion
 }
 
