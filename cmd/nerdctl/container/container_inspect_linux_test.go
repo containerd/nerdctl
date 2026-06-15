@@ -336,6 +336,7 @@ func TestContainerInspectState(t *testing.T) {
 				}
 				assert.Assert(tt, strings.Contains(inspect.State.Error, "executable file not found in $PATH"), fmt.Sprintf("expected: %s, actual: %s", "executable file not found in $PATH", inspect.State.Error))
 				assert.Equal(tt, expectedErrStatus, inspect.State.Status)
+				assert.Equal(tt, 0, inspect.State.Pid)
 			}),
 		},
 		{
@@ -361,6 +362,7 @@ func TestContainerInspectState(t *testing.T) {
 				inspect := dc[0]
 				assert.Assert(tt, strings.Contains(inspect.State.Error, ""), fmt.Sprintf("expected: %s, actual: %s", "", inspect.State.Error))
 				assert.Equal(tt, "exited", inspect.State.Status)
+				assert.Equal(tt, 0, inspect.State.Pid)
 			}),
 		},
 	}
