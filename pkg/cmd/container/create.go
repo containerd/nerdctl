@@ -206,6 +206,12 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	if err != nil {
 		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
+	// Image config labels must be applied before any other label-setting opt:
+	// containerd.WithImageConfigLabels resets the container labels, so running it
+	// later would clear labels set by other opts (e.g. the restart policy).
+	if ensuredImage != nil {
+		cOpts = append(cOpts, containerd.WithImageConfigLabels(ensuredImage.Image))
+	}
 	opts = append(opts, rootfsOpts...)
 	cOpts = append(cOpts, rootfsCOpts...)
 	if options.UserNS != "" {
@@ -357,7 +363,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		internalLabels.healthcheck = healthcheckConfig
 	}
 
-	lCOpts, err := withContainerLabels(options.Label, options.LabelFile, ensuredImage)
+	lCOpts, err := withContainerLabels(options.Label, options.LabelFile)
 	if err != nil {
 		return nil, generateRemoveOrphanedDirsFunc(ctx, id, dataStore, internalLabels), err
 	}
@@ -650,14 +656,8 @@ func withNerdctlOCIHook(cmd string, args []string) (oci.SpecOpts, error) {
 	}, nil
 }
 
-func withContainerLabels(label, labelFile []string, ensuredImage *imgutil.EnsuredImage) ([]containerd.NewContainerOpts, error) {
+func withContainerLabels(label, labelFile []string) ([]containerd.NewContainerOpts, error) {
 	var opts []containerd.NewContainerOpts
-
-	// add labels defined by image
-	if ensuredImage != nil {
-		imageLabelOpts := containerd.WithAdditionalContainerLabels(ensuredImage.ImageConfig.Labels)
-		opts = append(opts, imageLabelOpts)
-	}
 
 	labelMap, err := readKVStringsMapfFromLabel(label, labelFile)
 	if err != nil {
