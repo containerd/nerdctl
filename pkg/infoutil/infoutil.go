@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/buildkitutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/version"
 )
 
@@ -142,6 +143,9 @@ func ServerVersion(ctx context.Context, client *containerd.Client) (*dockercompa
 			runcVersion(),
 		},
 	}
+	if rootlessutil.IsRootless() {
+		v.Components = append(v.Components, rootlessKitVersion(ctx))
+	}
 	return v, nil
 }
 
@@ -233,6 +237,35 @@ func parseRuncVersion(runcVersionStdout []byte) (*dockercompat.ComponentVersion,
 }
 
 // getMobySysInfo returns the moby system info for the given cgroup manager
+
+func rootlessKitVersion(ctx context.Context) dockercompat.ComponentVersion {
+	rc, err := rootlessutil.NewRootlessKitClient()
+	if err != nil {
+		log.L.WithError(err).Warnf("unable to connect to RootlessKit API socket")
+		return dockercompat.ComponentVersion{Name: "rootlesskit"}
+	}
+	info, err := rc.Info(ctx)
+	if err != nil {
+		log.L.WithError(err).Warnf("unable to retrieve RootlessKit version via API")
+		return dockercompat.ComponentVersion{Name: "rootlesskit"}
+	}
+	details := map[string]string{
+		"ApiVersion": info.APIVersion,
+		"StateDir":   info.StateDir,
+	}
+	if info.NetworkDriver != nil {
+		details["NetworkDriver"] = info.NetworkDriver.Driver
+	}
+	if info.PortDriver != nil {
+		details["PortDriver"] = info.PortDriver.Driver
+	}
+	return dockercompat.ComponentVersion{
+		Name:    "rootlesskit",
+		Version: info.Version,
+		Details: details,
+	}
+}
+
 func getMobySysInfo(cgroupManager string) *sysinfo.SysInfo {
 	var info dockercompat.Info
 	info.CgroupVersion = CgroupsVersion()
