@@ -20,6 +20,14 @@ type CNIPlugin interface {
 	GetPluginType() string
 }
 
+type pseudoNetworkPlugin struct {
+	PluginType string `json:"type"`
+}
+
+func (p *pseudoNetworkPlugin) GetPluginType() string {
+	return p.PluginType
+}
+
 type IPAMRange struct {
 	Subnet     string `json:"subnet"`
 	RangeStart string `json:"rangeStart,omitempty"`

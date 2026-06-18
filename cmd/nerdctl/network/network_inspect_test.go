@@ -62,7 +62,6 @@ func TestNetworkInspectBasic(t *testing.T) {
 		},
 		{
 			Description: "none",
-			Require:     nerdtest.NerdctlNeedsFixing("no issue opened"),
 			Command:     test.Command("network", "inspect", "none"),
 			Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 				var dc []dockercompat.Network
@@ -74,7 +73,6 @@ func TestNetworkInspectBasic(t *testing.T) {
 		},
 		{
 			Description: "host",
-			Require:     nerdtest.NerdctlNeedsFixing("no issue opened"),
 			Command:     test.Command("network", "inspect", "host"),
 			Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 				var dc []dockercompat.Network

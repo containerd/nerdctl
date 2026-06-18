@@ -60,8 +60,17 @@ func (e *CNIEnv) ListNetworksMatch(reqs []string, allowPseudoNetwork bool) (list
 
 	list = make(map[string][]*NetworkConfig)
 	for _, req := range reqs {
-		if !allowPseudoNetwork && (req == "host" || req == "none") {
-			errs = append(errs, fmt.Errorf("pseudo network not allowed: %s", req))
+		if req == "host" || req == "none" {
+			if !allowPseudoNetwork {
+				errs = append(errs, fmt.Errorf("pseudo network not allowed: %s", req))
+				continue
+			}
+			cfg, err := newPseudoNetworkConfig(req)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+			list[req] = []*NetworkConfig{cfg}
 			continue
 		}
 
@@ -86,6 +95,30 @@ func (e *CNIEnv) ListNetworksMatch(reqs []string, allowPseudoNetwork bool) (list
 	}
 
 	return list, errs
+}
+
+func newPseudoNetworkConfig(name string) (*NetworkConfig, error) {
+	confJSON, err := json.Marshal(&cniNetworkConfig{
+		CNIVersion: "1.0.0",
+		Name:       name,
+		// Pseudo networks are not backed by real CNI config files. We still need a
+		// parseable config object so network inspect can render them consistently.
+		Plugins: []CNIPlugin{
+			&pseudoNetworkPlugin{PluginType: "nerdctl-pseudo"},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	confList, err := libcni.ConfListFromBytes(confJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	return &NetworkConfig{
+		NetworkConfigList: confList,
+	}, nil
 }
 
 func UsedNetworks(ctx context.Context, client *containerd.Client) (map[string][]string, error) {
@@ -288,8 +321,8 @@ type NetworkConfig struct {
 type cniNetworkConfig struct {
 	CNIVersion string            `json:"cniVersion"`
 	Name       string            `json:"name"`
-	ID         string            `json:"nerdctlID"`
-	Labels     map[string]string `json:"nerdctlLabels"`
+	ID         string            `json:"nerdctlID,omitempty"`
+	Labels     map[string]string `json:"nerdctlLabels,omitempty"`
 	Plugins    []CNIPlugin       `json:"plugins"`
 }
 
