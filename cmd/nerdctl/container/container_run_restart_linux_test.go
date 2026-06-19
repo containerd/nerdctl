@@ -30,6 +30,7 @@ import (
 
 	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
@@ -276,7 +277,11 @@ func TestRunRestartWithUnlessStopped(t *testing.T) {
 
 func TestUpdateRestartPolicy(t *testing.T) {
 	testCase := nerdtest.Setup()
-	if !nerdtest.IsDocker() {
+	if nerdtest.IsDocker() {
+		// FIXME: failing on Docker since ubuntu-24.04 image 20260615.205.1
+		// https://github.com/containerd/nerdctl/issues/4978
+		testCase.Require = require.Not(nerdtest.Docker)
+	} else {
 		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"on-failure"})
 	}
 

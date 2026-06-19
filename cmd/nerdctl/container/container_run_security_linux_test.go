@@ -345,6 +345,10 @@ func TestRunSelinuxWithVolumeLabel(t *testing.T) {
 func TestRunSeccompCapSysPtrace(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	// FIXME: failing on Docker since ubuntu-24.04 image 20260615.205.1
+	// https://github.com/containerd/nerdctl/issues/4978
+	testCase.Require = require.Not(nerdtest.Docker)
+
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		return helpers.Command("run", "--rm", "--cap-add", "sys_ptrace", testutil.AlpineImage, "sh", "-euxc", "apk add -q strace && strace true")
 	}
