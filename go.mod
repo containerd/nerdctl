@@ -55,7 +55,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/opencontainers/runtime-spec v1.3.0
 	github.com/opencontainers/selinux v1.15.1
-	github.com/pelletier/go-toml/v2 v2.3.1
+	github.com/pelletier/go-toml/v2 v2.4.0
 	github.com/rootless-containers/bypass4netns v0.4.2 //gomodjail:unconfined
 	github.com/rootless-containers/rootlesskit/v3 v3.0.1 //gomodjail:unconfined
 	github.com/spf13/cobra v1.10.2 //gomodjail:unconfined
