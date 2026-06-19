@@ -26,8 +26,9 @@ jobs:
           - runner: "ubuntu-24.04"
           - runner: "macos-15"
           - runner: "windows-2025"
-          - runner: "ubuntu-24.04"
-            canary: true
+          # FIXME: failing since the release of go1.27rc1
+          # - runner: "ubuntu-24.04"
+          #   canary: true
     with:
       runner: ${{ matrix.runner }}
       canary: ${{ matrix.canary && true || false }}
@@ -104,9 +105,10 @@ jobs:
             ipv6: true
             skip-flaky: true
           # all canary
-          - runner: ubuntu-24.04
-            target: rootful
-            canary: true
+          # FIXME: failing since the release of go1.27rc1
+          # - runner: ubuntu-24.04
+          #   target: rootful
+          #   canary: true
 
     with:
       timeout: 80
@@ -128,8 +130,9 @@ jobs:
         include:
           # Test on windows w/o canary
           - runner: windows-2022
-          - runner: windows-2025
-            canary: true
+          # FIXME: failing since the release of go1.27rc1
+          # - runner: windows-2025
+          #   canary: true
           # Test docker on linux
           - runner: ubuntu-24.04
             binary: docker

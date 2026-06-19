@@ -33,9 +33,10 @@ jobs:
           - runner: ubuntu-24.04
             goos: windows
           # Additionally lint for canary
-          - runner: ubuntu-24.04
-            goos: linux
-            canary: true
+          # FIXME: failing since the release of go1.27rc1
+          # - runner: ubuntu-24.04
+          #   goos: linux
+          #   canary: true
     with:
       timeout: 10
       go-version: "1.26"
@@ -72,8 +73,9 @@ jobs:
         include:
           - go-version: "1.26"
           # Additionally build for canary
-          - go-version: "1.26"
-            canary: true
+          # FIXME: failing since the release of go1.27rc1
+          # - go-version: "1.26"
+          #   canary: true
     with:
       timeout: 10
       go-version: ${{ matrix.go-version }}
