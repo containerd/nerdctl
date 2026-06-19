@@ -326,6 +326,51 @@ services:
 	testCase.Run(t)
 }
 
+func TestComposeRunWithWorkdir(t *testing.T) {
+	const expectedOutput = "/tmp"
+
+	dockerComposeYAML := fmt.Sprintf(`
+services:
+  alpine:
+    image: %s
+    entrypoint:
+      - pwd
+`, testutil.CommonImage)
+
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command(
+			"compose",
+			"-f",
+			data.Temp().Path("compose.yaml"),
+			"run",
+			"--workdir",
+			"/tmp",
+			"--name",
+			data.Identifier(),
+			"alpine",
+		)
+		cmd.WithPseudoTTY()
+		return cmd
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(expectedOutput))
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.Run(t)
+}
+
 func TestComposeRunWithLabel(t *testing.T) {
 	dockerComposeYAML := fmt.Sprintf(`
 services:

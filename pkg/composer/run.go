@@ -155,7 +155,7 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 		}
 	}
 	if ro.WorkDir != "" {
-		c.project.WorkingDir = ro.WorkDir
+		targetSvc.WorkingDir = ro.WorkDir
 	}
 
 	// `compose run` command does not create any of the ports specified in the service configuration.
