@@ -43,6 +43,7 @@ func TestIPFSAddrWithKubo(t *testing.T) {
 		require.Not(nerdtest.Docker),
 		nerdtest.Registry,
 		nerdtest.Private,
+		nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/4838"),
 	)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
