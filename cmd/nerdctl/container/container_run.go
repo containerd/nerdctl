@@ -89,7 +89,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("help", false, "show help")
 
 	cmd.Flags().BoolP("tty", "t", false, "Allocate a pseudo-TTY")
-	cmd.Flags().Bool("sig-proxy", true, "Proxy received signals to the process (default true)")
+	cmd.Flags().Bool("sig-proxy", true, "Proxy received signals to the process")
 	cmd.Flags().BoolP("interactive", "i", false, "Keep STDIN open even if not attached")
 	cmd.Flags().String("restart", "no", `Restart policy to apply when a container exits (implemented values: "no"|"always|on-failure:n|unless-stopped")`)
 	cmd.RegisterFlagCompletionFunc("restart", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -159,7 +159,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("memory", "m", "", "Memory limit")
 	cmd.Flags().String("memory-reservation", "", "Memory soft limit")
 	cmd.Flags().String("memory-swap", "", "Swap limit equal to memory plus swap: '-1' to enable unlimited swap")
-	cmd.Flags().Int64("memory-swappiness", -1, "Tune container memory swappiness (0 to 100) (default -1)")
+	cmd.Flags().Int64("memory-swappiness", -1, "Tune container memory swappiness (0 to 100)")
 	cmd.Flags().String("kernel-memory", "", "Kernel memory limit (deprecated)")
 	cmd.Flags().Bool("oom-kill-disable", false, "Disable OOM Killer")
 	cmd.Flags().Int("oom-score-adj", 0, "Tune container’s OOM preferences (-1000 to 1000, rootless: 100 to 1000)")
@@ -219,7 +219,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSlice("cap-drop", []string{}, "Drop Linux capabilities")
 	cmd.RegisterFlagCompletionFunc("cap-drop", capShellComplete)
 	cmd.Flags().Bool("privileged", false, "Give extended privileges to this container")
-	cmd.Flags().String("systemd", "false", "Allow running systemd in this container (default: false)")
+	cmd.Flags().String("systemd", "false", "Allow running systemd in this container")
 	// #endregion
 
 	// #region runtime flags

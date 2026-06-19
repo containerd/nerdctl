@@ -63,7 +63,7 @@ func addHistoryFlags(cmd *cobra.Command) {
 		return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	cmd.Flags().BoolP("quiet", "q", false, "Only show numeric IDs")
-	cmd.Flags().BoolP("human", "H", true, "Print sizes and dates in human readable format (default true)")
+	cmd.Flags().BoolP("human", "H", true, "Print sizes and dates in human readable format")
 	cmd.Flags().Bool("no-trunc", false, "Don't truncate output")
 }
 
