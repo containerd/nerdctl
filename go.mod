@@ -30,7 +30,7 @@ require (
 	github.com/containernetworking/plugins v1.9.1 //gomodjail:unconfined
 	github.com/coreos/go-iptables v0.8.0 //gomodjail:unconfined
 	github.com/coreos/go-systemd/v22 v22.7.0
-	github.com/cyphar/filepath-securejoin v0.6.1 //gomodjail:unconfined
+	github.com/cyphar/filepath-securejoin v0.7.0 //gomodjail:unconfined
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v29.5.3+incompatible //gomodjail:unconfined
 	github.com/docker/go-connections v0.7.0
@@ -147,7 +147,7 @@ require (
 )
 
 require (
-	cyphar.com/go-pathrs v0.2.1 // indirect
+	cyphar.com/go-pathrs v0.2.5 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/moby/moby/api v1.54.2 // indirect
 	github.com/moby/sys/capability v0.4.0 // indirect
