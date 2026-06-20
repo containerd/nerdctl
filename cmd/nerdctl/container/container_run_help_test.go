@@ -41,4 +41,7 @@ func TestRunHelpDoesNotDuplicateDefaults(t *testing.T) {
 	assert.Assert(t, !strings.Contains(help, "Tune container memory swappiness (0 to 100) (default -1) (default -1)"))
 	assert.Assert(t, strings.Contains(help, "Allow running systemd in this container (default \"false\")"))
 	assert.Assert(t, !strings.Contains(help, "Allow running systemd in this container (default: false) (default \"false\")"))
+	assert.Assert(t, strings.Contains(help, "Time between running the check; 0 uses the image value or 30s when unset there too"))
+	assert.Assert(t, strings.Contains(help, "Maximum time to allow one check to run; 0 uses the image value or 30s when unset there too"))
+	assert.Assert(t, strings.Contains(help, "Consecutive failures needed to report unhealthy; 0 uses the image value or 3 when unset there too"))
 }
