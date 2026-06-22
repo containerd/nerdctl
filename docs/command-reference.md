@@ -295,10 +295,9 @@ Volume flags:
   Consists of multiple key-value pairs, separated by commas and each
   consisting of a `<key>=<value>` tuple.
   e.g., `-- mount type=bind,source=/src,target=/app,bind-propagation=shared`.
-  - :whale: `type`: Current supported mount types are `bind`, `volume`, `tmpfs`.
+  - :whale: `type`: Current supported mount types are `bind`, `volume`, `tmpfs`, `image`.
     The default type will be set to `volume` if not specified.
     i.e., `--mount src=vol-1,dst=/app,readonly` equals `--mount type=volume,src=vol-1,dst=/app,readonly`
-    - unimplemented type: `image`
   - Common Options:
     - :whale: `src`, `source`: Mount source spec for bind and volume. Mandatory for bind.
     - :whale: `dst`, `destination`, `target`: Mount destination spec.
@@ -315,6 +314,9 @@ Volume flags:
       Defaults to `1777` or world-writable.
   - Options specific to `volume`:
     - unimplemented options: `volume-nocopy`, `volume-label`, `volume-driver`, `volume-opt`
+  - Options specific to `image`:
+    - :whale: `src`, `source`: image reference (mandatory). The image filesystem is mounted read-only.
+    - unimplemented options: `subpath`
 - :whale: `--volumes-from`: Mount volumes from the specified container(s), e.g. "--volumes-from my-container".
 
 Rootfs flags:

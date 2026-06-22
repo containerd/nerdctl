@@ -39,6 +39,7 @@ const (
 	Bind          = "bind"
 	Volume        = "volume"
 	Tmpfs         = "tmpfs"
+	Image         = "image"
 	Npipe         = "npipe"
 	pathSeparator = string(os.PathSeparator)
 )
@@ -50,6 +51,9 @@ type Processed struct {
 	AnonymousVolume string // anonymous volume name
 	Mode            string
 	Opts            []oci.SpecOpts
+	// ImageMountSnapshot is the snapshotter key of the read-only view for a
+	// type=image mount; empty for other mount types.
+	ImageMountSnapshot string
 }
 
 type volumeSpec struct {

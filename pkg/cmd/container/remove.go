@@ -109,6 +109,13 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		return err
 	}
 
+	// Capture the container's snapshotter before deletion: image-mount views were
+	// created against it, which may differ from the current --snapshotter flag.
+	imageMountSnapshotter := globalOptions.Snapshotter
+	if info, err := c.Info(ctx); err == nil && info.Snapshotter != "" {
+		imageMountSnapshotter = info.Snapshotter
+	}
+
 	// Get datastore
 	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
 	if err != nil {
@@ -273,6 +280,16 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 				if err != nil || len(errs) > 0 {
 					log.G(ctx).WithError(err).Warnf("failed to remove anonymous volumes %v", anonVolumes)
 				}
+			}
+		}
+
+		// Remove the read-only views backing type=image mounts - soft failure.
+		if snapshotsJSON, ok := containerLabels[labels.ImageMountSnapshots]; ok {
+			var keys []string
+			if err = json.Unmarshal([]byte(snapshotsJSON), &keys); err != nil {
+				log.G(ctx).WithError(err).Warnf("failed to unmarshal image-mount snapshots for container %q", id)
+			} else {
+				removeImageMountViews(ctx, client.SnapshotService(imageMountSnapshotter), keys)
 			}
 		}
 	}()
