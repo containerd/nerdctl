@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -301,18 +302,44 @@ func ProcessFlagTmpfs(s string) (*Processed, error) {
 	return res, nil
 }
 
+// validateImageSubpath normalizes an image-subpath value and rejects paths that
+// are absolute, escape the image rootfs, or resolve to the rootfs itself. An
+// empty input returns empty (no subpath). Image paths are always forward-slash,
+// so it uses path, not filepath.
+func validateImageSubpath(p string) (string, error) {
+	if p == "" {
+		return "", nil
+	}
+	if path.IsAbs(p) {
+		return "", fmt.Errorf("image-subpath must be relative to the image rootfs, got %q", p)
+	}
+	clean := path.Clean(p)
+	// Clean collapses ".." segments; anything still leading with ".." escapes root.
+	if clean == ".." || strings.HasPrefix(clean, "../") {
+		return "", fmt.Errorf("image-subpath %q escapes the image rootfs", p)
+	}
+	// "." means the whole rootfs (e.g. from "a/.."); that is the no-subpath case,
+	// not a subdirectory selection, so reject it as a misuse of image-subpath.
+	if clean == "." {
+		return "", fmt.Errorf("image-subpath %q must select a subdirectory, not the image rootfs", p)
+	}
+	return clean, nil
+}
+
 func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, error) {
 	fields := strings.Split(s, ",")
 	var (
-		mountType        string
-		src              string
-		dst              string
-		bindPropagation  string
-		bindNonRecursive bool
-		rwOption         string
-		tmpfsSize        int64
-		tmpfsMode        os.FileMode
-		err              error
+		mountType         string
+		src               string
+		dst               string
+		bindPropagation   string
+		bindNonRecursive  bool
+		rwOption          string
+		writableRequested bool
+		imageSubpath      string
+		tmpfsSize         int64
+		tmpfsMode         os.FileMode
+		err               error
 	)
 
 	// set default values
@@ -334,6 +361,9 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			switch key {
 			case "readonly", "ro", "rw", "rro":
 				rwOption = key
+				if key == "rw" {
+					writableRequested = true
+				}
 				continue
 			case "bind-nonrecursive":
 				bindNonRecursive = true
@@ -353,9 +383,11 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 				mountType = Tmpfs
 			case "bind":
 				mountType = Bind
+			case "image":
+				mountType = Image
 			case "volume":
 			default:
-				return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", value)
+				return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs/image", value)
 			}
 		case "source", "src":
 			src = value
@@ -369,6 +401,18 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			if trueValue {
 				rwOption = key
 			}
+			// Write requested: rw=true, or a read-only flag (ro/readonly/rro) set to false.
+			if trueValue == (key == "rw") {
+				writableRequested = true
+			}
+		case "subpath":
+			// subpath is not implemented for any mount type yet; type=image uses
+			// image-subpath instead.
+			return nil, fmt.Errorf("mount option %q is not yet supported", key)
+		case "image-subpath":
+			// Selects a directory inside a type=image rootfs; validated below once
+			// the mount type is known.
+			imageSubpath = value
 		case "bind-propagation":
 			// here don't validate the propagation value
 			// parseVolumeOptions will do that.
@@ -392,6 +436,43 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		default:
 			return nil, fmt.Errorf("unexpected key '%s' in '%s'", key, field)
 		}
+	}
+
+	// image-subpath only makes sense for type=image; reject it elsewhere before
+	// falling through to the legacy bind/volume/tmpfs handlers.
+	if imageSubpath != "" && mountType != Image {
+		return nil, fmt.Errorf("image-subpath is only supported for type=image")
+	}
+
+	// type=image's source is an image reference resolved later with a containerd
+	// client; validate the intent here. Image mounts are read-only.
+	if mountType == Image {
+		if src == "" {
+			return nil, fmt.Errorf("type=image requires a source (the image reference)")
+		}
+		if dst == "" {
+			return nil, fmt.Errorf("type=image requires a destination")
+		}
+		if writableRequested {
+			return nil, fmt.Errorf("type=image mounts are read-only")
+		}
+		// Normalize and bound the subpath to the image rootfs at parse time;
+		// securejoin re-checks against symlinks once the rootfs is materialized.
+		cleanSubpath, err := validateImageSubpath(imageSubpath)
+		if err != nil {
+			return nil, err
+		}
+		return &Processed{
+			Type: Image,
+			// Mode "ro" so inspect/label metadata reports the mount read-only.
+			Mode: "ro",
+			Mount: specs.Mount{
+				Type:        Image,
+				Source:      src,
+				Destination: cleanMount(dst),
+			},
+			ImageSubpath: cleanSubpath,
+		}, nil
 	}
 
 	// compose new fileds and join into a string

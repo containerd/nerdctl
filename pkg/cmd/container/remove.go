@@ -109,6 +109,13 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		return err
 	}
 
+	// Capture the container's snapshotter before deletion: image-mount views were
+	// created against it, which may differ from the current --snapshotter flag.
+	imageMountSnapshotter := globalOptions.Snapshotter
+	if info, err := c.Info(ctx); err == nil && info.Snapshotter != "" {
+		imageMountSnapshotter = info.Snapshotter
+	}
+
 	// Get datastore
 	dataStore, err := clientutil.DataStore(globalOptions.DataRoot, globalOptions.Address)
 	if err != nil {
@@ -274,6 +281,23 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 					log.G(ctx).WithError(err).Warnf("failed to remove anonymous volumes %v", anonVolumes)
 				}
 			}
+		}
+
+		// Tear down type=image mount state (host materializations and read-only
+		// views) backing this container - soft failure.
+		var imageMountKeys, imageMountHostpaths []string
+		if snapshotsJSON, ok := containerLabels[labels.ImageMountSnapshots]; ok {
+			if err = json.Unmarshal([]byte(snapshotsJSON), &imageMountKeys); err != nil {
+				log.G(ctx).WithError(err).Warnf("failed to unmarshal image-mount snapshots for container %q", id)
+			}
+		}
+		if hostpathsJSON, ok := containerLabels[labels.ImageMountHostpaths]; ok {
+			if err = json.Unmarshal([]byte(hostpathsJSON), &imageMountHostpaths); err != nil {
+				log.G(ctx).WithError(err).Warnf("failed to unmarshal image-mount host paths for container %q", id)
+			}
+		}
+		if len(imageMountKeys) > 0 || len(imageMountHostpaths) > 0 {
+			removeImageMounts(ctx, client.SnapshotService(imageMountSnapshotter), imageMountHostpaths, imageMountKeys)
 		}
 	}()
 

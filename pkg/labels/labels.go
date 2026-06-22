@@ -80,6 +80,15 @@ const (
 	// AnonymousVolumes is a JSON-marshalled string of []string
 	AnonymousVolumes = Prefix + "anonymous-volumes"
 
+	// ImageMountSnapshots is a JSON-marshalled []string of snapshotter keys for
+	// the read-only views backing `--mount type=image`, removed on container deletion.
+	ImageMountSnapshots = Prefix + "image-mount-snapshots"
+
+	// ImageMountHostpaths is a JSON-marshalled []string of host directories where
+	// `--mount type=image,image-subpath=...` rootfs views are materialized; each
+	// must be unmounted and removed on container deletion.
+	ImageMountHostpaths = Prefix + "image-mount-hostpaths"
+
 	// Platform is the normalized platform string like "linux/ppc64le".
 	Platform = Prefix + "platform"
 
