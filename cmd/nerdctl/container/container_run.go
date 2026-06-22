@@ -250,9 +250,9 @@ func setCreateFlags(cmd *cobra.Command) {
 
 	// Health check flags
 	cmd.Flags().String("health-cmd", "", "Command to run to check health")
-	cmd.Flags().Duration("health-interval", 0, "Time between running the check (default: 30s)")
-	cmd.Flags().Duration("health-timeout", 0, "Maximum time to allow one check to run (default: 30s)")
-	cmd.Flags().Int("health-retries", 0, "Consecutive failures needed to report unhealthy (default: 3)")
+	cmd.Flags().Duration("health-interval", 0, "Time between running the check; 0 uses the image value or 30s when unset there too")
+	cmd.Flags().Duration("health-timeout", 0, "Maximum time to allow one check to run; 0 uses the image value or 30s when unset there too")
+	cmd.Flags().Int("health-retries", 0, "Consecutive failures needed to report unhealthy; 0 uses the image value or 3 when unset there too")
 	cmd.Flags().Duration("health-start-period", 0, "Start period for the container to initialize before starting health-retries countdown")
 	cmd.Flags().Bool("no-healthcheck", false, "Disable any container-specified HEALTHCHECK")
 
