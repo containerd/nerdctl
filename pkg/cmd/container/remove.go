@@ -283,14 +283,21 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			}
 		}
 
-		// Remove the read-only views backing type=image mounts - soft failure.
+		// Tear down type=image mount state (host materializations and read-only
+		// views) backing this container - soft failure.
+		var imageMountKeys, imageMountHostpaths []string
 		if snapshotsJSON, ok := containerLabels[labels.ImageMountSnapshots]; ok {
-			var keys []string
-			if err = json.Unmarshal([]byte(snapshotsJSON), &keys); err != nil {
+			if err = json.Unmarshal([]byte(snapshotsJSON), &imageMountKeys); err != nil {
 				log.G(ctx).WithError(err).Warnf("failed to unmarshal image-mount snapshots for container %q", id)
-			} else {
-				removeImageMountViews(ctx, client.SnapshotService(imageMountSnapshotter), keys)
 			}
+		}
+		if hostpathsJSON, ok := containerLabels[labels.ImageMountHostpaths]; ok {
+			if err = json.Unmarshal([]byte(hostpathsJSON), &imageMountHostpaths); err != nil {
+				log.G(ctx).WithError(err).Warnf("failed to unmarshal image-mount host paths for container %q", id)
+			}
+		}
+		if len(imageMountKeys) > 0 || len(imageMountHostpaths) > 0 {
+			removeImageMounts(ctx, client.SnapshotService(imageMountSnapshotter), imageMountHostpaths, imageMountKeys)
 		}
 	}()
 
