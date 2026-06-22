@@ -419,9 +419,11 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 				mountType = Tmpfs
 			case "bind":
 				mountType = Bind
+			case "image":
+				mountType = Image
 			case "volume":
 			default:
-				return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", value)
+				return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs/image", value)
 			}
 		case "source", "src":
 			src = value
@@ -438,6 +440,10 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 			if trueValue {
 				rwOption = key
 			}
+		case "image-subpath":
+			// image-subpath is Docker's option to mount a subdirectory of the
+			// image; it is not implemented yet.
+			return nil, fmt.Errorf("mount option %q is not yet supported", key)
 		case "bind-propagation":
 			// here don't validate the propagation value
 			// parseVolumeOptions will do that.
@@ -472,6 +478,29 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 		default:
 			return nil, fmt.Errorf("unexpected key '%s' in '%s'", key, field)
 		}
+	}
+
+	// type=image's source is an image reference resolved later with a containerd
+	// client; validate the intent here. Like Docker, an image mount is always
+	// read-only: a readonly/ro option is accepted for compatibility but the
+	// mount is read-only regardless of its value.
+	if mountType == Image {
+		if src == "" {
+			return nil, fmt.Errorf("type=image requires a source (the image reference)")
+		}
+		if dst == "" {
+			return nil, fmt.Errorf("type=image requires a destination")
+		}
+		return &Processed{
+			Type: Image,
+			// Mode "ro" so inspect/label metadata reports the mount read-only.
+			Mode: "ro",
+			Mount: specs.Mount{
+				Type:        Image,
+				Source:      src,
+				Destination: cleanMount(dst),
+			},
+		}, nil
 	}
 
 	// Resolve the read-only mode of the mount, for Docker (v25) compatibility.
