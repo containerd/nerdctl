@@ -332,7 +332,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 
 		if len(parts) == 1 {
 			switch key {
-			case "readonly", "ro", "rw", "rro":
+			case "readonly", "ro", "rro":
 				rwOption = key
 				continue
 			case "bind-nonrecursive":
@@ -361,7 +361,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			src = value
 		case "target", "dst", "destination":
 			dst = value
-		case "readonly", "ro", "rw", "rro":
+		case "readonly", "ro", "rro":
 			trueValue, err := strconv.ParseBool(value)
 			if err != nil {
 				return nil, fmt.Errorf("invalid value for %s: %s", key, value)
