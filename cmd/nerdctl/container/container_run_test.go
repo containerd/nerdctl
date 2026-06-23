@@ -798,6 +798,11 @@ func TestRunAttachFlag(t *testing.T) {
 func TestRunQuiet(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	// This test removes the shared image to force a fresh pull, so it must not
+	// run alongside other tests that use it: the content store is global across
+	// namespaces, so the rmi would GC layers out from under a parallel run.
+	testCase.NoParallel = true
+
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("rmi", "-f", testutil.CommonImage)
 	}
