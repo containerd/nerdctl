@@ -70,7 +70,7 @@ import (
 )
 
 // Create will create a container.
-func Create(ctx context.Context, client *containerd.Client, args []string, netManager containerutil.NetworkOptionsManager, options types.ContainerCreateOptions) (containerd.Container, func(), error) {
+func Create(ctx context.Context, client *containerd.Client, args []string, netManager containerutil.NetworkOptionsManager, options types.ContainerCreateOptions) (_ containerd.Container, _ func(), retErr error) {
 	// Acquire an exclusive lock on the volume store until we are done to avoid being raced by any other
 	// volume operations (or any other operation involving volume manipulation)
 	volStore, err := volume.Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
@@ -93,6 +93,27 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	var internalLabels internalLabels
 	internalLabels.platform = options.Platform
 	internalLabels.namespace = options.GOptions.Namespace
+
+	// If creation fails after image-mount state is created, tear it down so the
+	// snapshots and host mounts do not leak (the cleanup labels are only persisted
+	// on success).
+	defer func() {
+		if retErr == nil {
+			return
+		}
+		var keys, hostpaths []string
+		for _, mp := range internalLabels.mountPoints {
+			if mp.ImageMountSnapshot != "" {
+				keys = append(keys, mp.ImageMountSnapshot)
+			}
+			if mp.ImageMountHostpath != "" {
+				hostpaths = append(hostpaths, mp.ImageMountHostpath)
+			}
+		}
+		if len(keys) > 0 || len(hostpaths) > 0 {
+			removeImageMounts(ctx, client.SnapshotService(options.GOptions.Snapshotter), hostpaths, keys)
+		}
+	}()
 
 	var (
 		id    = idgen.GenerateID()
@@ -804,6 +825,32 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 			return nil, err
 		}
 		m[labels.AnonymousVolumes] = string(anonVolumeJSON)
+	}
+
+	// Record the snapshot keys and host materialization paths of any type=image
+	// mounts so they can be removed when the container is deleted.
+	var imageMountSnapshots, imageMountHostpaths []string
+	for _, mp := range internalLabels.mountPoints {
+		if mp.ImageMountSnapshot != "" {
+			imageMountSnapshots = append(imageMountSnapshots, mp.ImageMountSnapshot)
+		}
+		if mp.ImageMountHostpath != "" {
+			imageMountHostpaths = append(imageMountHostpaths, mp.ImageMountHostpath)
+		}
+	}
+	if len(imageMountSnapshots) > 0 {
+		b, err := json.Marshal(imageMountSnapshots)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.ImageMountSnapshots] = string(b)
+	}
+	if len(imageMountHostpaths) > 0 {
+		b, err := json.Marshal(imageMountHostpaths)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.ImageMountHostpaths] = string(b)
 	}
 
 	if internalLabels.pidFile != "" {
