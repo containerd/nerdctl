@@ -352,3 +352,66 @@ func TestProcessFlagVAnonymousVolumes(t *testing.T) {
 		})
 	}
 }
+
+// TestProcessFlagMountRW verifies that the non-Docker `rw` option is no longer
+// accepted by --mount, while ro/readonly/rro remain valid read-only flags.
+func TestProcessFlagMountRW(t *testing.T) {
+	// rw is no longer a valid --mount option.
+	rejected := []struct {
+		spec string
+		want string
+	}{
+		{"type=bind,source=/foo,target=/bar,rw", "must be a key=value pair"},
+		{"type=bind,source=/foo,target=/bar,rw=true", "unexpected key 'rw'"},
+		{"type=bind,source=/foo,target=/bar,rw=false", "unexpected key 'rw'"},
+	}
+	for _, tt := range rejected {
+		t.Run(tt.spec, func(t *testing.T) {
+			_, err := ProcessFlagMount(tt.spec, nil)
+			assert.ErrorContains(t, err, tt.want)
+		})
+	}
+
+	// ro/rro still parse into a complete read-only bind mount.
+	src := t.TempDir()
+	accepted := []struct {
+		spec  string
+		wants *Processed
+	}{
+		{
+			spec: "type=bind,source=" + src + ",target=/bar,ro",
+			wants: &Processed{
+				Type: Bind,
+				Mount: specs.Mount{
+					Type:        "bind",
+					Source:      src,
+					Destination: "/bar",
+					Options:     []string{"rbind", "ro", "rprivate"},
+				},
+			},
+		},
+		{
+			spec: "type=bind,source=" + src + ",target=/bar,rro",
+			wants: &Processed{
+				Type: Bind,
+				Mount: specs.Mount{
+					Type:        "bind",
+					Source:      src,
+					Destination: "/bar",
+					Options:     []string{"rbind", "ro", "rro", "rprivate"},
+				},
+			},
+		},
+	}
+	for _, tt := range accepted {
+		t.Run(tt.spec, func(t *testing.T) {
+			got, err := ProcessFlagMount(tt.spec, nil)
+			assert.NilError(t, err)
+			assert.Equal(t, got.Type, tt.wants.Type)
+			assert.Equal(t, got.Mount.Type, tt.wants.Mount.Type)
+			assert.Equal(t, got.Mount.Source, tt.wants.Mount.Source)
+			assert.Equal(t, got.Mount.Destination, tt.wants.Mount.Destination)
+			assert.DeepEqual(t, got.Mount.Options, tt.wants.Mount.Options)
+		})
+	}
+}

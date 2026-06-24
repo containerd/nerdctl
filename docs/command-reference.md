@@ -302,7 +302,8 @@ Volume flags:
   - Common Options:
     - :whale: `src`, `source`: Mount source spec for bind and volume. Mandatory for bind.
     - :whale: `dst`, `destination`, `target`: Mount destination spec.
-    - :whale: `readonly`, `ro`, `rw`, `rro`: Filesystem permissions.
+    - :whale: `readonly`, `ro`: mount the filesystem read-only.
+    - :nerd_face: `rro`: mount the filesystem recursively read-only.
   - Options specific to `bind`:
     - :whale: `bind-propagation`: `shared`, `slave`, `private`, `rshared`, `rslave`, or `rprivate`(default).
     - :whale: `bind-nonrecursive`: `true` or `false`(default). If set to true, submounts are not recursively bind-mounted. This option is useful for readonly bind mount.
