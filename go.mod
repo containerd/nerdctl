@@ -6,7 +6,7 @@ go 1.26.3
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Microsoft/go-winio v0.6.3-0.20251027160822-ad3df93bed29
-	github.com/Microsoft/hcsshim v0.15.0-rc.1
+	github.com/Microsoft/hcsshim v0.15.0-rc.2
 	github.com/compose-spec/compose-go/v2 v2.12.1 //gomodjail:unconfined
 	github.com/containerd/accelerated-container-image v1.4.3
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
@@ -84,7 +84,7 @@ require (
 	github.com/containers/ocicrypt v1.2.1 // indirect
 	github.com/creack/pty v1.1.24 // indirect
 	github.com/djherbis/times v1.6.0 // indirect
-	github.com/docker/docker-credential-helpers v0.8.2 // indirect
+	github.com/docker/docker-credential-helpers v0.9.3 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -96,7 +96,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-shellwords v1.0.12 // indirect
+	github.com/mattn/go-shellwords v1.0.13 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
