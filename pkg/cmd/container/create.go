@@ -253,10 +253,11 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
 
-	if options.Interactive {
-		if options.Detach {
-			return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), errors.New("currently flag -i and -d cannot be specified together (FIXME)")
-		}
+	// -i with -d requires -t. Without a pty, nerdctl (being daemonless) has no
+	// process to keep the container's stdin open after it detaches, so the
+	// process would read EOF immediately; with -t the shim holds the pty open.
+	if options.Interactive && options.Detach && !options.TTY {
+		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), errors.New("combination of flags -i and -d can only be specified together with -t")
 	}
 
 	if options.TTY {
