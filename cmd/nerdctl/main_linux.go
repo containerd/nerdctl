@@ -35,6 +35,9 @@ func appNeedsRootlessParentMain(cmd *cobra.Command, args []string) bool {
 	if !rootlessutil.IsRootlessParent() {
 		return false
 	}
+	if len(args) == 0 && cmd.HasSubCommands() {
+		return false
+	}
 	if len(commands) < 2 {
 		return true
 	}
