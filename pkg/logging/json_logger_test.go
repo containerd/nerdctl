@@ -109,6 +109,46 @@ func TestReadRotatedJSONLog(t *testing.T) {
 	}
 }
 
+// TestReadJSONLogsDrainsOnStop verifies that when the stop signal is received
+// while following a log file, any log entries that were flushed but not yet
+// read are still drained and written out before returning.
+// Regression test for https://github.com/containerd/nerdctl/issues/5006
+func TestReadJSONLogsDrainsOnStop(t *testing.T) {
+	file, err := os.CreateTemp("", "TestDrainOnStop")
+	if err != nil {
+		t.Fatalf("unable to create temp file")
+	}
+	defer os.Remove(file.Name())
+	// A final entry without a trailing newline in the log text, mirroring the
+	// scenario in the linked issue.
+	file.WriteString(`{"log":"Hello World!\n","stream":"stdout","time":"2024-07-12T03:09:24.916296732Z"}` + "\n")
+	file.WriteString(`{"log":"There is no newline","stream":"stdout","time":"2024-07-12T03:09:24.916296732Z"}` + "\n")
+
+	// Pre-load the stop signal so the first select iteration takes the stop
+	// branch while the file still has unread content. This deterministically
+	// reproduces the race where the stop signal wins before the final entries
+	// are read.
+	stopChan := make(chan os.Signal, 1)
+	stopChan <- os.Interrupt
+
+	stdoutBuf := bytes.NewBuffer(nil)
+	stderrBuf := bytes.NewBuffer(nil)
+	lvOpts := LogViewOptions{
+		LogPath: file.Name(),
+		Follow:  true,
+	}
+	if err := viewLogsJSONFileDirect(lvOpts, file.Name(), stdoutBuf, stderrBuf, stopChan); err != nil {
+		t.Fatal(err.Error())
+	}
+	if stderrBuf.Len() > 0 {
+		t.Fatalf("Stderr: %v", stderrBuf.String())
+	}
+	const expected = "Hello World!\nThere is no newline"
+	if actual := stdoutBuf.String(); expected != actual {
+		t.Fatalf("Actual output does not match expected.\nActual:  %q\nExpected: %q\n", actual, expected)
+	}
+}
+
 func TestReadJSONLogs(t *testing.T) {
 	file, err := os.CreateTemp("", "TestFollowLogs")
 	if err != nil {
