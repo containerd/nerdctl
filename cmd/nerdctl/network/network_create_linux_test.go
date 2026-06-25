@@ -110,6 +110,41 @@ func TestNetworkCreate(t *testing.T) {
 			},
 		},
 		{
+			Description: "dual-stack with explicit gateways",
+			Require:     nerdtest.OnlyIPv6,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				// Before the fix the IPv6 gateway was checked against the IPv4
+				// subnet and creation failed.
+				helpers.Ensure("network", "create", data.Identifier(),
+					"--ipv6",
+					"--subnet", "10.5.0.0/16",
+					"--subnet", "2001:db8:5::/64",
+					"--gateway", "10.5.0.1",
+					"--gateway", "2001:db8:5::1",
+				)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("network", "inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						netw := nerdtest.InspectNetwork(helpers, data.Identifier())
+						gateways := map[string]string{}
+						for _, c := range netw.IPAM.Config {
+							gateways[c.Subnet] = c.Gateway
+						}
+						assert.Equal(t, gateways["10.5.0.0/16"], "10.5.0.1")
+						assert.Equal(t, gateways["2001:db8:5::/64"], "2001:db8:5::1")
+					},
+				}
+			},
+		},
+		{
 			Description: "internal enabled",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", "--internal", data.Identifier())

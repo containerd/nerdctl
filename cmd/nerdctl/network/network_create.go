@@ -47,7 +47,7 @@ func createCommand() *cobra.Command {
 	cmd.RegisterFlagCompletionFunc("ipam-driver", completion.IPAMDrivers)
 	cmd.Flags().StringArray("ipam-opt", nil, "Set IPAM driver specific options")
 	cmd.Flags().StringArray("subnet", nil, `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
-	cmd.Flags().String("gateway", "", `Gateway for the master subnet`)
+	cmd.Flags().StringArray("gateway", nil, "IPv4 or IPv6 Gateway for the master subnet")
 	cmd.Flags().String("ip-range", "", `Allocate container ip from a sub-range`)
 	cmd.Flags().StringArray("label", nil, "Set metadata for a network")
 	cmd.Flags().Bool("ipv6", false, "Enable IPv6 networking")
@@ -84,7 +84,7 @@ func createAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	gatewayStr, err := cmd.Flags().GetString("gateway")
+	gateways, err := cmd.Flags().GetStringArray("gateway")
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func createAction(cmd *cobra.Command, args []string) error {
 		IPAMDriver:  ipamDriver,
 		IPAMOptions: strutil.ConvertKVStringsToMap(ipamOpts),
 		Subnets:     subnets,
-		Gateway:     gatewayStr,
+		Gateway:     gateways,
 		IPRange:     ipRangeStr,
 		Labels:      labels,
 		IPv6:        ipv6,

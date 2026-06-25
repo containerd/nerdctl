@@ -438,20 +438,20 @@ func (e *CNIEnv) createDefaultNetworkConfig(bridgeIP string) error {
 	}
 
 	bridgeCIDR := DefaultCIDR
-	bridgeGatewayIP := ""
+	var bridgeGateways []string
 	if bridgeIP != "" {
 		bIP, bCIDR, err := net.ParseCIDR(bridgeIP)
 		if err != nil {
 			return fmt.Errorf("invalid bridge ip %s: %w", bridgeIP, err)
 		}
-		bridgeGatewayIP = bIP.String()
+		bridgeGateways = []string{bIP.String()}
 		bridgeCIDR = bCIDR.String()
 	}
 	opts := types.NetworkCreateOptions{
 		Name:       DefaultNetworkName,
 		Driver:     DefaultNetworkName,
 		Subnets:    []string{bridgeCIDR},
-		Gateway:    bridgeGatewayIP,
+		Gateway:    bridgeGateways,
 		IPAMDriver: "default",
 		Labels:     []string{fmt.Sprintf("%s=true", labels.NerdctlDefaultNetwork)},
 	}
