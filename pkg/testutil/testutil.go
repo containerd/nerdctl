@@ -18,7 +18,6 @@ package testutil
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -504,14 +503,6 @@ func M(m *testing.M) {
 	}
 
 	os.Exit(func() int {
-		// If there is a lockfile (no err), or if we error-ed stating it (permission), another test run is currently going.
-		// Note that this could be racy. The .lock file COULD get acquired after this and before we hit the lock section.
-		// This is not a big deal then: we will just wait for the lock to free.
-		if _, err := os.Stat(testLockFile); err == nil || !errors.Is(err, os.ErrNotExist) {
-			log.L.Errorf("Another test binary is already running. If you think this is an error, manually remove %s", testLockFile)
-			return 1
-		}
-
 		err := os.MkdirAll(filepath.Dir(testLockFile), 0o777)
 		if err != nil {
 			log.L.WithError(err).Errorf("failed creating testing lock directory %q", filepath.Dir(testLockFile))
