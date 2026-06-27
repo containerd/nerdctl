@@ -19,6 +19,7 @@
 package netutil
 
 import (
+	"net"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
@@ -68,4 +69,57 @@ func TestGuessFirewallPluginVersion(t *testing.T) {
 			assert.ErrorContains(t, err, tc.err)
 		}
 	}
+}
+
+// TestPairIPAMRangesIPRange covers matching repeatable --ip-range values to the
+// subnet that contains each, and the errors for an unmatched or malformed range.
+func TestPairIPAMRangesIPRange(t *testing.T) {
+	t.Parallel()
+	// parse turns the CIDR strings into the already-resolved subnets that
+	// pairIPAMRanges takes, keeping each subtest readable.
+	parse := func(t *testing.T, cidrs ...string) []*net.IPNet {
+		t.Helper()
+		subnets := make([]*net.IPNet, len(cidrs))
+		for i, c := range cidrs {
+			_, n, err := net.ParseCIDR(c)
+			assert.NilError(t, err)
+			subnets[i] = n
+		}
+		return subnets
+	}
+
+	t.Run("each ip-range pairs with its subnet regardless of order", func(t *testing.T) {
+		subnets := parse(t, "10.6.0.0/16", "2001:db8:6::/64")
+		// Given v6-first to prove the pairing is by containment, not by index.
+		ipRanges := []string{"2001:db8:6::/80", "10.6.1.0/24"}
+		ranges, findIPv4, err := pairIPAMRanges(subnets, nil, ipRanges, true)
+		assert.NilError(t, err)
+		assert.Equal(t, true, findIPv4)
+		got := map[string]string{}
+		for _, r := range ranges {
+			got[r[0].Subnet] = r[0].IPRange
+		}
+		assert.Equal(t, "10.6.1.0/24", got["10.6.0.0/16"])
+		assert.Equal(t, "2001:db8:6::/80", got["2001:db8:6::/64"])
+	})
+
+	t.Run("an ip-range matching no subnet errors", func(t *testing.T) {
+		_, _, err := pairIPAMRanges(parse(t, "10.6.0.0/16"), nil, []string{"192.168.1.0/24"}, false)
+		assert.ErrorContains(t, err, `no matching subnet for ip-range "192.168.1.0/24"`)
+	})
+
+	t.Run("an IPv4 ip-range with only an IPv6 subnet errors", func(t *testing.T) {
+		_, _, err := pairIPAMRanges(parse(t, "2001:db8:6::/64"), nil, []string{"10.6.1.0/24"}, true)
+		assert.ErrorContains(t, err, `no matching subnet for ip-range "10.6.1.0/24"`)
+	})
+
+	t.Run("a second ip-range claiming the same subnet errors", func(t *testing.T) {
+		_, _, err := pairIPAMRanges(parse(t, "10.6.0.0/16"), nil, []string{"10.6.1.0/24", "10.6.2.0/24"}, false)
+		assert.ErrorContains(t, err, `no matching subnet for ip-range "10.6.2.0/24"`)
+	})
+
+	t.Run("a malformed ip-range errors", func(t *testing.T) {
+		_, _, err := pairIPAMRanges(parse(t, "10.6.0.0/16"), nil, []string{"bogus"}, false)
+		assert.ErrorContains(t, err, `failed to parse ip-range "bogus"`)
+	})
 }
