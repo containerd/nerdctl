@@ -48,8 +48,9 @@ var JSONDriverLogOpts = []string{
 }
 
 type JSONLogger struct {
-	Opts   map[string]string
-	logger *logrotate.Logger
+	Opts    map[string]string
+	logger  *logrotate.Logger
+	encoder *jsonfile.SyncEncoder
 }
 
 func JSONFileLogOptsValidate(logOptMap map[string]string) error {
@@ -119,11 +120,20 @@ func (jsonLogger *JSONLogger) PreProcess(ctx context.Context, dataStore string, 
 	// MaxBackups does not include file to write logs to
 	l.MaxBackups = maxFile - 1
 	jsonLogger.logger = l
+	jsonLogger.encoder = jsonfile.NewSyncEncoder(l)
 	return nil
 }
 
 func (jsonLogger *JSONLogger) Process(stdout <-chan string, stderr <-chan string) error {
 	return jsonfile.Encode(stdout, stderr, jsonLogger.logger)
+}
+
+// WriteLogEntry writes a single log line synchronously, implementing SyncDriver.
+// Writing inline (rather than over a channel consumed by Process) ensures a
+// container's final output is durable before containerd tears the logging
+// process down on exit. https://github.com/containerd/nerdctl/issues/5006
+func (jsonLogger *JSONLogger) WriteLogEntry(stream, line string) error {
+	return jsonLogger.encoder.Encode(stream, line)
 }
 
 func (jsonLogger *JSONLogger) PostProcess() error {
@@ -182,7 +192,18 @@ func viewLogsJSONFileDirect(lvopts LogViewOptions, jsonLogFilePath string, stdou
 	for {
 		select {
 		case <-stopChannel:
-			log.L.Debug("received stop signal while re-reading JSON logfile, returning")
+			log.L.Debug("received stop signal while re-reading JSON logfile, draining remaining logs and returning")
+			// The stop signal is only sent after WaitForLogger has confirmed that the
+			// logger finished writing (see pkg/cmd/container.Logs). However, the
+			// watcher-driven read loop may not have consumed the final entries yet:
+			// they may have been flushed to the file while we were blocked in
+			// startTail, and the stop signal wins the next select iteration before
+			// they are read. Do a final read so that we don't drop log content that
+			// was written right before the container exited.
+			// https://github.com/containerd/nerdctl/issues/5006
+			if _, err := jsonfile.Decode(stdout, stderr, fin, lvopts.Timestamps, lvopts.Since, lvopts.Until); err != nil {
+				log.L.WithError(err).Debugf("error draining remaining logs from JSON logfile %q", jsonLogFilePath)
+			}
 			return nil
 		default:
 			if stop || (limitedMode && limitedNum == 0) {

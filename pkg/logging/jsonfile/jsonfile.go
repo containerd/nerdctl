@@ -43,6 +43,30 @@ func Path(dataStore, ns, id string) string {
 	return filepath.Join(dataStore, "containers", ns, id, id+"-json.log")
 }
 
+// SyncEncoder writes individual json-file log entries to a writer. Its Encode
+// method is safe for concurrent use, so it can be shared between the goroutines
+// reading a container's stdout and stderr.
+type SyncEncoder struct {
+	mu  sync.Mutex
+	enc *json.Encoder
+}
+
+// NewSyncEncoder returns a SyncEncoder that writes to w.
+func NewSyncEncoder(w io.Writer) *SyncEncoder {
+	return &SyncEncoder{enc: json.NewEncoder(w)}
+}
+
+// Encode writes a single log entry for the given stream.
+func (s *SyncEncoder) Encode(stream, line string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.enc.Encode(&Entry{
+		Stream: stream,
+		Log:    line,
+		Time:   time.Now().UTC(),
+	})
+}
+
 func Encode(stdout <-chan string, stderr <-chan string, writer io.Writer) error {
 	enc := json.NewEncoder(writer)
 	var encMu sync.Mutex
