@@ -17,6 +17,7 @@
 package formatter
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -236,4 +237,38 @@ func TestEllipsis(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestFormatInspectSlice(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty slice is ignored", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+		err := FormatInspectSlice("{{.ID}}", &buf, nil)
+		assert.NilError(t, err)
+		assert.Equal(t, "", buf.String())
+	})
+
+	t.Run("malformed template returns error", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+		err := FormatInspectSlice("{{bad", &buf, []interface{}{
+			map[string]string{"ID": "abc"},
+		})
+		assert.ErrorContains(t, err, "template")
+	})
+
+	t.Run("default format still works", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+		err := FormatInspectSlice("", &buf, []interface{}{
+			map[string]string{"ID": "abc"},
+		})
+		assert.NilError(t, err)
+		assert.Assert(t, buf.Len() > 0)
+	})
 }
