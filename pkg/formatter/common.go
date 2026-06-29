@@ -78,6 +78,15 @@ func FormatSlice(format string, writer io.Writer, x []interface{}) error {
 	return nil
 }
 
+// FormatInspectSlice formats inspect results and propagates template errors back
+// to the caller so CLI commands can fail with a non-zero exit code.
+func FormatInspectSlice(format string, writer io.Writer, x []interface{}) error {
+	if len(x) == 0 {
+		return nil
+	}
+	return FormatSlice(format, writer, x)
+}
+
 func tryRawFormat(b *bytes.Buffer, f interface{}, tmpl *template.Template) error {
 	m, err := json.MarshalIndent(f, "", "    ")
 	if err != nil {

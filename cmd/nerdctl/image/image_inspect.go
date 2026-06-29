@@ -21,8 +21,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/containerd/log"
-
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -110,13 +108,7 @@ func imageInspectAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Display
-	if len(entries) > 0 {
-		if formatErr := formatter.FormatSlice(options.Format, options.Stdout, entries); formatErr != nil {
-			log.G(ctx).Error(formatErr)
-		}
-	}
-	return err
+	return formatter.FormatInspectSlice(options.Format, options.Stdout, entries)
 }
 
 func imageInspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

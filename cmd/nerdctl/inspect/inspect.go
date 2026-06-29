@@ -22,8 +22,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/containerd/log"
-
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	containercmd "github.com/containerd/nerdctl/v2/cmd/nerdctl/container"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
@@ -176,11 +174,7 @@ func inspectAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%d errors: %v", len(errs), errs)
 	}
 
-	if formatErr := formatter.FormatSlice(format, cmd.OutOrStdout(), entries); formatErr != nil {
-		log.G(ctx).Error(formatErr)
-	}
-
-	return nil
+	return formatter.FormatInspectSlice(format, cmd.OutOrStdout(), entries)
 }
 
 func inspectShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

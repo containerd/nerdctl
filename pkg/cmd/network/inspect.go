@@ -98,10 +98,7 @@ func Inspect(ctx context.Context, client *containerd.Client, options types.Netwo
 	}
 
 	if len(result) > 0 {
-		if formatErr := formatter.FormatSlice(options.Format, options.Stdout, result); formatErr != nil {
-			log.G(ctx).Error(formatErr)
-		}
-		err = nil
+		err = formatter.FormatInspectSlice(options.Format, options.Stdout, result)
 	} else {
 		err = errors.New("unable to find any network matching the provided request")
 	}
