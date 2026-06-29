@@ -28,6 +28,19 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
+// startEventOutput returns the substring expected in the JSON output of a
+// container "start" event. Docker v29 dropped the legacy top-level "status"
+// field from the events API, exposing only "Action", whereas nerdctl still
+// emits a "Status" field.
+// https://github.com/moby/moby/pull/50832
+// https://github.com/containerd/nerdctl/issues/5028
+func startEventOutput() string {
+	if nerdtest.IsDocker() {
+		return "\"Action\":\"start\""
+	}
+	return "tatus\":\"start\""
+}
+
 func testEventFilterExecutor(data test.Data, helpers test.Helpers) test.TestableCommand {
 	helpers.Ensure("pull", testutil.CommonImage)
 	cmd := helpers.Command("events", "--filter", data.Labels().Get("filter"), "--format", "json")
@@ -68,7 +81,7 @@ func TestEventFilters(t *testing.T) {
 			},
 			Data: test.WithLabels(map[string]string{
 				"filter": "event=start",
-				"output": "tatus\":\"start\"",
+				"output": startEventOutput(),
 			}),
 		},
 		{
@@ -97,7 +110,7 @@ func TestEventFilters(t *testing.T) {
 			},
 			Data: test.WithLabels(map[string]string{
 				"filter": "status=start",
-				"output": "tatus\":\"start\"",
+				"output": startEventOutput(),
 			}),
 		},
 		{

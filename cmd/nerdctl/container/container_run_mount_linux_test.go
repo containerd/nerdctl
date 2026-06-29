@@ -443,7 +443,7 @@ func TestRunMountBindMode(t *testing.T) {
 
 	base.Cmd("run",
 		"--rm",
-		"--mount", fmt.Sprintf("type=bind,bind-nonrecursive,src=%s,target=/mnt1", tmpDir1),
+		"--mount", fmt.Sprintf("type=bind,bind-recursive=disabled,src=%s,target=/mnt1", tmpDir1),
 		testutil.AlpineImage,
 		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
 	).AssertOutWithFunc(func(stdout string) error {
@@ -459,7 +459,7 @@ func TestRunMountBindMode(t *testing.T) {
 
 	base.Cmd("run",
 		"--rm",
-		"--mount", fmt.Sprintf("type=bind,bind-nonrecursive=false,src=%s,target=/mnt1", tmpDir1),
+		"--mount", fmt.Sprintf("type=bind,bind-recursive=enabled,src=%s,target=/mnt1", tmpDir1),
 		testutil.AlpineImage,
 		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
 	).AssertOutWithFunc(func(stdout string) error {

@@ -306,7 +306,8 @@ Volume flags:
     - :nerd_face: `rro`: mount the filesystem recursively read-only.
   - Options specific to `bind`:
     - :whale: `bind-propagation`: `shared`, `slave`, `private`, `rshared`, `rslave`, or `rprivate`(default).
-    - :whale: `bind-nonrecursive`: `true` or `false`(default). If set to true, submounts are not recursively bind-mounted. This option is useful for readonly bind mount.
+    - :whale: `bind-recursive`: `enabled`(default) or `disabled`. If set to `disabled`, submounts are not recursively bind-mounted. This option is useful for readonly bind mount.
+    - :whale: `bind-nonrecursive`: `true` or `false`(default). Deprecated alias for `bind-recursive=disabled` / `bind-recursive=enabled`. If set to true, submounts are not recursively bind-mounted.
     - unimplemented options: `consistency`
   - Options specific to `tmpfs`:
     - :whale: `tmpfs-size`: Size of the tmpfs mount in bytes. Unlimited by default.

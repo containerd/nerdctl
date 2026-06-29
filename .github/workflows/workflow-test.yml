@@ -155,7 +155,7 @@ jobs:
       no-hyperv: ${{ matrix.canary && true || false }}
       go-version: 1.26
       windows-cni-version: v0.3.1
-      docker-version: 5:28.0.4-1~ubuntu.24.04~noble
+      docker-version: 5:29.6.1-1~ubuntu.24.04~noble
       # Windows CI still requires containerd v2.2.
       # [v2.3.0 regression] The virtual machine or container JSON document is invalid. (Hyper-V container)
       # https://github.com/containerd/containerd/issues/13254

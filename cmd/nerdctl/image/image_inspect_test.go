@@ -68,7 +68,10 @@ func TestImageInspectSimpleCases(t *testing.T) {
 			},
 			{
 				Description: "Config.Image field is set",
-				Command:     test.Command("image", "inspect", testutil.CommonImage),
+				// Config.Image is no longer populated since Docker v28.2
+				// https://github.com/moby/moby/pull/48457
+				Require: require.Not(nerdtest.Docker),
+				Command: test.Command("image", "inspect", testutil.CommonImage),
 				Expected: test.Expects(0, nil, func(stdout string, t tig.T) {
 					var dc []dockercompat.Image
 					err := json.Unmarshal([]byte(stdout), &dc)
