@@ -399,6 +399,16 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 		return err
 	}
 
+	// Cleanup the IO after a successful Stop
+	io := task.IO()
+	if io != nil {
+		defer func() {
+			if cerr := io.Close(); cerr != nil {
+				log.G(ctx).Warnf("failed to close IO for container %s: %v", container.ID(), cerr)
+			}
+		}()
+	}
+
 	status, err := task.Status(ctx)
 	if err != nil {
 		return err
