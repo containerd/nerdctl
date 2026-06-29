@@ -31,7 +31,7 @@ type NetworkCreateOptions struct {
 	IPAMDriver  string
 	IPAMOptions map[string]string
 	Subnets     []string
-	Gateway     string
+	Gateway     []string
 	IPRange     string
 	Labels      []string
 	IPv6        bool

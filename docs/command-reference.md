@@ -1265,7 +1265,7 @@ Flags:
   - :nerd_face: `--ipam-driver=dhcp`: DHCP IPAM driver for unix, requires root
 - :whale: `--ipam-opt`: Set IPAM driver specific options
 - :whale: `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"
-- :whale: `--gateway`: Gateway for the master subnet
+- :whale: `--gateway`: IPv4 or IPv6 Gateway for the master subnet
 - :whale: `--ip-range`: Allocate container ip from a sub-range
 - :whale: `--label`: Set metadata on a network
 - :whale: `--ipv6`: Enable IPv6. Should be used with a valid subnet.
