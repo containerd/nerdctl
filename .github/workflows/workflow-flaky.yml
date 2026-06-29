@@ -29,7 +29,7 @@ jobs:
         target: ["rootful", "rootless"]
     with:
       timeout: 60
-      runner: ubuntu-24.04
+      runner: ubuntu-26.04
       guest: ${{ matrix.guest }}
       target: ${{ matrix.target }}
       skip-flaky: true  # skip the most flaky ones for now
@@ -39,11 +39,11 @@ jobs:
     uses: ./.github/workflows/job-test-in-lima-freebsd.yml
     with:
       timeout: 15
-      runner: ubuntu-24.04
+      runner: ubuntu-26.04
 
   kube:
     name: "kubernetes"
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     env:
       ROOTFUL: true

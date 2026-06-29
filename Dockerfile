@@ -44,8 +44,8 @@ ARG GOMODJAIL_VERSION=v0.3.2@c145bb1e36fe0939c5fa0467f2477878dea8e3d9
 # Test deps
 # Currently, the Docker Official Images and the test deps are not pinned by the hash
 ARG GO_VERSION=1.26
-ARG UBUNTU_VERSION=24.04
-ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
+ARG UBUNTU_VERSION=26.04
+ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.2
 ARG GOTESTSUM_VERSION=v1.13.0
 ARG NYDUS_VERSION=v2.4.3
 ARG SOCI_SNAPSHOTTER_VERSION=0.14.1
@@ -303,9 +303,7 @@ RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
     software-properties-common \
     gnupg \
     gpg-agent \
-    ca-certificates && \
-    add-apt-repository ppa:criu/ppa && \
-    apt-get update -qq && apt-get install -qq --no-install-recommends \
+    ca-certificates \
     expect \
     jq \
     git \
