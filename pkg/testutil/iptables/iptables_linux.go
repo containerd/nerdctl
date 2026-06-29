@@ -97,3 +97,26 @@ func GetRedirectedChain(t *testing.T, ipt *iptables.IPTables, chain, namespace, 
 	}
 	return redirectedChain
 }
+
+// ForwardExistsFromRules checks whether any rule in the given slice
+// matches the expected DNAT forwarding pattern.
+func ForwardExistsFromRules(rules []string, containerIP string, port int) (bool, error) {
+	if len(rules) < 1 {
+		return false, fmt.Errorf("not enough rules: %d", len(rules))
+	}
+
+	// here we check if at least one of the rules in the chain
+	// matches the required string to identify that the rule was applied
+	found := false
+	matchRule := `--dport ` + fmt.Sprintf("%d", port) + ` .+ --to-destination ` + containerIP
+	for _, rule := range rules {
+		foundInRule, err := regexp.MatchString(matchRule, rule)
+		if err != nil {
+			return false, fmt.Errorf("error in match string: %q", err)
+		}
+		if foundInRule {
+			found = foundInRule
+		}
+	}
+	return found, nil
+}
