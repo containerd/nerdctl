@@ -35,6 +35,10 @@ type NetworkCreateOptions struct {
 	IPRange     string
 	Labels      []string
 	IPv6        bool
+	// DisableIPv4 turns off IPv4 to create an IPv6-only network. It is the
+	// inverse of the --ipv4 flag (which defaults to on), so the zero value
+	// keeps IPv4 enabled and matches the previous behaviour.
+	DisableIPv4 bool
 	Internal    bool
 }
 

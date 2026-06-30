@@ -215,23 +215,34 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 	return plugins, nil
 }
 
-func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string, ipRangeStr string, opts map[string]string, ipv6 bool, internal bool) (map[string]interface{}, error) {
+func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string, ipRangeStr string, opts map[string]string, ipv6, disableIPv4, internal bool) (map[string]interface{}, error) {
 	var ipamConfig interface{}
 	switch driver {
 	case "default", "host-local":
 		ipamConf := newHostLocalIPAMConfig()
 		if !internal {
+			// An IPv6-only network has no IPv4 gateway, so its default route
+			// must be the IPv6 one; otherwise host-local installs an IPv4
+			// default route with no matching range.
+			defaultRoute := "0.0.0.0/0"
+			if disableIPv4 {
+				defaultRoute = "::/0"
+			}
 			ipamConf.Routes = []IPAMRoute{
-				{Dst: "0.0.0.0/0"},
+				{Dst: defaultRoute},
 			}
 		}
 		ranges, findIPv4, err := e.parseIPAMRanges(subnets, gateways, ipRangeStr, ipv6)
 		if err != nil {
 			return nil, err
 		}
+		if disableIPv4 && findIPv4 {
+			return nil, fmt.Errorf("--ipv4=false conflicts with an IPv4 subnet")
+		}
 		ipamConf.Ranges = append(ipamConf.Ranges, ranges...)
-		if !findIPv4 {
-			// The default IPv4 range uses a computed gateway; pass none.
+		if !disableIPv4 && !findIPv4 {
+			// The default IPv4 range uses a computed gateway; pass none. Skipped
+			// when IPv4 is disabled, leaving the network IPv6-only.
 			ranges, _, _ = e.parseIPAMRanges([]string{""}, nil, ipRangeStr, ipv6)
 			ipamConf.Ranges = append(ipamConf.Ranges, ranges...)
 		}

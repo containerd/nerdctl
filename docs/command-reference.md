@@ -1268,6 +1268,7 @@ Flags:
 - :whale: `--gateway`: IPv4 or IPv6 Gateway for the master subnet
 - :whale: `--ip-range`: Allocate container ip from a sub-range
 - :whale: `--label`: Set metadata on a network
+- :whale: `--ipv4`: Enable IPv4. Enabled by default; set to false with `--ipv6` and an IPv6 subnet for an IPv6-only network.
 - :whale: `--ipv6`: Enable IPv6. Should be used with a valid subnet.
 - :whale: `--internal`: Restrict external access to the network.
 
