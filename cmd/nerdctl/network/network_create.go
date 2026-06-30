@@ -50,6 +50,7 @@ func createCommand() *cobra.Command {
 	cmd.Flags().StringArray("gateway", nil, "IPv4 or IPv6 Gateway for the master subnet")
 	cmd.Flags().StringArray("ip-range", nil, `Allocate container ip from a sub-range`)
 	cmd.Flags().StringArray("label", nil, "Set metadata for a network")
+	cmd.Flags().Bool("ipv4", true, "Enable IPv4 networking (set to false together with --ipv6 for an IPv6-only network)")
 	cmd.Flags().Bool("ipv6", false, "Enable IPv6 networking")
 	cmd.Flags().Bool("internal", false, "Restrict external access to the network")
 	return cmd
@@ -97,6 +98,10 @@ func createAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	labels = strutil.DedupeStrSlice(labels)
+	ipv4, err := cmd.Flags().GetBool("ipv4")
+	if err != nil {
+		return err
+	}
 	ipv6, err := cmd.Flags().GetBool("ipv6")
 	if err != nil {
 		return err
@@ -118,6 +123,7 @@ func createAction(cmd *cobra.Command, args []string) error {
 		IPRange:     ipRanges,
 		Labels:      labels,
 		IPv6:        ipv6,
+		IPv4:        &ipv4,
 		Internal:    internal,
 	}, cmd.OutOrStdout())
 }

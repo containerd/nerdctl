@@ -35,7 +35,11 @@ type NetworkCreateOptions struct {
 	IPRange     []string
 	Labels      []string
 	IPv6        bool
-	Internal    bool
+	// IPv4 enables IPv4 on the network. A nil value defaults to enabled, so a
+	// directly-constructed NetworkCreateOptions keeps IPv4 on; setting it to
+	// false together with IPv6 yields an IPv6-only network.
+	IPv4     *bool
+	Internal bool
 }
 
 // NetworkInspectOptions specifies options for `nerdctl network inspect`.

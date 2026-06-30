@@ -72,11 +72,15 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 	return plugins, nil
 }
 
-func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string, ipRanges []string, opts map[string]string, ipv6 bool, internal bool) (map[string]interface{}, error) {
+func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string, ipRanges []string, opts map[string]string, ipv6, ipv4, internal bool) (map[string]interface{}, error) {
 	switch driver {
 	case "default":
 	default:
 		return nil, fmt.Errorf("unsupported ipam driver %q", driver)
+	}
+	// IPv6-only networks are not supported on Windows.
+	if !ipv4 {
+		return nil, fmt.Errorf("--ipv4=false is not supported on Windows")
 	}
 
 	// Windows is single-subnet, so use at most one gateway and one ip-range.
