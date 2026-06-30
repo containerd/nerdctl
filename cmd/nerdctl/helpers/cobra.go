@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -28,6 +29,28 @@ import (
 
 	"github.com/containerd/log"
 )
+
+func formatAliasLabels(aliasGroups ...[]string) []string {
+	var labels []string
+	for _, aliases := range aliasGroups {
+		for _, alias := range aliases {
+			prefix := "--"
+			if len(alias) == 1 {
+				prefix = "-"
+			}
+			labels = append(labels, prefix+alias)
+		}
+	}
+	return labels
+}
+
+func appendAliasesUsage(usage string, aliasGroups ...[]string) string {
+	labels := formatAliasLabels(aliasGroups...)
+	if len(labels) == 0 {
+		return usage
+	}
+	return fmt.Sprintf("%s (aliases: %s)", usage, strings.Join(labels, ", "))
+}
 
 // UnknownSubcommandAction is needed to let `nerdctl system non-existent-command` fail
 // https://github.com/containerd/nerdctl/issues/487
@@ -74,6 +97,7 @@ func AddStringFlag(cmd *cobra.Command, name string, aliases []string, value stri
 	if envV, ok := os.LookupEnv(env); ok {
 		value = envV
 	}
+	usage = appendAliasesUsage(usage, aliases)
 	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
 	p := new(string)
 	flags := cmd.Flags()
@@ -85,6 +109,7 @@ func AddStringFlag(cmd *cobra.Command, name string, aliases []string, value stri
 		} else {
 			flags.StringVar(p, a, value, aliasesUsage)
 		}
+		flags.MarkHidden(a)
 	}
 }
 
@@ -100,6 +125,7 @@ func AddIntFlag(cmd *cobra.Command, name string, aliases []string, value int, en
 		}
 		value = int(v)
 	}
+	usage = appendAliasesUsage(usage, aliases)
 	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
 	p := new(int)
 	flags := cmd.Flags()
@@ -111,6 +137,7 @@ func AddIntFlag(cmd *cobra.Command, name string, aliases []string, value int, en
 		} else {
 			flags.IntVar(p, a, value, aliasesUsage)
 		}
+		flags.MarkHidden(a)
 	}
 }
 
@@ -126,6 +153,7 @@ func AddDurationFlag(cmd *cobra.Command, name string, aliases []string, value ti
 			log.L.WithError(err).Warnf("Invalid duration value for `%s`", env)
 		}
 	}
+	usage = appendAliasesUsage(usage, aliases)
 	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
 	p := new(time.Duration)
 	flags := cmd.Flags()
@@ -137,6 +165,7 @@ func AddDurationFlag(cmd *cobra.Command, name string, aliases []string, value ti
 		} else {
 			flags.DurationVar(p, a, value, aliasesUsage)
 		}
+		flags.MarkHidden(a)
 	}
 }
 
@@ -176,6 +205,7 @@ func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonP
 	if envV, ok := os.LookupEnv(env); ok {
 		value = []string{envV}
 	}
+	usage = appendAliasesUsage(usage, aliases, nonPersistentAliases)
 	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
 	p := new([]string)
 	flags := cmd.Flags()
@@ -186,6 +216,7 @@ func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonP
 		} else {
 			flags.StringArrayVar(p, a, value, aliasesUsage)
 		}
+		flags.MarkHidden(a)
 	}
 
 	persistentFlags := cmd.PersistentFlags()
@@ -197,6 +228,7 @@ func AddPersistentStringArrayFlag(cmd *cobra.Command, name string, aliases, nonP
 		} else {
 			persistentFlags.StringArrayVar(p, a, value, aliasesUsage)
 		}
+		persistentFlags.MarkHidden(a)
 	}
 }
 
@@ -209,6 +241,7 @@ func AddPersistentStringFlag(cmd *cobra.Command, name string, aliases, localAlia
 	if envV, ok := os.LookupEnv(env); ok {
 		value = envV
 	}
+	usage = appendAliasesUsage(usage, aliases, localAliases, persistentAliases)
 	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
 	p := new(string)
 
@@ -222,6 +255,7 @@ func AddPersistentStringFlag(cmd *cobra.Command, name string, aliases, localAlia
 		} else {
 			flags.StringVar(p, a, value, aliasesUsage)
 		}
+		flags.MarkHidden(a)
 		// non-persistent flags are not added to the InheritedFlags, so we should add them manually
 		f := flags.Lookup(a)
 		aliasToBeInherited.AddFlag(f)
@@ -236,6 +270,7 @@ func AddPersistentStringFlag(cmd *cobra.Command, name string, aliases, localAlia
 		} else {
 			localFlags.StringVar(p, a, value, aliasesUsage)
 		}
+		localFlags.MarkHidden(a)
 	}
 
 	// persistentFlags cannot redefine alias already used in subcommands
@@ -248,6 +283,7 @@ func AddPersistentStringFlag(cmd *cobra.Command, name string, aliases, localAlia
 		} else {
 			persistentFlags.StringVar(p, a, value, aliasesUsage)
 		}
+		persistentFlags.MarkHidden(a)
 	}
 }
 
@@ -264,6 +300,7 @@ func AddPersistentBoolFlag(cmd *cobra.Command, name string, aliases, nonPersiste
 			log.L.WithError(err).Warnf("Invalid boolean value for `%s`", env)
 		}
 	}
+	usage = appendAliasesUsage(usage, aliases, nonPersistentAliases)
 	aliasesUsage := fmt.Sprintf("Alias of --%s", name)
 	p := new(bool)
 	flags := cmd.Flags()
@@ -274,6 +311,7 @@ func AddPersistentBoolFlag(cmd *cobra.Command, name string, aliases, nonPersiste
 		} else {
 			flags.BoolVar(p, a, value, aliasesUsage)
 		}
+		flags.MarkHidden(a)
 	}
 
 	persistentFlags := cmd.PersistentFlags()
@@ -285,6 +323,7 @@ func AddPersistentBoolFlag(cmd *cobra.Command, name string, aliases, nonPersiste
 		} else {
 			persistentFlags.BoolVar(p, a, value, aliasesUsage)
 		}
+		persistentFlags.MarkHidden(a)
 	}
 }
 

@@ -17,7 +17,9 @@
 package main
 
 import (
+	"bytes"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/containerd/containerd/v2/defaults"
@@ -129,4 +131,72 @@ version = 2`),
 	}
 
 	testCase.Run(t)
+}
+
+func TestRootHelpHidesAliasImplementationFlags(t *testing.T) {
+	app, err := newApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	app.SetOut(&stdout)
+	app.SetErr(&stdout)
+	app.SetArgs([]string{"--help"})
+
+	if err := app.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	out := stdout.String()
+	for _, unexpected := range []string{
+		"-a, --a",
+		"-H, --H",
+		"-n, --n",
+	} {
+		if strings.Contains(out, unexpected) {
+			t.Fatalf("help output unexpectedly contains %q\n%s", unexpected, out)
+		}
+	}
+	for _, expected := range []string{
+		"--address string           containerd address, optionally with \"unix://\" prefix [$CONTAINERD_ADDRESS] (aliases: -a, -H, --host)",
+		"--namespace string         containerd namespace, such as \"moby\" for Docker, \"k8s.io\" for Kubernetes [$CONTAINERD_NAMESPACE] (aliases: -n)",
+	} {
+		if !strings.Contains(out, expected) {
+			t.Fatalf("help output missing %q\n%s", expected, out)
+		}
+	}
+}
+
+func TestRootHiddenAliasesStillParse(t *testing.T) {
+	app, err := newApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	app.SetOut(&stdout)
+	app.SetErr(&stdout)
+	app.SetArgs([]string{
+		"-a", "unix:///tmp/a.sock",
+		"-H", "unix:///tmp/h.sock",
+		"--host", "unix:///tmp/host.sock",
+		"-n", "testns",
+		"--storage-driver", "native",
+		"--help",
+	})
+
+	if err := app.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := app.Flag("address").Value.String(); got != "unix:///tmp/host.sock" {
+		t.Fatalf("address flag = %q, want %q", got, "unix:///tmp/host.sock")
+	}
+	if got := app.Flag("namespace").Value.String(); got != "testns" {
+		t.Fatalf("namespace flag = %q, want %q", got, "testns")
+	}
+	if got := app.Flag("snapshotter").Value.String(); got != "native" {
+		t.Fatalf("snapshotter flag = %q, want %q", got, "native")
+	}
 }
