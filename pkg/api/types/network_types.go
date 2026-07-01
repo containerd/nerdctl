@@ -32,7 +32,7 @@ type NetworkCreateOptions struct {
 	IPAMOptions map[string]string
 	Subnets     []string
 	Gateway     []string
-	IPRange     string
+	IPRange     []string
 	Labels      []string
 	IPv6        bool
 	Internal    bool
