@@ -315,7 +315,14 @@ CMD ["echo", "nerdctl-build-notag-string"]
 			{
 				Description: "dangling",
 				Command:     test.Command("images", "--filter", "dangling=true"),
-				Expected:    test.Expects(0, nil, expect.Contains("<none>")),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					// TODO: follow Docker v29 behavior (change <none> to <untagged>) https://github.com/containerd/nerdctl/issues/5027
+					dangling := "<none>"
+					if nerdtest.IsDocker() {
+						dangling = "<untagged>"
+					}
+					return test.Expects(0, nil, expect.Contains(dangling))(data, helpers)
+				},
 			},
 			{
 				Description: "not dangling",

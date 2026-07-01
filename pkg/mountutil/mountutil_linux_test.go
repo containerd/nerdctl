@@ -18,6 +18,7 @@ package mountutil
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -414,4 +415,35 @@ func TestProcessFlagMountRW(t *testing.T) {
 			assert.DeepEqual(t, got.Mount.Options, tt.wants.Mount.Options)
 		})
 	}
+}
+
+// TestProcessFlagMountBindRecursive verifies that the Docker `bind-recursive`
+// option (which supersedes the deprecated `bind-nonrecursive`) is honored and
+// maps to non-recursive (bind) or recursive (rbind) mounts.
+func TestProcessFlagMountBindRecursive(t *testing.T) {
+	src := t.TempDir()
+
+	accepted := []struct {
+		spec        string
+		wantBindOpt string
+	}{
+		{"type=bind,source=" + src + ",target=/bar,bind-recursive=disabled", "bind"},
+		{"type=bind,source=" + src + ",target=/bar,bind-recursive=enabled", "rbind"},
+		{"type=bind,source=" + src + ",target=/bar,bind-recursive=false", "bind"},
+		{"type=bind,source=" + src + ",target=/bar,bind-recursive=1", "rbind"},
+		// The deprecated bind-nonrecursive option keeps working.
+		{"type=bind,source=" + src + ",target=/bar,bind-nonrecursive", "bind"},
+		{"type=bind,source=" + src + ",target=/bar,bind-nonrecursive=false", "rbind"},
+	}
+	for _, tt := range accepted {
+		t.Run(tt.spec, func(t *testing.T) {
+			got, err := ProcessFlagMount(tt.spec, nil)
+			assert.NilError(t, err)
+			assert.Assert(t, slices.Contains(got.Mount.Options, tt.wantBindOpt),
+				"expected option %q in %v", tt.wantBindOpt, got.Mount.Options)
+		})
+	}
+
+	_, err := ProcessFlagMount("type=bind,source="+src+",target=/bar,bind-recursive=bogus", nil)
+	assert.ErrorContains(t, err, "invalid value for bind-recursive")
 }

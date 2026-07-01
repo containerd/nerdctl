@@ -336,6 +336,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 				rwOption = key
 				continue
 			case "bind-nonrecursive":
+				// Removed in Docker v29, in favor of `bind-recursive=disabled` https://github.com/docker/cli/pull/6241
 				bindNonRecursive = true
 				continue
 			}
@@ -374,9 +375,30 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			// parseVolumeOptions will do that.
 			bindPropagation = value
 		case "bind-nonrecursive":
+			// Removed in Docker v29, in favor of `bind-recursive=disabled` https://github.com/docker/cli/pull/6241
 			bindNonRecursive, err = strconv.ParseBool(value)
 			if err != nil {
 				return nil, fmt.Errorf("invalid value for %s: %s", key, value)
+			}
+		case "bind-recursive":
+			// bind-recursive is the Docker option that supersedes bind-nonrecursive.
+			valS := value
+			// Allow boolean as an alias to "enabled" or "disabled"
+			if b, err := strconv.ParseBool(valS); err == nil {
+				if b {
+					valS = "enabled"
+				} else {
+					valS = "disabled"
+				}
+			}
+			switch valS {
+			case "enabled":
+				bindNonRecursive = false
+			case "disabled":
+				bindNonRecursive = true
+			default:
+				// TODO: support "writable", "readonly"
+				return nil, fmt.Errorf("invalid value for %s: %s (must be \"enabled\" or \"disabled\")", key, value)
 			}
 		case "tmpfs-size":
 			tmpfsSize, err = units.RAMInBytes(value)
