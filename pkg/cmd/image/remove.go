@@ -25,11 +25,11 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/log"
-	"github.com/containerd/platforms"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
+	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 )
 
 // Remove removes a list of `images`.
@@ -41,6 +41,10 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 
 	cs := client.ContentStore()
 	is := client.ImageService()
+	platformMatcher, err := platformutil.NewMatchComparer(false, nil)
+	if err != nil {
+		return err
+	}
 	containerList, err := client.Containers(ctx)
 	if err != nil {
 		return err
@@ -103,7 +107,7 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 				return fmt.Errorf("conflict: unable to delete %s (must be forced) - image is being used by stopped container %s", found.Req, cid)
 			}
 			// digests is used only for emulating human-readable output of `docker rmi`
-			digests, err := found.Image.RootFS(ctx, cs, platforms.DefaultStrict())
+			digests, err := found.Image.RootFS(ctx, cs, platformMatcher)
 			if err != nil {
 				log.G(ctx).WithError(err).Warning("failed to enumerate rootfs")
 			}
@@ -156,7 +160,7 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 				return false, fmt.Errorf("conflict: unable to delete %s (must be forced) - image is being used by stopped container %s", found.Req, cid)
 			}
 			// digests is used only for emulating human-readable output of `docker rmi`
-			digests, err := found.Image.RootFS(ctx, cs, platforms.DefaultStrict())
+			digests, err := found.Image.RootFS(ctx, cs, platformMatcher)
 			if err != nil {
 				log.G(ctx).WithError(err).Warning("failed to enumerate rootfs")
 			}

@@ -21,12 +21,16 @@ import (
 
 	"github.com/spf13/cobra"
 
+	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/platforms"
+
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/image"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
+	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 )
 
 func inspectCommand() *cobra.Command {
@@ -97,7 +101,11 @@ func imageInspectAction(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unknown mode %q", options.Mode)
 	}
 
-	client, ctx, cancel, err := clientutil.NewClientWithPlatform(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address, options.Platform)
+	var clientOpts []containerd.Opt
+	if options.Platform == "" {
+		clientOpts = append(clientOpts, containerd.WithDefaultPlatform(platformutil.IgnoreOSFeaturesMatcher(platforms.Default(), platformutil.ErofsOSFeature)))
+	}
+	client, ctx, cancel, err := clientutil.NewClientWithPlatform(cmd.Context(), options.GOptions.Namespace, options.GOptions.Address, options.Platform, clientOpts...)
 	if err != nil {
 		return err
 	}
