@@ -26,13 +26,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ubuntu-24.04
+          - runner: ubuntu-26.04
           - runner: macos-15
           - runner: windows-2022
-          - runner: ubuntu-24.04
+          - runner: ubuntu-26.04
             goos: freebsd
           # FIXME: failing since the release of go1.27rc1
-          # - runner: ubuntu-24.04
+          # - runner: ubuntu-26.04
           #   canary: go-canary
     steps:
       - name: "Checkout project"

@@ -23,11 +23,11 @@ jobs:
         # Run on all supported platforms but freebsd
         # Additionally run on canary for linux
         include:
-          - runner: "ubuntu-24.04"
+          - runner: "ubuntu-26.04"
           - runner: "macos-15"
           - runner: "windows-2025"
           # FIXME: failing since the release of go1.27rc1
-          # - runner: "ubuntu-24.04"
+          # - runner: "ubuntu-26.04"
           #   canary: true
     with:
       runner: ${{ matrix.runner }}
@@ -48,10 +48,10 @@ jobs:
       matrix:
         include:
           # Build for arm & amd, current containerd
-          - runner: ubuntu-24.04
-          - runner: ubuntu-24.04-arm
+          - runner: ubuntu-26.04
+          - runner: ubuntu-26.04-arm
           # Additionally build for old containerd on amd
-          - runner: ubuntu-24.04
+          - runner: ubuntu-26.04
             containerd-version: v1.7.33
     with:
       runner: ${{ matrix.runner }}
@@ -68,14 +68,14 @@ jobs:
         include:
           ###### Rootless
           # amd64
-          - runner: ubuntu-24.04
+          - runner: ubuntu-26.04
             target: rootless
           # arm64
-          - runner: ubuntu-24.04-arm
+          - runner: ubuntu-26.04-arm
             target: rootless
             skip-flaky: true
           # port-slirp4netns
-          - runner: ubuntu-24.04
+          - runner: ubuntu-26.04
             target: rootless-port-slirp4netns
             skip-flaky: true
           # old containerd + old ubuntu + old rootlesskit
@@ -84,15 +84,15 @@ jobs:
             containerd-version: v1.7.33
             rootlesskit-version: v1.1.1
           # gomodjail
-          - runner: ubuntu-24.04
+          - runner: ubuntu-26.04
             target: rootless
             binary: "nerdctl.gomodjail"
           ###### Rootful
           # amd64
-          - runner: ubuntu-24.04
+          - runner: ubuntu-26.04
             target: rootful
           # arm64
-          - runner: ubuntu-24.04-arm
+          - runner: ubuntu-26.04-arm
             target: rootful
             skip-flaky: true
           # old containerd + old ubuntu
@@ -100,13 +100,13 @@ jobs:
             target: rootful
             containerd-version: v1.7.33
           # ipv6
-          - runner: ubuntu-24.04
+          - runner: ubuntu-26.04
             target: rootful
             ipv6: true
             skip-flaky: true
           # all canary
           # FIXME: failing since the release of go1.27rc1
-          # - runner: ubuntu-24.04
+          # - runner: ubuntu-26.04
           #   target: rootful
           #   canary: true
 
@@ -134,15 +134,15 @@ jobs:
           # - runner: windows-2025
           #   canary: true
           # Test docker on linux
-          - runner: ubuntu-24.04
+          - runner: ubuntu-26.04
             binary: docker
 
           # FIXME: running nerdctl on the host is work in progress
           # (we miss runc to be installed on the host - and obviously other deps)
           # Plan is to pause this for now and first consolidate dependencies management (wrt Dockerfile vs. host-testing CI)
           # before we can really start testing linux nerdctl on the host.
-          # - runner: ubuntu-24.04
-          # - runner: ubuntu-24.04
+          # - runner: ubuntu-26.04
+          # - runner: ubuntu-26.04
           #  canary: true
     with:
       timeout: 45
@@ -155,7 +155,7 @@ jobs:
       no-hyperv: ${{ matrix.canary && true || false }}
       go-version: 1.26
       windows-cni-version: v0.3.1
-      docker-version: 5:29.6.1-1~ubuntu.24.04~noble
+      docker-version: 5:29.6.1-1~ubuntu.26.04~resolute
       # Windows CI still requires containerd v2.2.
       # [v2.3.0 regression] The virtual machine or container JSON document is invalid. (Hyper-V container)
       # https://github.com/containerd/containerd/issues/13254
