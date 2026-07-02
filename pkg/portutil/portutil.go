@@ -107,6 +107,13 @@ func ParseFlagP(s string) ([]cni.PortMapping, error) {
 		if err != nil {
 			return nil, err
 		}
+		// bindIP is the effective bind address used only for error messages, so that
+		// an unspecified host IP (e.g. "-p 3000-3001:8080") reports "0.0.0.0" rather
+		// than an empty string ("bind for  failed"), matching the HostIP set below.
+		bindIP := ip
+		if bindIP == "" {
+			bindIP = "0.0.0.0"
+		}
 		if startPort == endPort && startHostPort != endHostPort {
 			// Docker-compatible behavior: a single container port with a host port
 			// range (e.g. "3000-3001:8080") treats the range as a pool and binds the
@@ -122,12 +129,12 @@ func ParseFlagP(s string) ([]cni.PortMapping, error) {
 				}
 			}
 			if !found {
-				return nil, fmt.Errorf("bind for %s failed: all ports in range %s are already allocated", ip, hostPort)
+				return nil, fmt.Errorf("bind for %s failed: all ports in range %s are already allocated", bindIP, hostPort)
 			}
 		} else {
 			for i := startHostPort; i <= endHostPort; i++ {
 				if usedPorts[i] {
-					return nil, fmt.Errorf("bind for %s:%d failed: port is already allocated", ip, i)
+					return nil, fmt.Errorf("bind for %s:%d failed: port is already allocated", bindIP, i)
 				}
 			}
 		}
