@@ -38,4 +38,4 @@ TasksMax=infinity
 OOMScoreAdjust=-999
 
 [Install]
-WantedBy=docker-entrypoint.target
+WantedBy=multi-user.target

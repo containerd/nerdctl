@@ -214,7 +214,7 @@ assets::get(){
 ######################
 
 canary::build::integration(){
-  docker_args=(docker build -t test-integration --target test-integration)
+  docker_args=(docker build -t test-integration-artifacts --target build-test-integration-artifacts)
 
   for dep in "${dependencies[@]}"; do
     local bl=""
