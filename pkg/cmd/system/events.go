@@ -44,6 +44,7 @@ type EventOut struct {
 	Topic     string
 	Status    Status
 	Event     string
+	Labels    map[string]string
 }
 
 type Status string
@@ -89,6 +90,20 @@ func generateEventFilter(filter, filterValue string) (func(e *EventOut) bool, er
 			}
 
 			return strings.EqualFold(string(e.Status), filterValue)
+		}, nil
+	case "LABEL":
+		return func(e *EventOut) bool {
+			if len(e.Labels) == 0 {
+				return false
+			}
+
+			parts := strings.SplitN(filterValue, "=", 2)
+			if len(parts) == 1 {
+				_, ok := e.Labels[parts[0]]
+				return ok
+			}
+
+			return e.Labels[parts[0]] == parts[1]
 		}, nil
 	}
 
@@ -175,6 +190,7 @@ func Events(ctx context.Context, client *containerd.Client, options types.System
 		if e != nil {
 			var out []byte
 			var id string
+			labels := map[string]string{}
 			if e.Event != nil {
 				v, err := typeurl.UnmarshalAny(e.Event)
 				if err != nil {
@@ -197,8 +213,14 @@ func Events(ctx context.Context, client *containerd.Client, options types.System
 					id = data["container_id"].(string)
 				}
 			}
-
-			eOut := EventOut{e.Timestamp, id, e.Namespace, e.Topic, TopicToStatus(e.Topic), string(out)}
+			if id != "" {
+				if container, err := client.ContainerService().Get(ctx, id); err != nil {
+					log.G(ctx).WithError(err).WithField("containerID", id).Debug("failed to retrieve container labels")
+				} else {
+					labels = container.Labels
+				}
+			}
+			eOut := EventOut{e.Timestamp, id, e.Namespace, e.Topic, TopicToStatus(e.Topic), string(out), labels}
 			match := applyFilters(&eOut, filterMap)
 			if match {
 				if tmpl != nil {
