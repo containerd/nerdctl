@@ -1198,3 +1198,80 @@ func TestReservePorts(t *testing.T) {
 	}
 	testCase.Run(t)
 }
+
+func TestRunExposeOnly(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Labels().Set("containerName", data.Identifier())
+		helpers.Ensure("run", "-d", "--name", data.Labels().Get("containerName"), "--expose", "8089", testutil.NginxAlpineImage)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Labels().Get("containerName"))
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "exposed ports are shown in inspect",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Labels().Get("containerName"), "--format", "{{json .Config.ExposedPorts}}")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t tig.T) {
+				assert.Assert(t, strings.Contains(stdout, `"80/tcp":{}`), stdout)
+				assert.Assert(t, strings.Contains(stdout, `"8089/tcp":{}`), stdout)
+			}),
+		},
+		{
+			Description: "expose does not publish ports",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("port", data.Labels().Get("containerName"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.DoesNotContain("8089/tcp ->")),
+		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestRunExposePublishAll(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Require = require.All(
+		require.Not(nerdtest.Rootless), // Automatic port allocation is only supported in rootful mode.
+	)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Labels().Set("containerName", data.Identifier())
+		helpers.Ensure("run", "-d", "--name", data.Labels().Get("containerName"), "--expose", "8089", "-P", testutil.NginxAlpineImage)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Labels().Get("containerName"))
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "exposed ports are shown in inspect",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Labels().Get("containerName"), "--format", "{{json .Config.ExposedPorts}}")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t tig.T) {
+				assert.Assert(t, strings.Contains(stdout, `"80/tcp":{}`), stdout)
+				assert.Assert(t, strings.Contains(stdout, `"8089/tcp":{}`), stdout)
+			}),
+		},
+		{
+			Description: "publish-all publishes image and CLI exposed ports",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("port", data.Labels().Get("containerName"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t tig.T) {
+				assert.Assert(t, strings.Contains(stdout, "80/tcp ->"), stdout)
+				assert.Assert(t, strings.Contains(stdout, "8089/tcp ->"), stdout)
+			}),
+		},
+	}
+
+	testCase.Run(t)
+}

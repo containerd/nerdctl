@@ -38,6 +38,7 @@ import (
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/pkg/cio"
 	"github.com/containerd/containerd/v2/pkg/oci"
+	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
@@ -293,6 +294,31 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 	cOpts = append(cOpts, restartOpts...)
 
+	var imageExposedPorts map[string]struct{}
+
+	if ensuredImage != nil {
+		imageExposedPorts = ensuredImage.ImageConfig.ExposedPorts
+	}
+
+	exposedPorts := mergeExposedPorts(imageExposedPorts, netManager.NetworkOptions().ExposedPorts)
+
+	internalLabels.exposedPorts = exposedPorts
+
+	if netManager.NetworkOptions().PublishAll {
+		publishAllPortMappings, err := generatePublishAllPortMappings(exposedPorts)
+		if err != nil {
+			return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
+		}
+
+		netOpts := netManager.NetworkOptions()
+		netOpts.PortMappings = append(netOpts.PortMappings, publishAllPortMappings...)
+
+		netManager, err = containerutil.NewNetworkingOptionsManager(options.GOptions, netOpts, client)
+		if err != nil {
+			return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
+		}
+	}
+
 	if err = netManager.VerifyNetworkOptions(ctx); err != nil {
 		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), fmt.Errorf("failed to verify networking settings: %w", err)
 	}
@@ -445,6 +471,40 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	}
 
 	return c, nil, nil
+}
+
+func mergeExposedPorts(imageExposedPorts map[string]struct{}, cliExposedPorts []string) map[string]struct{} {
+	exposedPorts := map[string]struct{}{}
+
+	for port := range imageExposedPorts {
+		exposedPorts[port] = struct{}{}
+	}
+
+	for _, port := range cliExposedPorts {
+		if port == "" {
+			continue
+		}
+		if !strings.Contains(port, "/") {
+			port += "/tcp"
+		}
+		exposedPorts[port] = struct{}{}
+	}
+
+	return exposedPorts
+}
+
+func generatePublishAllPortMappings(exposedPorts map[string]struct{}) ([]cni.PortMapping, error) {
+	var portMappings []cni.PortMapping
+
+	for port := range exposedPorts {
+		pm, err := portutil.ParseFlagP(port)
+		if err != nil {
+			return nil, err
+		}
+		portMappings = append(portMappings, pm...)
+	}
+
+	return portMappings, nil
 }
 
 func generateRootfsOpts(args []string, id string, ensured *imgutil.EnsuredImage, options types.ContainerCreateOptions) (opts []oci.SpecOpts, cOpts []containerd.NewContainerOpts, err error) {
@@ -769,6 +829,8 @@ type internalLabels struct {
 	healthcheck string
 
 	privileged bool
+
+	exposedPorts map[string]struct{}
 }
 
 // WithInternalLabels sets the internal labels for a container.
@@ -833,6 +895,14 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 		if err := labels.SetMount(m, jsonMountBytes); err != nil {
 			return nil, err
 		}
+	}
+
+	if len(internalLabels.exposedPorts) > 0 {
+		exposedPortsJSON, err := json.Marshal(internalLabels.exposedPorts)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.ExposedPorts] = string(exposedPortsJSON)
 	}
 
 	if internalLabels.macAddress != "" {

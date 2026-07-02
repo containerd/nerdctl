@@ -578,6 +578,14 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 		Labels: n.Labels,
 		Image:  c.Image,
 	}
+	if exposedPortsJSON := n.Labels[labels.ExposedPorts]; exposedPortsJSON != "" {
+		var exposedPorts nat.PortSet
+		if err := json.Unmarshal([]byte(exposedPortsJSON), &exposedPorts); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal exposed ports: %w", err)
+		}
+		c.Config.ExposedPorts = exposedPorts
+	}
+
 	if n.Labels[labels.Hostname] != "" {
 		hostname = n.Labels[labels.Hostname]
 	}
