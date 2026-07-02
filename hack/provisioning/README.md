@@ -10,6 +10,7 @@ Use provided installation scripts instead (see user documentation).
 ## Contents
 
 - `/version` allows retrieving latest (or experimental) versions of certain products (golang, containerd, etc)
-- `/linux` allows updating in-place containerd, cni (future: buildkit)
+- `/linux` allows updating in-place containerd, cni (future: buildkit), and provisioning a full
+integration testing environment (`test-integration-env.sh`) from Docker-built artifacts
 - `/windows` allows install WinCNI, containerd
 - `/kube` allows spinning-up a Kind cluster
