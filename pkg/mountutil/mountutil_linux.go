@@ -304,15 +304,16 @@ func ProcessFlagTmpfs(s string) (*Processed, error) {
 func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, error) {
 	fields := strings.Split(s, ",")
 	var (
-		mountType        string
-		src              string
-		dst              string
-		bindPropagation  string
-		bindNonRecursive bool
-		rwOption         string
-		tmpfsSize        int64
-		tmpfsMode        os.FileMode
-		err              error
+		mountType         string
+		src               string
+		dst               string
+		bindPropagation   string
+		bindNonRecursive  bool
+		rwOption          string
+		writableRequested bool
+		tmpfsSize         int64
+		tmpfsMode         os.FileMode
+		err               error
 	)
 
 	// set default values
@@ -334,6 +335,9 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			switch key {
 			case "readonly", "ro", "rro":
 				rwOption = key
+				if key == "rw" {
+					writableRequested = true
+				}
 				continue
 			case "bind-nonrecursive":
 				// Removed in Docker v29, in favor of `bind-recursive=disabled` https://github.com/docker/cli/pull/6241
@@ -354,9 +358,11 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 				mountType = Tmpfs
 			case "bind":
 				mountType = Bind
+			case "image":
+				mountType = Image
 			case "volume":
 			default:
-				return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", value)
+				return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs/image", value)
 			}
 		case "source", "src":
 			src = value
@@ -370,6 +376,13 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			if trueValue {
 				rwOption = key
 			}
+			// Write requested: rw=true, or a read-only flag (ro/readonly/rro) set to false.
+			if trueValue == (key == "rw") {
+				writableRequested = true
+			}
+		case "subpath":
+			// subpath is not implemented for any mount type yet.
+			return nil, fmt.Errorf("mount option %q is not yet supported", key)
 		case "bind-propagation":
 			// here don't validate the propagation value
 			// parseVolumeOptions will do that.
@@ -414,6 +427,30 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		default:
 			return nil, fmt.Errorf("unexpected key '%s' in '%s'", key, field)
 		}
+	}
+
+	// type=image's source is an image reference resolved later with a containerd
+	// client; validate the intent here. Image mounts are read-only.
+	if mountType == Image {
+		if src == "" {
+			return nil, fmt.Errorf("type=image requires a source (the image reference)")
+		}
+		if dst == "" {
+			return nil, fmt.Errorf("type=image requires a destination")
+		}
+		if writableRequested {
+			return nil, fmt.Errorf("type=image mounts are read-only")
+		}
+		return &Processed{
+			Type: Image,
+			// Mode "ro" so inspect/label metadata reports the mount read-only.
+			Mode: "ro",
+			Mount: specs.Mount{
+				Type:        Image,
+				Source:      src,
+				Destination: cleanMount(dst),
+			},
+		}, nil
 	}
 
 	// compose new fileds and join into a string

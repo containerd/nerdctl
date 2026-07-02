@@ -447,3 +447,85 @@ func TestProcessFlagMountBindRecursive(t *testing.T) {
 	_, err := ProcessFlagMount("type=bind,source="+src+",target=/bar,bind-recursive=bogus", nil)
 	assert.ErrorContains(t, err, "invalid value for bind-recursive")
 }
+
+// TestProcessFlagMountImage tests parsing and validation of `--mount type=image`.
+func TestProcessFlagMountImage(t *testing.T) {
+	tests := []struct {
+		rawSpec string
+		wants   *Processed
+		err     string
+	}{
+		{
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img",
+			wants: &Processed{
+				Type: Image,
+				Mount: specs.Mount{
+					Type:        Image,
+					Source:      "alpine:latest",
+					Destination: "/mnt/img",
+				},
+			},
+		},
+		{
+			// target and src aliases must work too.
+			rawSpec: "type=image,src=alpine:latest,target=/mnt/img",
+			wants: &Processed{
+				Type: Image,
+				Mount: specs.Mount{
+					Type:        Image,
+					Source:      "alpine:latest",
+					Destination: "/mnt/img",
+				},
+			},
+		},
+		{
+			rawSpec: "type=image,destination=/mnt/img",
+			err:     "requires a source",
+		},
+		{
+			rawSpec: "type=image,source=alpine:latest",
+			err:     "requires a destination",
+		},
+		{
+			// ro and rro are read-only flags, accepted for type=image.
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,ro",
+			wants: &Processed{
+				Type:  Image,
+				Mount: specs.Mount{Type: Image, Source: "alpine:latest", Destination: "/mnt/img"},
+			},
+		},
+		{
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,rro",
+			wants: &Processed{
+				Type:  Image,
+				Mount: specs.Mount{Type: Image, Source: "alpine:latest", Destination: "/mnt/img"},
+			},
+		},
+		{
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,rw",
+			err:     "read-only",
+		},
+		{
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,readonly=false",
+			err:     "read-only",
+		},
+		{
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,subpath=etc",
+			err:     "subpath",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.rawSpec, func(t *testing.T) {
+			got, err := ProcessFlagMount(tt.rawSpec, nil)
+			if tt.err != "" {
+				assert.ErrorContains(t, err, tt.err)
+				return
+			}
+			assert.NilError(t, err)
+			assert.Equal(t, got.Type, tt.wants.Type)
+			assert.Equal(t, got.Mount.Type, tt.wants.Mount.Type)
+			assert.Equal(t, got.Mount.Source, tt.wants.Mount.Source)
+			assert.Equal(t, got.Mount.Destination, tt.wants.Mount.Destination)
+		})
+	}
+}
