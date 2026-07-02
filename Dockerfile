@@ -46,7 +46,6 @@ ARG GOMODJAIL_VERSION=v0.3.2@c145bb1e36fe0939c5fa0467f2477878dea8e3d9
 ARG GO_VERSION=1.26
 ARG UBUNTU_VERSION=24.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.1
-ARG GOTESTSUM_VERSION=v1.13.0
 ARG NYDUS_VERSION=v2.4.3
 ARG SOCI_SNAPSHOTTER_VERSION=0.14.1
 ARG KUBO_VERSION=v0.42.0
@@ -270,6 +269,34 @@ RUN (cd /out && find ! -type d | sort | xargs sha256sum > /tmp/SHA256SUMS ) && \
 FROM scratch AS out-full
 COPY --from=build-full /out /
 
+# build-test-integration-artifacts assembles, on top of the full distribution, the additional
+# binaries that are only needed to run the integration test suite (cosign, soci, ipfs, nydus).
+# It is meant to be exported with `--output=type=local` and installed under /usr/local on a
+# (CI) host or VM, so that the integration tests can run directly on the host with `go test`.
+FROM build-full AS build-test-integration-artifacts
+ARG TARGETARCH
+# copy cosign binary for integration test
+COPY --from=ghcr.io/sigstore/cosign/cosign:v3.0.5@sha256:be924970ba7438c22e18067dec5637946d6566eac711f5bedd1584e7137008fb /ko-app/cosign /out/bin/cosign
+# installing soci for integration test
+ARG SOCI_SNAPSHOTTER_VERSION
+RUN fname="soci-snapshotter-${SOCI_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
+  curl -o "${fname}" -fsSL --retry 5 --retry-delay 5 --retry-max-time 120 --connect-timeout 20 --proto '=https' --tlsv1.2 "https://github.com/awslabs/soci-snapshotter/releases/download/v${SOCI_SNAPSHOTTER_VERSION}/${fname}" && \
+  tar -C /out/bin -xvf "${fname}" soci soci-snapshotter-grpc && \
+  rm -f "${fname}"
+# enable offline ipfs for integration test
+COPY --from=build-kubo /out/${TARGETARCH:-amd64}/* /out/bin/
+# install nydus components
+ARG NYDUS_VERSION
+RUN curl -o nydus-static.tgz -fsSL --retry 5 --retry-delay 5 --retry-max-time 120 --connect-timeout 20 --proto '=https' --tlsv1.2 "https://github.com/dragonflyoss/image-service/releases/download/${NYDUS_VERSION}/nydus-static-${NYDUS_VERSION}-linux-${TARGETARCH}.tgz" && \
+  tar xzf nydus-static.tgz && \
+  mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /out/bin/ && \
+  rm -rf nydus-static.tgz nydus-static
+# tests need a tini-custom binary
+RUN cp /out/bin/tini /out/bin/tini-custom
+
+FROM scratch AS out-test-integration-artifacts
+COPY --from=build-test-integration-artifacts /out /
+
 FROM ubuntu:${UBUNTU_VERSION} AS base
 # fuse3 is required by stargz snapshotter
 RUN apt-get update -qq && apt-get install -qq -y --no-install-recommends \
@@ -294,95 +321,5 @@ VOLUME /var/lib/containerd-stargz-grpc
 VOLUME /var/lib/nerdctl
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["bash", "--login", "-i"]
-
-FROM base AS test-integration
-ARG DEBIAN_FRONTEND=noninteractive
-# `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
-# `jq` is required to generate test summaries
-RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
-    software-properties-common \
-    gnupg \
-    gpg-agent \
-    ca-certificates && \
-    add-apt-repository ppa:criu/ppa && \
-    apt-get update -qq && apt-get install -qq --no-install-recommends \
-    expect \
-    jq \
-    git \
-    make \
-    criu
-# We wouldn't need this if Docker Hub could have "golang:${GO_VERSION}-ubuntu"
-COPY --from=build-base /usr/local/go /usr/local/go
-ARG TARGETARCH
-ENV PATH=/usr/local/go/bin:$PATH
-ARG GOTESTSUM_VERSION
-RUN GOBIN=/usr/local/bin go install gotest.tools/gotestsum@${GOTESTSUM_VERSION}
-COPY . /go/src/github.com/containerd/nerdctl
-WORKDIR /go/src/github.com/containerd/nerdctl
-VOLUME /tmp
-ENV CGO_ENABLED=0
-# copy cosign binary for integration test
-COPY --from=ghcr.io/sigstore/cosign/cosign:v3.0.5@sha256:be924970ba7438c22e18067dec5637946d6566eac711f5bedd1584e7137008fb /ko-app/cosign /usr/local/bin/cosign
-# installing soci for integration test
-ARG SOCI_SNAPSHOTTER_VERSION
-RUN fname="soci-snapshotter-${SOCI_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}.tar.gz" && \
-  curl -o "${fname}" -fsSL --retry 5 --retry-delay 5 --retry-max-time 120 --connect-timeout 20 --proto '=https' --tlsv1.2 "https://github.com/awslabs/soci-snapshotter/releases/download/v${SOCI_SNAPSHOTTER_VERSION}/${fname}" && \
-  tar -C /usr/local/bin -xvf "${fname}" soci soci-snapshotter-grpc && \
-  mkdir -p /etc/soci-snapshotter-grpc && \
-  touch /etc/soci-snapshotter-grpc/config.toml && \
-  echo "\n[pull_modes]\n  [pull_modes.soci_v1]\n    enable = true" >> /etc/soci-snapshotter-grpc/config.toml
-# enable offline ipfs for integration test
-COPY --from=build-kubo /out/${TARGETARCH:-amd64}/* /usr/local/bin/
-COPY ./Dockerfile.d/test-integration-etc_containerd-stargz-grpc_config.toml /etc/containerd-stargz-grpc/config.toml
-COPY ./Dockerfile.d/test-integration-ipfs-offline.service /usr/local/lib/systemd/system/
-COPY ./Dockerfile.d/test-integration-buildkit-nerdctl-test.service /usr/local/lib/systemd/system/
-COPY ./Dockerfile.d/test-integration-soci-snapshotter.service /usr/local/lib/systemd/system/
-RUN cp /usr/local/bin/tini /usr/local/bin/tini-custom
-# using test integration containerd config
-COPY ./Dockerfile.d/test-integration-etc_containerd_config.toml /etc/containerd/config.toml
-# install ipfs service. avoid using 5001(api)/8080(gateway) which are reserved by tests.
-RUN systemctl enable test-integration-ipfs-offline test-integration-buildkit-nerdctl-test test-integration-soci-snapshotter && \
-  ipfs init && \
-  ipfs config Addresses.API "/ip4/127.0.0.1/tcp/5888" && \
-  ipfs config Addresses.Gateway "/ip4/127.0.0.1/tcp/5889"
-# install nydus components
-ARG NYDUS_VERSION
-RUN curl -o nydus-static.tgz -fsSL --retry 5 --retry-delay 5 --retry-max-time 120 --connect-timeout 20 --proto '=https' --tlsv1.2 "https://github.com/dragonflyoss/image-service/releases/download/${NYDUS_VERSION}/nydus-static-${NYDUS_VERSION}-linux-${TARGETARCH}.tgz" && \
-  tar xzf nydus-static.tgz && \
-  mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /usr/bin/ && \
-  rm nydus-static.tgz
-CMD ["./hack/test-integration.sh"]
-
-FROM test-integration AS test-integration-rootless
-# Install SSH for creating systemd user session.
-# (`sudo` does not work for this purpose,
-#  OTOH `machinectl shell` can create the session but does not propagate exit code)
-RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
-  uidmap \
-  openssh-server \
-  openssh-client
-# Install slirp4netns only if rootlesskit is prior to v3.0
-RUN if ! rootlesskit --help | grep -q gvisor-tap-vsock; then apt-get install -qq --no-install-recommends slirp4netns; fi
-# TODO: update containerized-systemd to enable sshd by default, or allow `systemctl wants <TARGET> ssh` here
-RUN ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N '' && \
-  useradd -m -s /bin/bash rootless && \
-  mkdir -p -m 0700 /home/rootless/.ssh && \
-  cp -a /root/.ssh/id_rsa.pub /home/rootless/.ssh/authorized_keys && \
-  mkdir -p /home/rootless/.local/share && \
-  chown -R rootless:rootless /home/rootless
-COPY ./Dockerfile.d/etc_systemd_system_user@.service.d_delegate.conf /etc/systemd/system/user@.service.d/delegate.conf
-# ipfs daemon for rootless containerd will be enabled in /test-integration-rootless.sh
-RUN systemctl disable test-integration-ipfs-offline
-VOLUME /home/rootless/.local/share
-COPY ./Dockerfile.d/test-integration-rootless.sh /
-RUN chmod a+rx /test-integration-rootless.sh
-CMD ["/test-integration-rootless.sh", "./hack/test-integration.sh"]
-
-# test for CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER=slirp4netns
-FROM test-integration-rootless AS test-integration-rootless-port-slirp4netns
-RUN apt-get update -qq && apt-get install -qq --no-install-recommends \
-  slirp4netns
-COPY ./Dockerfile.d/home_rootless_.config_systemd_user_containerd.service.d_port-slirp4netns.conf /home/rootless/.config/systemd/user/containerd.service.d/port-slirp4netns.conf
-RUN chown -R rootless:rootless /home/rootless/.config
 
 FROM base AS demo
