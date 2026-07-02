@@ -964,14 +964,26 @@ func TestHostNetworkDnsPreserved(t *testing.T) {
 		Setup: func(data test.Data, helpers test.Helpers) {
 			// In some rootless CI job, slirp provides 10.0.2.3 as DNS server.
 			// We cannot simply parse host /etc/resolv.conf here.
-			helpers.Command("run", "--rm",
-				"-v", "/etc/resolv.conf:/mnt/resolv.conf:ro",
-				testutil.AlpineImage,
-				"grep", "-E", "^nameserver\\s+", "/mnt/resolv.conf").Run(&test.Expected{
-				Output: func(stdout string, t tig.T) {
-					data.Labels().Set("nameservers", stdout)
-				},
-			})
+			captureNameservers := func(resolvConfPath string) string {
+				var nameservers string
+				helpers.Command("run", "--rm",
+					"-v", resolvConfPath+":/mnt/resolv.conf:ro",
+					testutil.AlpineImage,
+					"grep", "-E", "^nameserver\\s+", "/mnt/resolv.conf").Run(&test.Expected{
+					Output: func(stdout string, t tig.T) {
+						nameservers = stdout
+					},
+				})
+				return nameservers
+			}
+			nameservers := captureNameservers("/etc/resolv.conf")
+			// Mirror pkg/resolvconf.Path(): when 127.0.0.53 is the only nameserver, the host
+			// runs systemd-resolved, and nerdctl uses the resolv.conf that systemd-resolved
+			// generates with the actual upstream nameservers.
+			if strings.TrimSpace(nameservers) == "nameserver 127.0.0.53" {
+				nameservers = captureNameservers("/run/systemd/resolve/resolv.conf")
+			}
+			data.Labels().Set("nameservers", nameservers)
 		},
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 			return helpers.Command("run", "--rm",
