@@ -359,3 +359,20 @@ func TestParseFlagP(t *testing.T) {
 		})
 	}
 }
+
+// TestParseFlagPHostRangePool verifies the Docker-compatible behavior for a single
+// container port with a host port range (e.g. "3000-3001:8080"): the container port
+// is bound to one free host port from the range, not collapsed-and-dropped. The exact
+// port chosen depends on what is free in the environment, so this asserts membership
+// in the range rather than a specific port.
+func TestParseFlagPHostRangePool(t *testing.T) {
+	got, err := ParseFlagP("127.0.0.1:3000-3001:8080/tcp")
+	assert.NilError(t, err)
+	assert.Equal(t, len(got), 1)
+	assert.Equal(t, got[0].ContainerPort, int32(8080))
+	assert.Equal(t, got[0].Protocol, "tcp")
+	assert.Equal(t, got[0].HostIP, "127.0.0.1")
+	if got[0].HostPort < 3000 || got[0].HostPort > 3001 {
+		t.Errorf("host port %d is outside the requested range 3000-3001", got[0].HostPort)
+	}
+}

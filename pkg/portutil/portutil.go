@@ -107,16 +107,43 @@ func ParseFlagP(s string) ([]cni.PortMapping, error) {
 		if err != nil {
 			return nil, err
 		}
-		for i := startHostPort; i <= endHostPort; i++ {
-			if usedPorts[i] {
-				return nil, fmt.Errorf("bind for %s:%d failed: port is already allocated", ip, i)
+		// bindIP is the effective bind address used only for error messages, so that
+		// an unspecified host IP (e.g. "-p 3000-3001:8080") reports "0.0.0.0" rather
+		// than an empty string ("bind for  failed"), matching the HostIP set below.
+		bindIP := ip
+		if bindIP == "" {
+			bindIP = "0.0.0.0"
+		}
+		if startPort == endPort && startHostPort != endHostPort {
+			// Docker-compatible behavior: a single container port with a host port
+			// range (e.g. "3000-3001:8080") treats the range as a pool and binds the
+			// container port to the first free host port in it, rather than silently
+			// collapsing to the first port and dropping the rest of the range.
+			// https://github.com/moby/moby/blob/master/daemon/libnetwork/portallocator/portallocator.go
+			found := false
+			for p := startHostPort; p <= endHostPort; p++ {
+				if !usedPorts[p] {
+					startHostPort, endHostPort = p, p
+					found = true
+					break
+				}
+			}
+			if !found {
+				return nil, fmt.Errorf("bind for %s failed: all ports in range %s are already allocated", bindIP, hostPort)
+			}
+		} else {
+			for i := startHostPort; i <= endHostPort; i++ {
+				if usedPorts[i] {
+					return nil, fmt.Errorf("bind for %s:%d failed: port is already allocated", bindIP, i)
+				}
 			}
 		}
 	}
 	if hostPort != "" && (endPort-startPort) != (endHostPort-startHostPort) {
-		if endPort != startPort {
-			return nil, fmt.Errorf("invalid ranges specified for container and host Ports: %s and %s", containerPort, hostPort)
-		}
+		// Both container and host sides are ranges but of unequal length — a genuine
+		// mismatch (the single-container-port pool case above has already collapsed
+		// the host range to one port, so it does not reach here).
+		return nil, fmt.Errorf("invalid ranges specified for container and host Ports: %s and %s", containerPort, hostPort)
 	}
 
 	for i := int32(0); i <= (int32(endPort) - int32(startPort)); i++ {
