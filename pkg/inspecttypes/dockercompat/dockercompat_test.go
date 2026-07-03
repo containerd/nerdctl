@@ -605,6 +605,49 @@ func TestGetUlimitsFromNative(t *testing.T) {
 	}
 }
 
+func TestNetworkFromNative(t *testing.T) {
+	// The first range-set is one subnet split into sub-ranges by an aux-address
+	// reservation and must collapse to a single IPAM.Config; the second set holds
+	// two distinct subnets that must both be kept; the empty set contributes
+	// nothing. Aux-addresses live in a nerdctl label (not the CNI config) and must
+	// be attached to the matching subnet while staying out of the user labels.
+	cni := `{"name":"testnet","plugins":[{"ipam":{"ranges":[` +
+		`[{"Subnet":"10.6.0.0/24","Gateway":"10.6.0.1"},{"Subnet":"10.6.0.0/24"}],` +
+		`[{"Subnet":"10.7.0.0/24"},{"Subnet":"10.8.0.0/24"}],` +
+		`[]` +
+		`]}}]}`
+	lbls := map[string]string{
+		labels.NetworkAuxAddresses: `{"10.6.0.0/24":{"router":"10.6.0.5"}}`,
+		"user":                     "keep",
+	}
+	got, err := NetworkFromNative(&native.Network{CNI: []byte(cni), NerdctlLabels: &lbls})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, []IPAMConfig{
+		{Subnet: "10.6.0.0/24", Gateway: "10.6.0.1", AuxiliaryAddresses: map[string]string{"router": "10.6.0.5"}},
+		{Subnet: "10.7.0.0/24"},
+		{Subnet: "10.8.0.0/24"},
+	}, got.IPAM.Config)
+	// The internal aux label is hidden; genuine user labels are preserved.
+	assert.DeepEqual(t, map[string]string{"user": "keep"}, got.Labels)
+}
+
+func TestNetworkFromNativeMalformedAux(t *testing.T) {
+	// The aux label is a user-settable nerdctl/ key, so a malformed value must not
+	// fail the whole inspect: it is dropped, the config keeps no AuxiliaryAddresses,
+	// and the internal label still stays out of the user-visible labels.
+	cni := `{"name":"testnet","plugins":[{"ipam":{"ranges":[[{"Subnet":"10.6.0.0/24","Gateway":"10.6.0.1"}]]}}]}`
+	lbls := map[string]string{
+		labels.NetworkAuxAddresses: "not-json",
+		"user":                     "keep",
+	}
+	got, err := NetworkFromNative(&native.Network{CNI: []byte(cni), NerdctlLabels: &lbls})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, []IPAMConfig{
+		{Subnet: "10.6.0.0/24", Gateway: "10.6.0.1"},
+	}, got.IPAM.Config)
+	assert.DeepEqual(t, map[string]string{"user": "keep"}, got.Labels)
+}
+
 func TestNetworkSettingsFromNative(t *testing.T) {
 	tempStateDir, err := os.MkdirTemp(t.TempDir(), "rw")
 	if err != nil {

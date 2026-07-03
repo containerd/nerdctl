@@ -111,6 +111,13 @@ const (
 	// (like "nerdctl/default-network=true" or "nerdctl/default-network=false")
 	NerdctlDefaultNetwork = Prefix + "default-network"
 
+	// NetworkAuxAddresses stores a network's reserved --aux-address name=IP
+	// pairs, grouped per subnet, as a JSON object (map[subnetCIDR]map[name]IP).
+	// host-local has no field for auxiliary addresses, so they are kept here
+	// instead of in the CNI config and read back by `network inspect` to report
+	// AuxiliaryAddresses like Docker.
+	NetworkAuxAddresses = Prefix + "network-aux-addresses"
+
 	// ContainerAutoRemove is to check whether the --rm option is specified.
 	ContainerAutoRemove = Prefix + "auto-remove"
 

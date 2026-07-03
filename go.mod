@@ -146,6 +146,8 @@ require (
 	tags.cncf.io/container-device-interface/specs-go v1.1.0 // indirect
 )
 
+require go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
+
 require (
 	cyphar.com/go-pathrs v0.2.5 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

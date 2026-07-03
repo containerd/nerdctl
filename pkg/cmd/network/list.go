@@ -28,8 +28,33 @@ import (
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
+
+// hiddenNetworkLabels are nerdctl-internal labels that back network state but are
+// not user-facing, so `network ls` output and label filters must not expose them.
+var hiddenNetworkLabels = map[string]struct{}{
+	labels.NetworkAuxAddresses: {},
+}
+
+// visibleNetworkLabels returns a copy of the network's labels with the internal
+// keys in hiddenNetworkLabels removed. It returns nil when the input is nil so
+// bookkeeping like the aux-address reservation never surfaces in `network ls` or
+// matches a `--filter label=` query.
+func visibleNetworkLabels(m *map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+	out := make(map[string]string, len(*m))
+	for k, v := range *m {
+		if _, hidden := hiddenNetworkLabels[k]; hidden {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
 
 type networkPrintable struct {
 	ID     string // empty for non-nerdctl networks
@@ -102,7 +127,7 @@ func List(ctx context.Context, options types.NetworkListOptions) error {
 			}
 		}
 		if n.NerdctlLabels != nil {
-			p.Labels = formatter.FormatLabels(*n.NerdctlLabels)
+			p.Labels = formatter.FormatLabels(visibleNetworkLabels(n.NerdctlLabels))
 		}
 		pp[i] = p
 	}
@@ -181,8 +206,11 @@ func getNetworkFilterFuncs(filters []string) ([]func(*map[string]string) bool, [
 }
 
 func networkMatchesFilter(net *netutil.NetworkConfig, labelFilterFuncs []func(*map[string]string) bool, nameFilterFuncs []func(string) bool) bool {
+	// Match against the user-visible labels only, so a --filter label= query can
+	// neither select on nor be confused by nerdctl-internal keys.
+	visible := visibleNetworkLabels(net.NerdctlLabels)
 	for _, labelFilterFunc := range labelFilterFuncs {
-		if !labelFilterFunc(net.NerdctlLabels) {
+		if !labelFilterFunc(&visible) {
 			return false
 		}
 	}

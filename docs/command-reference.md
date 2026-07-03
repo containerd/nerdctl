@@ -1279,12 +1279,13 @@ Flags:
 - :whale: `--subnet`: Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"
 - :whale: `--gateway`: IPv4 or IPv6 Gateway for the master subnet
 - :whale: `--ip-range`: Allocate container ip from a sub-range
+- :whale: `--aux-address`: Auxiliary IPv4 or IPv6 addresses, as `name=IP` pairs. Each IP is reserved and never assigned to a container. Repeatable, and matched to the subnet that contains it.
 - :whale: `--label`: Set metadata on a network
 - :whale: `--ipv4`: Enable IPv4. Enabled by default; set to false with `--ipv6` and an IPv6 subnet for an IPv6-only network. `--ipv4=false` is not supported on Windows.
 - :whale: `--ipv6`: Enable IPv6. Should be used with a valid subnet.
 - :whale: `--internal`: Restrict external access to the network.
 
-Unimplemented `docker network create` flags: `--attachable`, `--aux-address`, `--config-from`, `--config-only`, `--ingress`, `--scope`
+Unimplemented `docker network create` flags: `--attachable`, `--config-from`, `--config-only`, `--ingress`, `--scope`
 
 ### :whale: nerdctl network ls
 
