@@ -30,8 +30,16 @@ readonly timeout="30m"
 readonly retries="2"
 readonly needsudo="${WITH_SUDO:-}"
 
+# Do not print the output of the non-failing tests: the full logs are too large to be
+# rendered by the GitHub Actions web UI. The "pkgname-and-test-fails" format prints a
+# single line per package, plus the output of the failing tests (which is repeated in
+# the "=== Failed" summary at the end of the run).
+# Note that the "testname" format must be avoided in the CI: gotestsum silently upgrades
+# it to "github-actions" when GITHUB_ACTIONS=true, printing the output of every test.
+# Set GOTESTSUM_FORMAT to override the format.
+#
 # See https://github.com/containerd/nerdctl/blob/main/docs/testing/README.md#about-parallelization
-args=(--format=testname --jsonfile /tmp/test-integration.log --packages="$root"/../cmd/nerdctl/...)
+args=(--format="${GOTESTSUM_FORMAT:-pkgname-and-test-fails}" --jsonfile /tmp/test-integration.log --packages="$root"/../cmd/nerdctl/...)
 # FIXME: not working on windows. Need to change approach: move away from --post-run-command and
 # just process the log file. This might also allow multi-steps/multi-target results aggregation.
 [ "$(uname -s)" != "Linux" ] || args+=(--post-run-command "$root"/github/gotestsum-reporter.sh)
