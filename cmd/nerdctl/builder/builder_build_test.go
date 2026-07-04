@@ -17,7 +17,6 @@
 package builder
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -247,19 +246,23 @@ CMD ["echo", "nerdctl-build-test-stdin"]`, testutil.CommonImage)
 
 	testCase := &test.Case{
 		Require: nerdtest.Build,
+		Setup: func(data test.Data, helpers test.Helpers) {
+			cmd := helpers.Command("build", "-t", data.Identifier(), "-f", "-", ".")
+			cmd.Feed(strings.NewReader(dockerfile))
+			cmd.Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+		},
 		Cleanup: func(data test.Data, helpers test.Helpers) {
 			helpers.Anyhow("rmi", "-f", data.Identifier())
 		},
+		// Run the image to prove that the build consumed the Dockerfile fed on stdin.
+		// Note: do not assert on the tag appearing in the build output: it is only
+		// printed on stderr ("naming to ...") when BuildKit exports directly to the
+		// containerd image store, not when nerdctl falls back to loading a tarball
+		// (eg: when the BuildKit worker snapshotter does not match the client one).
 		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-			cmd := helpers.Command("build", "-t", data.Identifier(), "-f", "-", ".")
-			cmd.Feed(strings.NewReader(dockerfile))
-			return cmd
+			return helpers.Command("run", "--rm", data.Identifier())
 		},
-		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
-			return &test.Expected{
-				Errors: []error{errors.New(data.Identifier())},
-			}
-		},
+		Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("nerdctl-build-test-stdin\n")),
 	}
 
 	testCase.Run(t)
