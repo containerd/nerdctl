@@ -308,6 +308,12 @@ COPY --from=build-full /docker-entrypoint.sh /docker-entrypoint.sh
 COPY --from=out-full / /usr/local/
 RUN perl -pi -e 's/multi-user.target/docker-entrypoint.target/g' /usr/local/lib/systemd/system/*.service && \
   systemctl enable containerd buildkit stargz-snapshotter && \
+  mkdir -p /etc/systemd/system/docker-entrypoint.service.d && \
+  { echo "# docker-entrypoint.service runs the command passed to \`docker run\`: delay it"; \
+    echo "# until the daemons are ready, so that \`docker run ... nerdctl run ...\` works"; \
+    echo "[Unit]"; \
+    echo "After=containerd.service buildkit.service stargz-snapshotter.service"; \
+  } >/etc/systemd/system/docker-entrypoint.service.d/10-after-daemons.conf && \
   mkdir -p /etc/bash_completion.d && \
   nerdctl completion bash >/etc/bash_completion.d/nerdctl && \
   mkdir -p -m 0755 /etc/cni
