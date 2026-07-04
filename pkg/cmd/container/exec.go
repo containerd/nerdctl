@@ -73,8 +73,21 @@ func execActionWithContainer(ctx context.Context, client *containerd.Client, con
 	var (
 		ioCreator cio.Creator
 		in        io.Reader
-		stdinC    = &taskutil.StdinCloser{
+		// The io copy goroutines are started by the cio.Creator, inside task.Exec
+		// below: on a short enough stdin, they can reach EOF before the process
+		// handle is available. Block until it is: losing the CloseIO would leave
+		// the write end of the stdin FIFO open inside the shim, and the exec'ed
+		// process would never receive EOF on its stdin.
+		processC = make(chan containerd.Process, 1)
+		stdinC   = &taskutil.StdinCloser{
 			Stdin: os.Stdin,
+			Closer: func() {
+				if p, ok := <-processC; ok {
+					if err := p.CloseIO(ctx, containerd.WithStdinCloser); err != nil {
+						log.G(ctx).WithError(err).Warn("failed to close the process stdin")
+					}
+				}
+			},
 		}
 	)
 
@@ -90,11 +103,10 @@ func execActionWithContainer(ctx context.Context, client *containerd.Client, con
 	execID := "exec-" + idgen.GenerateID()
 	process, err := task.Exec(ctx, execID, pspec, ioCreator)
 	if err != nil {
+		close(processC)
 		return err
 	}
-	stdinC.Closer = func() {
-		process.CloseIO(ctx, containerd.WithStdinCloser)
-	}
+	processC <- process
 	// if detach, we should not call this defer
 	if !options.Detach {
 		defer process.Delete(ctx)
