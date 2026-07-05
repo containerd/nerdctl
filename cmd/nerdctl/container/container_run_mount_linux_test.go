@@ -19,293 +19,498 @@ package container
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	mobymount "github.com/moby/sys/mount"
 	"gotest.tools/v3/assert"
 
-	"github.com/containerd/containerd/v2/core/mount"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/mountutil"
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRunVolume(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-	rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
-	if err != nil {
-		t.Fatal(err)
-	}
-	roDir, err := os.MkdirTemp(t.TempDir(), "ro")
-	if err != nil {
-		t.Fatal(err)
-	}
-	rwVolName := tID + "-rw"
-	roVolName := tID + "-ro"
-	for _, v := range []string{rwVolName, roVolName} {
-		defer base.Cmd("volume", "rm", "-f", v).Run()
-		base.Cmd("volume", "create", v).AssertOK()
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		rwDir := data.Temp().Dir("rw")
+		roDir := data.Temp().Dir("ro")
+		rwVolName := data.Identifier("rw")
+		roVolName := data.Identifier("ro")
+
+		helpers.Ensure("volume", "create", rwVolName)
+		helpers.Ensure("volume", "create", roVolName)
+
+		helpers.Ensure("run",
+			"-d",
+			"--name", data.Identifier(),
+			"-v", fmt.Sprintf("%s:/mnt1", rwDir),
+			"-v", fmt.Sprintf("%s:/mnt2:ro", roDir),
+			"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
+			"-v", fmt.Sprintf("%s:/mnt4:ro", roVolName),
+			testutil.AlpineImage,
+			"top",
+		)
+
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+
+		// Verify rw mounts are writable
+		helpers.Ensure("exec", data.Identifier(), "sh", "-exc", "echo -n str1 > /mnt1/file1")
+		helpers.Ensure("exec", data.Identifier(), "sh", "-exc", "echo -n str3 > /mnt3/file3")
+		// Verify ro mounts are NOT writable
+		helpers.Fail("exec", data.Identifier(), "sh", "-exc", "echo -n str2 > /mnt2/file2")
+		helpers.Fail("exec", data.Identifier(), "sh", "-exc", "echo -n str4 > /mnt4/file4")
+
+		helpers.Ensure("rm", "-f", data.Identifier())
+
+		data.Labels().Set("rwDir", rwDir)
+		data.Labels().Set("rwVolName", rwVolName)
 	}
 
-	containerName := tID
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	base.Cmd("run",
-		"-d",
-		"--name", containerName,
-		"-v", fmt.Sprintf("%s:/mnt1", rwDir),
-		"-v", fmt.Sprintf("%s:/mnt2:ro", roDir),
-		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
-		"-v", fmt.Sprintf("%s:/mnt4:ro", roVolName),
-		testutil.AlpineImage,
-		"top",
-	).AssertOK()
-	base.Cmd("exec", containerName, "sh", "-exc", "echo -n str1 > /mnt1/file1").AssertOK()
-	base.Cmd("exec", containerName, "sh", "-exc", "echo -n str2 > /mnt2/file2").AssertFail()
-	base.Cmd("exec", containerName, "sh", "-exc", "echo -n str3 > /mnt3/file3").AssertOK()
-	base.Cmd("exec", containerName, "sh", "-exc", "echo -n str4 > /mnt4/file4").AssertFail()
-	base.Cmd("rm", "-f", containerName).AssertOK()
-	base.Cmd("run",
-		"--rm",
-		"-v", fmt.Sprintf("%s:/mnt1", rwDir),
-		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
-		testutil.AlpineImage,
-		"cat", "/mnt1/file1", "/mnt3/file3",
-	).AssertOutExactly("str1str3")
-	base.Cmd("run",
-		"--rm",
-		"-v", fmt.Sprintf("%s:/mnt3/mnt1", rwDir),
-		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
-		testutil.AlpineImage,
-		"cat", "/mnt3/mnt1/file1", "/mnt3/file3",
-	).AssertOutExactly("str1str3")
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "data persists across container removal",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run",
+					"--rm",
+					"-v", fmt.Sprintf("%s:/mnt1", data.Labels().Get("rwDir")),
+					"-v", fmt.Sprintf("%s:/mnt3", data.Labels().Get("rwVolName")),
+					testutil.AlpineImage,
+					"cat", "/mnt1/file1", "/mnt3/file3",
+				)
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("str1str3")),
+		},
+		{
+			Description: "nested mount ordering",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run",
+					"--rm",
+					"-v", fmt.Sprintf("%s:/mnt3/mnt1", data.Labels().Get("rwDir")),
+					"-v", fmt.Sprintf("%s:/mnt3", data.Labels().Get("rwVolName")),
+					testutil.AlpineImage,
+					"cat", "/mnt3/mnt1/file1", "/mnt3/file3",
+				)
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("str1str3")),
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		helpers.Anyhow("volume", "rm", "-f", data.Identifier("rw"))
+		helpers.Anyhow("volume", "rm", "-f", data.Identifier("ro"))
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunAnonymousVolume(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "-v", "/foo", testutil.AlpineImage).AssertOK()
-	base.Cmd("run", "--rm", "-v", "TestVolume2:/foo", testutil.AlpineImage).AssertOK()
-	base.Cmd("run", "--rm", "-v", "TestVolume", testutil.AlpineImage).AssertOK()
+	testCase := nerdtest.Setup()
 
-	// Destination must be an absolute path not named volume
-	base.Cmd("run", "--rm", "-v", "TestVolume2:TestVolumes", testutil.AlpineImage).AssertFail()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "anonymous volume with absolute path",
+			Command:     test.Command("run", "--rm", "-v", "/foo", testutil.AlpineImage),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "named volume with absolute path",
+			Command:     test.Command("run", "--rm", "-v", "TestVolume2:/foo", testutil.AlpineImage),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "volume name only",
+			Command:     test.Command("run", "--rm", "-v", "TestVolume", testutil.AlpineImage),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "destination must be absolute path not named volume",
+			Command:     test.Command("run", "--rm", "-v", "TestVolume2:TestVolumes", testutil.AlpineImage),
+			Expected:    test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunVolumeRelativePath(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	base.Dir = t.TempDir()
-	base.Cmd("run", "--rm", "-v", "./foo:/mnt/foo", testutil.AlpineImage).AssertOK()
-	base.Cmd("run", "--rm", "-v", "./foo", testutil.AlpineImage).AssertOK()
+	testCase := nerdtest.Setup()
 
-	// Destination must be an absolute path not a relative path
-	base.Cmd("run", "--rm", "-v", "./foo:./foo", testutil.AlpineImage).AssertFail()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "relative source with absolute destination",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", "--rm", "-v", "./foo:/mnt/foo", testutil.AlpineImage)
+				cmd.WithCwd(data.Temp().Dir())
+				return cmd
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "relative source only",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", "--rm", "-v", "./foo", testutil.AlpineImage)
+				cmd.WithCwd(data.Temp().Dir())
+				return cmd
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "destination must be absolute not relative",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", "--rm", "-v", "./foo:./foo", testutil.AlpineImage)
+				cmd.WithCwd(data.Temp().Dir())
+				return cmd
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunAnonymousVolumeWithTypeMountFlag(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "--mount", "type=volume,dst=/foo", testutil.AlpineImage,
-		"mountpoint", "-q", "/foo").AssertOK()
+	testCase := nerdtest.Setup()
+
+	testCase.Command = test.Command("run", "--rm", "--mount", "type=volume,dst=/foo", testutil.AlpineImage,
+		"mountpoint", "-q", "/foo")
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+
+	testCase.Run(t)
 }
 
 func TestRunAnonymousVolumeWithBuild(t *testing.T) {
-	t.Parallel()
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
-	imageName := testutil.Identifier(t)
-	defer base.Cmd("rmi", imageName).Run()
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Build
 
-	dockerfile := fmt.Sprintf(`FROM %s
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerfile := fmt.Sprintf(`FROM %s
 VOLUME /foo
         `, testutil.AlpineImage)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+		data.Temp().Save(dockerfile, "Dockerfile")
+		helpers.Ensure("build", "-t", data.Identifier("img"), data.Temp().Path())
+	}
 
-	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
-	base.Cmd("run", "--rm", "-v", "/foo", testutil.AlpineImage,
-		"mountpoint", "-q", "/foo").AssertOK()
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run", "--rm", "-v", "/foo", testutil.AlpineImage,
+			"mountpoint", "-q", "/foo")
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rmi", data.Identifier("img"))
+		helpers.Anyhow("builder", "prune", "--all", "--force")
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunCopyingUpInitialContentsOnVolume(t *testing.T) {
-	t.Parallel()
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
-	imageName := testutil.Identifier(t)
-	defer base.Cmd("rmi", imageName).Run()
-	volName := testutil.Identifier(t) + "-vol"
-	defer base.Cmd("volume", "rm", volName).Run()
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Build
+	testCase.NoParallel = true
 
-	dockerfile := fmt.Sprintf(`FROM %s
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerfile := fmt.Sprintf(`FROM %s
 RUN mkdir -p /mnt && echo hi > /mnt/initial_file
 CMD ["cat", "/mnt/initial_file"]
         `, testutil.AlpineImage)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+		data.Temp().Save(dockerfile, "Dockerfile")
+		imgName := data.Identifier("img")
+		helpers.Ensure("build", "-t", imgName, data.Temp().Path())
 
-	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+		volName := data.Identifier("vol")
+		helpers.Ensure("volume", "create", volName)
 
-	//AnonymousVolume
-	base.Cmd("run", "--rm", imageName).AssertOutExactly("hi\n")
-	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly("hi\n")
+		data.Labels().Set("img", imgName)
+		data.Labels().Set("vol", volName)
+	}
 
-	//NamedVolume should be automatically created
-	base.Cmd("run", "-v", volName+":/mnt", "--rm", imageName).AssertOutExactly("hi\n")
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "without volume flag",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", data.Labels().Get("img"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("hi\n")),
+		},
+		{
+			Description: "with anonymous volume",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-v", "/mnt", "--rm", data.Labels().Get("img"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("hi\n")),
+		},
+		{
+			Description: "with named volume",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-v", data.Labels().Get("vol")+":/mnt", "--rm", data.Labels().Get("img"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("hi\n")),
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("volume", "rm", data.Labels().Get("vol"))
+		helpers.Anyhow("rmi", data.Labels().Get("img"))
+		helpers.Anyhow("builder", "prune", "--all", "--force")
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunCopyingUpInitialContentsOnDockerfileVolume(t *testing.T) {
-	t.Parallel()
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
-	imageName := testutil.Identifier(t)
-	defer base.Cmd("rmi", imageName).Run()
-	volName := testutil.Identifier(t) + "-vol"
-	defer base.Cmd("volume", "rm", volName).Run()
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Build
+	testCase.NoParallel = true
 
-	dockerfile := fmt.Sprintf(`FROM %s
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerfile := fmt.Sprintf(`FROM %s
 RUN mkdir -p /mnt && echo hi > /mnt/initial_file
 VOLUME /mnt
 CMD ["cat", "/mnt/initial_file"]
         `, testutil.AlpineImage)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+		data.Temp().Save(dockerfile, "Dockerfile")
+		imgName := data.Identifier("img")
+		helpers.Ensure("build", "-t", imgName, data.Temp().Path())
 
-	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
-	//AnonymousVolume
-	base.Cmd("run", "--rm", imageName).AssertOutExactly("hi\n")
-	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly("hi\n")
+		volName := data.Identifier("vol")
+		helpers.Ensure("volume", "create", volName)
 
-	//NamedVolume
-	base.Cmd("volume", "create", volName).AssertOK()
-	base.Cmd("run", "-v", volName+":/mnt", "--rm", imageName).AssertOutExactly("hi\n")
+		data.Labels().Set("img", imgName)
+		data.Labels().Set("vol", volName)
+	}
 
-	//mount bind
-	tmpDir, err := os.MkdirTemp(t.TempDir(), "hostDir")
-	assert.NilError(t, err)
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "anonymous volume from Dockerfile VOLUME",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", data.Labels().Get("img"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("hi\n")),
+		},
+		{
+			Description: "anonymous volume with -v flag",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-v", "/mnt", "--rm", data.Labels().Get("img"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("hi\n")),
+		},
+		{
+			Description: "named volume copies initial contents",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-v", data.Labels().Get("vol")+":/mnt", "--rm", data.Labels().Get("img"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("hi\n")),
+		},
+		{
+			Description: "bind mount does not copy initial contents",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-v", fmt.Sprintf("%s:/mnt", data.Temp().Dir("bindmnt")), "--rm", data.Labels().Get("img"))
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+	}
 
-	base.Cmd("run", "-v", fmt.Sprintf("%s:/mnt", tmpDir), "--rm", imageName).AssertFail()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("volume", "rm", data.Labels().Get("vol"))
+		helpers.Anyhow("rmi", data.Labels().Get("img"))
+		helpers.Anyhow("builder", "prune", "--all", "--force")
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunCopyingUpInitialContentsOnVolumeShouldRetainSymlink(t *testing.T) {
-	t.Parallel()
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
-	imageName := testutil.Identifier(t)
-	defer base.Cmd("rmi", imageName).Run()
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Build
+	testCase.NoParallel = true
 
-	dockerfile := fmt.Sprintf(`FROM %s
+	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd\n"
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerfile := fmt.Sprintf(`FROM %s
 RUN ln -s ../../../../../../../../../../../../../../../../../../etc/passwd /mnt/passwd
 VOLUME /mnt
 CMD ["readlink", "/mnt/passwd"]
         `, testutil.AlpineImage)
-	const expected = "../../../../../../../../../../../../../../../../../../etc/passwd\n"
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+		data.Temp().Save(dockerfile, "Dockerfile")
+		imgName := data.Identifier("img")
+		helpers.Ensure("build", "-t", imgName, data.Temp().Path())
 
-	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+		data.Labels().Set("img", imgName)
+	}
 
-	base.Cmd("run", "--rm", imageName).AssertOutExactly(expected)
-	base.Cmd("run", "-v", "/mnt", "--rm", imageName).AssertOutExactly(expected)
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "without explicit volume flag",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", data.Labels().Get("img"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals(expected)),
+		},
+		{
+			Description: "with anonymous volume flag",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-v", "/mnt", "--rm", data.Labels().Get("img"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals(expected)),
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rmi", data.Labels().Get("img"))
+		helpers.Anyhow("builder", "prune", "--all", "--force")
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunCopyingUpInitialContentsShouldNotResetTheCopiedContents(t *testing.T) {
-	t.Parallel()
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-	imageName := tID + "-img"
-	volumeName := tID + "-vol"
-	containerName := tID
-	defer func() {
-		base.Cmd("rm", "-f", containerName).Run()
-		base.Cmd("volume", "rm", volumeName).Run()
-		base.Cmd("rmi", imageName).Run()
-	}()
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Build
 
-	dockerfile := fmt.Sprintf(`FROM %s
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerfile := fmt.Sprintf(`FROM %s
 RUN echo -n "rev0" > /mnt/file
 `, testutil.AlpineImage)
 
-	buildCtx := helpers.CreateBuildContext(t, dockerfile)
+		data.Temp().Save(dockerfile, "Dockerfile")
+		helpers.Ensure("build", "-t", data.Identifier("img"), data.Temp().Path())
 
-	base.Cmd("build", "-t", imageName, buildCtx).AssertOK()
+		helpers.Ensure("volume", "create", data.Identifier("vol"))
 
-	base.Cmd("volume", "create", volumeName)
-	runContainer := func() {
-		base.Cmd("run", "-d", "--name", containerName, "-v", volumeName+":/mnt", imageName, "sleep", nerdtest.Infinity).AssertOK()
+		// First run: verify initial content is copied, then modify it
+		helpers.Ensure("run", "-d", "--name", data.Identifier(),
+			"-v", data.Identifier("vol")+":/mnt",
+			data.Identifier("img"), "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+
+		rev0 := helpers.Capture("exec", data.Identifier(), "cat", "/mnt/file")
+		assert.Equal(helpers.T(), rev0, "rev0")
+
+		helpers.Ensure("exec", data.Identifier(), "sh", "-euc", `echo -n "rev1" >/mnt/file`)
+		helpers.Ensure("rm", "-f", data.Identifier())
+
+		// Second run: volume content should be "rev1", not reset to "rev0"
+		helpers.Ensure("run", "-d", "--name", data.Identifier(),
+			"-v", data.Identifier("vol")+":/mnt",
+			data.Identifier("img"), "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 	}
-	runContainer()
-	base.EnsureContainerStarted(containerName)
-	base.Cmd("exec", containerName, "cat", "/mnt/file").AssertOutExactly("rev0")
-	base.Cmd("exec", containerName, "sh", "-euc", "echo -n \"rev1\" >/mnt/file").AssertOK()
-	base.Cmd("rm", "-f", containerName).AssertOK()
-	runContainer()
-	base.EnsureContainerStarted(containerName)
-	base.Cmd("exec", containerName, "cat", "/mnt/file").AssertOutExactly("rev1")
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("exec", data.Identifier(), "cat", "/mnt/file")
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("rev1"))
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		helpers.Anyhow("volume", "rm", data.Identifier("vol"))
+		helpers.Anyhow("rmi", data.Identifier("img"))
+		helpers.Anyhow("builder", "prune", "--all", "--force")
+	}
+
+	testCase.Run(t)
+}
+
+func expectMountOptions(allow, deny []string) test.Comparator {
+	return func(stdout string, t tig.T) {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		assert.Assert(t, len(lines) == 1, "expected 1 line, got %d: %q", len(lines), stdout)
+		for _, s := range allow {
+			assert.Assert(t, strings.Contains(stdout, s), "expected stdout to contain %q, got %q", s, stdout)
+		}
+		for _, s := range deny {
+			assert.Assert(t, !strings.Contains(stdout, s), "expected stdout not to contain %q, got %q", s, stdout)
+		}
+	}
 }
 
 func TestRunTmpfs(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	f := func(allow, deny []string) func(stdout string) error {
-		return func(stdout string) error {
-			lines := strings.Split(strings.TrimSpace(stdout), "\n")
-			if len(lines) != 1 {
-				return fmt.Errorf("expected 1 lines, got %q", stdout)
-			}
-			for _, s := range allow {
-				if !strings.Contains(stdout, s) {
-					return fmt.Errorf("expected stdout to contain %q, got %q", s, stdout)
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "tmpfs default options",
+			Command:     test.Command("run", "--rm", "--tmpfs", "/tmp", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expectMountOptions([]string{"rw", "nosuid", "nodev", "noexec"}, nil),
 				}
-			}
-			for _, s := range deny {
-				if strings.Contains(stdout, s) {
-					return fmt.Errorf("expected stdout not to contain %q, got %q", s, stdout)
+			},
+		},
+		{
+			Description: "tmpfs with size and exec",
+			Command:     test.Command("run", "--rm", "--tmpfs", "/tmp:size=64m,exec", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expectMountOptions([]string{"rw", "nosuid", "nodev", "size=65536k"}, []string{"noexec"}),
 				}
-			}
-			return nil
-		}
+			},
+		},
+		{
+			// https://github.com/containerd/nerdctl/issues/594
+			Description: "tmpfs on /dev/shm with rw exec and size",
+			Command:     test.Command("run", "--rm", "--tmpfs", "/dev/shm:rw,exec,size=1g", testutil.AlpineImage, "grep", "/dev/shm", "/proc/mounts"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expectMountOptions([]string{"rw", "nosuid", "nodev", "size=1048576k"}, []string{"noexec"}),
+				}
+			},
+		},
 	}
-	base.Cmd("run", "--rm", "--tmpfs", "/tmp", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "noexec"}, nil))
-	base.Cmd("run", "--rm", "--tmpfs", "/tmp:size=64m,exec", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=65536k"}, []string{"noexec"}))
-	// for https://github.com/containerd/nerdctl/issues/594
-	base.Cmd("run", "--rm", "--tmpfs", "/dev/shm:rw,exec,size=1g", testutil.AlpineImage, "grep", "/dev/shm", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=1048576k"}, []string{"noexec"}))
+
+	testCase.Run(t)
 }
 
 func TestRunBindMountTmpfs(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	f := func(allow []string) func(stdout string) error {
-		return func(stdout string) error {
-			lines := strings.Split(strings.TrimSpace(stdout), "\n")
-			if len(lines) != 1 {
-				return fmt.Errorf("expected 1 lines, got %q", stdout)
-			}
-			for _, s := range allow {
-				if !strings.Contains(stdout, s) {
-					return fmt.Errorf("expected stdout to contain %q, got %q", s, stdout)
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "mount type tmpfs default",
+			Command:     test.Command("run", "--rm", "--mount", "type=tmpfs,target=/tmp", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expectMountOptions([]string{"rw", "nosuid", "nodev", "noexec"}, nil),
 				}
-			}
-			return nil
-		}
+			},
+		},
+		{
+			Description: "mount type tmpfs with size",
+			Command:     test.Command("run", "--rm", "--mount", "type=tmpfs,target=/tmp,tmpfs-size=64m", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts"),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expectMountOptions([]string{"rw", "nosuid", "nodev", "size=65536k"}, nil),
+				}
+			},
+		},
 	}
-	base.Cmd("run", "--rm", "--mount", "type=tmpfs,target=/tmp", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "noexec"}))
-	base.Cmd("run", "--rm", "--mount", "type=tmpfs,target=/tmp,tmpfs-size=64m", testutil.AlpineImage, "grep", "/tmp", "/proc/mounts").AssertOutWithFunc(f([]string{"rw", "nosuid", "nodev", "size=65536k"}))
+
+	testCase.Run(t)
 }
 
 func mountExistsWithOpt(mountPoint, mountOpt string) test.Comparator {
@@ -409,359 +614,447 @@ func TestRunBindMountBind(t *testing.T) {
 	testCase.Run(t)
 }
 
+func expectFindmntLines(expectedLines int, expectedPrefix string) test.Comparator {
+	return func(stdout string, t tig.T) {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		assert.Assert(t, len(lines) == expectedLines, "expected %d line(s), got %d: %q", expectedLines, len(lines), stdout)
+		assert.Assert(t, strings.HasPrefix(lines[0], expectedPrefix), "expected mount %s, got %q", expectedPrefix, lines[0])
+	}
+}
+
 func TestRunMountBindMode(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("must be superuser to use mount")
-	}
-	t.Parallel()
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Rootful
 
-	tmpDir1, err := os.MkdirTemp(t.TempDir(), "rw")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDir1)
-	tmpDir1Mnt := filepath.Join(tmpDir1, "mnt")
-	if err := os.MkdirAll(tmpDir1Mnt, 0700); err != nil {
-		t.Fatal(err)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		tmpDir1 := data.Temp().Dir("rw")
+		tmpDir1Mnt := data.Temp().Dir("rw", "mnt")
+		tmpDir2 := data.Temp().Dir("ro")
+
+		err := mobymount.Mount(tmpDir2, tmpDir1Mnt, "none", "bind,ro")
+		assert.NilError(helpers.T(), err, "failed to mount")
+
+		data.Labels().Set("tmpDir1", tmpDir1)
+		data.Labels().Set("tmpDir1Mnt", tmpDir1Mnt)
 	}
 
-	tmpDir2, err := os.MkdirTemp(t.TempDir(), "ro")
-	if err != nil {
-		t.Fatal(err)
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "bind-recursive disabled hides submounts",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run",
+					"--rm",
+					"--mount", fmt.Sprintf("type=bind,bind-recursive=disabled,src=%s,target=/mnt1", data.Labels().Get("tmpDir1")),
+					testutil.AlpineImage,
+					"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
+				)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expectFindmntLines(1, "/mnt1"),
+				}
+			},
+		},
+		{
+			Description: "bind-recursive enabled shows submounts",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run",
+					"--rm",
+					"--mount", fmt.Sprintf("type=bind,bind-recursive=enabled,src=%s,target=/mnt1", data.Labels().Get("tmpDir1")),
+					testutil.AlpineImage,
+					"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
+				)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expectFindmntLines(2, "/mnt1"),
+				}
+			},
+		},
 	}
-	defer os.RemoveAll(tmpDir2)
 
-	if err := mobymount.Mount(tmpDir2, tmpDir1Mnt, "none", "bind,ro"); err != nil {
-		t.Fatal(err)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		mntPath := data.Labels().Get("tmpDir1Mnt")
+		if mntPath != "" {
+			_ = mobymount.Unmount(mntPath)
+		}
 	}
-	defer func() {
-		if err := mobymount.Unmount(tmpDir1Mnt); err != nil {
-			t.Fatal(err)
-		}
-	}()
 
-	base.Cmd("run",
-		"--rm",
-		"--mount", fmt.Sprintf("type=bind,bind-recursive=disabled,src=%s,target=/mnt1", tmpDir1),
-		testutil.AlpineImage,
-		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
-	).AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) != 1 {
-			return fmt.Errorf("expected 1 line, got %q", stdout)
-		}
-		if !strings.HasPrefix(lines[0], "/mnt1") {
-			return fmt.Errorf("expected mount /mnt1, got %q", lines[0])
-		}
-		return nil
-	})
-
-	base.Cmd("run",
-		"--rm",
-		"--mount", fmt.Sprintf("type=bind,bind-recursive=enabled,src=%s,target=/mnt1", tmpDir1),
-		testutil.AlpineImage,
-		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
-	).AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) != 2 {
-			return fmt.Errorf("expected 2 line, got %q", stdout)
-		}
-		if !strings.HasPrefix(lines[0], "/mnt1") {
-			return fmt.Errorf("expected mount /mnt1, got %q", lines[0])
-		}
-		return nil
-	})
+	testCase.Run(t)
 }
 
 func TestRunVolumeBindMode(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("must be superuser to use mount")
-	}
-	testutil.DockerIncompatible(t)
-	t.Parallel()
-	base := testutil.NewBase(t)
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(nerdtest.Rootful, require.Not(nerdtest.Docker))
 
-	tmpDir1, err := os.MkdirTemp(t.TempDir(), "rw")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDir1)
-	tmpDir1Mnt := filepath.Join(tmpDir1, "mnt")
-	if err := os.MkdirAll(tmpDir1Mnt, 0700); err != nil {
-		t.Fatal(err)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		tmpDir1 := data.Temp().Dir("rw")
+		tmpDir1Mnt := data.Temp().Dir("rw", "mnt")
+		tmpDir2 := data.Temp().Dir("ro")
+
+		err := mobymount.Mount(tmpDir2, tmpDir1Mnt, "none", "bind,ro")
+		assert.NilError(helpers.T(), err, "failed to mount")
+
+		data.Labels().Set("tmpDir1", tmpDir1)
+		data.Labels().Set("tmpDir1Mnt", tmpDir1Mnt)
 	}
 
-	tmpDir2, err := os.MkdirTemp(t.TempDir(), "ro")
-	if err != nil {
-		t.Fatal(err)
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "bind mode hides submounts",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run",
+					"--rm",
+					"-v", fmt.Sprintf("%s:/mnt1:bind", data.Labels().Get("tmpDir1")),
+					testutil.AlpineImage,
+					"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
+				)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expectFindmntLines(1, "/mnt1"),
+				}
+			},
+		},
+		{
+			Description: "rbind mode shows submounts",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run",
+					"--rm",
+					"-v", fmt.Sprintf("%s:/mnt1:rbind", data.Labels().Get("tmpDir1")),
+					testutil.AlpineImage,
+					"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
+				)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expectFindmntLines(2, "/mnt1"),
+				}
+			},
+		},
 	}
-	defer os.RemoveAll(tmpDir2)
 
-	if err := mobymount.Mount(tmpDir2, tmpDir1Mnt, "none", "bind,ro"); err != nil {
-		t.Fatal(err)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		mntPath := data.Labels().Get("tmpDir1Mnt")
+		if mntPath != "" {
+			_ = mobymount.Unmount(mntPath)
+		}
 	}
-	defer func() {
-		if err := mobymount.Unmount(tmpDir1Mnt); err != nil {
-			t.Fatal(err)
-		}
-	}()
 
-	base.Cmd("run",
-		"--rm",
-		"-v", fmt.Sprintf("%s:/mnt1:bind", tmpDir1),
-		testutil.AlpineImage,
-		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
-	).AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) != 1 {
-			return fmt.Errorf("expected 1 line, got %q", stdout)
-		}
-		if !strings.HasPrefix(lines[0], "/mnt1") {
-			return fmt.Errorf("expected mount /mnt1, got %q", lines[0])
-		}
-		return nil
-	})
-
-	base.Cmd("run",
-		"--rm",
-		"-v", fmt.Sprintf("%s:/mnt1:rbind", tmpDir1),
-		testutil.AlpineImage,
-		"sh", "-euxc", "apk add findmnt -q && findmnt -nR /mnt1",
-	).AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) != 2 {
-			return fmt.Errorf("expected 2 line, got %q", stdout)
-		}
-		if !strings.HasPrefix(lines[0], "/mnt1") {
-			return fmt.Errorf("expected mount /mnt1, got %q", lines[0])
-		}
-		return nil
-	})
+	testCase.Run(t)
 }
 
 func TestRunBindMountPropagation(t *testing.T) {
-	t.Skip("This test is currently broken. See https://github.com/containerd/nerdctl/issues/3404")
-
-	tID := testutil.Identifier(t)
-
-	if !isRootfsShareableMount() {
-		t.Skipf("rootfs doesn't support shared mount, skip test %s", tID)
+	testCase := nerdtest.Setup()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.T().Skip("This test is currently broken. See https://github.com/containerd/nerdctl/issues/3404")
 	}
 
-	t.Parallel()
-	base := testutil.NewBase(t)
-
-	testCases := []struct {
-		propagation string
-		assertFunc  func(containerName, containerNameReplica string)
-	}{
+	testCase.SubTests = []*test.Case{
 		{
-			propagation: "rshared",
-			assertFunc: func(containerName, containerNameReplica string) {
-				// replica can get sub-mounts from original
-				base.Cmd("exec", containerNameReplica, "cat", "/mnt1/replica/foo.txt").AssertOutExactly("toreplica")
+			Description: "rshared propagation",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				rwDir := data.Temp().Dir("rshared")
+				data.Labels().Set("rshared-rwDir", rwDir)
 
-				// and sub-mounts from replica will be propagated to the original too
-				base.Cmd("exec", containerName, "cat", "/mnt1/bar/bar.txt").AssertOutExactly("fromreplica")
+				helpers.Ensure("run", "-d", "--privileged",
+					"--name", data.Identifier("rshared"),
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1,bind-propagation=rshared", rwDir),
+					testutil.AlpineImage, "top")
+
+				helpers.Ensure("run", "-d", "--privileged",
+					"--name", data.Identifier("rshared-replica"),
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1,bind-propagation=rshared", rwDir),
+					testutil.AlpineImage, "top")
+
+				// mount in the first container
+				helpers.Ensure("exec", data.Identifier("rshared"), "sh", "-exc",
+					"mkdir /app && mkdir /mnt1/replica && mount --bind /app /mnt1/replica && echo -n toreplica > /app/foo.txt")
+
+				// mount in the second container
+				helpers.Ensure("exec", data.Identifier("rshared-replica"), "sh", "-exc", "mkdir /bar && mkdir /mnt1/bar")
+				helpers.Ensure("exec", data.Identifier("rshared-replica"), "sh", "-exc", "mount --bind /bar /mnt1/bar")
+				helpers.Ensure("exec", data.Identifier("rshared-replica"), "sh", "-exc", "echo -n fromreplica > /bar/bar.txt")
+			},
+			SubTests: []*test.Case{
+				{
+					Description: "replica can get sub-mounts from original",
+					Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+						return helpers.Command("exec", data.Identifier("rshared-replica"), "cat", "/mnt1/replica/foo.txt")
+					},
+					Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("toreplica")),
+				},
+				{
+					Description: "sub-mounts from replica propagated to original",
+					Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+						return helpers.Command("exec", data.Identifier("rshared"), "cat", "/mnt1/bar/bar.txt")
+					},
+					Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("fromreplica")),
+				},
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("exec", data.Identifier("rshared-replica"), "sh", "-exc", "umount /mnt1/bar")
+				helpers.Anyhow("exec", data.Identifier("rshared"), "sh", "-exc", "umount /mnt1/replica")
+				helpers.Anyhow("rm", "-f", data.Identifier("rshared"))
+				helpers.Anyhow("rm", "-f", data.Identifier("rshared-replica"))
 			},
 		},
 		{
-			propagation: "rslave",
-			assertFunc: func(containerName, containerNameReplica string) {
-				// replica can get sub-mounts from original
-				base.Cmd("exec", containerNameReplica, "cat", "/mnt1/replica/foo.txt").AssertOutExactly("toreplica")
+			Description: "rslave propagation",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				rwDir := data.Temp().Dir("rslave")
 
-				// but sub-mounts from replica will not be propagated to the original
-				base.Cmd("exec", containerName, "cat", "/mnt1/bar/bar.txt").AssertFail()
+				helpers.Ensure("run", "-d", "--privileged",
+					"--name", data.Identifier("rslave"),
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1,bind-propagation=rshared", rwDir),
+					testutil.AlpineImage, "top")
+
+				helpers.Ensure("run", "-d", "--privileged",
+					"--name", data.Identifier("rslave-replica"),
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1,bind-propagation=rslave", rwDir),
+					testutil.AlpineImage, "top")
+
+				helpers.Ensure("exec", data.Identifier("rslave"), "sh", "-exc",
+					"mkdir /app && mkdir /mnt1/replica && mount --bind /app /mnt1/replica && echo -n toreplica > /app/foo.txt")
+
+				helpers.Ensure("exec", data.Identifier("rslave-replica"), "sh", "-exc", "mkdir /bar && mkdir /mnt1/bar")
+				helpers.Ensure("exec", data.Identifier("rslave-replica"), "sh", "-exc", "mount --bind /bar /mnt1/bar")
+				helpers.Ensure("exec", data.Identifier("rslave-replica"), "sh", "-exc", "echo -n fromreplica > /bar/bar.txt")
+			},
+			SubTests: []*test.Case{
+				{
+					Description: "replica can get sub-mounts from original",
+					Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+						return helpers.Command("exec", data.Identifier("rslave-replica"), "cat", "/mnt1/replica/foo.txt")
+					},
+					Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("toreplica")),
+				},
+				{
+					Description: "sub-mounts from replica not propagated to original",
+					Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+						return helpers.Command("exec", data.Identifier("rslave"), "cat", "/mnt1/bar/bar.txt")
+					},
+					Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+				},
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("exec", data.Identifier("rslave-replica"), "sh", "-exc", "umount /mnt1/bar")
+				helpers.Anyhow("exec", data.Identifier("rslave"), "sh", "-exc", "umount /mnt1/replica")
+				helpers.Anyhow("rm", "-f", data.Identifier("rslave"))
+				helpers.Anyhow("rm", "-f", data.Identifier("rslave-replica"))
 			},
 		},
 		{
-			propagation: "rprivate",
-			assertFunc: func(containerName, containerNameReplica string) {
-				// replica can't get sub-mounts from original
-				base.Cmd("exec", containerNameReplica, "cat", "/mnt1/replica/foo.txt").AssertFail()
-				// and sub-mounts from replica will not be propagated to the original too
-				base.Cmd("exec", containerName, "cat", "/mnt1/bar/bar.txt").AssertFail()
+			Description: "rprivate propagation",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				rwDir := data.Temp().Dir("rprivate")
+
+				helpers.Ensure("run", "-d", "--privileged",
+					"--name", data.Identifier("rprivate"),
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1,bind-propagation=rshared", rwDir),
+					testutil.AlpineImage, "top")
+
+				helpers.Ensure("run", "-d", "--privileged",
+					"--name", data.Identifier("rprivate-replica"),
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1,bind-propagation=rprivate", rwDir),
+					testutil.AlpineImage, "top")
+
+				helpers.Ensure("exec", data.Identifier("rprivate"), "sh", "-exc",
+					"mkdir /app && mkdir /mnt1/replica && mount --bind /app /mnt1/replica && echo -n toreplica > /app/foo.txt")
+
+				helpers.Ensure("exec", data.Identifier("rprivate-replica"), "sh", "-exc", "mkdir /bar && mkdir /mnt1/bar")
+				helpers.Ensure("exec", data.Identifier("rprivate-replica"), "sh", "-exc", "mount --bind /bar /mnt1/bar")
+				helpers.Ensure("exec", data.Identifier("rprivate-replica"), "sh", "-exc", "echo -n fromreplica > /bar/bar.txt")
+			},
+			SubTests: []*test.Case{
+				{
+					Description: "replica cannot get sub-mounts from original",
+					Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+						return helpers.Command("exec", data.Identifier("rprivate-replica"), "cat", "/mnt1/replica/foo.txt")
+					},
+					Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+				},
+				{
+					Description: "sub-mounts from replica not propagated to original",
+					Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+						return helpers.Command("exec", data.Identifier("rprivate"), "cat", "/mnt1/bar/bar.txt")
+					},
+					Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+				},
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("exec", data.Identifier("rprivate-replica"), "sh", "-exc", "umount /mnt1/bar")
+				helpers.Anyhow("exec", data.Identifier("rprivate"), "sh", "-exc", "umount /mnt1/replica")
+				helpers.Anyhow("rm", "-f", data.Identifier("rprivate"))
+				helpers.Anyhow("rm", "-f", data.Identifier("rprivate-replica"))
 			},
 		},
 		{
-			propagation: "",
-			assertFunc: func(containerName, containerNameReplica string) {
-				// replica can't get sub-mounts from original
-				base.Cmd("exec", containerNameReplica, "cat", "/mnt1/replica/foo.txt").AssertFail()
-				// and sub-mounts from replica will not be propagated to the original too
-				base.Cmd("exec", containerName, "cat", "/mnt1/bar/bar.txt").AssertFail()
+			Description: "default propagation",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				rwDir := data.Temp().Dir("default")
+
+				helpers.Ensure("run", "-d", "--privileged",
+					"--name", data.Identifier("default"),
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1,bind-propagation=rshared", rwDir),
+					testutil.AlpineImage, "top")
+
+				helpers.Ensure("run", "-d", "--privileged",
+					"--name", data.Identifier("default-replica"),
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1", rwDir),
+					testutil.AlpineImage, "top")
+
+				helpers.Ensure("exec", data.Identifier("default"), "sh", "-exc",
+					"mkdir /app && mkdir /mnt1/replica && mount --bind /app /mnt1/replica && echo -n toreplica > /app/foo.txt")
+
+				helpers.Ensure("exec", data.Identifier("default-replica"), "sh", "-exc", "mkdir /bar && mkdir /mnt1/bar")
+				helpers.Ensure("exec", data.Identifier("default-replica"), "sh", "-exc", "mount --bind /bar /mnt1/bar")
+				helpers.Ensure("exec", data.Identifier("default-replica"), "sh", "-exc", "echo -n fromreplica > /bar/bar.txt")
+			},
+			SubTests: []*test.Case{
+				{
+					Description: "replica cannot get sub-mounts from original",
+					Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+						return helpers.Command("exec", data.Identifier("default-replica"), "cat", "/mnt1/replica/foo.txt")
+					},
+					Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+				},
+				{
+					Description: "sub-mounts from replica not propagated to original",
+					Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+						return helpers.Command("exec", data.Identifier("default"), "cat", "/mnt1/bar/bar.txt")
+					},
+					Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+				},
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("exec", data.Identifier("default-replica"), "sh", "-exc", "umount /mnt1/bar")
+				helpers.Anyhow("exec", data.Identifier("default"), "sh", "-exc", "umount /mnt1/replica")
+				helpers.Anyhow("rm", "-f", data.Identifier("default"))
+				helpers.Anyhow("rm", "-f", data.Identifier("default-replica"))
 			},
 		},
 	}
 
-	for _, tc := range testCases {
-		propagationName := tc.propagation
-		if propagationName == "" {
-			propagationName = "default"
-		}
-
-		t.Logf("Running test propagation case %s", propagationName)
-
-		rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		containerName := tID + "-" + propagationName
-		containerNameReplica := containerName + "-replica"
-
-		mountOption := fmt.Sprintf("type=bind,src=%s,target=/mnt1,bind-propagation=%s", rwDir, tc.propagation)
-		if tc.propagation == "" {
-			mountOption = fmt.Sprintf("type=bind,src=%s,target=/mnt1", rwDir)
-		}
-
-		containers := []struct {
-			name        string
-			mountOption string
-		}{
-			{
-				name:        containerName,
-				mountOption: fmt.Sprintf("type=bind,src=%s,target=/mnt1,bind-propagation=rshared", rwDir),
-			},
-			{
-				name:        containerNameReplica,
-				mountOption: mountOption,
-			},
-		}
-		for _, c := range containers {
-			base.Cmd("run", "-d",
-				"--privileged",
-				"--name", c.name,
-				"--mount", c.mountOption,
-				testutil.AlpineImage,
-				"top").AssertOK()
-			defer base.Cmd("rm", "-f", c.name).Run()
-		}
-
-		// mount in the first container
-		base.Cmd("exec", containerName, "sh", "-exc", "mkdir /app && mkdir /mnt1/replica && mount --bind /app /mnt1/replica && echo -n toreplica > /app/foo.txt").AssertOK()
-		base.Cmd("exec", containerName, "cat", "/mnt1/replica/foo.txt").AssertOutExactly("toreplica")
-
-		// mount in the second container
-		base.Cmd("exec", containerNameReplica, "sh", "-exc", "mkdir /bar && mkdir /mnt1/bar").AssertOK()
-		base.Cmd("exec", containerNameReplica, "sh", "-exc", "mount --bind /bar /mnt1/bar").AssertOK()
-
-		base.Cmd("exec", containerNameReplica, "sh", "-exc", "echo -n fromreplica > /bar/bar.txt").AssertOK()
-		base.Cmd("exec", containerNameReplica, "cat", "/mnt1/bar/bar.txt").AssertOutExactly("fromreplica")
-
-		// call case specific assert function
-		tc.assertFunc(containerName, containerNameReplica)
-
-		// umount mount point in the first privileged container
-		base.Cmd("exec", containerNameReplica, "sh", "-exc", "umount /mnt1/bar").AssertOK()
-		base.Cmd("exec", containerName, "sh", "-exc", "umount /mnt1/replica").AssertOK()
-	}
-}
-
-// isRootfsShareableMount will check if /tmp or / support shareable mount
-func isRootfsShareableMount() bool {
-	existFunc := func(mi mount.Info) bool {
-		for _, opt := range strings.Split(mi.Optional, " ") {
-			if strings.HasPrefix(opt, "shared:") {
-				return true
-			}
-		}
-		return false
-	}
-
-	mi, err := mount.Lookup("/tmp")
-	if err == nil {
-		return existFunc(mi)
-	}
-
-	mi, err = mount.Lookup("/")
-	if err == nil {
-		return existFunc(mi)
-	}
-
-	return false
+	testCase.Run(t)
 }
 
 func TestRunVolumesFrom(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-	rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
-	if err != nil {
-		t.Fatal(err)
-	}
-	roDir, err := os.MkdirTemp(t.TempDir(), "ro")
-	if err != nil {
-		t.Fatal(err)
-	}
-	rwVolName := tID + "-rw"
-	roVolName := tID + "-ro"
-	for _, v := range []string{rwVolName, roVolName} {
-		defer base.Cmd("volume", "rm", "-f", v).Run()
-		base.Cmd("volume", "create", v).AssertOK()
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		rwDir := data.Temp().Dir("rw")
+		roDir := data.Temp().Dir("ro")
+		rwVolName := data.Identifier("rw")
+		roVolName := data.Identifier("ro")
+
+		helpers.Ensure("volume", "create", rwVolName)
+		helpers.Ensure("volume", "create", roVolName)
+
+		helpers.Ensure("run",
+			"-d",
+			"--name", data.Identifier("from"),
+			"-v", fmt.Sprintf("%s:/mnt1", rwDir),
+			"-v", fmt.Sprintf("%s:/mnt2:ro", roDir),
+			"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
+			"-v", fmt.Sprintf("%s:/mnt4:ro", roVolName),
+			testutil.AlpineImage,
+			"top",
+		)
+
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier("from"))
+
+		helpers.Ensure("run",
+			"-d",
+			"--name", data.Identifier("to"),
+			"--volumes-from", data.Identifier("from"),
+			testutil.AlpineImage,
+			"top",
+		)
+
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier("to"))
+
+		// Verify rw mounts are writable via volumes-from container
+		helpers.Ensure("exec", data.Identifier("to"), "sh", "-exc", "echo -n str1 > /mnt1/file1")
+		helpers.Ensure("exec", data.Identifier("to"), "sh", "-exc", "echo -n str3 > /mnt3/file3")
+		// Verify ro mounts are NOT writable
+		helpers.Fail("exec", data.Identifier("to"), "sh", "-exc", "echo -n str2 > /mnt2/file2")
+		helpers.Fail("exec", data.Identifier("to"), "sh", "-exc", "echo -n str4 > /mnt4/file4")
+
+		helpers.Ensure("rm", "-f", data.Identifier("to"))
 	}
 
-	fromContainerName := tID + "-from"
-	toContainerName := tID + "-to"
-	defer base.Cmd("rm", "-f", fromContainerName).AssertOK()
-	defer base.Cmd("rm", "-f", toContainerName).AssertOK()
-	base.Cmd("run",
-		"-d",
-		"--name", fromContainerName,
-		"-v", fmt.Sprintf("%s:/mnt1", rwDir),
-		"-v", fmt.Sprintf("%s:/mnt2:ro", roDir),
-		"-v", fmt.Sprintf("%s:/mnt3", rwVolName),
-		"-v", fmt.Sprintf("%s:/mnt4:ro", roVolName),
-		testutil.AlpineImage,
-		"top",
-	).AssertOK()
-	base.Cmd("run",
-		"-d",
-		"--name", toContainerName,
-		"--volumes-from", fromContainerName,
-		testutil.AlpineImage,
-		"top",
-	).AssertOK()
-	base.Cmd("exec", toContainerName, "sh", "-exc", "echo -n str1 > /mnt1/file1").AssertOK()
-	base.Cmd("exec", toContainerName, "sh", "-exc", "echo -n str2 > /mnt2/file2").AssertFail()
-	base.Cmd("exec", toContainerName, "sh", "-exc", "echo -n str3 > /mnt3/file3").AssertOK()
-	base.Cmd("exec", toContainerName, "sh", "-exc", "echo -n str4 > /mnt4/file4").AssertFail()
-	base.Cmd("rm", "-f", toContainerName).AssertOK()
-	base.Cmd("run",
-		"--rm",
-		"--volumes-from", fromContainerName,
-		testutil.AlpineImage,
-		"cat", "/mnt1/file1", "/mnt3/file3",
-	).AssertOutExactly("str1str3")
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run",
+			"--rm",
+			"--volumes-from", data.Identifier("from"),
+			testutil.AlpineImage,
+			"cat", "/mnt1/file1", "/mnt3/file3",
+		)
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("str1str3"))
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier("to"))
+		helpers.Anyhow("rm", "-f", data.Identifier("from"))
+		helpers.Anyhow("volume", "rm", "-f", data.Identifier("rw"))
+		helpers.Anyhow("volume", "rm", "-f", data.Identifier("ro"))
+	}
+
+	testCase.Run(t)
 }
 
 func TestBindMountWhenHostFolderDoesNotExist(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	containerName := testutil.Identifier(t) + "-host-dir-not-found"
-	hostDir, err := os.MkdirTemp(t.TempDir(), "rw")
-	if err != nil {
-		t.Fatal(err)
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "bind mount with -v auto-creates host directory",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				hp := data.Temp().Path("v-does-not-exist")
+				data.Labels().Set("hostPath", hp)
+				return helpers.Command("run", "--name", data.Identifier("v"), "-d",
+					"-v", fmt.Sprintf("%s:/tmp", hp),
+					testutil.AlpineImage)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, t tig.T) {
+						_, err := os.Stat(data.Labels().Get("hostPath"))
+						assert.NilError(t, err, "host directory should exist after -v mount")
+					},
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier("v"))
+			},
+		},
+		{
+			Description: "bind mount with --mount does not auto-create host directory",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				hp := data.Temp().Path("mount-does-not-exist")
+				data.Labels().Set("hostPath", hp)
+				return helpers.Command("run", "--name", data.Identifier("mount"), "-d",
+					"--mount", fmt.Sprintf("type=bind, source=%s, target=/tmp", hp),
+					testutil.AlpineImage)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeGenericFail,
+					Output: func(stdout string, t tig.T) {
+						_, err := os.Stat(data.Labels().Get("hostPath"))
+						assert.ErrorIs(t, err, os.ErrNotExist, "host directory should NOT exist after --mount failure")
+					},
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier("mount"))
+			},
+		},
 	}
-	defer os.RemoveAll(hostDir)
-	hp := filepath.Join(hostDir, "does-not-exist")
-	base.Cmd("rm", "-f", containerName).AssertOK()
-	base.Cmd("run", "--name", containerName, "-d", "-v", fmt.Sprintf("%s:/tmp",
-		hp), testutil.AlpineImage).AssertOK()
-	base.Cmd("rm", "-f", containerName).AssertOK()
 
-	// Host directory should get created
-	_, err = os.Stat(hp)
-	assert.NilError(t, err)
-
-	// Test for --mount
-	os.RemoveAll(hp)
-	base.Cmd("run", "--name", containerName, "-d", "--mount", fmt.Sprintf("type=bind, source=%s, target=/tmp",
-		hp), testutil.AlpineImage).AssertFail()
-	_, err = os.Stat(hp)
-	assert.ErrorIs(t, err, os.ErrNotExist)
+	testCase.Run(t)
 }
 
 func TestRunVolumeWithRootDestination(t *testing.T) {
