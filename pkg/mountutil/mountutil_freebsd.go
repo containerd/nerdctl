@@ -41,7 +41,7 @@ func UnprivilegedMountFlags(path string) ([]string, error) {
 
 // parseVolumeOptions parses specified optsRaw with using information of
 // the volume type and the src directory when necessary.
-func parseVolumeOptions(vType, src, optsRaw string) ([]string, []oci.SpecOpts, error) {
+func parseVolumeOptions(vType, src, optsRaw, ociRuntime string) ([]string, []oci.SpecOpts, error) {
 	var writeModeRawOpts []string
 	for _, opt := range strings.Split(optsRaw, ",") {
 		switch opt {
@@ -68,6 +68,6 @@ func ProcessFlagTmpfs(s string) (*Processed, error) {
 	return nil, errdefs.ErrNotImplemented
 }
 
-func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, error) {
+func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime string) (*Processed, error) {
 	return nil, errdefs.ErrNotImplemented
 }

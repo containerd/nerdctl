@@ -72,3 +72,10 @@ and its networks definitions are private.
 
 Files:
 - `nerdctl-<NWNAME>.conflist`: CNI conf list created by nerdctl
+
+## Cache
+
+### `<XDG_CACHE_HOME>/.nerdctl/oci-runtime-features/<RUNTIMEPATHHASH>.json`
+e.g., `~/.cache/nerdctl/oci-runtime-features/67865418f7d73228cb3df1357ba93456ab21567f3c1f1b5eca680b0b8cfbc04e.json`
+
+A cached result of `<RUNTIME> features` (e.g., `runc features`).

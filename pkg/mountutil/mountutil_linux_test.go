@@ -18,6 +18,8 @@ package mountutil
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -30,6 +32,20 @@ import (
 	"github.com/containerd/containerd/v2/pkg/oci"
 )
 
+// stubRROSupport replaces the detection of the recursive read-only (RRO)
+// support (which executes `$RUNTIME features` on the real implementation)
+// for unit testing.
+func stubRROSupport(t *testing.T, supported bool) {
+	orig := supportsRecursivelyReadOnly
+	supportsRecursivelyReadOnly = func(string) error {
+		if supported {
+			return nil
+		}
+		return errors.New("recursive read-only mounts are not supported (stubbed)")
+	}
+	t.Cleanup(func() { supportsRecursivelyReadOnly = orig })
+}
+
 // TestParseVolumeOptions tests volume options are parsed as expected.
 func TestParseVolumeOptions(t *testing.T) {
 	tests := []struct {
@@ -37,6 +53,7 @@ func TestParseVolumeOptions(t *testing.T) {
 		vType                    string
 		src                      string
 		optsRaw                  string
+		rroSupported             bool
 		srcOptional              []string
 		initialRootfsPropagation string
 		wants                    []string
@@ -65,6 +82,29 @@ func TestParseVolumeOptions(t *testing.T) {
 			src:     "dummy",
 			optsRaw: "ro",
 			wants:   []string{"ro"},
+		},
+		{
+			name:         "read only is recursive when the kernel and the runtime support RRO (Docker v25 behavior)",
+			vType:        "bind",
+			src:          "dummy",
+			optsRaw:      "ro",
+			rroSupported: true,
+			wants:        []string{"rro", "rprivate"},
+		},
+		{
+			name:         "deprecated rro option forces recursive read-only",
+			vType:        "bind",
+			src:          "dummy",
+			optsRaw:      "rro,rprivate",
+			rroSupported: true,
+			wants:        []string{"rro", "rprivate"},
+		},
+		{
+			name:     "deprecated rro option fails when RRO is not supported",
+			vType:    "bind",
+			src:      "dummy",
+			optsRaw:  "rro,rprivate",
+			wantFail: true,
 		},
 		{
 			name:     "duplicated flags are not allowed",
@@ -173,7 +213,8 @@ func TestParseVolumeOptions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts, specOpts, err := parseVolumeOptionsWithMountInfo(tt.vType, tt.src, tt.optsRaw, func(string) (mount.Info, error) {
+			stubRROSupport(t, tt.rroSupported)
+			opts, specOpts, err := parseVolumeOptionsWithMountInfo(tt.vType, tt.src, tt.optsRaw, "", func(string) (mount.Info, error) {
 				return mount.Info{
 					Mountpoint: tt.src,
 					Optional:   strings.Join(tt.srcOptional, " "),
@@ -268,7 +309,8 @@ func TestProcessFlagV(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.rawSpec, func(t *testing.T) {
-			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, false)
+			stubRROSupport(t, false)
+			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, false, "")
 			if err != nil {
 				assert.Error(t, err, tt.err)
 				return
@@ -333,7 +375,8 @@ func TestProcessFlagVAnonymousVolumes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.rawSpec, func(t *testing.T) {
-			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, true)
+			stubRROSupport(t, false)
+			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, true, "")
 			if err != nil {
 				assert.ErrorContains(t, err, tt.err)
 				return
@@ -368,7 +411,7 @@ func TestProcessFlagMountRW(t *testing.T) {
 	}
 	for _, tt := range rejected {
 		t.Run(tt.spec, func(t *testing.T) {
-			_, err := ProcessFlagMount(tt.spec, nil)
+			_, err := ProcessFlagMount(tt.spec, nil, "")
 			assert.ErrorContains(t, err, tt.want)
 		})
 	}
@@ -376,8 +419,9 @@ func TestProcessFlagMountRW(t *testing.T) {
 	// ro/rro still parse into a complete read-only bind mount.
 	src := t.TempDir()
 	accepted := []struct {
-		spec  string
-		wants *Processed
+		spec         string
+		rroSupported bool
+		wants        *Processed
 	}{
 		{
 			spec: "type=bind,source=" + src + ",target=/bar,ro",
@@ -387,26 +431,43 @@ func TestProcessFlagMountRW(t *testing.T) {
 					Type:        "bind",
 					Source:      src,
 					Destination: "/bar",
-					Options:     []string{"rbind", "ro", "rprivate"},
+					Options:     []string{"rbind", "rprivate", "ro"},
 				},
 			},
 		},
 		{
-			spec: "type=bind,source=" + src + ",target=/bar,rro",
+			// Read-only mounts are recursively read-only when possible (Docker v25 behavior).
+			spec:         "type=bind,source=" + src + ",target=/bar,ro",
+			rroSupported: true,
 			wants: &Processed{
 				Type: Bind,
 				Mount: specs.Mount{
 					Type:        "bind",
 					Source:      src,
 					Destination: "/bar",
-					Options:     []string{"rbind", "ro", "rro", "rprivate"},
+					Options:     []string{"rbind", "rprivate", "rro"},
+				},
+			},
+		},
+		{
+			// Deprecated alias of readonly,bind-propagation=rprivate,bind-recursive=readonly
+			spec:         "type=bind,source=" + src + ",target=/bar,rro",
+			rroSupported: true,
+			wants: &Processed{
+				Type: Bind,
+				Mount: specs.Mount{
+					Type:        "bind",
+					Source:      src,
+					Destination: "/bar",
+					Options:     []string{"rbind", "rprivate", "rro"},
 				},
 			},
 		},
 	}
 	for _, tt := range accepted {
-		t.Run(tt.spec, func(t *testing.T) {
-			got, err := ProcessFlagMount(tt.spec, nil)
+		t.Run(fmt.Sprintf("%s (rroSupported=%v)", tt.spec, tt.rroSupported), func(t *testing.T) {
+			stubRROSupport(t, tt.rroSupported)
+			got, err := ProcessFlagMount(tt.spec, nil, "")
 			assert.NilError(t, err)
 			assert.Equal(t, got.Type, tt.wants.Type)
 			assert.Equal(t, got.Mount.Type, tt.wants.Mount.Type)
@@ -415,35 +476,95 @@ func TestProcessFlagMountRW(t *testing.T) {
 			assert.DeepEqual(t, got.Mount.Options, tt.wants.Mount.Options)
 		})
 	}
+
+	// The deprecated rro option fails when RRO is not supported.
+	stubRROSupport(t, false)
+	_, err := ProcessFlagMount("type=bind,source="+src+",target=/bar,rro", nil, "")
+	assert.ErrorContains(t, err, "not supported")
 }
 
 // TestProcessFlagMountBindRecursive verifies that the Docker `bind-recursive`
 // option (which supersedes the deprecated `bind-nonrecursive`) is honored and
-// maps to non-recursive (bind) or recursive (rbind) mounts.
+// maps to non-recursive (bind) or recursive (rbind) mounts, and controls the
+// recursive read-only (RRO) mode of read-only mounts.
 func TestProcessFlagMountBindRecursive(t *testing.T) {
 	src := t.TempDir()
 
 	accepted := []struct {
-		spec        string
-		wantBindOpt string
+		spec         string
+		rroSupported bool
+		wantOpts     []string
 	}{
-		{"type=bind,source=" + src + ",target=/bar,bind-recursive=disabled", "bind"},
-		{"type=bind,source=" + src + ",target=/bar,bind-recursive=enabled", "rbind"},
-		{"type=bind,source=" + src + ",target=/bar,bind-recursive=false", "bind"},
-		{"type=bind,source=" + src + ",target=/bar,bind-recursive=1", "rbind"},
+		{spec: "type=bind,source=" + src + ",target=/bar,bind-recursive=disabled", wantOpts: []string{"bind"}},
+		{spec: "type=bind,source=" + src + ",target=/bar,bind-recursive=enabled", wantOpts: []string{"rbind"}},
 		// The deprecated bind-nonrecursive option keeps working.
-		{"type=bind,source=" + src + ",target=/bar,bind-nonrecursive", "bind"},
-		{"type=bind,source=" + src + ",target=/bar,bind-nonrecursive=false", "rbind"},
+		{spec: "type=bind,source=" + src + ",target=/bar,bind-nonrecursive", wantOpts: []string{"bind"}},
+		{spec: "type=bind,source=" + src + ",target=/bar,bind-nonrecursive=false", wantOpts: []string{"rbind"}},
+		// bind-recursive=writable keeps the read-only mount non-recursively read-only (Docker v24 behavior).
+		{
+			spec:         "type=bind,source=" + src + ",target=/bar,readonly,bind-recursive=writable",
+			rroSupported: true,
+			wantOpts:     []string{"rbind", "ro"},
+		},
+		// bind-recursive=readonly forces the recursive read-only mount.
+		{
+			spec:         "type=bind,source=" + src + ",target=/bar,readonly,bind-propagation=rprivate,bind-recursive=readonly",
+			rroSupported: true,
+			wantOpts:     []string{"rbind", "rro"},
+		},
 	}
 	for _, tt := range accepted {
 		t.Run(tt.spec, func(t *testing.T) {
-			got, err := ProcessFlagMount(tt.spec, nil)
+			stubRROSupport(t, tt.rroSupported)
+			got, err := ProcessFlagMount(tt.spec, nil, "")
 			assert.NilError(t, err)
-			assert.Assert(t, slices.Contains(got.Mount.Options, tt.wantBindOpt),
-				"expected option %q in %v", tt.wantBindOpt, got.Mount.Options)
+			for _, o := range tt.wantOpts {
+				assert.Assert(t, slices.Contains(got.Mount.Options, o),
+					"expected option %q in %v", o, got.Mount.Options)
+			}
 		})
 	}
 
-	_, err := ProcessFlagMount("type=bind,source="+src+",target=/bar,bind-recursive=bogus", nil)
-	assert.ErrorContains(t, err, "invalid value for bind-recursive")
+	rejected := []struct {
+		spec         string
+		rroSupported bool
+		want         string
+	}{
+		// Boolean aliases were removed for Docker compatibility (https://github.com/docker/cli/pull/4671).
+		{spec: "type=bind,source=" + src + ",target=/bar,bind-recursive=false", want: "invalid value for bind-recursive"},
+		{spec: "type=bind,source=" + src + ",target=/bar,bind-recursive=1", want: "invalid value for bind-recursive"},
+		{spec: "type=bind,source=" + src + ",target=/bar,bind-recursive=bogus", want: "invalid value for bind-recursive"},
+		{
+			spec: "type=bind,source=" + src + ",target=/bar,bind-recursive=writable",
+			want: "'bind-recursive=writable' requires 'readonly'",
+		},
+		{
+			spec: "type=bind,source=" + src + ",target=/bar,bind-recursive=readonly",
+			want: "'bind-recursive=readonly' requires 'readonly'",
+		},
+		{
+			spec: "type=bind,source=" + src + ",target=/bar,readonly,bind-recursive=readonly",
+			want: "'bind-recursive=readonly' requires 'bind-propagation=rprivate'",
+		},
+		{
+			spec: "type=bind,source=" + src + ",target=/bar,readonly,bind-propagation=rprivate,bind-nonrecursive,bind-recursive=readonly",
+			want: "conflicts with 'bind-nonrecursive'",
+		},
+		{
+			spec: "type=volume,source=foo,target=/bar,bind-recursive=enabled",
+			want: "only supported for bind mounts",
+		},
+		// bind-recursive=readonly fails when RRO is not supported.
+		{
+			spec: "type=bind,source=" + src + ",target=/bar,readonly,bind-propagation=rprivate,bind-recursive=readonly",
+			want: "not supported",
+		},
+	}
+	for _, tt := range rejected {
+		t.Run(tt.spec, func(t *testing.T) {
+			stubRROSupport(t, tt.rroSupported)
+			_, err := ProcessFlagMount(tt.spec, nil, "")
+			assert.ErrorContains(t, err, tt.want)
+		})
+	}
 }
