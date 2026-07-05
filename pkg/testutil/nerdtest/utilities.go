@@ -117,6 +117,14 @@ func InspectImage(helpers test.Helpers, name string) dockercompat.Image {
 const (
 	maxRetry = 20
 	sleep    = time.Second
+	// exitedDeadline is the maximum duration EnsureContainerExited waits for a
+	// container to reach the "exited" (or "dead") state.
+	// Note that this must accommodate containers using a restart policy
+	// (eg: `--restart=on-failure:2`): such containers are reported as
+	// "restarting" (not "exited") until the restart monitor exhausts the retry
+	// count, and the monitor only reconciles every 10 seconds by default
+	// (see https://github.com/containerd/nerdctl/issues/5030).
+	exitedDeadline = 60 * time.Second
 )
 
 func EnsureContainerStarted(helpers test.Helpers, con string) {
@@ -154,7 +162,8 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 func EnsureContainerExited(helpers test.Helpers, con string, exitCode int) {
 	helpers.T().Helper()
 	exited := false
-	for i := 0; i < maxRetry && !exited; i++ {
+	deadline := time.Now().Add(exitedDeadline)
+	for time.Now().Before(deadline) && !exited {
 		helpers.Command("container", "inspect", con).
 			Run(&test.Expected{
 				ExitCode: expect.ExitCodeNoCheck,
@@ -189,7 +198,7 @@ func EnsureContainerExited(helpers test.Helpers, con string, exitCode int) {
 		helpers.T().Log(ins)
 		helpers.T().Log(lgs)
 		helpers.T().Log(ps)
-		helpers.T().Log(fmt.Sprintf("container %s still not exited after %d retries", con, maxRetry))
+		helpers.T().Log(fmt.Sprintf("container %s still not exited after %s", con, exitedDeadline))
 		helpers.T().FailNow()
 	}
 }
