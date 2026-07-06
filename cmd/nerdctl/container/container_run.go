@@ -458,12 +458,13 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	statusC, err := task.Wait(ctx)
-	if err != nil {
-		return err
+	var statusC <-chan containerd.ExitStatus
+	if !createOpt.Detach {
+		statusC, err = task.Wait(ctx)
+		if err != nil {
+			return err
+		}
 	}
-
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
@@ -480,12 +481,14 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Setup container healthchecks.
-	if err := healthcheck.CreateTimer(ctx, c, (*config.Config)(&createOpt.GOptions), createOpt.NerdctlCmd, createOpt.NerdctlArgs); err != nil {
-		return fmt.Errorf("failed to create healthcheck timer: %w", err)
-	}
-	if err := healthcheck.StartTimer(ctx, c, (*config.Config)(&createOpt.GOptions)); err != nil {
-		return fmt.Errorf("failed to start healthcheck timer: %w", err)
+	if hcStr, ok := lab[labels.HealthCheck]; ok && hcStr != "" {
+		// Setup container healthchecks.
+		if err := healthcheck.CreateTimer(ctx, c, (*config.Config)(&createOpt.GOptions), createOpt.NerdctlCmd, createOpt.NerdctlArgs, lab); err != nil {
+			return fmt.Errorf("failed to create healthcheck timer: %w", err)
+		}
+		if err := healthcheck.StartTimer(ctx, c, (*config.Config)(&createOpt.GOptions), lab); err != nil {
+			return fmt.Errorf("failed to start healthcheck timer: %w", err)
+		}
 	}
 
 	if createOpt.Detach {
