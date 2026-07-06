@@ -250,7 +250,7 @@ func TestRunSelinuxWithSecurityOpt(t *testing.T) {
 		{
 			Description: "test run with selinux-enabled",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("--selinux-enabled", "run", "-d", "--security-opt", "label=type:container_t", "--name", testContainer, "sleep", "infinity")
+				return helpers.Command("--selinux-enabled", "run", "-d", "--security-opt", "label=type:container_t", "--name", testContainer, testutil.AlpineImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", testContainer)
@@ -283,7 +283,7 @@ func TestRunSelinux(t *testing.T) {
 		{
 			Description: "test run with selinux-enabled",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("--selinux-enabled", "run", "-d", "--name", testContainer, "sleep", "infinity")
+				return helpers.Command("--selinux-enabled", "run", "-d", "--name", testContainer, testutil.AlpineImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", testContainer)
@@ -317,7 +317,7 @@ func TestRunSelinuxWithVolumeLabel(t *testing.T) {
 		{
 			Description: "test run with selinux-enabled",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("--selinux-enabled", "run", "-d", "-v", fmt.Sprintf("/%s:/%s:Z", testContainer, testContainer), "--name", testContainer, "sleep", "infinity")
+				return helpers.Command("--selinux-enabled", "run", "-d", "-v", fmt.Sprintf("/%s:/%s:Z", testContainer, testContainer), "--name", testContainer, testutil.AlpineImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", testContainer)
