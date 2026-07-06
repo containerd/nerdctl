@@ -36,8 +36,8 @@ import (
 )
 
 // CreateTimer sets up the transient systemd timer and service for healthchecks.
-func CreateTimer(ctx context.Context, container containerd.Container, cfg *config.Config, nerdctlCmd string, nerdctlArgs []string) error {
-	hc := extractHealthcheck(ctx, container)
+func CreateTimer(ctx context.Context, container containerd.Container, cfg *config.Config, nerdctlCmd string, nerdctlArgs []string, label map[string]string) error {
+	hc := extractHealthcheck(ctx, container, label)
 	if hc == nil {
 		return nil
 	}
@@ -106,8 +106,8 @@ func createDbusConn(ctx context.Context) (*dbus.Conn, error) {
 }
 
 // StartTimer starts the healthcheck timer unit.
-func StartTimer(ctx context.Context, container containerd.Container, cfg *config.Config) error {
-	hc := extractHealthcheck(ctx, container)
+func StartTimer(ctx context.Context, container containerd.Container, cfg *config.Config, label map[string]string) error {
+	hc := extractHealthcheck(ctx, container, label)
 	if hc == nil {
 		return nil
 	}
@@ -135,7 +135,7 @@ func StartTimer(ctx context.Context, container containerd.Container, cfg *config
 
 // RemoveTransientHealthCheckFiles stops and cleans up the transient timer and service.
 func RemoveTransientHealthCheckFiles(ctx context.Context, container containerd.Container) error {
-	hc := extractHealthcheck(ctx, container)
+	hc := extractHealthcheck(ctx, container, nil)
 	if hc == nil {
 		return nil
 	}
@@ -254,11 +254,17 @@ func ForceRemoveTransientHealthCheckFiles(ctx context.Context, containerID strin
 	return nil
 }
 
-func extractHealthcheck(ctx context.Context, container containerd.Container) *Healthcheck {
-	l, err := container.Labels(ctx)
-	if err != nil {
-		log.G(ctx).WithError(err).Debugf("could not get labels for container %s", container.ID())
-		return nil
+func extractHealthcheck(ctx context.Context, container containerd.Container, label map[string]string) *Healthcheck {
+	var l map[string]string
+	var err error
+	if label == nil {
+		l, err = container.Labels(ctx)
+		if err != nil {
+			log.G(ctx).WithError(err).Debugf("could not get labels for container %s", container.ID())
+			return nil
+		}
+	} else {
+		l = label
 	}
 	hcStr, ok := l[labels.HealthCheck]
 	if !ok || hcStr == "" {
