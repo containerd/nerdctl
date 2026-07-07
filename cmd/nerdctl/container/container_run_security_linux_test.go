@@ -250,7 +250,7 @@ func TestRunSelinuxWithSecurityOpt(t *testing.T) {
 		{
 			Description: "test run with selinux-enabled",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("--selinux-enabled", "run", "-d", "--security-opt", "label=type:container_t", "--name", testContainer, "sleep", "infinity")
+				return helpers.Command("--selinux-enabled", "run", "-d", "--security-opt", "label=type:container_t", "--name", testContainer, testutil.CommonImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", testContainer)
@@ -283,7 +283,7 @@ func TestRunSelinux(t *testing.T) {
 		{
 			Description: "test run with selinux-enabled",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("--selinux-enabled", "run", "-d", "--name", testContainer, "sleep", "infinity")
+				return helpers.Command("--selinux-enabled", "run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", testContainer)
@@ -317,21 +317,23 @@ func TestRunSelinuxWithVolumeLabel(t *testing.T) {
 		{
 			Description: "test run with selinux-enabled",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("--selinux-enabled", "run", "-d", "-v", fmt.Sprintf("/%s:/%s:Z", testContainer, testContainer), "--name", testContainer, "sleep", "infinity")
+				// The volume directory must live somewhere writable by the (possibly
+				// rootless) user running the tests: nerdctl creates it on `run`.
+				hostDir := data.Temp().Path("volume")
+				return helpers.Command("--selinux-enabled", "run", "-d", "-v", fmt.Sprintf("%s:/mnt:Z", hostDir), "--name", testContainer, testutil.CommonImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rm", "-f", testContainer)
-				os.RemoveAll(fmt.Sprintf("/%s", testContainer))
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeSuccess,
 					Output: expect.All(
 						func(stdout string, t tig.T) {
-							cmd := exec.Command("ls", "-Z", fmt.Sprintf("/%s", testContainer))
+							cmd := exec.Command("ls", "-dZ", data.Temp().Path("volume"))
 							lsStdout, err := cmd.CombinedOutput()
 							assert.NilError(t, err)
-							assert.Equal(t, strings.Contains(string(lsStdout), "container_t"), true)
+							assert.Equal(t, strings.Contains(string(lsStdout), "container_file_t"), true)
 						},
 					),
 				}

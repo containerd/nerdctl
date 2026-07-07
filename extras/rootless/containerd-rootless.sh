@@ -161,7 +161,7 @@ else
 	# Remove the *symlinks* for the existing files in the parent namespace if any,
 	# so that we can create our own files in our mount namespace.
 	# The actual files in the parent namespace are *not removed* by this rm command.
-	rm -f /run/containerd /run/xtables.lock \
+	rm -f /run/containerd /run/nri /run/xtables.lock \
 		/var/lib/containerd /var/lib/cni /etc/containerd
 
 	# Bind-mount /etc/ssl.

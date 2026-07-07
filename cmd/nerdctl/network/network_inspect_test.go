@@ -500,7 +500,9 @@ func TestNetworkInspectDualStack(t *testing.T) {
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create",
 					"--ipv6",
-					"--subnet", "10.1.0.0/24",
+					// Not 10.1.0.0/24: the eth0 of the GitHub Actions runners lives in
+					// 10.1.0.0/20, which the subnet overlap check rejects
+					"--subnet", "10.24.0.0/24",
 					"--subnet", "fd00::/64",
 					data.Identifier("test-dual-stack"))
 

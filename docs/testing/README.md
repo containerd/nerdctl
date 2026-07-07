@@ -76,11 +76,25 @@ Note that this is different from the `--parallel` flag, which controls the amoun
 parallelization that a single go test binary will use when faced with tests that do
 explicitly allow it (with a call to `t.Parallel()`).
 
-### Or test in a container
+### Or provision a test environment with Docker-built artifacts
+
+Docker can be used to build all the dependencies needed to run the integration tests
+(containerd, runc, CNI plugins, BuildKit, snapshotters, etc.), which can then be installed
+on the host (this is what the CI does). These scripts substantially and irreversibly modify
+the host, so they refuse to run unless `GITHUB_ACTIONS=true` is set - only do this on a
+disposable machine:
 
 ```bash
-docker build -t test-integration --target test-integration .
-docker run -t --rm --privileged test-integration
+docker buildx build --target out-test-integration-artifacts --output type=local,dest=/tmp/nerdctl-test-artifacts .
+sudo env GITHUB_ACTIONS=true ./hack/provisioning/linux/test-integration-env.sh install /tmp/nerdctl-test-artifacts rootful
+./hack/test-integration.sh -test.target=nerdctl -test.only-flaky=false
+```
+
+For rootless (`rootless`, or `rootless-port-slirp4netns`):
+
+```bash
+sudo env GITHUB_ACTIONS=true ./hack/provisioning/linux/test-integration-env.sh install /tmp/nerdctl-test-artifacts rootless
+GITHUB_ACTIONS=true ./hack/test-integration-rootless.sh ./hack/test-integration.sh -test.target=nerdctl -test.only-flaky=false
 ```
 
 ### Principles

@@ -1,5 +1,10 @@
-# This currently test docker and nerdctl on windows (w/o canary)
-# Structure is in to allow testing nerdctl on linux as well, though more work is required to make it functional.
+# This job runs integration tests directly on the host, with `go test`.
+# It covers:
+# - windows (w/o canary)
+# - docker on linux
+# - nerdctl on linux, for all supported variants (rootful, rootless, ipv6, canary, etc.)
+# On linux, Docker is only used to build the test dependencies (see the
+# `out-test-integration-artifacts` Dockerfile stage), and is disabled before the tests start.
 name: job-test-in-host
 
 on:
@@ -19,39 +24,50 @@ on:
         required: false
         default: false
         type: boolean
+      # Leave empty for windows and docker. Set to rootful, rootless, or
+      # rootless-port-slirp4netns to test nerdctl on a linux host.
+      target:
+        required: false
+        default: ''
+        type: string
       binary:
         required: false
         default: nerdctl
         type: string
+      containerd-version:
+        required: false
+        default: ''
+        type: string
+      rootlesskit-version:
+        required: false
+        default: ''
+        type: string
+      ipv6:
+        required: false
+        default: false
+        type: boolean
+      skip-flaky:
+        required: false
+        default: false
+        type: boolean
       go-version:
         required: true
         type: string
       docker-version:
-        required: true
+        required: false
+        default: ''
         type: string
       windows-containerd-version:
-        required: true
+        required: false
+        default: ''
         type: string
       windows-containerd-sha:
-        required: true
-        type: string
-      linux-containerd-version:
-        required: true
-        type: string
-      linux-containerd-sha:
-        required: true
-        type: string
-      linux-containerd-service-sha:
-        required: true
+        required: false
+        default: ''
         type: string
       windows-cni-version:
-        required: true
-        type: string
-      linux-cni-version:
-        required: true
-        type: string
-      linux-cni-sha:
-        required: true
+        required: false
+        default: ''
         type: string
 
 env:
@@ -61,10 +77,14 @@ jobs:
   test:
     name: |
       ${{ inputs.binary != 'nerdctl' && format('{0} < ', inputs.binary) || '' }}
+      ${{ inputs.target }}
       ${{ contains(inputs.runner, 'ubuntu') && ' linux' || ' windows' }}
       ${{ contains(inputs.runner, 'arm') && '(arm)' || '' }}
       ${{ contains(inputs.runner, '22.04') && '(old ubuntu)' || '' }}
+      ${{ inputs.ipv6 && ' (ipv6)' || '' }}
       ${{ inputs.canary && ' (canary)' || '' }}
+      ${{ inputs.containerd-version && format(' (ctd: {0})', inputs.containerd-version) || '' }}
+      ${{ inputs.rootlesskit-version && format(' (rlk: {0})', inputs.rootlesskit-version) || '' }}
     timeout-minutes: ${{ inputs.timeout }}
     runs-on: "${{ inputs.runner }}"
     defaults:
@@ -74,12 +94,13 @@ jobs:
     env:
       SHOULD_RUN: "yes"
       GO_VERSION: ${{ inputs.go-version }}
-      # Both Docker and nerdctl on linux need rootful right now
-      WITH_SUDO: ${{ contains(inputs.runner, 'ubuntu') }}
+      # Docker on linux needs rootful. So does nerdctl, unless the target is rootless.
+      WITH_SUDO: ${{ contains(inputs.runner, 'ubuntu') && !startsWith(inputs.target, 'rootless') }}
       WINDOWS_CONTAINERD_VERSION: ${{ inputs.windows-containerd-version }}
       WINDOWS_CONTAINERD_SHA: ${{ inputs.windows-containerd-sha }}
-      LINUX_CONTAINERD_VERSION: ${{ inputs.linux-containerd-version }}
-      LINUX_CONTAINERD_SHA: ${{ inputs.linux-containerd-sha }}
+      # https://github.com/containerd/nerdctl/issues/622
+      # The only case when rootlesskit-version is force-specified is when we downgrade explicitly to v1
+      WORKAROUND_ISSUE_622: ${{ inputs.rootlesskit-version }}
 
     steps:
       - name: "Init: checkout"
@@ -107,18 +128,22 @@ jobs:
 
           if [[ "${INPUTS_RUNNER}" == *windows* ]]; then
             containerd_version="$WINDOWS_CONTAINERD_VERSION"
-          else
-            containerd_version="$LINUX_CONTAINERD_VERSION"
-          fi
-          [ "${latest_containerd:1}" == "$containerd_version" ] || {
-            if [[ "${INPUTS_RUNNER}" == *windows* ]]; then
+            [ "${latest_containerd:1}" == "$containerd_version" ] || {
               printf "WINDOWS_CONTAINERD_VERSION=%s\n" "${latest_containerd:1}" >> "$GITHUB_ENV"
               printf "WINDOWS_CONTAINERD_SHA=canary is volatile and I accept the risk\n" >> "$GITHUB_ENV"
-            else
-              printf "LINUX_CONTAINERD_VERSION=%s\n" "${latest_containerd:1}" >> "$GITHUB_ENV"
-              printf "LINUX_CONTAINERD_SHA=canary is volatile and I accept the risk\n" >> "$GITHUB_ENV"
-            fi
-          }
+            }
+          else
+            # On linux, containerd is built from source, as part of the test artifacts
+            containerd_version="$(grep -m1 '^ARG CONTAINERD_VERSION=' Dockerfile | cut -d= -f2)"
+            containerd_version="${containerd_version%%@*}"
+            containerd_version="${containerd_version:1}"
+            [ "${latest_containerd:1}" == "$containerd_version" ] || \
+              printf "CANARY_CONTAINERD_VERSION=%s\n" "$latest_containerd" >> "$GITHUB_ENV"
+            # The golang docker image tag lags behind the golang releases
+            latest_go_hub="$(. ./hack/build-integration-canary.sh; canary::golang::hublatest)"
+            [ "$latest_go_hub" == "" ] || \
+              printf "CANARY_GO_VERSION=%s\n" "$latest_go_hub" >> "$GITHUB_ENV"
+          fi
           if [ "$latest_go" == "" ] && [ "${latest_containerd:1}" == "$containerd_version" ]; then
             echo "::warning title=No canary::There is currently no canary versions to test. Steps will not run.";
             printf "SHOULD_RUN=no\n" >> "$GITHUB_ENV"
@@ -134,52 +159,35 @@ jobs:
       # XXX RUNNER_OS and generally env is too unreliable
       # - if: ${{ env.RUNNER_OS == 'Linux' }}
       - if: ${{ contains(inputs.runner, 'ubuntu') && env.SHOULD_RUN == 'yes' }}
-        name: "Init (linux): prepare host"
+        name: "Init (linux): register QEMU (tonistiigi/binfmt)"
         run: |
-          if [ "${{ contains(inputs.binary, 'docker') }}" == true ]; then
-            echo "::group:: configure cdi and experimental for docker"
-            sudo mkdir -p /etc/docker
-            sudo jq -n '.features.cdi = true | .experimental = true' | sudo tee /etc/docker/daemon.json
-            echo "::endgroup::"
-            echo "::group:: downgrade docker to the specific version we want to test (${INPUTS_DOCKER_VERSION})"
-            sudo apt-get update -qq
-            sudo apt-get install -qq ca-certificates curl
-            sudo install -m 0755 -d /etc/apt/keyrings
-            sudo cp ./hack/provisioning/gpg/docker /etc/apt/keyrings/docker.asc
-            sudo chmod a+r /etc/apt/keyrings/docker.asc
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-              $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" \
-              | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-            sudo apt-get update -qq
-            sudo apt-get install -qq --allow-downgrades docker-ce=${INPUTS_DOCKER_VERSION} docker-ce-cli=${INPUTS_DOCKER_VERSION}
-            sudo systemctl restart docker
-            echo "::endgroup::"
-          else
-            # FIXME: this is missing runc (see top level workflow note about the state of this)
-            echo "::group:: install dependencies"
-            sudo ./hack/provisioning/linux/containerd.sh uninstall
-            ./hack/provisioning/linux/containerd.sh rootful "$LINUX_CONTAINERD_VERSION" "amd64" "$LINUX_CONTAINERD_SHA" "${INPUTS_LINUX_CONTAINERD_SERVICE_SHA}"
-            sudo ./hack/provisioning/linux/cni.sh uninstall
-            ./hack/provisioning/linux/cni.sh install "${INPUTS_LINUX_CNI_VERSION}" "amd64" "${INPUTS_LINUX_CNI_SHA}"
-            echo "::endgroup::"
-
-            echo "::group:: build nerctl"
-            go install ./cmd/nerdctl
-            echo "$HOME/go/bin" >> "$GITHUB_PATH"
-            # Since tests are going to run root, we need nerdctl to be in a PATH that will survive `sudo`
-            sudo cp "$(which nerdctl)" /usr/local/bin
-            echo "::endgroup::"
-          fi
-
-          # Register QEMU (tonistiigi/binfmt)
           # `--install all` will only install emulation for architectures that cannot be natively executed
           # Since some arm64 platforms do provide native fallback execution for 32 bits,
           # armv7 emulation may or may not be installed, causing variance in the result of `uname -m`.
           # To avoid that, we explicitly list the architectures we do want emulation for.
-          echo "::group:: install binfmt"
           docker run --quiet --privileged --rm tonistiigi/binfmt --install linux/amd64
           docker run --quiet --privileged --rm tonistiigi/binfmt --install linux/arm64
           docker run --quiet --privileged --rm tonistiigi/binfmt --install linux/arm/v7
+
+      - if: ${{ contains(inputs.runner, 'ubuntu') && inputs.target == '' && env.SHOULD_RUN == 'yes' }}
+        name: "Init (linux docker): prepare host"
+        run: |
+          echo "::group:: configure cdi and experimental for docker"
+          sudo mkdir -p /etc/docker
+          sudo jq -n '.features.cdi = true | .experimental = true' | sudo tee /etc/docker/daemon.json
+          echo "::endgroup::"
+          echo "::group:: downgrade docker to the specific version we want to test (${INPUTS_DOCKER_VERSION})"
+          sudo apt-get update -qq
+          sudo apt-get install -qq ca-certificates curl
+          sudo install -m 0755 -d /etc/apt/keyrings
+          sudo cp ./hack/provisioning/gpg/docker /etc/apt/keyrings/docker.asc
+          sudo chmod a+r /etc/apt/keyrings/docker.asc
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+            $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" \
+            | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -qq --allow-downgrades docker-ce=${INPUTS_DOCKER_VERSION} docker-ce-cli=${INPUTS_DOCKER_VERSION}
+          sudo systemctl restart docker
           echo "::endgroup::"
 
           # FIXME: remove expect when we are done removing unbuffer from tests
@@ -192,9 +200,6 @@ jobs:
           sudo modprobe br-netfilter
         env:
           INPUTS_DOCKER_VERSION: ${{ inputs.docker-version }}
-          INPUTS_LINUX_CONTAINERD_SERVICE_SHA: ${{ inputs.linux-containerd-service-sha }}
-          INPUTS_LINUX_CNI_VERSION: ${{ inputs.linux-cni-version }}
-          INPUTS_LINUX_CNI_SHA: ${{ inputs.linux-cni-sha }}
 
       - if: ${{ contains(inputs.runner, 'windows') && env.SHOULD_RUN == 'yes' }}
         name: "Init (windows): prepare host"
@@ -220,15 +225,65 @@ jobs:
 
           choco install jq
 
+      # Rootful needs to disable snap
+      - if: ${{ inputs.target == 'rootful' && env.SHOULD_RUN == 'yes' }}
+        name: "Init (rootful): remove snap loopback devices (conflicts with our loopback devices in TestRunDevice)"
+        run: |
+          sudo systemctl disable --now snapd.service snapd.socket
+          sudo apt-get purge -qq snapd
+          sudo losetup -Dv
+          sudo losetup -lv
+
+      # ipv6 wants... ipv6
+      - if: ${{ inputs.ipv6 && env.SHOULD_RUN == 'yes' }}
+        name: "Init (ipv6): enable ipv4 and ipv6 forwarding"
+        run: |
+          sudo sysctl -w net.ipv6.conf.all.forwarding=1
+          sudo sysctl -w net.ipv4.ip_forward=1
+
+      - if: ${{ inputs.target != '' && env.SHOULD_RUN == 'yes' }}
+        name: "Init (linux): Set up Docker Buildx"
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
+
+      # Unlike a raw `docker buildx build --cache-from type=gha`, the action provides
+      # the GitHub runtime token and cache url to BuildKit by itself.
+      # The cache is sharded per-architecture; empty build-args lines are ignored, and
+      # the canary containerd version (if any) takes precedence over the input.
+      - if: ${{ inputs.target != '' && env.SHOULD_RUN == 'yes' }}
+        name: "Init (linux): build test artifacts"
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          # push is false by default; stated explicitly for zizmor's cache-poisoning audit
+          push: false
+          target: out-test-integration-artifacts
+          outputs: type=local,dest=/tmp/nerdctl-test-artifacts
+          cache-from: type=gha,scope=test-integration-dependencies-${{ env.RUNNER_ARCH == 'ARM64' && 'arm64' || 'amd64' }}
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
+          build-args: |
+            ${{ (env.CANARY_CONTAINERD_VERSION && format('CONTAINERD_VERSION={0}', env.CANARY_CONTAINERD_VERSION)) || (inputs.containerd-version && format('CONTAINERD_VERSION={0}', inputs.containerd-version)) || '' }}
+            ${{ inputs.rootlesskit-version && format('ROOTLESSKIT_VERSION={0}', inputs.rootlesskit-version) || '' }}
+            ${{ env.CANARY_GO_VERSION && format('GO_VERSION={0}', env.CANARY_GO_VERSION) || '' }}
+
+      # Note that Docker cannot be used anymore past this point.
+      - if: ${{ inputs.target != '' && env.SHOULD_RUN == 'yes' }}
+        name: "Init (linux): provision the host"
+        env:
+          INPUTS_TARGET: ${{ inputs.target }}
+        run: |
+          sudo env GITHUB_ACTIONS="$GITHUB_ACTIONS" ./hack/provisioning/linux/test-integration-env.sh install /tmp/nerdctl-test-artifacts "${INPUTS_TARGET}"
+
       - if: ${{ env.SHOULD_RUN == 'yes' }}
         name: "Init: install dev tools"
         run: |
           echo "::group:: make install-dev-tools"
           make install-dev-tools
+          [ "$(uname -s)" != "Linux" ] || echo "$HOME/go/bin" >> "$GITHUB_PATH"
           echo "::endgroup::"
 
-      # ipv6 is tested only on linux
-      - if: ${{ contains(inputs.runner, 'ubuntu') && env.SHOULD_RUN == 'yes' }}
+      # ipv6 is tested only on linux. For nerdctl, this is done through the ipv6 input instead.
+      - if: ${{ contains(inputs.runner, 'ubuntu') && inputs.target == '' && env.SHOULD_RUN == 'yes' }}
         name: "Run (linux): integration tests (IPv6)"
         run: |
           . ./hack/github/action-helpers.sh
@@ -244,17 +299,36 @@ jobs:
           . ./hack/github/action-helpers.sh
           github::md::h2 "non-flaky" >> "$GITHUB_STEP_SUMMARY"
 
-          ./hack/test-integration.sh -test.target=${INPUTS_BINARY} -test.only-flaky=false
+          args=(-test.target=${INPUTS_BINARY} -test.only-flaky=false)
+          [ "${INPUTS_IPV6}" != "true" ] || args+=(-test.only-ipv6)
+          [ "${INPUTS_TARGET}" != "rootful" ] || args+=(-test.allow-modify-users=true)
+          if [[ "${INPUTS_TARGET}" == rootless* ]]; then
+            ./hack/test-integration-rootless.sh ./hack/test-integration.sh "${args[@]}"
+          else
+            ./hack/test-integration.sh "${args[@]}"
+          fi
         env:
           INPUTS_BINARY: ${{ inputs.binary }}
+          INPUTS_TARGET: ${{ inputs.target }}
+          INPUTS_IPV6: ${{ inputs.ipv6 }}
+          CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER: ${{ inputs.target == 'rootless-port-slirp4netns' && 'slirp4netns' || '' }}
 
       # FIXME: this must go
-      - if: ${{ env.SHOULD_RUN == 'yes' }}
+      - if: ${{ env.SHOULD_RUN == 'yes' && !fromJSON(inputs.skip-flaky) }}
         name: "Run: integration tests (flaky)"
         run: |
           . ./hack/github/action-helpers.sh
           github::md::h2 "flaky" >> "$GITHUB_STEP_SUMMARY"
 
-          ./hack/test-integration.sh -test.target=${INPUTS_BINARY} -test.only-flaky=true
+          args=(-test.target=${INPUTS_BINARY} -test.only-flaky=true)
+          [ "${INPUTS_IPV6}" != "true" ] || args+=(-test.only-ipv6)
+          if [[ "${INPUTS_TARGET}" == rootless* ]]; then
+            ./hack/test-integration-rootless.sh ./hack/test-integration.sh "${args[@]}"
+          else
+            ./hack/test-integration.sh "${args[@]}"
+          fi
         env:
           INPUTS_BINARY: ${{ inputs.binary }}
+          INPUTS_TARGET: ${{ inputs.target }}
+          INPUTS_IPV6: ${{ inputs.ipv6 }}
+          CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER: ${{ inputs.target == 'rootless-port-slirp4netns' && 'slirp4netns' || '' }}

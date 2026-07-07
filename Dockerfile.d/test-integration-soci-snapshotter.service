@@ -12,4 +12,4 @@ Restart=always
 RestartSec=5
 
 [Install]
-WantedBy=docker-entrypoint.target
+WantedBy=multi-user.target
