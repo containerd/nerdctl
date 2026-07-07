@@ -40,7 +40,7 @@ require (
 	github.com/fluent/fluent-logger-golang v1.10.1
 	github.com/fsnotify/fsnotify v1.9.0 //gomodjail:unconfined
 	github.com/go-viper/mapstructure/v2 v2.5.0
-	github.com/ipfs/go-cid v0.6.1
+	github.com/ipfs/go-cid v0.6.2
 	github.com/klauspost/compress v1.19.0
 	github.com/mattn/go-isatty v0.0.22 //gomodjail:unconfined
 	github.com/moby/moby/client v0.5.0
