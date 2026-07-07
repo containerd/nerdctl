@@ -214,8 +214,16 @@ func (gc *GenericCommand) Run(expect *Expected) {
 			duration = "<1s"
 		}
 
+		// The environment may contain secrets (e.g. tokens inherited from the CI
+		// environment), and test logs may end-up in publicly accessible places.
+		// Do not display it unless TIGRON_DEBUG_ENV is set.
+		environ := "(hidden: set TIGRON_DEBUG_ENV=1 to display)"
+		if debugEnv, _ := strconv.ParseBool(os.Getenv("TIGRON_DEBUG_ENV")); debugEnv {
+			environ = strings.Join(result.Environ, "\n")
+		}
+
 		debug = append(debug,
-			[]any{envDecorator, strings.Join(result.Environ, "\n")},
+			[]any{envDecorator, environ},
 			[]any{timeoutDecorator, duration + " (limit: " + gc.cmd.Timeout.String() + ")"},
 			[]any{cwdDecorator, gc.cmd.WorkingDir},
 		)
