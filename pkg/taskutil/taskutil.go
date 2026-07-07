@@ -68,6 +68,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 	var (
 		checkpoint *types.Descriptor
 		t          containerd.Task
+		stdinTask  chan containerd.Task
 		err        error
 	)
 
@@ -206,17 +207,24 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			} else if sv.LessThan(semver.MustParse("1.6.0-0")) {
 				log.G(ctx).Warnf("`nerdctl (run|exec) -i` without `-t` expects containerd 1.6 or later, got containerd %v", sv)
 			}
-			var stdinC io.ReadCloser = &StdinCloser{
+			// The io copy goroutines are started by the cio.Creator, inside
+			// container.NewTask below: on a short enough stdin, they can reach EOF
+			// before the task is registered in containerd, so the task cannot be
+			// looked up here through the API. Block until the task handle returned
+			// by container.NewTask is available instead: losing the CloseIO would
+			// leave the write end of the stdin FIFO open inside the shim, and the
+			// container would never receive EOF on its stdin.
+			stdinTask = make(chan containerd.Task, 1)
+			in = &StdinCloser{
 				Stdin: os.Stdin,
 				Closer: func() {
-					if t, err := container.Task(ctx, nil); err != nil {
-						log.G(ctx).WithError(err).Debugf("failed to get task for StdinCloser")
-					} else {
-						t.CloseIO(ctx, containerd.WithStdinCloser)
+					if t, ok := <-stdinTask; ok {
+						if err := t.CloseIO(ctx, containerd.WithStdinCloser); err != nil {
+							log.G(ctx).WithError(err).Warn("failed to close the task stdin")
+						}
 					}
 				},
 			}
-			in = stdinC
 		}
 		ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, in, os.Stdout, os.Stderr)
 	}
@@ -230,7 +238,13 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 
 	t, err = container.NewTask(ctx, ioCreator, taskOpts...)
 	if err != nil {
+		if stdinTask != nil {
+			close(stdinTask)
+		}
 		return nil, err
+	}
+	if stdinTask != nil {
+		stdinTask <- t
 	}
 	return t, nil
 }
