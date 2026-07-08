@@ -64,12 +64,12 @@ require (
 	github.com/vishvananda/netns v0.0.5 //gomodjail:unconfined
 	github.com/yuchanns/srslog v1.1.0
 	go.yaml.in/yaml/v3 v3.0.4
-	golang.org/x/crypto v0.53.0
-	golang.org/x/net v0.56.0
-	golang.org/x/sync v0.21.0 //gomodjail:unconfined
-	golang.org/x/sys v0.46.0 //gomodjail:unconfined
-	golang.org/x/term v0.44.0 //gomodjail:unconfined
-	golang.org/x/text v0.39.0
+	golang.org/x/crypto v0.54.0
+	golang.org/x/net v0.57.0
+	golang.org/x/sync v0.22.0 //gomodjail:unconfined
+	golang.org/x/sys v0.47.0 //gomodjail:unconfined
+	golang.org/x/term v0.45.0 //gomodjail:unconfined
+	golang.org/x/text v0.40.0
 	gotest.tools/v3 v3.5.2
 	tags.cncf.io/container-device-interface v1.1.0 //gomodjail:unconfined
 )
