@@ -311,6 +311,11 @@ func TestRemove(t *testing.T) {
 func TestIssue3016(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	// Docker with the containerd image store refuses to resolve a reference that is
+	// both a tag and an image ID prefix ("ambiguous reference"), while nerdctl (and
+	// Docker with the classic graph drivers) resolves the tag first.
+	testCase.Require = require.Not(nerdtest.DockerContainerdSnapshotter)
+
 	const (
 		tagIDKey = "tagID"
 	)
