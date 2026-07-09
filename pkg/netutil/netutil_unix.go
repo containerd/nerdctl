@@ -215,7 +215,7 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 	return plugins, nil
 }
 
-func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string, ipRangeStr string, opts map[string]string, ipv6 bool, internal bool) (map[string]interface{}, error) {
+func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string, ipRanges []string, opts map[string]string, ipv6 bool, internal bool) (map[string]interface{}, error) {
 	var ipamConfig interface{}
 	switch driver {
 	case "default", "host-local":
@@ -225,14 +225,15 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string
 				{Dst: "0.0.0.0/0"},
 			}
 		}
-		ranges, findIPv4, err := e.parseIPAMRanges(subnets, gateways, ipRangeStr, ipv6)
+		ranges, findIPv4, err := e.parseIPAMRanges(subnets, gateways, ipRanges, ipv6)
 		if err != nil {
 			return nil, err
 		}
 		ipamConf.Ranges = append(ipamConf.Ranges, ranges...)
 		if !findIPv4 {
-			// The default IPv4 range uses a computed gateway; pass none.
-			ranges, _, _ = e.parseIPAMRanges([]string{""}, nil, ipRangeStr, ipv6)
+			// The default IPv4 range uses a computed gateway and no ip-range;
+			// any user-supplied gateway or ip-range belongs to an explicit subnet.
+			ranges, _, _ = e.parseIPAMRanges([]string{""}, nil, nil, ipv6)
 			ipamConf.Ranges = append(ipamConf.Ranges, ranges...)
 		}
 		ipamConfig = ipamConf
@@ -289,7 +290,25 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string
 	return ipam, nil
 }
 
-func (e *CNIEnv) parseIPAMRanges(subnets []string, gateways []string, ipRange string, ipv6 bool) ([][]IPAMRange, bool, error) {
+func (e *CNIEnv) parseIPAMRanges(subnets []string, gateways []string, ipRanges []string, ipv6 bool) ([][]IPAMRange, bool, error) {
+	// Resolve every requested subnet first; parseSubnet also rejects overlaps
+	// with existing networks. The pairing below then works purely on the parsed
+	// CIDRs, so it can be unit-tested without probing the host's networks.
+	parsedSubnets := make([]*net.IPNet, len(subnets))
+	for i := range subnets {
+		subnet, err := e.parseSubnet(subnets[i])
+		if err != nil {
+			return nil, false, err
+		}
+		parsedSubnets[i] = subnet
+	}
+	return pairIPAMRanges(parsedSubnets, gateways, ipRanges, ipv6)
+}
+
+// pairIPAMRanges matches each gateway and ip-range to the subnet that contains
+// it and builds the per-subnet IPAM ranges. It is split out from subnet
+// resolution so the matching can be tested without touching live networks.
+func pairIPAMRanges(subnets []*net.IPNet, gateways []string, ipRanges []string, ipv6 bool) ([][]IPAMRange, bool, error) {
 	// Parse the gateways once up front; matching them to subnets below is then
 	// just a containment check, with no parse error mixed into the loop.
 	parsedGateways := make([]net.IP, len(gateways))
@@ -300,15 +319,22 @@ func (e *CNIEnv) parseIPAMRanges(subnets []string, gateways []string, ipRange st
 		}
 		parsedGateways[i] = gw
 	}
+	// Parse the ip-ranges the same way, keyed by network so each can be matched
+	// to the subnet that contains it.
+	parsedRanges := make([]*net.IPNet, len(ipRanges))
+	for i, r := range ipRanges {
+		_, ipNet, err := net.ParseCIDR(r)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to parse ip-range %q", r)
+		}
+		parsedRanges[i] = ipNet
+	}
 
 	findIPv4 := false
 	ranges := make([][]IPAMRange, 0, len(subnets))
-	used := make([]bool, len(gateways))
-	for i := range subnets {
-		subnet, err := e.parseSubnet(subnets[i])
-		if err != nil {
-			return nil, findIPv4, err
-		}
+	usedGateways := make([]bool, len(gateways))
+	usedRanges := make([]bool, len(ipRanges))
+	for _, subnet := range subnets {
 		// if ipv6 flag is not set, subnets of ipv6 should be excluded
 		if !ipv6 && subnet.IP.To4() == nil {
 			continue
@@ -320,8 +346,17 @@ func (e *CNIEnv) parseIPAMRanges(subnets []string, gateways []string, ipRange st
 		// the v4 gateway to the v4 subnet and v6 to v6.
 		gateway := ""
 		for j, gw := range parsedGateways {
-			if !used[j] && subnet.Contains(gw) {
-				gateway, used[j] = gateways[j], true
+			if !usedGateways[j] && subnet.Contains(gw) {
+				gateway, usedGateways[j] = gateways[j], true
+				break
+			}
+		}
+		// Pair the subnet with the ip-range it contains, the same way, so a
+		// dual-stack network does not check the v4 range against the v6 subnet.
+		ipRange := ""
+		for j, r := range parsedRanges {
+			if !usedRanges[j] && subnet.Contains(r.IP) {
+				ipRange, usedRanges[j] = ipRanges[j], true
 				break
 			}
 		}
@@ -331,11 +366,16 @@ func (e *CNIEnv) parseIPAMRanges(subnets []string, gateways []string, ipRange st
 		}
 		ranges = append(ranges, []IPAMRange{*ipamRange})
 	}
-	// Only known after every subnet is seen: a gateway that matched none is a
-	// user error, same as Docker.
-	for j, ok := range used {
+	// Only known after every subnet is seen: a gateway or ip-range that matched
+	// none is a user error, same as Docker.
+	for j, ok := range usedGateways {
 		if !ok {
 			return nil, findIPv4, fmt.Errorf("no matching subnet for gateway %q", gateways[j])
+		}
+	}
+	for j, ok := range usedRanges {
+		if !ok {
+			return nil, findIPv4, fmt.Errorf("no matching subnet for ip-range %q", ipRanges[j])
 		}
 	}
 	return ranges, findIPv4, nil
