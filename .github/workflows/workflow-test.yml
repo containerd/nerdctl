@@ -1,0 +1,156 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: read
+
+jobs:
+  test-unit:
+    # Note: inputs.hack is undefined - its purpose is to prevent GitHub Actions from displaying all matrix variants as part of the name.
+    name: "unit${{ inputs.hack }}"
+    uses: ./.github/workflows/job-test-unit.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        # Run on all supported platforms but freebsd
+        # Additionally run on canary for linux
+        include:
+          - runner: "ubuntu-24.04"
+          - runner: "macos-15"
+          - runner: "windows-2025"
+          # FIXME: failing since the release of go1.27rc1
+          # - runner: "ubuntu-24.04"
+          #   canary: true
+    with:
+      runner: ${{ matrix.runner }}
+      canary: ${{ matrix.canary && true || false }}
+      # Windows routinely go over 5 minutes
+      timeout: 10
+      go-version: 1.26
+      windows-cni-version: v0.3.1
+      linux-cni-version: v1.7.1
+      linux-cni-sha: 1a28a0506bfe5bcdc981caf1a49eeab7e72da8321f1119b7be85f22621013098
+
+  # This job builds the dependency target of the test-image for all supported architectures and cache it in GHA
+  build-dependencies:
+    name: "dependencies${{ inputs.hack }}"
+    uses: ./.github/workflows/job-test-dependencies.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Build for arm & amd, current containerd
+          - runner: ubuntu-24.04
+          - runner: ubuntu-24.04-arm
+          # Additionally build for old containerd on amd
+          - runner: ubuntu-24.04
+            containerd-version: v1.7.33
+    with:
+      runner: ${{ matrix.runner }}
+      containerd-version: ${{ matrix.containerd-version }}
+      timeout: 20
+
+  test-integration-host-linux:
+    name: "in-host${{ inputs.hack }}"
+    uses: ./.github/workflows/job-test-in-host.yml
+    needs: build-dependencies
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          ###### Rootless
+          # amd64
+          - runner: ubuntu-24.04
+            target: rootless
+          # arm64
+          - runner: ubuntu-24.04-arm
+            target: rootless
+            skip-flaky: true
+          # port-slirp4netns
+          - runner: ubuntu-24.04
+            target: rootless-port-slirp4netns
+            skip-flaky: true
+          # old containerd + old ubuntu + old rootlesskit
+          - runner: ubuntu-22.04
+            target: rootless
+            containerd-version: v1.7.33
+            rootlesskit-version: v1.1.1
+          # gomodjail
+          - runner: ubuntu-24.04
+            target: rootless
+            binary: "nerdctl.gomodjail"
+          ###### Rootful
+          # amd64
+          - runner: ubuntu-24.04
+            target: rootful
+          # arm64
+          - runner: ubuntu-24.04-arm
+            target: rootful
+            skip-flaky: true
+          # old containerd + old ubuntu
+          - runner: ubuntu-22.04
+            target: rootful
+            containerd-version: v1.7.33
+          # ipv6
+          - runner: ubuntu-24.04
+            target: rootful
+            ipv6: true
+            skip-flaky: true
+          # all canary
+          # FIXME: failing since the release of go1.27rc1
+          # - runner: ubuntu-24.04
+          #   target: rootful
+          #   canary: true
+
+    with:
+      timeout: 80
+      runner: ${{ matrix.runner }}
+      target: ${{ matrix.target }}
+      binary: ${{ matrix.binary && matrix.binary || 'nerdctl' }}
+      containerd-version: ${{ matrix.containerd-version }}
+      rootlesskit-version: ${{ matrix.rootlesskit-version }}
+      ipv6: ${{ matrix.ipv6 && true || false }}
+      canary: ${{ matrix.canary && true || false }}
+      skip-flaky: ${{ matrix.skip-flaky && true || false }}
+      go-version: 1.26
+
+  test-integration-host:
+    name: "in-host${{ inputs.hack }}"
+    uses: ./.github/workflows/job-test-in-host.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Test on windows w/o canary
+          - runner: windows-2022
+          # FIXME: failing since the release of go1.27rc1
+          # - runner: windows-2025
+          #   canary: true
+          # Test docker on linux
+          - runner: ubuntu-24.04
+            binary: docker
+    with:
+      timeout: 45
+      runner: ${{ matrix.runner }}
+      binary: ${{ matrix.binary != '' && matrix.binary || 'nerdctl' }}
+      canary: ${{ matrix.canary && true || false }}
+      # Hyper-V is broken on canary.
+      # [v2.3.0-beta.2 regression] The virtual machine or container JSON document is invalid. (Hyper-V container)
+      # https://github.com/containerd/containerd/issues/13254
+      no-hyperv: ${{ matrix.canary && true || false }}
+      go-version: 1.26
+      windows-cni-version: v0.3.1
+      docker-version: 5:29.6.1-1~ubuntu.24.04~noble
+      # Windows CI still requires containerd v2.2.
+      # [v2.3.0 regression] The virtual machine or container JSON document is invalid. (Hyper-V container)
+      # https://github.com/containerd/containerd/issues/13254
+      windows-containerd-version: 2.2.5
+      windows-containerd-sha: 8724c3a873b4984f5ee092c8f15c1a98ebbb0f968106cf8f5849ea100f3a0236

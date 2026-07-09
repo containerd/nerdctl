@@ -1,0 +1,9 @@
+[Unit]
+Description=ipfs daemon for integration test (offline)
+
+[Service]
+ExecStart=ipfs daemon --init --offline
+Environment=IPFS_PATH="%h/.ipfs"
+
+[Install]
+WantedBy=multi-user.target

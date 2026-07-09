@@ -1,0 +1,129 @@
+# Currently, Lima job test only for EL, though in the future it could be used to also test FreeBSD or other linux-es
+# The test artifacts are built on the host with Docker, then installed inside the guest VM,
+# where the integration tests run directly with `go test` (no Docker inside the VM).
+name: job-test-in-lima
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      runner:
+        required: true
+        type: string
+      target:
+        required: true
+        type: string
+      guest:
+        required: true
+        type: string
+      go-version:
+        required: true
+        type: string
+      skip-flaky:
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  test:
+    name: "${{ inputs.guest }} ${{ inputs.target }}"
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: "${{ inputs.runner }}"
+    env:
+      TARGET: ${{ inputs.target }}
+      GUEST: ${{ inputs.guest }}
+      GO_VERSION: ${{ inputs.go-version }}
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: "Init: lima"
+        uses: lima-vm/lima-actions/setup@55627e31b78637bf254a8b2a14da8ea7d12564e5  # v1.1.0
+        id: lima-actions-setup
+
+      - name: "Init: Cache"
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/lima
+          key: lima-${{ steps.lima-actions-setup.outputs.version }}
+
+      - name: "Init: start the guest VM"
+        run: |
+          set -eux
+          # --plain disables the mounts, the port forwards, containerd, and the Lima boot
+          # scripts: just a plain VM with ssh. The provisioning and test scripts recreate
+          # the environment that the boot scripts would have set up (kernel modules,
+          # sysctls, CONTAINERD_SNAPSHOTTER, ...).
+          limactl start \
+            --name=default \
+            --plain \
+            --cpus=4 \
+            --memory=12 \
+            template://${GUEST}
+
+      - name: "Init: Set up Docker Buildx"
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
+
+      # Unlike a raw `docker buildx build --cache-from type=gha`, the action provides the
+      # GitHub runtime token and cache url to BuildKit by itself.
+      - name: "Init: build test artifacts (on the host, with Docker)"
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          # push is false by default; stated explicitly for zizmor's cache-poisoning audit
+          push: false
+          target: out-test-integration-artifacts
+          outputs: type=local,dest=/tmp/nerdctl-test-artifacts
+          cache-from: type=gha,scope=test-integration-dependencies-amd64
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Init: copy source and artifacts into the guest VM"
+        run: |
+          set -eux
+          limactl copy -r "$PWD" default:nerdctl
+          limactl copy -r /tmp/nerdctl-test-artifacts default:nerdctl-test-artifacts
+          # Run all the subsequent lima commands from the copied source
+          echo "LIMA_WORKDIR=$(lima pwd)/nerdctl" >>"$GITHUB_ENV"
+
+      - name: "Init: install go in the guest VM"
+        run: |
+          set -eux
+          lima bash -c 'command -v tar' || lima sudo dnf install -q -y tar
+          gover="$(curl -fsSL --proto '=https' --tlsv1.2 'https://go.dev/dl/?mode=json&include=all' | jq -r --arg prefix "go${GO_VERSION}." '[.[].version | select(startswith($prefix))] | first')"
+          [ "$gover" != "null" ]
+          curl -fsSL --proto '=https' --tlsv1.2 "https://go.dev/dl/${gover}.linux-amd64.tar.gz" | lima sudo tar -xzf- -C /usr/local
+
+      - name: "Init: provision the guest VM"
+        run: |
+          set -eux
+          lima sudo env GITHUB_ACTIONS=true ./hack/provisioning/linux/test-integration-env.sh install ../nerdctl-test-artifacts "$TARGET"
+
+      - name: "Init: install dev tools in the guest VM"
+        run: |
+          set -eux
+          lima bash -c 'PATH="/usr/local/go/bin:$HOME/go/bin:$PATH" make install-dev-tools'
+
+      - name: "Run: integration tests"
+        run: |
+          set -eux
+          if [ "$TARGET" = "rootless" ]; then
+            lima bash -c 'export GITHUB_ACTIONS=true PATH="/usr/local/go/bin:$HOME/go/bin:$PATH" && ./hack/test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=false'
+          else
+            lima bash -c 'export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH" WITH_SUDO=true && ./hack/test-integration.sh -test.only-flaky=false'
+          fi
+
+      - name: "Run: integration tests (flaky)"
+        if: ${{ !fromJSON(inputs.skip-flaky) }}
+        run: |
+          set -eux
+          if [ "$TARGET" = "rootless" ]; then
+            lima bash -c 'export GITHUB_ACTIONS=true PATH="/usr/local/go/bin:$HOME/go/bin:$PATH" && ./hack/test-integration-rootless.sh ./hack/test-integration.sh -test.only-flaky=true'
+          else
+            lima bash -c 'export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH" WITH_SUDO=true && ./hack/test-integration.sh -test.only-flaky=true'
+          fi

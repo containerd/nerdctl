@@ -1,0 +1,100 @@
+name: lint
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Runs golangci to ensure that:
+  # 1. the tooling is working on the target platform
+  # 2. the linter is happy
+  # 3. for canary (if there is a canary go version), does lint for all supported goos
+  lint-go:
+    name: "go${{ inputs.hack }}"
+    uses: ./.github/workflows/job-lint-go.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            goos: linux
+          - runner: ubuntu-24.04
+            goos: freebsd
+          - runner: macos-15
+            goos: darwin
+          # FIXME: this is currently failing in a nonsensical way, so, running on linux instead...
+          # - runner: windows-2022
+          - runner: ubuntu-24.04
+            goos: windows
+          # Additionally lint for canary
+          # FIXME: failing since the release of go1.27rc1
+          # - runner: ubuntu-24.04
+          #   goos: linux
+          #   canary: true
+    with:
+      timeout: 10
+      go-version: "1.26"
+      runner: ubuntu-24.04
+      # Note: in GitHub yaml world, if `matrix.canary` is undefined, and is passed to `inputs.canary`, the job
+      # will not run. However, if you test it, it will coerce to `false`, hence:
+      canary: ${{ matrix.canary && true || false }}
+      goos: ${{ matrix.goos }}
+
+  # Run common project checks (commits, licenses, etc)
+  lint-project-checks:
+    name: "project checks"
+    uses: ./.github/workflows/job-lint-project.yml
+    with:
+      timeout: 5
+      go-version: "1.26"
+      runner: ubuntu-24.04
+
+  # Lint for shell and yaml files
+  lint-other:
+    name: "other"
+    uses: ./.github/workflows/job-lint-other.yml
+    with:
+      timeout: 5
+      runner: ubuntu-24.04
+
+  # Verify we can actually build on all supported platforms, and a bunch of architectures
+  build-for-go:
+    name: "build for${{ inputs.hack }}"
+    uses: ./.github/workflows/job-build.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - go-version: "1.26"
+          # Additionally build for canary
+          # FIXME: failing since the release of go1.27rc1
+          # - go-version: "1.26"
+          #   canary: true
+    with:
+      timeout: 10
+      go-version: ${{ matrix.go-version }}
+      runner: ubuntu-24.04
+      canary: ${{ matrix.canary && true || false }}
+
+  zizmor:
+    name: "zizmor"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: "Run: zizmor"
+        uses: zizmorcore/zizmor-action@192e21d79ab29983730a13d1382995c2307fbcaa  # v0.5.7
+        with:
+          inputs: .github/workflows
+          # Do not send workflow diagnostics to GitHub Advanced Security code scanning in this project right now.
+          # Keep this as a local CI check.
+          advanced-security: false

@@ -1,0 +1,65 @@
+name: job-test-in-lima-freebsd
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      runner:
+        required: true
+        type: string
+
+jobs:
+  test:
+    name: "FreeBSD"
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: "${{ inputs.runner }}"
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: "Init: lima"
+        uses: lima-vm/lima-actions/setup@55627e31b78637bf254a8b2a14da8ea7d12564e5  # v1.1.0
+        id: lima-actions-setup
+
+      - name: "Init: Cache"
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/lima
+          key: lima-${{ steps.lima-actions-setup.outputs.version }}-freebsd
+
+      - name: "Init: Install xorriso (required by Lima for running FreeBSD)"
+        run: |
+          set -eux
+          sudo apt-get update
+          sudo apt-get install -y xorriso
+
+      - name: "Init: start the guest VM"
+        run: |
+          set -eux
+          limactl start --plain --name=default template://freebsd
+          lima freebsd-version -kru
+          lima sudo pkg install -y bash go containerd runj
+
+      - name: "Init: copy source into the guest VM"
+        run: |
+          set -eux
+          limactl copy -r . default:/tmp/nerdctl
+
+      - name: "Init: build nerdctl"
+        run: lima --workdir /tmp/nerdctl sudo go build -o /usr/local/bin/nerdctl ./cmd/nerdctl
+
+      - name: "Run: test-unit"
+        run: lima --workdir /tmp/nerdctl go test -v ./pkg/...
+
+      - name: "Run: test-integration"
+        timeout-minutes: 3
+        run: |
+          set -eux
+          lima sudo containerd >containerd.log 2>&1 &
+          sleep 3
+          lima sudo /usr/local/bin/nerdctl run --rm --net=none dougrabson/freebsd-minimal:13 echo 'Nerdctl is up and running.'

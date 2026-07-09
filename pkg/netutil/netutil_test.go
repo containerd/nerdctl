@@ -1,0 +1,411 @@
+/*
+   Copyright The containerd Authors.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
+package netutil
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"strconv"
+	"testing"
+	"text/template"
+
+	"gotest.tools/v3/assert"
+
+	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
+	"github.com/containerd/nerdctl/v2/pkg/testutil"
+)
+
+const testBridgeIP = "10.42.100.1/24" // nolint:unused
+
+const preExistingNetworkConfigTemplate = `
+{
+    "cniVersion": "0.2.0",
+    "name": "{{ .network_name }}",
+    "type": "nat",
+    "master": "Ethernet",
+    "ipam": {
+        "subnet": "{{ .subnet }}",
+        "routes": [
+            {
+                "GW": "{{ .gateway }}"
+            }
+        ]
+    },
+    "capabilities": {
+        "portMappings": true,
+        "dns": true
+    }
+}
+`
+
+func TestParseIPAMRange(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		subnet   string
+		gateway  string
+		iprange  string
+		expected *IPAMRange
+		err      string
+	}
+	testCases := []testCase{
+		{
+			subnet: "10.1.100.0/24",
+			expected: &IPAMRange{
+				Subnet:  "10.1.100.0/24",
+				Gateway: "10.1.100.1",
+			},
+		},
+		{
+			subnet:  "10.1.100.0/24",
+			gateway: "10.1.10.100",
+			err:     "no matching subnet",
+		},
+		{
+			subnet:  "10.1.100.0/24",
+			gateway: "10.1.100.100",
+			expected: &IPAMRange{
+				Subnet:  "10.1.100.0/24",
+				Gateway: "10.1.100.100",
+			},
+		},
+		{
+			subnet:  "10.1.100.0/23",
+			gateway: "10.1.102.1",
+			err:     "no matching subnet",
+		},
+		{
+			subnet:  "10.1.0.0/16",
+			iprange: "10.10.10.0/24",
+			err:     "no matching subnet",
+		},
+		{
+			subnet:  "10.1.0.0/16",
+			iprange: "10.1.100.0/24",
+			expected: &IPAMRange{
+				Subnet:     "10.1.0.0/16",
+				Gateway:    "10.1.0.1",
+				IPRange:    "10.1.100.0/24",
+				RangeStart: "10.1.100.1",
+				RangeEnd:   "10.1.100.255",
+			},
+		},
+		{
+			subnet:  "10.1.100.0/23",
+			iprange: "10.1.100.0/25",
+			expected: &IPAMRange{
+				Subnet:     "10.1.100.0/23",
+				Gateway:    "10.1.100.1",
+				IPRange:    "10.1.100.0/25",
+				RangeStart: "10.1.100.1",
+				RangeEnd:   "10.1.100.127",
+			},
+		},
+	}
+	for _, tc := range testCases {
+		_, subnet, _ := net.ParseCIDR(tc.subnet)
+		got, err := parseIPAMRange(subnet, tc.gateway, tc.iprange)
+		if tc.err != "" {
+			assert.ErrorContains(t, err, tc.err)
+		} else {
+			assert.NilError(t, err)
+			assert.Equal(t, *tc.expected, *got)
+		}
+	}
+}
+
+// Tests whether nerdctl properly creates the default network when required.
+// Note that this test will require a CNI driver bearing the same name as
+// the type of the default network. (denoted by netutil.DefaultNetworkName,
+// which is used as both the name of the default network and its Driver)
+// nolint:unused
+func testDefaultNetworkCreation(t *testing.T) {
+	// To prevent subnet collisions when attempting to recreate the default network
+	// in the isolated CNI config dir we'll be using, we must first delete
+	// the network in the default CNI config dir.
+	defaultCniEnv := CNIEnv{
+		Path:        ncdefaults.CNIPath(),
+		NetconfPath: ncdefaults.CNINetConfPath(),
+	}
+	defaultNet, err := defaultCniEnv.GetDefaultNetworkConfig()
+	assert.NilError(t, err)
+	if defaultNet != nil {
+		assert.NilError(t, defaultCniEnv.RemoveNetwork(defaultNet))
+	}
+
+	// We create a tempdir for the CNI conf path to ensure an empty env for this test.
+	cniConfTestDir := t.TempDir()
+	cniEnv := CNIEnv{
+		Path:        ncdefaults.CNIPath(),
+		NetconfPath: cniConfTestDir,
+	}
+	// Ensure no default network config is not present.
+	defaultNetConf, err := cniEnv.GetDefaultNetworkConfig()
+	assert.NilError(t, err)
+	assert.Assert(t, defaultNetConf == nil)
+
+	// Attempt to create the default network.
+	err = cniEnv.ensureDefaultNetworkConfig("")
+	assert.NilError(t, err)
+
+	// Ensure default network config is present now.
+	defaultNetConf, err = cniEnv.GetDefaultNetworkConfig()
+	assert.NilError(t, err)
+	assert.Assert(t, defaultNetConf != nil)
+
+	// Check network config file present.
+	stat, err := os.Stat(defaultNetConf.File)
+	assert.NilError(t, err)
+	firstConfigModTime := stat.ModTime()
+
+	// Check default network label present.
+	assert.Assert(t, defaultNetConf.NerdctlLabels != nil)
+	lstr, ok := (*defaultNetConf.NerdctlLabels)[labels.NerdctlDefaultNetwork]
+	assert.Assert(t, ok)
+	boolv, err := strconv.ParseBool(lstr)
+	assert.NilError(t, err)
+	assert.Assert(t, boolv)
+
+	// Ensure network isn't created twice or accidentally re-created.
+	err = cniEnv.ensureDefaultNetworkConfig("")
+	assert.NilError(t, err)
+
+	// Check for any other network config files.
+	files := []os.FileInfo{}
+	walkF := func(p string, info os.FileInfo, err error) error {
+		files = append(files, info)
+		return nil
+	}
+	err = filepath.Walk(cniConfTestDir, walkF)
+	assert.NilError(t, err)
+	assert.Equal(t, len(files), 3) // files[0] is the entry for '.', files[1] is the lock
+	assert.Assert(t, filepath.Join(cniConfTestDir, files[2].Name()) == defaultNetConf.File)
+	assert.Assert(t, firstConfigModTime.Equal(files[2].ModTime()))
+}
+
+// Tests whether nerdctl properly creates the default network
+// with a custom bridge IP and subnet.
+// nolint:unused
+func testDefaultNetworkCreationWithBridgeIP(t *testing.T) {
+	// To prevent subnet collisions when attempting to recreate the default network
+	// in the isolated CNI config dir we'll be using, we must first delete
+	// the network in the default CNI config dir.
+	defaultCniEnv := CNIEnv{
+		Path:        ncdefaults.CNIPath(),
+		NetconfPath: ncdefaults.CNINetConfPath(),
+	}
+	defaultNet, err := defaultCniEnv.GetDefaultNetworkConfig()
+	assert.NilError(t, err)
+	if defaultNet != nil {
+		assert.NilError(t, defaultCniEnv.RemoveNetwork(defaultNet))
+	}
+
+	// We create a tempdir for the CNI conf path to ensure an empty env for this test.
+	cniConfTestDir := t.TempDir()
+	cniEnv := CNIEnv{
+		Path:        ncdefaults.CNIPath(),
+		NetconfPath: cniConfTestDir,
+	}
+	// Ensure no default network config is not present.
+	defaultNetConf, err := cniEnv.GetDefaultNetworkConfig()
+	assert.NilError(t, err)
+	assert.Assert(t, defaultNetConf == nil)
+
+	// Attempt to create the default network with a test bridgeIP
+	err = cniEnv.ensureDefaultNetworkConfig(testBridgeIP)
+	assert.NilError(t, err)
+
+	// Ensure default network config is present now.
+	defaultNetConf, err = cniEnv.GetDefaultNetworkConfig()
+	assert.NilError(t, err)
+	assert.Assert(t, defaultNetConf != nil)
+
+	// Check network config file present.
+	stat, err := os.Stat(defaultNetConf.File)
+	assert.NilError(t, err)
+	firstConfigModTime := stat.ModTime()
+
+	// Check default network label present.
+	assert.Assert(t, defaultNetConf.NerdctlLabels != nil)
+	lstr, ok := (*defaultNetConf.NerdctlLabels)[labels.NerdctlDefaultNetwork]
+	assert.Assert(t, ok)
+	boolv, err := strconv.ParseBool(lstr)
+	assert.NilError(t, err)
+	assert.Assert(t, boolv)
+
+	// Check bridge IP is set.
+	assert.Assert(t, defaultNetConf.Plugins != nil)
+	assert.Assert(t, len(defaultNetConf.Plugins) > 0)
+	bridgePlugin := defaultNetConf.Plugins[0]
+	var bridgeConfig struct {
+		Type   string `json:"type"`
+		Bridge string `json:"bridge"`
+		IPAM   struct {
+			Ranges [][]struct {
+				Gateway string `json:"gateway"`
+				Subnet  string `json:"subnet"`
+			} `json:"ranges"`
+			Routes []struct {
+				Dst string `json:"dst"`
+			} `json:"routes"`
+			Type string `json:"type"`
+		} `json:"ipam"`
+	}
+
+	err = json.Unmarshal(bridgePlugin.Bytes, &bridgeConfig)
+	if err != nil {
+		t.Fatalf("Failed to parse bridge plugin config: %v", err)
+	}
+
+	// Assert on bridge plugin configuration
+	assert.Equal(t, "bridge", bridgeConfig.Type)
+	// Assert on IPAM configuration
+	assert.Equal(t, "10.42.100.1", bridgeConfig.IPAM.Ranges[0][0].Gateway)
+	assert.Equal(t, "10.42.100.0/24", bridgeConfig.IPAM.Ranges[0][0].Subnet)
+	assert.Equal(t, "0.0.0.0/0", bridgeConfig.IPAM.Routes[0].Dst)
+	assert.Equal(t, "host-local", bridgeConfig.IPAM.Type)
+
+	// Ensure network isn't created twice or accidentally re-created.
+	err = cniEnv.ensureDefaultNetworkConfig(testBridgeIP)
+	assert.NilError(t, err)
+
+	// Check for any other network config files.
+	files := []os.FileInfo{}
+	walkF := func(p string, info os.FileInfo, err error) error {
+		files = append(files, info)
+		return nil
+	}
+	err = filepath.Walk(cniConfTestDir, walkF)
+	assert.NilError(t, err)
+	assert.Equal(t, len(files), 3) // files[0] is the entry for '.', files[1] is the lock
+	assert.Assert(t, filepath.Join(cniConfTestDir, files[2].Name()) == defaultNetConf.File)
+	assert.Assert(t, firstConfigModTime.Equal(files[2].ModTime()))
+}
+
+// Tests whether nerdctl skips the creation of the default network if a
+// network bearing the default network name already exists in a
+// non-nerdctl-managed network config file.
+func TestNetworkWithDefaultNameAlreadyExists(t *testing.T) {
+	// We create a tempdir for the CNI conf path to ensure an empty env for this test.
+	cniConfTestDir := t.TempDir()
+	cniEnv := CNIEnv{
+		Path:        t.TempDir(), // irrelevant for this test
+		NetconfPath: cniConfTestDir,
+	}
+
+	// Ensure no default network config is not present.
+	defaultNetConf, err := cniEnv.GetDefaultNetworkConfig()
+	assert.NilError(t, err)
+	assert.Assert(t, defaultNetConf == nil)
+
+	// Manually define and write a network config file.
+	values := map[string]string{
+		"network_name": DefaultNetworkName,
+		"subnet":       "10.7.1.1/24",
+		"gateway":      "10.7.1.1",
+	}
+	tpl, err := template.New("test").Parse(preExistingNetworkConfigTemplate)
+	assert.NilError(t, err)
+	buf := &bytes.Buffer{}
+	assert.NilError(t, tpl.ExecuteTemplate(buf, "test", values))
+
+	// Filename is irrelevant as long as it's not nerdctl's.
+	testConfFile := filepath.Join(cniConfTestDir, fmt.Sprintf("%s.conf", testutil.Identifier(t)))
+	err = filesystem.WriteFile(testConfFile, buf.Bytes(), 0600)
+	assert.NilError(t, err)
+
+	// Check network is detected.
+	netConfs, err := cniEnv.NetworkList()
+	assert.NilError(t, err)
+	assert.Assert(t, len(netConfs) > 0)
+
+	var listedDefaultNetConf *NetworkConfig
+	for _, netConf := range netConfs {
+		if netConf.Name == DefaultNetworkName {
+			listedDefaultNetConf = netConf
+			break
+		}
+	}
+	assert.Assert(t, listedDefaultNetConf != nil)
+
+	defaultNetConf, err = cniEnv.GetDefaultNetworkConfig()
+	assert.NilError(t, err)
+	assert.Assert(t, defaultNetConf != nil)
+	assert.Assert(t, defaultNetConf.File == testConfFile)
+
+	err = cniEnv.ensureDefaultNetworkConfig("")
+	assert.NilError(t, err)
+
+	netConfs, err = cniEnv.NetworkList()
+	assert.NilError(t, err)
+	defaultNamedNetworksFileDefinitions := []string{}
+	for _, netConf := range netConfs {
+		if netConf.Name == DefaultNetworkName {
+			defaultNamedNetworksFileDefinitions = append(defaultNamedNetworksFileDefinitions, netConf.File)
+		}
+	}
+	assert.Assert(t, len(defaultNamedNetworksFileDefinitions) == 1)
+	assert.Assert(t, defaultNamedNetworksFileDefinitions[0] == testConfFile)
+}
+
+func TestFSExistsPropagatesStatError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cni-conf-root")
+	assert.NilError(t, filesystem.WriteFile(path, nil, 0600))
+
+	cniEnv := CNIEnv{
+		NetconfPath: path,
+	}
+
+	exists, err := fsExists(&cniEnv, DefaultNetworkName)
+	assert.Assert(t, !exists)
+	assert.Assert(t, err != nil)
+}
+
+func TestListNetworksMatchIncludesPseudoNetworks(t *testing.T) {
+	cniConfTestDir := t.TempDir()
+	cniEnv := CNIEnv{
+		Path:        t.TempDir(),
+		NetconfPath: cniConfTestDir,
+	}
+
+	values := map[string]string{
+		"network_name": "regular-network",
+		"subnet":       "10.7.1.0/24",
+		"gateway":      "10.7.1.1",
+	}
+	tpl, err := template.New("test").Parse(preExistingNetworkConfigTemplate)
+	assert.NilError(t, err)
+	buf := &bytes.Buffer{}
+	assert.NilError(t, tpl.ExecuteTemplate(buf, "test", values))
+
+	testConfFile := filepath.Join(cniConfTestDir, fmt.Sprintf("%s.conf", testutil.Identifier(t)))
+	assert.NilError(t, filesystem.WriteFile(testConfFile, buf.Bytes(), 0600))
+
+	matches, errs := cniEnv.ListNetworksMatch([]string{"host", "none", "regular-network"}, true)
+	assert.Assert(t, len(errs) == 0)
+	assert.Equal(t, len(matches["host"]), 1)
+	assert.Equal(t, matches["host"][0].Name, "host")
+	assert.Equal(t, len(matches["none"]), 1)
+	assert.Equal(t, matches["none"][0].Name, "none")
+	assert.Equal(t, len(matches["regular-network"]), 1)
+	assert.Equal(t, matches["regular-network"][0].Name, "regular-network")
+}

@@ -1,0 +1,39 @@
+# This job runs any subsidiary linter not part of golangci (shell, yaml, etc)
+name: job-lint-other
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      runner:
+        required: true
+        type: string
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  lint-other:
+    name: "yaml | shell"
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: ${{ inputs.runner }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: "Run: yaml"
+        run: |
+          make lint-yaml
+
+      - name: "Run: shell"
+        run: |
+          make lint-shell

@@ -1,0 +1,98 @@
+# Note: freebsd tests are not ran here (see integration instead)
+name: job-test-unit
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      go-version:
+        required: true
+        type: string
+      runner:
+        required: true
+        type: string
+      canary:
+        required: false
+        default: false
+        type: boolean
+      windows-cni-version:
+        required: true
+        type: string
+      linux-cni-version:
+        required: true
+        type: string
+      linux-cni-sha:
+        required: true
+        type: string
+
+env:
+  GOTOOLCHAIN: local
+  # Windows fails without this
+  CGO_ENABLED: 0
+
+jobs:
+  test-unit:
+    name: ${{ format('{0}{1}', inputs.runner, inputs.canary && ' (go canary)' || '') }}
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: "${{ inputs.runner }}"
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      GO_VERSION: ${{ inputs.go-version }}
+
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # If canary is requested, check for the latest unstable release
+      - if: ${{ inputs.canary }}
+        name: "Init (canary): retrieve GO_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest_go="$(. ./hack/provisioning/version/fetch.sh; go::canary::for::go-setup)"
+          printf "GO_VERSION=%s\n" "$latest_go" >> "$GITHUB_ENV"
+          [ "$latest_go" != "" ] || \
+            echo "::warning title=No canary go::There is currently no canary go version to test. Following steps will not run."
+
+      - if: ${{ env.GO_VERSION != '' }}
+        name: "Init: install go"
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6.5.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+
+      # Install CNI and CRIU
+      - if: ${{ env.GO_VERSION != '' }}
+        name: "Init: set up CNI and CRIU"
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            GOPATH=$(go env GOPATH) WINCNI_VERSION=${INPUTS_WINDOWS_CNI_VERSION} ./hack/provisioning/windows/cni.sh
+          elif [ "$RUNNER_OS" == "Linux" ]; then
+            ./hack/provisioning/linux/cni.sh install "${INPUTS_LINUX_CNI_VERSION}" "amd64" "${INPUTS_LINUX_CNI_SHA}"
+            sudo apt-get update -qq
+            sudo add-apt-repository ppa:criu/ppa -y
+            sudo apt-get install -qq criu
+          fi
+        env:
+          INPUTS_WINDOWS_CNI_VERSION: ${{ inputs.windows-cni-version }}
+          INPUTS_LINUX_CNI_VERSION: ${{ inputs.linux-cni-version }}
+          INPUTS_LINUX_CNI_SHA: ${{ inputs.linux-cni-sha }}
+
+      - if: ${{ env.GO_VERSION != '' }}
+        name: "Run"
+        run: |
+          make test-unit
+
+      # On linux, also run with root
+      - if: ${{ env.GO_VERSION != '' && env.RUNNER_OS == 'Linux' }}
+        name: "Run: with root"
+        run: |
+          sudo make test-unit
