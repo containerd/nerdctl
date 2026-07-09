@@ -155,6 +155,18 @@ host::configuration(){
   if [ -e /sys/kernel/security/apparmor/profiles ]; then
     /usr/local/bin/nerdctl apparmor load
   fi
+
+  # AppArmor configuration seems needed since Ubuntu 26.04
+  if [ -e /etc/apparmor.d/fusermount3 ] && command -v apparmor_parser >/dev/null; then
+    mkdir -p /etc/apparmor.d/local
+    cat > /etc/apparmor.d/local/fusermount3 <<-'EOF'
+	# Allow the soci-snapshotter to mount FUSE filesystems under its root
+	# (installed by nerdctl's hack/provisioning/linux/test-integration-env.sh)
+	mount fstype=@{fuse_types} -> /var/lib/soci-snapshotter-grpc/**/,
+	umount /var/lib/soci-snapshotter-grpc/**/,
+	EOF
+    apparmor_parser -r /etc/apparmor.d/fusermount3
+  fi
 }
 
 host::services(){

@@ -120,6 +120,30 @@ var Docker = &test.Requirement{
 	},
 }
 
+// DockerContainerdSnapshotter marks a test as suitable solely for Docker with the containerd
+// image store enabled (the default since Docker v29 on fresh installs).
+// Generally used as require.Not(nerdtest.DockerContainerdSnapshotter).
+var DockerContainerdSnapshotter = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (ret bool, mess string) {
+		if isTargetNerdish() {
+			return false, "current target is not docker"
+		}
+		stdout := helpers.Capture("info", "--format", "{{ json . }}")
+		// DriverStatus is not part of dockercompat.Info (nerdctl does not implement it)
+		var dinf struct {
+			DriverStatus [][2]string
+		}
+		err := json.Unmarshal([]byte(stdout), &dinf)
+		assert.NilError(helpers.T(), err, "failed to parse docker info")
+		for _, kv := range dinf.DriverStatus {
+			if kv[0] == "driver-type" && kv[1] == "io.containerd.snapshotter.v1" {
+				return true, "docker is using the containerd snapshotter"
+			}
+		}
+		return false, "docker is not using the containerd snapshotter"
+	},
+}
+
 // NerdctlNeedsFixing marks a test as unsuitable to be run for Nerdctl, because of a specific known issue which
 // url must be passed as an argument
 var NerdctlNeedsFixing = func(issueLink string) *test.Requirement {
