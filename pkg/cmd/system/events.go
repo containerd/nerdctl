@@ -44,6 +44,7 @@ type EventOut struct {
 	Topic     string
 	Status    Status
 	Event     string
+	Labels    map[string]string
 }
 
 type Status string
@@ -89,6 +90,31 @@ func generateEventFilter(filter, filterValue string) (func(e *EventOut) bool, er
 			}
 
 			return strings.EqualFold(string(e.Status), filterValue)
+		}, nil
+	case "LABEL":
+		parts := strings.SplitN(filterValue, "=", 2)
+		key := parts[0]
+		if key == "" {
+			return nil, fmt.Errorf("%s is an invalid label filter", filterValue)
+		}
+		wantValue := len(parts) == 2
+		var value string
+		if wantValue {
+			value = parts[1]
+		}
+		return func(e *EventOut) bool {
+			if len(e.Labels) == 0 {
+				return false
+			}
+			got, ok := e.Labels[key]
+			if !ok {
+				return false
+			}
+
+			if !wantValue {
+				return true
+			}
+			return got == value
 		}, nil
 	}
 
@@ -161,6 +187,13 @@ func Events(ctx context.Context, client *containerd.Client, options types.System
 			return err
 		}
 	}
+	labelFilterEnabled := false
+	for _, f := range options.Filters {
+		if strings.HasPrefix(strings.ToLower(f), "label=") {
+			labelFilterEnabled = true
+			break
+		}
+	}
 	filterMap, err := generateEventFilters(options.Filters)
 	if err != nil {
 		return err
@@ -175,6 +208,7 @@ func Events(ctx context.Context, client *containerd.Client, options types.System
 		if e != nil {
 			var out []byte
 			var id string
+			labels := map[string]string{}
 			if e.Event != nil {
 				v, err := typeurl.UnmarshalAny(e.Event)
 				if err != nil {
@@ -194,11 +228,19 @@ func Events(ctx context.Context, client *containerd.Client, options types.System
 			} else {
 				_, ok := data["container_id"]
 				if ok {
-					id = data["container_id"].(string)
+					if containerID, ok := data["container_id"].(string); ok {
+						id = containerID
+					}
 				}
 			}
-
-			eOut := EventOut{e.Timestamp, id, e.Namespace, e.Topic, TopicToStatus(e.Topic), string(out)}
+			if labelFilterEnabled && id != "" {
+				if container, err := client.ContainerService().Get(ctx, id); err != nil {
+					log.G(ctx).WithError(err).WithField("containerID", id).Debug("failed to retrieve container labels")
+				} else {
+					labels = container.Labels
+				}
+			}
+			eOut := EventOut{e.Timestamp, id, e.Namespace, e.Topic, TopicToStatus(e.Topic), string(out), labels}
 			match := applyFilters(&eOut, filterMap)
 			if match {
 				if tmpl != nil {

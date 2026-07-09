@@ -51,6 +51,27 @@ func testEventFilterExecutor(data test.Data, helpers test.Helpers) test.Testable
 	return cmd
 }
 
+func testEventLabelFilterExecutor(data test.Data, helpers test.Helpers) test.TestableCommand {
+	helpers.Ensure("pull", testutil.CommonImage)
+
+	cmd := helpers.Command("events", "--filter", data.Labels().Get("filter"), "--format", "json")
+	cmd.WithTimeout(10 * time.Second)
+	cmd.Background()
+
+	helpers.Ensure(
+		"run",
+		"-d",
+		"--name", data.Identifier(),
+		"--label", data.Labels().Get("containerLabel"),
+		testutil.CommonImage,
+		"tail", "-f", "/dev/null",
+	)
+	time.Sleep(1 * time.Second)
+	helpers.Ensure("rm", "-f", data.Identifier())
+
+	return cmd
+}
+
 func TestEventFilters(t *testing.T) {
 	testCase := nerdtest.Setup()
 
@@ -126,6 +147,36 @@ func TestEventFilters(t *testing.T) {
 			Data: test.WithLabels(map[string]string{
 				"filter": "status=unknown",
 				"output": "\"Status\":\"unknown\"",
+			}),
+		},
+		{
+			Description: "LabelFilter",
+			Command:     testEventLabelFilterExecutor,
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeTimeout,
+					Output:   expect.Contains(data.Labels().Get("output")),
+				}
+			},
+			Data: test.WithLabels(map[string]string{
+				"filter":         "label=com.example.app=myapp",
+				"containerLabel": "com.example.app=myapp",
+				"output":         startEventOutput(),
+			}),
+		},
+		{
+			Description: "LabelKeyOnlyFilter",
+			Command:     testEventLabelFilterExecutor,
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeTimeout,
+					Output:   expect.Contains(data.Labels().Get("output")),
+				}
+			},
+			Data: test.WithLabels(map[string]string{
+				"filter":         "label=com.example.app",
+				"containerLabel": "com.example.app=myapp",
+				"output":         startEventOutput(),
 			}),
 		},
 	}
