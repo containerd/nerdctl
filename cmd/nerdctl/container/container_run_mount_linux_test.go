@@ -19,6 +19,7 @@ package container
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/mountutil"
+	"github.com/containerd/nerdctl/v2/pkg/ociruntimeutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -740,6 +742,145 @@ func TestRunVolumeBindMode(t *testing.T) {
 			_ = mobymount.Unmount(mntPath)
 		}
 	}
+
+	testCase.Run(t)
+}
+
+// requiresRRO requires that the kernel and the default OCI runtime support
+// recursive read-only (RRO) mounts.
+var requiresRRO = &test.Requirement{
+	Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+		if err := ociruntimeutil.SupportsRecursivelyReadOnly(""); err != nil {
+			return false, fmt.Sprintf("recursive read-only mounts are not supported: %v", err)
+		}
+		return true, "recursive read-only mounts are supported"
+	},
+}
+
+// setupBindMountWithSubmount creates a temp directory ("top") containing a
+// writable submount ("top/mnt"), for testing recursive read-only (RRO) mounts,
+// and stores the path of the top directory in the "top" label.
+func setupBindMountWithSubmount(data test.Data, helpers test.Helpers) {
+	top := data.Temp().Dir("top")
+	topMnt := data.Temp().Dir("top", "mnt")
+	sub := data.Temp().Dir("sub")
+	assert.NilError(helpers.T(), mobymount.Mount(sub, topMnt, "none", "bind"))
+	data.Labels().Set("top", top)
+}
+
+func cleanupBindMountWithSubmount(data test.Data, helpers test.Helpers) {
+	if top := data.Labels().Get("top"); top != "" {
+		topMnt := filepath.Join(top, "mnt")
+		if err := mobymount.Unmount(topMnt); err != nil {
+			helpers.T().Log(fmt.Sprintf("failed to unmount %q: %v", topMnt, err))
+		}
+	}
+}
+
+// TestRunBindMountRecursiveReadOnly tests that read-only bind mounts are
+// recursively read-only when the kernel and the OCI runtime support it
+// (Docker v25 behavior), and that the mode is customizable with the
+// `bind-recursive` option of `--mount`.
+func TestRunBindMountRecursiveReadOnly(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// The test creates a bind mount on the host, in a mount namespace shared
+	// with the daemon. With the rootless harness, the test process runs on the
+	// host, while the daemon runs inside the mount namespace of RootlessKit,
+	// so the mount would not be visible to the daemon.
+	testCase.Require = require.All(
+		require.Not(nerdtest.Rootless),
+		requiresRRO,
+	)
+
+	testCase.Setup = setupBindMountWithSubmount
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "-v :ro is recursively read-only by default",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"-v", data.Labels().Get("top")+":/mnt1:ro",
+					testutil.AlpineImage,
+					"sh", "-euxc", "! touch /mnt1/mnt/file")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "--mount readonly is recursively read-only by default",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1,readonly", data.Labels().Get("top")),
+					testutil.AlpineImage,
+					"sh", "-euxc", "! touch /mnt1/mnt/file")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "bind-recursive=writable keeps the submounts writable (Docker v24 behavior)",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1,readonly,bind-recursive=writable", data.Labels().Get("top")),
+					testutil.AlpineImage,
+					"sh", "-euxc", "! touch /mnt1/file && touch /mnt1/mnt/file")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "bind-recursive=readonly forces the recursive read-only mount",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1,readonly,bind-propagation=rprivate,bind-recursive=readonly", data.Labels().Get("top")),
+					testutil.AlpineImage,
+					"sh", "-euxc", "! touch /mnt1/mnt/file")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+	}
+
+	testCase.Cleanup = cleanupBindMountWithSubmount
+
+	testCase.Run(t)
+}
+
+// TestRunBindMountDeprecatedRRO tests the deprecated `rro` option of `-v` and
+// `--mount`, which predates the `bind-recursive=readonly` option of Docker v25.
+func TestRunBindMountDeprecatedRRO(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// See TestRunBindMountRecursiveReadOnly for the rootless restriction.
+	testCase.Require = require.All(
+		require.Not(nerdtest.Docker),
+		require.Not(nerdtest.Rootless),
+		requiresRRO,
+	)
+
+	testCase.Setup = setupBindMountWithSubmount
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "-v :rro",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"-v", data.Labels().Get("top")+":/mnt1:rro,rprivate",
+					testutil.AlpineImage,
+					"sh", "-euxc", "! touch /mnt1/mnt/file")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "--mount rro",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--mount", fmt.Sprintf("type=bind,src=%s,target=/mnt1,rro,bind-propagation=rprivate", data.Labels().Get("top")),
+					testutil.AlpineImage,
+					"sh", "-euxc", "! touch /mnt1/mnt/file")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+	}
+
+	testCase.Cleanup = cleanupBindMountWithSubmount
 
 	testCase.Run(t)
 }

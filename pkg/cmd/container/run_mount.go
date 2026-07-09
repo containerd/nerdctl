@@ -96,7 +96,7 @@ func parseMountFlags(volStore volumestore.VolumeStore, options types.ContainerCr
 	var parsed []*mountutil.Processed //nolint:prealloc
 	for _, v := range strutil.DedupeStrSlice(options.Volume) {
 		// createDir=true for -v option to allow creation of directory on host if not found.
-		x, err := mountutil.ProcessFlagV(v, volStore, true)
+		x, err := mountutil.ProcessFlagV(v, volStore, true, options.Runtime)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +112,7 @@ func parseMountFlags(volStore volumestore.VolumeStore, options types.ContainerCr
 	}
 
 	for _, v := range strutil.DedupeStrSlice(options.Mount) {
-		x, err := mountutil.ProcessFlagMount(v, volStore)
+		x, err := mountutil.ProcessFlagMount(v, volStore, options.Runtime)
 		if err != nil {
 			return nil, err
 		}

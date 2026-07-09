@@ -37,6 +37,8 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/mountutil/volumestore"
+	"github.com/containerd/nerdctl/v2/pkg/ociruntimeutil"
+	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
 
 /*
@@ -90,10 +92,56 @@ func UnprivilegedMountFlags(path string) ([]string, error) {
 	return flags, nil
 }
 
+// supportsRecursivelyReadOnly is replaced in unit tests.
+var supportsRecursivelyReadOnly = ociruntimeutil.SupportsRecursivelyReadOnly
+
+// readOnlyMode is the read-only mode of a mount.
+// The modes correspond to the BindOptions of the Docker API >= v1.44.
+// https://github.com/moby/moby/pull/45278
+type readOnlyMode int
+
+const (
+	// readOnlyModeRecursiveIfPossible makes the mount recursively read-only when
+	// the kernel and the OCI runtime support the "rro" mount option, and falls
+	// back to the plain (non-recursive) read-only otherwise.
+	// This is the default mode of read-only mounts since Docker v25.
+	readOnlyModeRecursiveIfPossible readOnlyMode = iota
+	// readOnlyModeNonRecursive makes the mount read-only, but keeps its submounts
+	// writable. This was the default mode of read-only mounts until Docker v24.
+	// Corresponds to `--mount type=bind,readonly,bind-recursive=writable`.
+	readOnlyModeNonRecursive
+	// readOnlyModeForceRecursive makes the mount recursively read-only, or
+	// raises an error when the kernel or the OCI runtime does not support "rro".
+	// Corresponds to `--mount type=bind,readonly,bind-recursive=readonly`.
+	readOnlyModeForceRecursive
+)
+
+// readOnlyMountOptions returns the mount options for the given read-only mode.
+// Whether the OCI runtime supports the "rro" mount option is detected by running
+// `$RUNTIME features`; ociRuntime is the value of the `--runtime` flag.
+func readOnlyMountOptions(mode readOnlyMode, ociRuntime string) ([]string, error) {
+	switch mode {
+	case readOnlyModeRecursiveIfPossible:
+		if err := supportsRecursivelyReadOnly(ociRuntime); err != nil {
+			log.L.WithError(err).Debug("recursive read-only mounts are not supported, falling back to non-recursive read-only")
+			return []string{"ro"}, nil
+		}
+		return []string{"rro"}, nil
+	case readOnlyModeNonRecursive:
+		return []string{"ro"}, nil
+	case readOnlyModeForceRecursive:
+		if err := supportsRecursivelyReadOnly(ociRuntime); err != nil {
+			return nil, err
+		}
+		return []string{"rro"}, nil
+	}
+	return nil, fmt.Errorf("unexpected read-only mode %v", mode)
+}
+
 // parseVolumeOptions parses specified optsRaw with using information of
 // the volume type and the src directory when necessary.
-func parseVolumeOptions(vType, src, optsRaw string) ([]string, []oci.SpecOpts, error) {
-	return parseVolumeOptionsWithMountInfo(vType, src, optsRaw, getMountInfo)
+func parseVolumeOptions(vType, src, optsRaw, ociRuntime string) ([]string, []oci.SpecOpts, error) {
+	return parseVolumeOptionsWithMountInfo(vType, src, optsRaw, ociRuntime, getMountInfo)
 }
 
 // getMountInfo gets mount.Info of a directory.
@@ -107,7 +155,7 @@ func getMountInfo(dir string) (mount.Info, error) {
 
 // parseVolumeOptionsWithMountInfo is the testable implementation
 // of parseVolumeOptions.
-func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFunc func(string) (mount.Info, error)) ([]string, []oci.SpecOpts, error) {
+func parseVolumeOptionsWithMountInfo(vType, src, optsRaw, ociRuntime string, getMountInfoFunc func(string) (mount.Info, error)) ([]string, []oci.SpecOpts, error) {
 	var (
 		writeModeRawOpts   []string
 		propagationRawOpts []string
@@ -154,14 +202,25 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw string, getMountInfoFun
 	} else if len(writeModeRawOpts) > 0 {
 		switch writeModeRawOpts[0] {
 		case "ro":
-			opts = append(opts, "ro")
+			// Docker (since v25) attempts to make the mount recursively read-only.
+			// https://github.com/moby/moby/pull/45278
+			roOpts, err := readOnlyMountOptions(readOnlyModeRecursiveIfPossible, ociRuntime)
+			if err != nil {
+				return nil, nil, err
+			}
+			opts = append(opts, roOpts...)
 		case "rro":
-			// Mount option "rro" is supported since crun v1.4 / runc v1.1 (https://github.com/opencontainers/runc/pull/3272), with kernel >= 5.12.
-			// Older version of runc just ignores "rro", so we have to add "ro" too, to our best effort.
-			opts = append(opts, "ro", "rro")
+			// "rro" was introduced in nerdctl v0.14 (2021), ahead of Docker.
+			// Docker v25 introduced `--mount type=bind,...,readonly,bind-recursive=readonly` instead.
+			log.L.Warn("The volume option \"rro\" is deprecated; use `--mount type=bind,src=...,dst=...,readonly,bind-propagation=rprivate,bind-recursive=readonly` instead")
 			if len(propagationRawOpts) != 1 || propagationRawOpts[0] != "rprivate" {
 				log.L.Warn("Mount option \"rro\" should be used in conjunction with \"rprivate\"")
 			}
+			roOpts, err := readOnlyMountOptions(readOnlyModeForceRecursive, ociRuntime)
+			if err != nil {
+				return nil, nil, err
+			}
+			opts = append(opts, roOpts...)
 		case "rw":
 			// NOP
 		default:
@@ -301,7 +360,7 @@ func ProcessFlagTmpfs(s string) (*Processed, error) {
 	return res, nil
 }
 
-func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, error) {
+func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime string) (*Processed, error) {
 	fields := strings.Split(s, ",")
 	var (
 		mountType        string
@@ -309,6 +368,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		dst              string
 		bindPropagation  string
 		bindNonRecursive bool
+		bindRecursive    string // "enabled", "disabled", "writable", or "readonly"
 		rwOption         string
 		tmpfsSize        int64
 		tmpfsMode        os.FileMode
@@ -332,11 +392,16 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 
 		if len(parts) == 1 {
 			switch key {
-			case "readonly", "ro", "rro":
+			case "readonly", "ro":
+				rwOption = key
+				continue
+			case "rro":
+				log.L.Warn("The mount option \"rro\" is deprecated; use \"readonly\" with \"bind-propagation=rprivate\" and \"bind-recursive=readonly\" instead")
 				rwOption = key
 				continue
 			case "bind-nonrecursive":
 				// Removed in Docker v29, in favor of `bind-recursive=disabled` https://github.com/docker/cli/pull/6241
+				log.L.Warn("The mount option \"bind-nonrecursive\" is deprecated; use \"bind-recursive=disabled\" instead")
 				bindNonRecursive = true
 				continue
 			}
@@ -367,6 +432,9 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			if err != nil {
 				return nil, fmt.Errorf("invalid value for %s: %s", key, value)
 			}
+			if key == "rro" {
+				log.L.Warn("The mount option \"rro\" is deprecated; use \"readonly\" with \"bind-propagation=rprivate\" and \"bind-recursive=readonly\" instead")
+			}
 			if trueValue {
 				rwOption = key
 			}
@@ -376,29 +444,19 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			bindPropagation = value
 		case "bind-nonrecursive":
 			// Removed in Docker v29, in favor of `bind-recursive=disabled` https://github.com/docker/cli/pull/6241
+			log.L.Warn("The mount option \"bind-nonrecursive\" is deprecated; use \"bind-recursive=disabled\" instead")
 			bindNonRecursive, err = strconv.ParseBool(value)
 			if err != nil {
 				return nil, fmt.Errorf("invalid value for %s: %s", key, value)
 			}
 		case "bind-recursive":
-			// bind-recursive is the Docker option that supersedes bind-nonrecursive.
-			valS := value
-			// Allow boolean as an alias to "enabled" or "disabled"
-			if b, err := strconv.ParseBool(valS); err == nil {
-				if b {
-					valS = "enabled"
-				} else {
-					valS = "disabled"
-				}
-			}
-			switch valS {
-			case "enabled":
-				bindNonRecursive = false
-			case "disabled":
-				bindNonRecursive = true
+			// bind-recursive is the Docker (v25) option that supersedes bind-nonrecursive.
+			// https://github.com/docker/cli/pull/4316
+			switch value {
+			case "enabled", "disabled", "writable", "readonly":
+				bindRecursive = value
 			default:
-				// TODO: support "writable", "readonly"
-				return nil, fmt.Errorf("invalid value for %s: %s (must be \"enabled\" or \"disabled\")", key, value)
+				return nil, fmt.Errorf("invalid value for %s: %s (must be \"enabled\", \"disabled\", \"writable\", or \"readonly\")", key, value)
 			}
 		case "tmpfs-size":
 			tmpfsSize, err = units.RAMInBytes(value)
@@ -416,20 +474,56 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		}
 	}
 
+	// Resolve the read-only mode of the mount, for Docker (v25) compatibility.
+	// https://github.com/docker/cli/pull/4316
+	roMode := readOnlyModeRecursiveIfPossible
+	if rwOption == "rro" {
+		// Deprecated form: force RRO, like `bind-recursive=readonly` (but the
+		// propagation is not validated, for compatibility with older nerdctl).
+		roMode = readOnlyModeForceRecursive
+		if bindPropagation != "rprivate" {
+			log.L.Warn("Mount option \"rro\" should be used in conjunction with \"bind-propagation=rprivate\"")
+		}
+	}
+	if bindRecursive != "" {
+		if mountType != Bind {
+			return nil, fmt.Errorf("the option bind-recursive is only supported for bind mounts")
+		}
+		switch bindRecursive {
+		case "enabled":
+			bindNonRecursive = false
+		case "disabled":
+			bindNonRecursive = true
+		case "writable":
+			if rwOption == "" {
+				return nil, fmt.Errorf("the option 'bind-recursive=writable' requires 'readonly' to be specified in conjunction")
+			}
+			roMode = readOnlyModeNonRecursive
+		case "readonly":
+			if rwOption == "" {
+				return nil, fmt.Errorf("the option 'bind-recursive=readonly' requires 'readonly' to be specified in conjunction")
+			}
+			if bindPropagation != "rprivate" {
+				return nil, fmt.Errorf("the option 'bind-recursive=readonly' requires 'bind-propagation=rprivate' to be specified in conjunction")
+			}
+			if bindNonRecursive {
+				return nil, fmt.Errorf("the option 'bind-recursive=readonly' conflicts with 'bind-nonrecursive'")
+			}
+			roMode = readOnlyModeForceRecursive
+		}
+	}
+
 	// compose new fileds and join into a string
 	// to call legacy ProcessFlagTmpfs or ProcessFlagV function
 	fields = []string{}
 	options := []string{}
-	if rwOption != "" {
-		if rwOption == "readonly" {
-			rwOption = "ro"
-		}
-		options = append(options, rwOption)
-	}
 
 	switch mountType {
 	case Tmpfs:
 		fields = []string{dst}
+		if rwOption != "" {
+			options = append(options, "ro")
+		}
 		if tmpfsMode != 0 {
 			options = append(options, fmt.Sprintf("mode=%o", tmpfsMode))
 		}
@@ -437,6 +531,9 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 			options = append(options, getTmpfsSize(tmpfsSize))
 		}
 	case Volume, Bind:
+		// The read-only option is not composed here; it is applied to the
+		// processed mount below, as the legacy volume option syntax cannot
+		// express all the read-only modes.
 		fields = []string{src, dst}
 		if bindPropagation != "" {
 			options = append(options, bindPropagation)
@@ -463,7 +560,19 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore) (*Processed, e
 		return ProcessFlagTmpfs(fieldsStr)
 	case Volume, Bind:
 		// createDir=false for --mount option to disallow creating directories on host if not found
-		return ProcessFlagV(fieldsStr, volStore, false)
+		res, err := ProcessFlagV(fieldsStr, volStore, false, ociRuntime)
+		if err != nil {
+			return nil, err
+		}
+		if rwOption != "" {
+			roOpts, err := readOnlyMountOptions(roMode, ociRuntime)
+			if err != nil {
+				return nil, err
+			}
+			res.Mount.Options = strutil.DedupeStrSlice(append(res.Mount.Options, roOpts...))
+			res.Mode = strings.Join(res.Mount.Options, ",")
+		}
+		return res, nil
 	}
 	return nil, fmt.Errorf("invalid mount type '%s' must be a volume/bind/tmpfs", mountType)
 }

@@ -226,7 +226,10 @@ Trivial:
 
 - Recursive read-only (RRO) bind-mount: `nerdctl run -v /mnt:/mnt:rro` (make children such as `/mnt/usb` to be read-only, too).
   Requires kernel >= 5.12.
-The same feature was later introduced in Docker v25 with a different syntax. nerdctl will support Docker v25 syntax too in the future.
+  The same feature was later introduced in Docker v25 with a different syntax: read-only mounts are now recursively read-only by default when supported,
+  and the behavior is customizable with `--mount type=bind,...,readonly,bind-recursive=<enabled|disabled|writable|readonly>`.
+  nerdctl now supports the Docker v25 syntax too, and the old `rro` syntax is deprecated.
+
 ## Similar tools
 
 - [`ctr`](https://github.com/containerd/containerd/tree/main/cmd/ctr): incompatible with Docker CLI, and not friendly to users.

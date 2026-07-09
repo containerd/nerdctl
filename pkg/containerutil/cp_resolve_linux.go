@@ -293,7 +293,7 @@ func (res *resolver) getMount(path string) (*locator, string) {
 			if len(mnt.Destination) > len(loc.containerPath) {
 				loc.readonly = false
 				for _, option := range mnt.Options {
-					if option == "ro" {
+					if option == "ro" || option == "rro" {
 						loc.readonly = true
 					}
 				}

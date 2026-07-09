@@ -67,7 +67,7 @@ func TestParseVolumeOptions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(strings.Join([]string{tt.vType, tt.src, tt.optsRaw}, "-"), func(t *testing.T) {
-			opts, _, err := parseVolumeOptions(tt.vType, tt.src, tt.optsRaw)
+			opts, _, err := parseVolumeOptions(tt.vType, tt.src, tt.optsRaw, "")
 			if err != nil {
 				if tt.wantFail {
 					return
@@ -270,7 +270,7 @@ func TestProcessFlagV(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.rawSpec, func(t *testing.T) {
-			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, true)
+			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, true, "")
 			if err != nil {
 				assert.Error(t, err, tt.err)
 				return
@@ -327,7 +327,7 @@ func TestProcessFlagVAnonymousVolumes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.rawSpec, func(t *testing.T) {
-			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, true)
+			processedVolSpec, err := ProcessFlagV(tt.rawSpec, mockVolumeStore, true, "")
 			if err != nil {
 				assert.ErrorContains(t, err, tt.err)
 				return

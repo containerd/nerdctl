@@ -280,11 +280,14 @@ Runtime flags:
 
 Volume flags:
 
-- :whale: `-v, --volume <SRC>:<DST>[:<OPT>]`: Bind mount a volume, e.g., `-v /mnt:/mnt:rro,rprivate`
+- :whale: `-v, --volume <SRC>:<DST>[:<OPT>]`: Bind mount a volume, e.g., `-v /mnt:/mnt:ro`
   - :whale:     option `rw` : Read/Write (when writable)
-  - :whale:     option `ro` : Non-recursive read-only
-  - :nerd_face: option `rro`: Recursive read-only. Should be used in conjunction with `rprivate`. e.g., `-v /mnt:/mnt:rro,rprivate` makes children such as `/mnt/usb` to be read-only, too.
-    Requires kernel >= 5.12, and crun >= 1.4 or runc >= 1.1 (PR [#3272](https://github.com/opencontainers/runc/pull/3272)). With older runc, `rro` just works as `ro`.
+  - :whale:     option `ro` : Read-only. Recursively read-only (e.g., making children such as `/mnt/usb` read-only, too) when the kernel and the OCI runtime support it
+    (kernel >= 5.12, and runc >= 1.1 or crun >= 1.8.6, as in Docker v25), otherwise non-recursive read-only.
+    Use `--mount type=bind,...,readonly,bind-recursive=<writable|readonly>` to control the recursive read-only mode explicitly.
+  - :nerd_face: option `rro`: **Deprecated** since the same feature was introduced in Docker v25 with a different syntax; use `--mount type=bind,...,readonly,bind-propagation=rprivate,bind-recursive=readonly` instead.
+    Recursive read-only. Should be used in conjunction with `rprivate`. e.g., `-v /mnt:/mnt:rro,rprivate` makes children such as `/mnt/usb` to be read-only, too.
+    Requires kernel >= 5.12, and runc >= 1.1 or crun >= 1.8.6; an error is raised when the recursive read-only mount is not supported.
   - :whale:     option `shared`, `slave`, `private`: Non-recursive "shared" / "slave" / "private" propagation
   - :whale:     option `rshared`, `rslave`, `rprivate`: Recursive "shared" / "slave" / "private" propagation
   - :nerd_face: option `bind`: Not-recursively bind-mounted
@@ -302,12 +305,20 @@ Volume flags:
   - Common Options:
     - :whale: `src`, `source`: Mount source spec for bind and volume. Mandatory for bind.
     - :whale: `dst`, `destination`, `target`: Mount destination spec.
-    - :whale: `readonly`, `ro`: mount the filesystem read-only.
-    - :nerd_face: `rro`: mount the filesystem recursively read-only.
+    - :whale: `readonly`, `ro`: mount the filesystem read-only. Recursively read-only when the kernel and the OCI runtime support it
+      (kernel >= 5.12, and runc >= 1.1 or crun >= 1.8.6, as in Docker v25). See the `bind-recursive` option below to control the recursive read-only mode explicitly.
+    - :nerd_face: `rro`: **Deprecated** since the same feature was introduced in Docker v25 with a different syntax; use `readonly` with `bind-propagation=rprivate` and `bind-recursive=readonly` instead.
+      Mount the filesystem recursively read-only.
   - Options specific to `bind`:
     - :whale: `bind-propagation`: `shared`, `slave`, `private`, `rshared`, `rslave`, or `rprivate`(default).
-    - :whale: `bind-recursive`: `enabled`(default) or `disabled`. If set to `disabled`, submounts are not recursively bind-mounted. This option is useful for readonly bind mount.
-    - :whale: `bind-nonrecursive`: `true` or `false`(default). Deprecated alias for `bind-recursive=disabled` / `bind-recursive=enabled`. If set to true, submounts are not recursively bind-mounted.
+    - :whale: `bind-recursive`: `enabled`(default), `disabled`, `writable`, or `readonly`.
+      - `enabled`: submounts are recursively bind-mounted, and a `readonly` mount is recursively read-only when the kernel and the OCI runtime support it.
+      - `disabled`: submounts are not recursively bind-mounted.
+      - `writable`: submounts of a `readonly` mount are kept writable (the default behavior of Docker until v24).
+      - `readonly`: a `readonly` mount is forced to be recursively read-only; an error is raised when the kernel or the OCI runtime does not support it.
+         Requires `bind-propagation=rprivate` to be specified in conjunction.
+      Whether the OCI runtime supports recursive read-only mounts is detected by running `$RUNTIME features`, and the result is cached in the XDG cache directory (e.g., `~/.cache/nerdctl/oci-runtime-features`).
+    - :whale: `bind-nonrecursive`: `true` or `false`(default). Deprecated alias for `bind-recursive=disabled` / `bind-recursive=enabled` (removed in Docker v29). If set to true, submounts are not recursively bind-mounted.
     - unimplemented options: `consistency`
   - Options specific to `tmpfs`:
     - :whale: `tmpfs-size`: Size of the tmpfs mount in bytes. Unlimited by default.
