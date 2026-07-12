@@ -312,6 +312,7 @@ jobs:
           INPUTS_TARGET: ${{ inputs.target }}
           INPUTS_IPV6: ${{ inputs.ipv6 }}
           CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER: ${{ inputs.target == 'rootless-port-slirp4netns' && 'slirp4netns' || '' }}
+          CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6: ${{ inputs.ipv6 && 'true' || '' }}
 
       # FIXME: this must go
       - if: ${{ env.SHOULD_RUN == 'yes' && !fromJSON(inputs.skip-flaky) }}
@@ -332,3 +333,4 @@ jobs:
           INPUTS_TARGET: ${{ inputs.target }}
           INPUTS_IPV6: ${{ inputs.ipv6 }}
           CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER: ${{ inputs.target == 'rootless-port-slirp4netns' && 'slirp4netns' || '' }}
+          CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6: ${{ inputs.ipv6 && 'true' || '' }}
