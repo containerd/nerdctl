@@ -180,6 +180,36 @@ func TestNetworkCreate(t *testing.T) {
 			},
 		},
 		{
+			Description: "ipv6-only with --ipv4=false",
+			Require:     nerdtest.OnlyIPv6,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				subnetStr := "2001:db8:9::/64"
+				data.Labels().Set("subnetStr", subnetStr)
+				_, _, err := net.ParseCIDR(subnetStr)
+				assert.Assert(t, err == nil)
+
+				helpers.Ensure("network", "create", data.Identifier(), "--ipv6", "--ipv4=false", "--subnet", subnetStr)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--net", data.Identifier(), testutil.CommonImage, "ip", "addr", "show", "dev", "eth0")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						_, subnet, _ := net.ParseCIDR(data.Labels().Get("subnetStr"))
+						ip := nerdtest.FindIPv6(stdout)
+						assert.Assert(t, subnet.Contains(ip), fmt.Sprintf("subnet %s contains ip %s", subnet, ip))
+						// With IPv4 disabled the interface must not get a v4 address.
+						assert.Assert(t, !strings.Contains(stdout, "inet "), "eth0 should have no IPv4 address")
+					},
+				}
+			},
+		},
+		{
 			Description: "internal enabled",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", "--internal", data.Identifier())

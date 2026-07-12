@@ -339,7 +339,9 @@ func (e *CNIEnv) CreateNetwork(opts types.NetworkCreateOptions) (*NetworkConfig,
 	if _, ok := netMap[opts.Name]; ok {
 		return nil, errdefs.ErrAlreadyExists
 	}
-	ipam, err := e.generateIPAM(opts.IPAMDriver, opts.Subnets, opts.Gateway, opts.IPRange, opts.IPAMOptions, opts.IPv6, opts.Internal)
+	// A nil IPv4 defaults to enabled.
+	ipv4 := opts.IPv4 == nil || *opts.IPv4
+	ipam, err := e.generateIPAM(opts.IPAMDriver, opts.Subnets, opts.Gateway, opts.IPRange, opts.IPAMOptions, opts.IPv6, ipv4, opts.Internal)
 	if err != nil {
 		return nil, err
 	}
