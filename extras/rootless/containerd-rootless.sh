@@ -44,6 +44,11 @@
 #   the host loopback IP address (127.0.0.1) and abstract sockets are exposed to Dockerfile's "RUN" instructions during `nerdctl build` (not `nerdctl run`).
 #   The drawback is fixed in BuildKit v0.13. Upgrading from a prior version of BuildKit needs removing the old systemd unit:
 #   `containerd-rootless-setuptool.sh uninstall-buildkit && rm -f ~/.config/buildkit/buildkitd.toml`
+# * CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6=(true|false): whether to enable IPv6 inside the RootlessKit network namespace.
+#   Defaults to "false".
+#   This mainly affects outgoing connections with slirp4netns and pasta network drivers.
+#   It does not affect port forwarding in the built-in port driver.
+#   Note: The gvisor-tap-vsock network driver does not currently support IPv6.
 
 # See also: https://github.com/containerd/nerdctl/blob/main/docs/rootless.md#configuring-rootlesskit
 
@@ -78,6 +83,7 @@ if [ -z "$_CONTAINERD_ROOTLESS_CHILD" ]; then
 	: "${CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SANDBOX:=auto}"
 	: "${CONTAINERD_ROOTLESS_ROOTLESSKIT_SLIRP4NETNS_SECCOMP:=auto}"
 	: "${CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS:=auto}"
+	: "${CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6:=false}"
 	net=$CONTAINERD_ROOTLESS_ROOTLESSKIT_NET
 	mtu=$CONTAINERD_ROOTLESS_ROOTLESSKIT_MTU
 	if [ -z "$net" ]; then
@@ -133,6 +139,19 @@ if [ -z "$_CONTAINERD_ROOTLESS_CHILD" ]; then
 		;;
 	*)
 		echo "Unknown CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS value: $CONTAINERD_ROOTLESS_ROOTLESSKIT_DETACH_NETNS"
+		exit 1
+		;;
+	esac
+
+	case "$CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6" in
+	1 | true)
+		CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS="--ipv6 $CONTAINERD_ROOTLESS_ROOTLESSKIT_FLAGS"
+		;;
+	0 | false)
+		# NOP
+		;;
+	*)
+		echo "Unknown CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6 value: $CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6"
 		exit 1
 		;;
 	esac

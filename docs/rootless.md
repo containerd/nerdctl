@@ -165,6 +165,12 @@ Rootless containerd recognizes the following environment variables to configure 
   the host loopback IP address (127.0.0.1) and abstract sockets are exposed to Dockerfile's "RUN" instructions during `nerdctl build` (not `nerdctl run`).
   The drawback is fixed in BuildKit v0.13. Upgrading from a prior version of BuildKit needs removing the old systemd unit:
   `containerd-rootless-setuptool.sh uninstall-buildkit && rm -f ~/.config/buildkit/buildkitd.toml`
+* `CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6=(true|false)`: whether to enable IPv6 inside the RootlessKit network namespace.
+  Defaults to "false". After enabling this, create IPv6-capable CNI networks with
+  `nerdctl network create --ipv6 --subnet <v6-subnet>` as usual. Note that this mainly
+  affects outgoing connections with `slirp4netns` and `pasta` network drivers.
+  It does not affect port forwarding in the built-in port driver.
+  The `gvisor-tap-vsock` network driver does not currently support IPv6.
 
 To set these variables, create `~/.config/systemd/user/containerd.service.d/override.conf` as follows:
 ```ini
