@@ -187,6 +187,19 @@ func loadNetworkFlags(cmd *cobra.Command, globalOpts types.GlobalCommandOptions)
 		return netOpts, err
 	}
 	portSlice = strutil.DedupeStrSlice(portSlice)
+
+	expose, err := cmd.Flags().GetStringSlice("expose")
+	if err != nil {
+		return netOpts, err
+	}
+	netOpts.ExposedPorts = strutil.DedupeStrSlice(expose)
+
+	publishAll, err := cmd.Flags().GetBool("publish-all")
+	if err != nil {
+		return netOpts, err
+	}
+	netOpts.PublishAll = publishAll
+
 	portMappings := []cni.PortMapping{}
 	for _, p := range portSlice {
 		pm, err := portutil.ParseFlagP(p)

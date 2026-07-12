@@ -466,8 +466,8 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--device-cgroup-rule`, `--disable-content-trust`, `--expose`,
-    `--health-start-interval`, `--link*`, `--publish-all`, `--storage-opt`,
+    `--device-cgroup-rule`, `--disable-content-trust`,
+    `--health-start-interval`, `--link*`, `--storage-opt`,
     `--volume-driver`
 
 ### :whale: nerdctl exec

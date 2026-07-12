@@ -46,4 +46,8 @@ type NetworkOptions struct {
 	UTSNamespace string
 	// PortMappings specifies a list of ports to publish from the container to the host
 	PortMappings []cni.PortMapping
+	// Additional ports exposed via --expose. Used to generate PortMappings when PublishAll is enabled.
+	ExposedPorts []string
+	// Automatically publish all exposed ports by generating PortMappings.
+	PublishAll bool
 }

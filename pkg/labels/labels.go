@@ -134,4 +134,6 @@ const (
 
 	// Privileged indicates whether the container was created with --privileged.
 	Privileged = Prefix + "privileged"
+	// ExposedPorts is a JSON-marshalled string of nat.PortSet.
+	ExposedPorts = Prefix + "exposed-ports"
 )
