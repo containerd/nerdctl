@@ -87,6 +87,11 @@ jobs:
           - runner: ubuntu-26.04
             target: rootless
             binary: "nerdctl.gomodjail"
+          # ipv6
+          - runner: ubuntu-24.04
+            target: rootless
+            ipv6: true
+            skip-flaky: true
           ###### Rootful
           # amd64
           - runner: ubuntu-26.04

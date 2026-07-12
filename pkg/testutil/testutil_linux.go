@@ -16,6 +16,14 @@
 
 package testutil
 
+import (
+	"context"
+
+	"github.com/containerd/log"
+
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
+)
+
 var (
 	AlpineImage         = GetTestImage("alpine")
 	BusyboxImage        = GetTestImage("busybox")
@@ -53,3 +61,24 @@ const (
 	// Foreign layer digest
 	NonDistBlobDigest = "sha256:be691b1535726014cdf3b715ff39361b19e121ca34498a9ceea61ad776b9c215"
 )
+
+// RootlessKitIPv6Enabled reports whether the running RootlessKit parent process supports IPv6.
+func RootlessKitIPv6Enabled(ctx context.Context) bool {
+	rlkClient, err := rootlessutil.NewRootlessKitClient()
+	if err != nil {
+		log.G(ctx).WithError(err).Warn("failed to create RootlessKit client")
+		return false
+	}
+
+	info, err := rlkClient.Info(ctx)
+	if err != nil {
+		log.G(ctx).WithError(err).Warn("failed to get RootlessKit info")
+		return false
+	}
+
+	if info != nil && info.NetworkDriver != nil {
+		return info.NetworkDriver.IPv6
+	}
+
+	return false
+}

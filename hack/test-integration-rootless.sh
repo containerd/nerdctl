@@ -82,6 +82,15 @@ if [ ! -e "$HOME/.config/nerdctl-test-setup-done" ]; then
 		systemctl --user daemon-reload
 	fi
 
+	if [ "${CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6:-false}" = "true" ]; then
+		mkdir -p "$HOME/.config/systemd/user/containerd.service.d"
+		cat <<-EOF >"$HOME/.config/systemd/user/containerd.service.d/ipv6.conf"
+		[Service]
+		Environment="CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6=true"
+		EOF
+		systemctl --user daemon-reload
+	fi
+
 	containerd-rootless-setuptool.sh install
 	if grep -q "options use-vc" /etc/resolv.conf; then
 		containerd-rootless-setuptool.sh nsenter -- sh -euc 'echo "options use-vc" >>/etc/resolv.conf'

@@ -838,8 +838,8 @@ func TestHostsFileMounts(t *testing.T) {
 }
 
 func TestRunContainerWithStaticIP6(t *testing.T) {
-	if rootlessutil.IsRootless() {
-		t.Skip("Static IP6 assignment is not supported rootless mode yet.")
+	if rootlessutil.IsRootless() && !testutil.RootlessKitIPv6Enabled(t.Context()) {
+		t.Skip("Rootless IPv6 requires CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6=true; see docs/rootless.md")
 	}
 	networkName := "test-network"
 	networkSubnet := "2001:db8:5::/64"
