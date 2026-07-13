@@ -928,6 +928,7 @@ Usage: `nerdctl save [OPTIONS] IMAGE [IMAGE...]`
 Flags:
 
 - :whale: `-o, --output`: Write to a file, instead of STDOUT
+- :nerd_face: `-q, --quiet`: Suppress the progress output
 - :nerd_face: `--platform=(amd64|arm64|...)`: Export content for a specific platform
 - :nerd_face: `--all-platforms`: Export content for all platforms
 

@@ -103,7 +103,11 @@ func Save(ctx context.Context, client *containerd.Client, images []string, optio
 
 	w := nopWriteCloser{options.Stdout}
 
-	pf, done := transferutil.ProgressHandler(ctx, os.Stderr)
+	progressOutput := io.Writer(os.Stderr)
+	if options.Quiet {
+		progressOutput = io.Discard
+	}
+	pf, done := transferutil.ProgressHandler(ctx, progressOutput)
 	defer done()
 
 	return client.Transfer(ctx,

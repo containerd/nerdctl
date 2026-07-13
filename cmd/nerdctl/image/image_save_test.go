@@ -66,6 +66,37 @@ func TestSaveContent(t *testing.T) {
 	testCase.Run(t)
 }
 
+func TestSaveQuiet(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		// --quiet is a nerdctl-specific flag, so this is skipped under the Docker compatibility mode.
+		Require: require.All(require.Not(require.Windows), require.Not(nerdtest.Docker)),
+		Setup: func(_ test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("save", "--quiet", "-o", filepath.Join(data.Temp().Path(), "out.tar"), testutil.CommonImage)
+		},
+		Expected: func(data test.Data, _ test.Helpers) *test.Expected {
+			return &test.Expected{
+				ExitCode: expect.ExitCodeSuccess,
+				Output: func(_ string, t tig.T) {
+					// The archive is still written correctly with --quiet.
+					rootfsPath := filepath.Join(data.Temp().Path(), "rootfs")
+					err := testhelpers.ExtractDockerArchive(filepath.Join(data.Temp().Path(), "out.tar"), rootfsPath)
+					assert.NilError(t, err)
+					etcOSReleaseBytes, err := os.ReadFile(filepath.Join(rootfsPath, "/etc/os-release"))
+					assert.NilError(t, err)
+					assert.Assert(t, strings.Contains(string(etcOSReleaseBytes), "Alpine"))
+				},
+			}
+		},
+	}
+
+	testCase.Run(t)
+}
+
 func TestSave(t *testing.T) {
 	testCase := nerdtest.Setup()
 
