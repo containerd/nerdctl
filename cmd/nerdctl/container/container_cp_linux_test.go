@@ -17,7 +17,9 @@
 package container
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,6 +29,9 @@ import (
 
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
+
+	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
@@ -84,15 +89,13 @@ type testcases struct {
 	expect          icmd.Expected // expectation
 
 	// Optional
-	catFile  string                                                       // path that we "cat" - defaults to destinationSpec if not specified
-	setup    func(base *testutil.Base, container string, destPath string) // additional test setup if needed
-	tearDown func()                                                       // additional cleanup if needed
-	volume   func(base *testutil.Base, id string) (string, string, bool)  // volume creation function if needed (should return the volume name, mountPoint, readonly flag)
+	catFile  string                                                        // path that we "cat" - defaults to destinationSpec if not specified
+	setup    func(helpers test.Helpers, container string, destPath string) // additional test setup if needed
+	tearDown func()                                                        // additional cleanup if needed
+	volume   func(helpers test.Helpers, id string) (string, string, bool)  // volume creation function if needed (should return the volume name, mountPoint, readonly flag)
 }
 
 func TestCopyToContainer(t *testing.T) {
-	t.Parallel()
-
 	testGroups := []*testgroup{
 		{
 			description:   "Copying to container, SRC_PATH is a file, absolute",
@@ -137,8 +140,8 @@ func TestCopyToContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "touch", destPath)
 					},
 				},
 				{
@@ -147,8 +150,8 @@ func TestCopyToContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "touch", destPath)
 					},
 				},
 				{
@@ -158,8 +161,8 @@ func TestCopyToContainer(t *testing.T) {
 						ExitCode: 1,
 						Err:      containerutil.ErrDestinationIsNotADir.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "touch", destPath)
 					},
 				},
 				{
@@ -174,8 +177,8 @@ func TestCopyToContainer(t *testing.T) {
 						// frustrating
 						Err: containerutil.ErrDestinationIsNotADir.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "touch", destPath)
 					},
 				},
 				{
@@ -185,8 +188,8 @@ func TestCopyToContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 				{
@@ -196,8 +199,8 @@ func TestCopyToContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 				{
@@ -207,8 +210,8 @@ func TestCopyToContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 				{
@@ -218,8 +221,8 @@ func TestCopyToContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 				{
@@ -230,8 +233,8 @@ func TestCopyToContainer(t *testing.T) {
 						ExitCode: 0,
 					},
 					// FIXME the way we handle volume is not right - too complicated for the test author
-					volume: func(base *testutil.Base, id string) (string, string, bool) {
-						base.Cmd("volume", "create", id).Run()
+					volume: func(helpers test.Helpers, id string) (string, string, bool) {
+						helpers.Ensure("volume", "create", id)
 						return id, pathIsAVolumeMount, false
 					},
 				},
@@ -242,8 +245,8 @@ func TestCopyToContainer(t *testing.T) {
 						ExitCode: 1,
 						Err:      containerutil.ErrTargetIsReadOnly.Error(),
 					},
-					volume: func(base *testutil.Base, id string) (string, string, bool) {
-						base.Cmd("volume", "create", id).Run()
+					volume: func(helpers test.Helpers, id string) (string, string, bool) {
+						helpers.Ensure("volume", "create", id)
 						return id, pathIsAVolumeMount, true
 					},
 				},
@@ -293,8 +296,8 @@ func TestCopyToContainer(t *testing.T) {
 						ExitCode: 1,
 						Err:      containerutil.ErrCannotCopyDirToFile.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "touch", destPath)
 					},
 				},
 				{
@@ -304,8 +307,8 @@ func TestCopyToContainer(t *testing.T) {
 						ExitCode: 1,
 						Err:      containerutil.ErrCannotCopyDirToFile.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "touch", destPath)
 					},
 				},
 				{
@@ -315,8 +318,8 @@ func TestCopyToContainer(t *testing.T) {
 						ExitCode: 1,
 						Err:      containerutil.ErrDestinationIsNotADir.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "touch", destPath)
 					},
 				},
 				{
@@ -331,8 +334,8 @@ func TestCopyToContainer(t *testing.T) {
 						// frustrating
 						Err: containerutil.ErrDestinationIsNotADir.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "touch", destPath)
 					},
 				},
 				{
@@ -342,8 +345,8 @@ func TestCopyToContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 				{
@@ -353,8 +356,8 @@ func TestCopyToContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 				{
@@ -364,8 +367,8 @@ func TestCopyToContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 				{
@@ -375,8 +378,8 @@ func TestCopyToContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 			},
@@ -390,16 +393,16 @@ func TestCopyToContainer(t *testing.T) {
 					description:     "DEST_PATH is a directory, relative",
 					destinationSpec: pathIsADirRelative,
 					catFile:         filepath.Join(pathIsADirRelative, srcFileName),
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 				{
 					description:     "DEST_PATH is a directory, absolute",
 					destinationSpec: pathIsADirAbsolute,
 					catFile:         filepath.Join(pathIsADirAbsolute, srcFileName),
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 			},
@@ -414,16 +417,16 @@ func TestCopyToContainer(t *testing.T) {
 					description:     "DEST_PATH is a directory, relative",
 					destinationSpec: pathIsADirRelative,
 					catFile:         filepath.Join(pathIsADirRelative, srcFileName),
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 				{
 					description:     "DEST_PATH is a directory, absolute",
 					destinationSpec: pathIsADirAbsolute,
 					catFile:         filepath.Join(pathIsADirAbsolute, srcFileName),
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "mkdir", "-p", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "mkdir", "-p", destPath)
 					},
 				},
 				{
@@ -437,8 +440,8 @@ func TestCopyToContainer(t *testing.T) {
 				{
 					description:     "DEST_PATH is a file",
 					destinationSpec: pathIsAFileAbsolute,
-					setup: func(base *testutil.Base, container string, destPath string) {
-						base.Cmd("exec", container, "touch", destPath).AssertOK()
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						helpers.Ensure("exec", container, "touch", destPath)
 					},
 					expect: icmd.Expected{
 						ExitCode: 1,
@@ -449,14 +452,12 @@ func TestCopyToContainer(t *testing.T) {
 		},
 	}
 
-	for _, tg := range testGroups {
-		cpTestHelper(t, tg)
-	}
+	testCase := nerdtest.Setup()
+	testCase.SubTests = cpBuildSubTests(testGroups)
+	testCase.Run(t)
 }
 
 func TestCopyFromContainer(t *testing.T) {
-	t.Parallel()
-
 	testGroups := []*testgroup{
 		{
 			description:   "Copying from container, SRC_PATH specifies a file",
@@ -499,9 +500,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.WriteFile(destPath, []byte(""), filePerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -510,9 +511,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.WriteFile(destPath, []byte(""), filePerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -522,9 +523,9 @@ func TestCopyFromContainer(t *testing.T) {
 						ExitCode: 1,
 						Err:      containerutil.ErrDestinationIsNotADir.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.WriteFile(destPath, []byte(""), filePerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -534,9 +535,9 @@ func TestCopyFromContainer(t *testing.T) {
 						ExitCode: 1,
 						Err:      containerutil.ErrDestinationIsNotADir.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.WriteFile(destPath, []byte(""), filePerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -546,9 +547,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -558,9 +559,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -570,9 +571,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -582,9 +583,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -595,9 +596,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 			},
@@ -645,11 +646,9 @@ func TestCopyFromContainer(t *testing.T) {
 						ExitCode: 1,
 						Err:      containerutil.ErrCannotCopyDirToFile.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
-						assert.NilError(t, err)
-						err = os.WriteFile(destPath, []byte(""), filePerm)
-						assert.NilError(t, err)
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						err := os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -659,11 +658,9 @@ func TestCopyFromContainer(t *testing.T) {
 						ExitCode: 1,
 						Err:      containerutil.ErrCannotCopyDirToFile.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
-						assert.NilError(t, err)
-						err = os.WriteFile(destPath, []byte(""), filePerm)
-						assert.NilError(t, err)
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						err := os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -673,11 +670,9 @@ func TestCopyFromContainer(t *testing.T) {
 						ExitCode: 1,
 						Err:      containerutil.ErrDestinationIsNotADir.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
-						assert.NilError(t, err)
-						err = os.WriteFile(destPath, []byte(""), filePerm)
-						assert.NilError(t, err)
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						err := os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -687,11 +682,9 @@ func TestCopyFromContainer(t *testing.T) {
 						ExitCode: 1,
 						Err:      containerutil.ErrDestinationIsNotADir.Error(),
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
-						assert.NilError(t, err)
-						err = os.WriteFile(destPath, []byte(""), filePerm)
-						assert.NilError(t, err)
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						err := os.WriteFile(destPath, []byte(""), filePerm)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -701,9 +694,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -713,9 +706,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -725,9 +718,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -737,9 +730,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -749,10 +742,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
-						// Don't make the topmost dir as this is where the tarball must extract
-						err := os.MkdirAll(filepath.Dir(destPath), dirPerm)
-						assert.NilError(t, err)
+					setup: func(helpers test.Helpers, container string, destPath string) {
+						err := os.MkdirAll(destPath, dirPerm)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 			},
@@ -769,9 +761,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -781,9 +773,9 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 				{
@@ -793,45 +785,79 @@ func TestCopyFromContainer(t *testing.T) {
 					expect: icmd.Expected{
 						ExitCode: 0,
 					},
-					setup: func(base *testutil.Base, container string, destPath string) {
+					setup: func(helpers test.Helpers, container string, destPath string) {
 						err := os.MkdirAll(destPath, dirPerm)
-						assert.NilError(t, err)
+						assert.NilError(helpers.T(), err)
 					},
 				},
 			},
 		},
 	}
 
-	for _, tg := range testGroups {
-		cpTestHelper(t, tg)
-	}
+	testCase := nerdtest.Setup()
+	testCase.SubTests = cpBuildSubTests(testGroups)
+	testCase.Run(t)
 }
 
-func assertCatHelper(base *testutil.Base, catPath string, fileContent []byte, container string, expectedUID int, containerIsStopped bool) {
-	base.T.Logf("catPath=%q", catPath)
+func assertCatHelper(helpers test.Helpers, t tig.T, catPath string, fileContent []byte, container string, expectedUID int, containerIsStopped bool) {
+	t.Log(fmt.Sprintf("catPath=%q", catPath))
 	if container != "" && containerIsStopped {
-		base.Cmd("start", container).AssertOK()
-		defer base.Cmd("stop", container).AssertOK()
+		helpers.Ensure("start", container)
+		defer func() { helpers.Ensure("stop", container) }()
 	}
 
 	if container == "" {
 		got, err := os.ReadFile(catPath)
-		assert.NilError(base.T, err, "Failed reading from file")
-		assert.DeepEqual(base.T, fileContent, got)
+		assert.NilError(t, err, "Failed reading from file")
+		assert.DeepEqual(t, fileContent, got)
 		st, err := os.Stat(catPath)
-		assert.NilError(base.T, err)
+		assert.NilError(t, err)
 		stSys := st.Sys().(*syscall.Stat_t)
 		expected := uint32(expectedUID)
 		actual := stSys.Uid
-		assert.DeepEqual(base.T, expected, actual)
+		assert.DeepEqual(t, expected, actual)
 	} else {
-		base.Cmd("exec", container, "sh", "-c", "--", fmt.Sprintf("ls -lA /; echo %q; cat %q", catPath, catPath)).AssertOutContains(string(fileContent))
-		base.Cmd("exec", container, "stat", "-c", "%u", catPath).AssertOutExactly(fmt.Sprintf("%d\n", expectedUID))
+		content := helpers.Capture("exec", container, "sh", "-c", "--", fmt.Sprintf("ls -lA /; echo %q; cat %q", catPath, catPath))
+		assert.Assert(t, strings.Contains(content, string(fileContent)))
+		uid := helpers.Capture("exec", container, "stat", "-c", "%u", catPath)
+		assert.Assert(t, uid == fmt.Sprintf("%d\n", expectedUID))
 	}
 }
 
-func cpTestHelper(t *testing.T, tg *testgroup) {
-	// Get the source path
+func cpCreateFileOnHost(t tig.T, sourceFile string, sourceFileContent []byte, fromStdin bool) {
+	if fromStdin {
+		d := filepath.Dir(sourceFile)
+		tarCpFolder := filepath.Join(d, cpFolderName)
+		tarBinary, _, err := tarutil.FindTarBinary()
+		assert.NilError(t, err)
+		err = os.MkdirAll(tarCpFolder, dirPerm)
+		assert.NilError(t, err)
+		err = os.WriteFile(filepath.Join(tarCpFolder, srcFileName), sourceFileContent, filePerm)
+		assert.NilError(t, err)
+		err = exec.Command(tarBinary, "-cf", sourceFile, "-C", tarCpFolder, ".").Run()
+		assert.NilError(t, err)
+		err = os.RemoveAll(tarCpFolder)
+		assert.NilError(t, err)
+	} else {
+		err := os.MkdirAll(filepath.Dir(sourceFile), dirPerm)
+		assert.NilError(t, err)
+		err = os.WriteFile(sourceFile, sourceFileContent, filePerm)
+		assert.NilError(t, err)
+	}
+}
+
+func cpBuildSubTests(testGroups []*testgroup) []*test.Case {
+	var groupSubTests []*test.Case
+	for _, tg := range testGroups {
+		groupSubTests = append(groupSubTests, &test.Case{
+			Description: tg.description,
+			SubTests:    cpBuildCaseSubTests(tg),
+		})
+	}
+	return groupSubTests
+}
+
+func cpBuildCaseSubTests(tg *testgroup) []*test.Case {
 	groupSourceSpec := tg.sourceSpec
 	groupSourceDir := groupSourceSpec
 	fromStdin := false
@@ -842,15 +868,7 @@ func cpTestHelper(t *testing.T, tg *testgroup) {
 	} else if tg.sourceIsAFile {
 		groupSourceDir = filepath.Dir(groupSourceSpec)
 	}
-
-	// Copy direction
 	copyToContainer := tg.toContainer
-	// Description
-	description := tg.description
-	// Test cases
-	testCases := tg.testCases
-
-	// Compute UIDs dependent on cp direction
 	var srcUID, destUID int
 	if copyToContainer {
 		srcUID = os.Geteuid()
@@ -859,269 +877,204 @@ func cpTestHelper(t *testing.T, tg *testgroup) {
 		srcUID = 42
 		destUID = os.Geteuid()
 	}
+	var subTests []*test.Case
+	for _, tc := range tg.testCases {
+		subTests = append(subTests, cpSingleCaseSubTest(tc, copyToContainer, groupSourceSpec, groupSourceDir, fromStdin, srcUID, destUID))
+	}
+	return subTests
+}
 
-	t.Run(description, func(t *testing.T) {
-		t.Parallel()
+func cpSingleCaseSubTest(tc testcases, copyToContainer bool, groupSourceSpec, groupSourceDir string, fromStdin bool, srcUID, destUID int) *test.Case {
+	return &test.Case{
+		Description: tc.description,
+		NoParallel:  true,
+		Setup: func(data test.Data, helpers test.Helpers) {
+			testID := data.Identifier()
+			containerRunning := testID + "-r"
+			containerStopped := testID + "-s"
+			sourceFileContent := []byte(testID)
+			tempDir := data.Temp().Dir("work")
+			data.Labels().Set("containerRunning", containerRunning)
+			data.Labels().Set("containerStopped", containerStopped)
+			data.Labels().Set("sourceFileContent", string(sourceFileContent))
+			data.Labels().Set("tempDir", tempDir)
 
-		for _, tc := range testCases {
-			testCase := tc
-
-			t.Run(testCase.description, func(t *testing.T) {
-				t.Parallel()
-
-				// Compute test-specific values
-				testID := testutil.Identifier(t)
-				containerRunning := testID + "-r"
-				containerStopped := testID + "-s"
-				sourceFileContent := []byte(testID)
-				tempDir := t.TempDir()
-
-				base := testutil.NewBase(t)
-				// Change working directory for commands to execute to the newly created temp directory on the host
-				// Note that ChDir won't do in a parallel context - and that setup func on the host below
-				// has to deal with that problem separately by making sure relative paths are resolved against temp
-				base.Dir = tempDir
-
-				// Prepare the specs and derived variables
-				sourceSpec := groupSourceSpec
-				catFile := testCase.catFile
-
-				destinationSpec := testCase.destinationSpec
-				toStdout := false
-				// tarball destination just sets up the dir to extract to
-				if destinationSpec == "-" {
-					toStdout = true
-					destinationSpec = filepath.Dir(catFile)
+			sourceSpec := groupSourceSpec
+			catFile := tc.catFile
+			destinationSpec := tc.destinationSpec
+			toStdout := false
+			if destinationSpec == "-" {
+				toStdout = true
+				destinationSpec = filepath.Dir(catFile)
+			}
+			if catFile == "" {
+				catFile = destinationSpec
+			}
+			sourceFile := filepath.Join(groupSourceDir, srcFileName)
+			if copyToContainer {
+				if !filepath.IsAbs(catFile) {
+					catFile = filepath.Join(string(os.PathSeparator), catFile)
 				}
-
-				// If the test case does not specify a catFile, start with the destination spec
-				if catFile == "" {
-					catFile = destinationSpec
-				}
-
-				sourceFile := filepath.Join(groupSourceDir, srcFileName)
-				if copyToContainer {
-					if !filepath.IsAbs(catFile) {
-						catFile = filepath.Join(string(os.PathSeparator), catFile)
-					}
-
-					if fromStdin {
-						sourceFile = filepath.Join(tempDir, groupSourceDir, tarballName)
-					} else {
-						// Use an absolute path for evaluation
-						// If the sourceFile is still relative, make it absolute to the temp
-						sourceFile = filepath.Join(tempDir, sourceFile)
-						// If the spec path for source on the host was absolute, make sure we put that under tempDir
-						if filepath.IsAbs(sourceSpec) {
-							sourceSpec = tempDir + sourceSpec
-						}
-					}
+				if fromStdin {
+					sourceFile = filepath.Join(tempDir, groupSourceDir, tarballName)
 				} else {
-					// If we are copying to host, we need to make sure we have an absolute path to cat, relative to temp,
-					// whether it is relative, or "absolute"
-					catFile = filepath.Join(tempDir, catFile)
-					// If the spec for destination on the host was absolute, make sure we put that under tempDir
-					if filepath.IsAbs(destinationSpec) {
-						destinationSpec = tempDir + destinationSpec
+					sourceFile = filepath.Join(tempDir, sourceFile)
+					if filepath.IsAbs(sourceSpec) {
+						sourceSpec = tempDir + sourceSpec
 					}
 				}
-
-				// Teardown: clean-up containers and optional volume
-				tearDown := func() {
-					base.Cmd("rm", "-f", containerRunning).Run()
-					base.Cmd("rm", "-f", containerStopped).Run()
-					if testCase.volume != nil {
-						volID, _, _ := testCase.volume(base, testID)
-						base.Cmd("volume", "rm", volID).Run()
-					}
+			} else {
+				catFile = filepath.Join(tempDir, catFile)
+				if filepath.IsAbs(destinationSpec) {
+					destinationSpec = tempDir + destinationSpec
 				}
+			}
+			data.Labels().Set("sourceSpec", sourceSpec)
+			data.Labels().Set("catFile", catFile)
+			data.Labels().Set("destinationSpec", destinationSpec)
+			data.Labels().Set("sourceFile", sourceFile)
+			if toStdout {
+				data.Labels().Set("toStdout", "true")
+			}
 
-				createFileOnHost := func() {
-					switch fromStdin {
-					case true:
-						d := filepath.Dir(sourceFile)
-						tarCpFolder := filepath.Join(d, cpFolderName)
-						tarBinary, _, err := tarutil.FindTarBinary()
-						assert.NilError(t, err)
-
-						err = os.MkdirAll(tarCpFolder, dirPerm)
-						assert.NilError(t, err)
-						err = os.WriteFile(filepath.Join(tarCpFolder, srcFileName), sourceFileContent, filePerm)
-						assert.NilError(t, err)
-
-						err = exec.Command(tarBinary, "-cf", sourceFile, "-C", tarCpFolder, ".").Run()
-						assert.NilError(t, err)
-						err = os.RemoveAll(tarCpFolder)
-						assert.NilError(t, err)
-					case false:
-						// Create file on the host
-						err := os.MkdirAll(filepath.Dir(sourceFile), dirPerm)
-						assert.NilError(t, err)
-						err = os.WriteFile(sourceFile, sourceFileContent, filePerm)
-						assert.NilError(t, err)
-					}
+			args := []string{"run", "-d", "-w", containerCwd}
+			if tc.volume != nil {
+				vol, mount, ro := tc.volume(helpers, testID)
+				volArg := fmt.Sprintf("%s:%s", vol, mount)
+				if ro {
+					volArg += ":ro"
 				}
-
-				// Setup: create volume, containers, create the source file
-				setup := func() {
-					args := []string{"run", "-d", "-w", containerCwd}
-					if testCase.volume != nil {
-						vol, mount, ro := testCase.volume(base, testID)
-						volArg := fmt.Sprintf("%s:%s", vol, mount)
-						if ro {
-							volArg += ":ro"
-						}
-						args = append(args, "-v", volArg)
-					}
-					base.Cmd(append(args, "--name", containerRunning, testutil.CommonImage, "sleep", "Inf")...).AssertOK()
-					base.Cmd(append(args, "--name", containerStopped, testutil.CommonImage, "sleep", "Inf")...).AssertOK()
-
+				args = append(args, "-v", volArg)
+			}
+			helpers.Ensure(append(args, "--name", containerRunning, testutil.CommonImage, "sleep", nerdtest.Infinity)...)
+			helpers.Ensure(append(args, "--name", containerStopped, testutil.CommonImage, "sleep", nerdtest.Infinity)...)
+			if copyToContainer {
+				cpCreateFileOnHost(helpers.T(), sourceFile, sourceFileContent, fromStdin)
+			} else {
+				mkSrcScript := fmt.Sprintf("cd /; mkdir -p %q && echo -n %q >%q && chown %d %q", filepath.Dir(sourceFile), sourceFileContent, sourceFile, srcUID, sourceFile)
+				helpers.Ensure("exec", containerRunning, "sh", "-euc", mkSrcScript)
+				helpers.Ensure("exec", containerStopped, "sh", "-euc", mkSrcScript)
+			}
+			if tc.setup != nil {
+				setupDest := strings.TrimSuffix(destinationSpec, string(os.PathSeparator))
+				if !filepath.IsAbs(setupDest) {
 					if copyToContainer {
-						createFileOnHost()
+						setupDest = filepath.Join(string(os.PathSeparator), setupDest)
 					} else {
-						// Create file content in the container
-						// Note: cd /, otherwise we end-up in the container cwd, which is NOT obeyed by cp
-						mkSrcScript := fmt.Sprintf("cd /; mkdir -p %q && echo -n %q >%q && chown %d %q", filepath.Dir(sourceFile), sourceFileContent, sourceFile, srcUID, sourceFile)
-						base.Cmd("exec", containerRunning, "sh", "-euc", mkSrcScript).AssertOK()
-						base.Cmd("exec", containerStopped, "sh", "-euc", mkSrcScript).AssertOK()
+						setupDest = filepath.Join(tempDir, setupDest)
 					}
-
-					// If we have optional setup, run that now
-					if testCase.setup != nil {
-						// Some specs may come with a trailing slash (proper or improper)
-						// Setup should still work in all cases (including if its a file), and get through to the actual test
-						setupDest := destinationSpec
-						setupDest = strings.TrimSuffix(setupDest, string(os.PathSeparator))
-						if !filepath.IsAbs(setupDest) {
-							if copyToContainer {
-								setupDest = filepath.Join(string(os.PathSeparator), setupDest)
-							} else {
-								setupDest = filepath.Join(tempDir, setupDest)
-							}
-						}
-						testCase.setup(base, containerRunning, setupDest)
-						testCase.setup(base, containerStopped, setupDest)
-					}
-
-					// Stop the "stopped" container
-					base.Cmd("stop", containerStopped).AssertOK()
 				}
+				tc.setup(helpers, containerRunning, setupDest)
+				tc.setup(helpers, containerStopped, setupDest)
+			}
+			helpers.Ensure("stop", containerStopped)
+		},
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			testID := data.Identifier()
+			helpers.Anyhow("rm", "-f", testID+"-r")
+			helpers.Anyhow("rm", "-f", testID+"-s")
+			if tc.volume != nil {
+				helpers.Anyhow("volume", "rm", testID)
+			}
+			if tc.tearDown != nil {
+				tc.tearDown()
+			}
+		},
+		SubTests: []*test.Case{
+			cpRunningSubTest(tc, copyToContainer, fromStdin, destUID),
+			cpStoppedSubTest(tc, copyToContainer, fromStdin, destUID),
+		},
+	}
+}
 
-				tearDown()
-				t.Cleanup(tearDown)
-				// If we have custom teardown, do that
-				if testCase.tearDown != nil {
-					testCase.tearDown()
-					t.Cleanup(testCase.tearDown)
+func cpRunningSubTest(tc testcases, copyToContainer bool, fromStdin bool, destUID int) *test.Case {
+	return cpContainerSubTest("running container", tc, copyToContainer, fromStdin, destUID, false)
+}
+
+func cpStoppedSubTest(tc testcases, copyToContainer bool, fromStdin bool, destUID int) *test.Case {
+	return cpContainerSubTest("stopped container", tc, copyToContainer, fromStdin, destUID, true)
+}
+
+func cpContainerSubTest(description string, tc testcases, copyToContainer bool, fromStdin bool, destUID int, stopped bool) *test.Case {
+	return &test.Case{
+		Description: description,
+		NoParallel:  true,
+		Setup: func(data test.Data, helpers test.Helpers) {
+			if stopped && copyToContainer {
+				tempDir := data.Labels().Get("tempDir")
+				sourceFileContent := []byte(data.Labels().Get("sourceFileContent"))
+				sourceFile := data.Labels().Get("sourceFile")
+				err := os.RemoveAll(tempDir)
+				assert.NilError(helpers.T(), err)
+				err = os.MkdirAll(tempDir, dirPerm)
+				assert.NilError(helpers.T(), err)
+				cpCreateFileOnHost(helpers.T(), sourceFile, sourceFileContent, fromStdin)
+			}
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			container := data.Labels().Get("containerRunning")
+			if stopped {
+				container = data.Labels().Get("containerStopped")
+			}
+			sourceSpec := data.Labels().Get("sourceSpec")
+			sourceFile := data.Labels().Get("sourceFile")
+			destinationSpec := data.Labels().Get("destinationSpec")
+			tempDir := data.Labels().Get("tempDir")
+			toStdout := data.Labels().Get("toStdout") == "true"
+			if fromStdin && toStdout {
+				return helpers.Command("cp", "-", "-")
+			}
+			if copyToContainer {
+				if fromStdin {
+					cmd := helpers.Command("cp", "-", container+":"+destinationSpec)
+					cmd.WithFeeder(func() io.Reader {
+						f, err := os.Open(sourceFile)
+						assert.NilError(helpers.T(), err)
+						return f
+					})
+					cmd.WithCwd(tempDir)
+					return cmd
 				}
-
-				// Do the setup
-				setup()
-
-				// If Docker, removes the err part of expectation
-				if nerdtest.IsDocker() {
-					testCase.expect.Err = ""
+				cmd := helpers.Command("cp", sourceSpec, container+":"+destinationSpec)
+				cmd.WithCwd(tempDir)
+				return cmd
+			}
+			cmd := helpers.Command("cp", container+":"+sourceSpec, destinationSpec)
+			cmd.WithCwd(tempDir)
+			return cmd
+		},
+		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			toStdout := data.Labels().Get("toStdout") == "true"
+			if stopped && rootlessutil.IsRootless() && !nerdtest.IsDocker() && !(fromStdin && toStdout) {
+				return &test.Expected{ExitCode: 1, Errors: []error{containerutil.ErrRootlessCannotCp}}
+			}
+			exitCode := tc.expect.ExitCode
+			expectErr := tc.expect.Err
+			if nerdtest.IsDocker() {
+				expectErr = ""
+			}
+			exp := &test.Expected{ExitCode: exitCode}
+			if expectErr != "" {
+				exp.Errors = []error{errors.New(expectErr)}
+			}
+			if exitCode == 0 {
+				catFile := data.Labels().Get("catFile")
+				if !copyToContainer && toStdout && data.Labels().Get("sourceSpec") == srcDirName {
+					catFile = filepath.Join(filepath.Dir(catFile), filepath.Base(srcDirName), srcFileName)
 				}
-
-				// Build the final src and dest specifiers, including `containerXYZ:`
+				sourceFileContent := []byte(data.Labels().Get("sourceFileContent"))
 				container := ""
 				if copyToContainer {
-					if fromStdin {
-						if toStdout {
-							nerdctlCmd := base.Cmd("cp", "-", "-")
-							nerdctlCmd.Run()
-							nerdctlCmd.Assert(testCase.expect)
-						} else {
-							sourceSpec = "-"
-							f, err := os.Open(sourceFile)
-							assert.NilError(t, err)
-							nerdctlCmd := base.Cmd("cp", sourceSpec, containerRunning+":"+destinationSpec)
-							nerdctlCmd.Stdin = f
-
-							nerdctlCmd.Run()
-							nerdctlCmd.Assert(testCase.expect)
-							f.Close()
-						}
-					} else {
-						base.Cmd("cp", sourceSpec, containerRunning+":"+destinationSpec).Assert(testCase.expect)
-					}
-					container = containerRunning
-				} else {
-					nerdctlCmd := base.Cmd("cp", containerRunning+":"+sourceSpec, destinationSpec)
-					if toStdout {
-						out := nerdctlCmd.Out()
-						nerdctlCmd.Assert(testCase.expect)
-
-						// Since we can't check tar file directly easily, extract to the same destination
-						tarDst := filepath.Dir(catFile)
-						tarBinary, _, err := tarutil.FindTarBinary()
-						assert.NilError(t, err)
-
-						tarCmd := exec.Command(tarBinary, "-C", tarDst, "-xf", "-")
-						tarCmd.Stdin = strings.NewReader(out)
-						tarCmd.Stdout = os.Stdout
-
-						tarCmd.Run()
-						assert.NilError(t, tarCmd.Err)
-					} else {
-						nerdctlCmd.Assert(testCase.expect)
+					container = data.Labels().Get("containerRunning")
+					if stopped {
+						container = data.Labels().Get("containerStopped")
 					}
 				}
-
-				// Run the actual test for the running container
-				// If we expect the op to be a success, also check the destination file
-				if testCase.expect.ExitCode == 0 {
-					assertCatHelper(base, catFile, sourceFileContent, container, destUID, false)
+				exp.Output = func(stdout string, t tig.T) {
+					assertCatHelper(helpers, t, catFile, sourceFileContent, container, destUID, stopped)
 				}
-
-				// When copying container > host, we get shadowing from the previous container, possibly hiding failures
-				// Solution: clear-up the tempDir
-				if copyToContainer {
-					err := os.RemoveAll(tempDir)
-					assert.NilError(t, err)
-					err = os.MkdirAll(tempDir, dirPerm)
-					assert.NilError(t, err)
-					createFileOnHost()
-					defer os.RemoveAll(tempDir)
-				}
-
-				// ... and for the stopped container
-				container = ""
-				var cmd *testutil.Cmd
-				if fromStdin && toStdout {
-					cmd = base.Cmd("cp", "-", "-")
-				} else if copyToContainer {
-					container = containerStopped
-					cmd = base.Cmd("cp", sourceSpec, containerStopped+":"+destinationSpec)
-					if fromStdin {
-						f, err := os.Open(sourceFile)
-						assert.NilError(t, err)
-						defer f.Close()
-						cmd.Stdin = f
-					}
-				} else {
-					cmd = base.Cmd("cp", containerStopped+":"+sourceSpec, destinationSpec)
-				}
-
-				if rootlessutil.IsRootless() && !nerdtest.IsDocker() {
-					if fromStdin && toStdout {
-						// Regular assert test case should work fine if src and dst are invalid
-						cmd.Assert(testCase.expect)
-					} else {
-						cmd.Assert(
-							icmd.Expected{
-								ExitCode: 1,
-								Err:      containerutil.ErrRootlessCannotCp.Error(),
-							})
-					}
-					return
-				}
-
-				cmd.Assert(testCase.expect)
-				if testCase.expect.ExitCode == 0 {
-					assertCatHelper(base, catFile, sourceFileContent, container, destUID, true)
-				}
-			})
-		}
-	})
+			}
+			return exp
+		},
+	}
 }
