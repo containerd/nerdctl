@@ -279,6 +279,8 @@ type ImageSaveOptions struct {
 	AllPlatforms bool
 	// Export content for a specific platform
 	Platform []string
+	// Quiet suppresses the progress output.
+	Quiet bool
 }
 
 // ImageSignOptions contains options for signing an image. It contains options from

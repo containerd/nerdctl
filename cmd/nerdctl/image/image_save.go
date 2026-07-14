@@ -45,6 +45,7 @@ func SaveCommand() *cobra.Command {
 		SilenceErrors:     true,
 	}
 	cmd.Flags().StringP("output", "o", "", "Write to a file, instead of STDOUT")
+	cmd.Flags().BoolP("quiet", "q", false, "Suppress the progress output")
 
 	// #region platform flags
 	// platform is defined as StringSlice, not StringArray, to allow specifying "--platform=amd64,arm64"
@@ -70,11 +71,16 @@ func saveOptions(cmd *cobra.Command) (types.ImageSaveOptions, error) {
 	if err != nil {
 		return types.ImageSaveOptions{}, err
 	}
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		return types.ImageSaveOptions{}, err
+	}
 
 	return types.ImageSaveOptions{
 		GOptions:     globalOptions,
 		AllPlatforms: allPlatforms,
 		Platform:     platform,
+		Quiet:        quiet,
 	}, err
 }
 
