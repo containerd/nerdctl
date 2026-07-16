@@ -48,11 +48,11 @@ func (c *Composer) pushServiceImage(ctx context.Context, image string, platform 
 	if platform != "" {
 		args = append(args, "--platform="+platform)
 	}
-	if signer, ok := ps.Unparsed.Extensions[serviceparser.ComposeSign]; ok {
-		args = append(args, "--sign="+signer.(string))
+	if signer, ok := ps.Unparsed.Extensions[serviceparser.ComposeSign].(string); ok {
+		args = append(args, "--sign="+signer)
 	}
-	if privateKey, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPrivateKey]; ok {
-		args = append(args, "--cosign-key="+privateKey.(string))
+	if privateKey, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPrivateKey].(string); ok {
+		args = append(args, "--cosign-key="+privateKey)
 	}
 	if c.Options.Experimental {
 		args = append(args, "--experimental")
