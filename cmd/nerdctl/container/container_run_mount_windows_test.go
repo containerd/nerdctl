@@ -17,9 +17,9 @@
 package container
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -35,190 +35,293 @@ import (
 )
 
 func TestRunMountVolume(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	tID := testutil.Identifier(t)
-	rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
-	if err != nil {
-		t.Fatal(err)
-	}
-	roDir, err := os.MkdirTemp(t.TempDir(), "ro")
-	if err != nil {
-		t.Fatal(err)
-	}
-	rwVolName := tID + "-rw"
-	roVolName := tID + "-ro"
-	for _, v := range []string{rwVolName, roVolName} {
-		defer base.Cmd("volume", "rm", "-f", v).Run()
-		base.Cmd("volume", "create", v).AssertOK()
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		rwDir := data.Temp().Dir("rw")
+		roDir := data.Temp().Dir("ro")
+		rwVolName := data.Identifier("rw")
+		roVolName := data.Identifier("ro")
+
+		helpers.Ensure("volume", "create", rwVolName)
+		helpers.Ensure("volume", "create", roVolName)
+
+		helpers.Ensure("run",
+			"-d",
+			"--name", data.Identifier(),
+			"-v", fmt.Sprintf("%s:C:/mnt1", rwDir),
+			"-v", fmt.Sprintf("%s:C:/mnt2:ro", roDir),
+			"-v", fmt.Sprintf("%s:C:/mnt3", rwVolName),
+			"-v", fmt.Sprintf("%s:C:/mnt4:ro", roVolName),
+			testutil.CommonImage,
+			"ping localhost -t",
+		)
+
+		// Verify rw mounts are writable
+		helpers.Ensure("exec", data.Identifier(), "cmd", "/c", "echo -n str1 > C:/mnt1/file1")
+		helpers.Ensure("exec", data.Identifier(), "cmd", "/c", "echo -n str3 > C:/mnt3/file3")
+		// Verify ro mounts are NOT writable
+		helpers.Fail("exec", data.Identifier(), "cmd", "/c", "echo -n str2 > C:/mnt2/file2")
+		helpers.Fail("exec", data.Identifier(), "cmd", "/c", "echo -n str4 > C:/mnt4/file4")
+
+		helpers.Ensure("rm", "-f", data.Identifier())
+
+		data.Labels().Set("rwDir", rwDir)
+		data.Labels().Set("rwVolName", rwVolName)
 	}
 
-	containerName := tID
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	base.Cmd("run",
-		"-d",
-		"--name", containerName,
-		"-v", fmt.Sprintf("%s:C:/mnt1", rwDir),
-		"-v", fmt.Sprintf("%s:C:/mnt2:ro", roDir),
-		"-v", fmt.Sprintf("%s:C:/mnt3", rwVolName),
-		"-v", fmt.Sprintf("%s:C:/mnt4:ro", roVolName),
-		testutil.CommonImage,
-		"ping localhost -t",
-	).AssertOK()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "data persists across container removal",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run",
+					"--rm",
+					"-v", fmt.Sprintf("%s:C:/mnt1", data.Labels().Get("rwDir")),
+					"-v", fmt.Sprintf("%s:C:/mnt3", data.Labels().Get("rwVolName")),
+					testutil.CommonImage,
+					"cat", "C:/mnt1/file1", "C:/mnt3/file3",
+				)
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("str1", "str3")),
+		},
+		{
+			Description: "nested mount ordering",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run",
+					"--rm",
+					"-v", fmt.Sprintf("%s:C:/mnt3/mnt1", data.Labels().Get("rwDir")),
+					"-v", fmt.Sprintf("%s:C:/mnt3", data.Labels().Get("rwVolName")),
+					testutil.CommonImage,
+					"cat", "C:/mnt3/mnt1/file1", "C:/mnt3/file3",
+				)
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("str1", "str3")),
+		},
+	}
 
-	base.Cmd("exec", containerName, "cmd", "/c", "echo -n str1 > C:/mnt1/file1").AssertOK()
-	base.Cmd("exec", containerName, "cmd", "/c", "echo -n str2 > C:/mnt2/file2").AssertFail()
-	base.Cmd("exec", containerName, "cmd", "/c", "echo -n str3 > C:/mnt3/file3").AssertOK()
-	base.Cmd("exec", containerName, "cmd", "/c", "echo -n str4 > C:/mnt4/file4").AssertFail()
-	base.Cmd("rm", "-f", containerName).AssertOK()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		helpers.Anyhow("volume", "rm", "-f", data.Identifier("rw"))
+		helpers.Anyhow("volume", "rm", "-f", data.Identifier("ro"))
+	}
 
-	base.Cmd("run",
-		"--rm",
-		"-v", fmt.Sprintf("%s:C:/mnt1", rwDir),
-		"-v", fmt.Sprintf("%s:C:/mnt3", rwVolName),
-		testutil.CommonImage,
-		"cat", "C:/mnt1/file1", "C:/mnt3/file3",
-	).AssertOutContainsAll("str1", "str3")
-	base.Cmd("run",
-		"--rm",
-		"-v", fmt.Sprintf("%s:C:/mnt3/mnt1", rwDir),
-		"-v", fmt.Sprintf("%s:C:/mnt3", rwVolName),
-		testutil.CommonImage,
-		"cat", "C:/mnt3/mnt1/file1", "C:/mnt3/file3",
-	).AssertOutContainsAll("str1", "str3")
+	testCase.Run(t)
 }
 
 func TestRunMountVolumeInspect(t *testing.T) {
-	base := testutil.NewBase(t)
-	testContainer := testutil.Identifier(t)
-	testVolume := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	defer base.Cmd("volume", "rm", "-f", testVolume).Run()
-	base.Cmd("volume", "create", testVolume).AssertOK()
-	inspectVolume := base.InspectVolume(testVolume)
-	namedVolumeSource := inspectVolume.Mountpoint
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		testVolume := data.Identifier("vol")
 
-	base.Cmd(
-		"run", "-d", "--name", testContainer,
-		"-v", "C:/mnt1",
-		"-v", "C:/mnt2:C:/mnt2",
-		"-v", "\\\\.\\pipe\\containerd-containerd:\\\\.\\pipe\\containerd-containerd",
-		"-v", fmt.Sprintf("%s:C:/mnt3", testVolume),
-		testutil.CommonImage,
-	).AssertOK()
+		helpers.Ensure("volume", "create", testVolume)
+		inspectVolume := nerdtest.InspectVolume(helpers, testVolume)
+		data.Labels().Set("namedVolumeSource", inspectVolume.Mountpoint)
+		data.Labels().Set("testVolume", testVolume)
 
-	inspect := base.InspectContainer(testContainer)
-	// convert array to map to get by key of Destination
-	actual := make(map[string]dockercompat.MountPoint)
-	for i := range inspect.Mounts {
-		actual[inspect.Mounts[i].Destination] = inspect.Mounts[i]
+		helpers.Ensure(
+			"run", "-d", "--name", data.Identifier(),
+			"-v", "C:/mnt1",
+			"-v", "C:/mnt2:C:/mnt2",
+			"-v", "\\\\.\\pipe\\containerd-containerd:\\\\.\\pipe\\containerd-containerd",
+			"-v", fmt.Sprintf("%s:C:/mnt3", testVolume),
+			testutil.CommonImage,
+		)
 	}
 
-	expected := []struct {
-		dest       string
-		mountPoint dockercompat.MountPoint
-	}{
-		// anonymous volume
-		{
-			dest: "C:\\mnt1",
-			mountPoint: dockercompat.MountPoint{
-				Type:        "volume",
-				Source:      "", // source of anonymous volume is a generated path, so here will not check it.
-				Destination: "C:\\mnt1",
-			},
-		},
-
-		// bind
-		{
-			dest: "C:\\mnt2",
-			mountPoint: dockercompat.MountPoint{
-				Type:        "bind",
-				Source:      "C:\\mnt2",
-				Destination: "C:\\mnt2",
-			},
-		},
-
-		// named pipe
-		{
-			dest: "\\\\.\\pipe\\containerd-containerd",
-			mountPoint: dockercompat.MountPoint{
-				Type:        "npipe",
-				Source:      "\\\\.\\pipe\\containerd-containerd",
-				Destination: "\\\\.\\pipe\\containerd-containerd",
-			},
-		},
-
-		// named volume
-		{
-			dest: "C:\\mnt3",
-			mountPoint: dockercompat.MountPoint{
-				Type:        "volume",
-				Name:        testVolume,
-				Source:      namedVolumeSource,
-				Destination: "C:\\mnt3",
-			},
-		},
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		helpers.Anyhow("volume", "rm", "-f", data.Identifier("vol"))
 	}
 
-	for i := range expected {
-		testCase := expected[i]
-		t.Logf("test volume[dest=%q]", testCase.dest)
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
+	}
 
-		mountPoint, ok := actual[testCase.dest]
-		assert.Assert(base.T, ok)
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				var dc []dockercompat.Container
 
-		assert.Equal(base.T, testCase.mountPoint.Type, mountPoint.Type)
-		assert.Equal(base.T, testCase.mountPoint.Destination, mountPoint.Destination)
+				err := json.Unmarshal([]byte(stdout), &dc)
+				assert.NilError(t, err)
+				assert.Equal(t, 1, len(dc))
 
-		if testCase.mountPoint.Source == "" {
-			// for anonymous volumes, we want to make sure that the source is not the same as the destination
-			assert.Assert(base.T, mountPoint.Source != testCase.mountPoint.Destination)
-		} else {
-			assert.Equal(base.T, testCase.mountPoint.Source, mountPoint.Source)
+				inspect := dc[0]
+				// convert array to map to get by key of Destination
+				actual := make(map[string]dockercompat.MountPoint)
+				for i := range inspect.Mounts {
+					actual[inspect.Mounts[i].Destination] = inspect.Mounts[i]
+				}
+
+				expected := []struct {
+					dest       string
+					mountPoint dockercompat.MountPoint
+				}{
+					// anonymous volume
+					{
+						dest: "C:\\mnt1",
+						mountPoint: dockercompat.MountPoint{
+							Type:        "volume",
+							Source:      "",
+							Destination: "C:\\mnt1",
+						},
+					},
+
+					// bind
+					{
+						dest: "C:\\mnt2",
+						mountPoint: dockercompat.MountPoint{
+							Type:        "bind",
+							Source:      "C:\\mnt2",
+							Destination: "C:\\mnt2",
+						},
+					},
+
+					// named pipe
+					{
+						dest: "\\\\.\\pipe\\containerd-containerd",
+						mountPoint: dockercompat.MountPoint{
+							Type:        "npipe",
+							Source:      "\\\\.\\pipe\\containerd-containerd",
+							Destination: "\\\\.\\pipe\\containerd-containerd",
+						},
+					},
+
+					// named volume
+					{
+						dest: "C:\\mnt3",
+						mountPoint: dockercompat.MountPoint{
+							Type:        "volume",
+							Name:        data.Labels().Get("testVolume"),
+							Source:      data.Labels().Get("namedVolumeSource"),
+							Destination: "C:\\mnt3",
+						},
+					},
+				}
+
+				for i := range expected {
+					tc := expected[i]
+
+					mountPoint, ok := actual[tc.dest]
+					assert.Assert(t, ok, "mount point not found for dest=%q", tc.dest)
+
+					assert.Equal(t, tc.mountPoint.Type, mountPoint.Type)
+					assert.Equal(t, tc.mountPoint.Destination, mountPoint.Destination)
+
+					if tc.mountPoint.Source == "" {
+						// for anonymous volumes, we want to make sure that the source is not the same as the destination
+						assert.Assert(t, mountPoint.Source != tc.mountPoint.Destination)
+					} else {
+						assert.Equal(t, tc.mountPoint.Source, mountPoint.Source)
+					}
+
+					if tc.mountPoint.Name != "" {
+						assert.Equal(t, tc.mountPoint.Name, mountPoint.Name)
+					}
+				}
+			},
 		}
-
-		if testCase.mountPoint.Name != "" {
-			assert.Equal(base.T, testCase.mountPoint.Name, mountPoint.Name)
-		}
 	}
+
+	testCase.Run(t)
 }
 
 func TestRunMountAnonymousVolume(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "-v", "TestVolume:C:/mnt", testutil.CommonImage).AssertOK()
+	testCase := nerdtest.Setup()
 
-	// For docker-campatibility, Unrecognised volume spec: invalid volume specification: 'TestVolume'
-	base.Cmd("run", "--rm", "-v", "TestVolume", testutil.CommonImage).AssertFail()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "named volume with mount path",
+			Command:     test.Command("run", "--rm", "-v", "TestVolume:C:/mnt", testutil.CommonImage),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			// For docker-compatibility, Unrecognised volume spec: invalid volume specification: 'TestVolume'
+			Description: "volume name only fails",
+			Command:     test.Command("run", "--rm", "-v", "TestVolume", testutil.CommonImage),
+			Expected:    test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "non-absolute destination fails",
+			Command:     test.Command("run", "--rm", "-v", "TestVolume2:TestVolumes", testutil.CommonImage),
+			Expected:    test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+	}
 
-	// Destination must be an absolute path not named volume
-	base.Cmd("run", "--rm", "-v", "TestVolume2:TestVolumes", testutil.CommonImage).AssertFail()
+	testCase.Run(t)
 }
 
 func TestRunMountRelativePath(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "-v", "./mnt:C:/mnt1", testutil.CommonImage, "cmd").AssertOK()
+	testCase := nerdtest.Setup()
 
-	// Destination cannot be a relative path
-	base.Cmd("run", "--rm", "-v", "./mnt", testutil.CommonImage).AssertFail()
-	base.Cmd("run", "--rm", "-v", "./mnt:./mnt1", testutil.CommonImage, "cmd").AssertFail()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "relative source with absolute destination",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", "--rm", "-v", "./mnt:C:/mnt1", testutil.CommonImage, "cmd")
+				cmd.WithCwd(data.Temp().Dir())
+				return cmd
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			// Destination cannot be a relative path
+			Description: "relative source only fails",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", "--rm", "-v", "./mnt", testutil.CommonImage)
+				cmd.WithCwd(data.Temp().Dir())
+				return cmd
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "relative source and relative destination fails",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("run", "--rm", "-v", "./mnt:./mnt1", testutil.CommonImage, "cmd")
+				cmd.WithCwd(data.Temp().Dir())
+				return cmd
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunMountNamedPipeVolume(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "-v", `\\.\pipe\containerd-containerd`, testutil.CommonImage).AssertFail()
+	testCase := nerdtest.Setup()
+
+	testCase.Command = test.Command("run", "--rm", "-v", `\\.\pipe\containerd-containerd`, testutil.CommonImage)
+	testCase.Expected = test.Expects(expect.ExitCodeGenericFail, nil, nil)
+
+	testCase.Run(t)
 }
 
 func TestRunMountVolumeSpec(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	base.Cmd("run", "--rm", "-v", `InvalidPathC:\TestVolume:C:\Mount`, testutil.CommonImage).AssertFail()
-	base.Cmd("run", "--rm", "-v", `C:\TestVolume:C:\Mount:ro,rw:boot`, testutil.CommonImage).AssertFail()
+	testCase := nerdtest.Setup()
 
-	// If -v is an empty string, it will be ignored
-	base.Cmd("run", "--rm", "-v", "", testutil.CommonImage).AssertOK()
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "invalid source path",
+			Command:     test.Command("run", "--rm", "-v", `InvalidPathC:\TestVolume:C:\Mount`, testutil.CommonImage),
+			Expected:    test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "invalid mount options",
+			Command:     test.Command("run", "--rm", "-v", `C:\TestVolume:C:\Mount:ro,rw:boot`, testutil.CommonImage),
+			Expected:    test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			// If -v is an empty string, it will be ignored
+			Description: "empty volume string ignored",
+			Command:     test.Command("run", "--rm", "-v", "", testutil.CommonImage),
+			Expected:    test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestRunVolumeWithDriveRootDestination(t *testing.T) {
