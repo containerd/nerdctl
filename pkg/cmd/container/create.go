@@ -71,7 +71,7 @@ import (
 )
 
 // Create will create a container.
-func Create(ctx context.Context, client *containerd.Client, args []string, netManager containerutil.NetworkOptionsManager, options types.ContainerCreateOptions) (containerd.Container, func(), error) {
+func Create(ctx context.Context, client *containerd.Client, args []string, netManager containerutil.NetworkOptionsManager, options types.ContainerCreateOptions) (_ containerd.Container, _ func(), retErr error) {
 	// Acquire an exclusive lock on the volume store until we are done to avoid being raced by any other
 	// volume operations (or any other operation involving volume manipulation)
 	volStore, err := volume.Store(options.GOptions.Namespace, options.GOptions.DataRoot, options.GOptions.Address)
@@ -94,6 +94,23 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	var internalLabels internalLabels
 	internalLabels.platform = options.Platform
 	internalLabels.namespace = options.GOptions.Namespace
+
+	// If creation fails after image-mount views are created, remove them so the
+	// snapshots do not leak (the cleanup label is only persisted on success).
+	defer func() {
+		if retErr == nil {
+			return
+		}
+		var keys []string
+		for _, mp := range internalLabels.mountPoints {
+			if mp.ImageMountSnapshot != "" {
+				keys = append(keys, mp.ImageMountSnapshot)
+			}
+		}
+		if len(keys) > 0 {
+			removeImageMountViews(ctx, client.SnapshotService(options.GOptions.Snapshotter), keys)
+		}
+	}()
 
 	var (
 		id    = idgen.GenerateID()
@@ -867,6 +884,22 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 			return nil, err
 		}
 		m[labels.AnonymousVolumes] = string(anonVolumeJSON)
+	}
+
+	// Record the snapshot keys of any type=image mount views so they can be
+	// removed when the container is deleted.
+	var imageMountSnapshots []string
+	for _, mp := range internalLabels.mountPoints {
+		if mp.ImageMountSnapshot != "" {
+			imageMountSnapshots = append(imageMountSnapshots, mp.ImageMountSnapshot)
+		}
+	}
+	if len(imageMountSnapshots) > 0 {
+		b, err := json.Marshal(imageMountSnapshots)
+		if err != nil {
+			return nil, err
+		}
+		m[labels.ImageMountSnapshots] = string(b)
 	}
 
 	if internalLabels.pidFile != "" {

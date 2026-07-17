@@ -568,3 +568,100 @@ func TestProcessFlagMountBindRecursive(t *testing.T) {
 		})
 	}
 }
+
+// TestProcessFlagMountImage tests parsing and validation of `--mount type=image`.
+func TestProcessFlagMountImage(t *testing.T) {
+	tests := []struct {
+		rawSpec string
+		wants   *Processed
+		err     string
+	}{
+		{
+			// Image mounts are always read-only, so Mode is "ro".
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img",
+			wants: &Processed{
+				Type: Image,
+				Mode: "ro",
+				Mount: specs.Mount{
+					Type:        Image,
+					Source:      "alpine:latest",
+					Destination: "/mnt/img",
+				},
+			},
+		},
+		{
+			// target and src aliases must work too.
+			rawSpec: "type=image,src=alpine:latest,target=/mnt/img",
+			wants: &Processed{
+				Type: Image,
+				Mode: "ro",
+				Mount: specs.Mount{
+					Type:        Image,
+					Source:      "alpine:latest",
+					Destination: "/mnt/img",
+				},
+			},
+		},
+		{
+			rawSpec: "type=image,destination=/mnt/img",
+			err:     "requires a source",
+		},
+		{
+			rawSpec: "type=image,source=alpine:latest",
+			err:     "requires a destination",
+		},
+		{
+			// ro and rro are accepted for compatibility; image mounts are
+			// read-only regardless, so Mode stays "ro".
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,ro",
+			wants: &Processed{
+				Type:  Image,
+				Mode:  "ro",
+				Mount: specs.Mount{Type: Image, Source: "alpine:latest", Destination: "/mnt/img"},
+			},
+		},
+		{
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,rro",
+			wants: &Processed{
+				Type:  Image,
+				Mode:  "ro",
+				Mount: specs.Mount{Type: Image, Source: "alpine:latest", Destination: "/mnt/img"},
+			},
+		},
+		{
+			// rw is not a valid --mount token, so it is rejected at parse time,
+			// same as for a bind mount and same as Docker.
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,rw",
+			err:     "must be a key=value pair",
+		},
+		{
+			// readonly=false is accepted but ignored: like Docker, the image
+			// mount stays read-only (Mode "ro").
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,readonly=false",
+			wants: &Processed{
+				Type:  Image,
+				Mode:  "ro",
+				Mount: specs.Mount{Type: Image, Source: "alpine:latest", Destination: "/mnt/img"},
+			},
+		},
+		{
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,image-subpath=etc",
+			err:     "image-subpath",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.rawSpec, func(t *testing.T) {
+			got, err := ProcessFlagMount(tt.rawSpec, nil, "")
+			if tt.err != "" {
+				assert.ErrorContains(t, err, tt.err)
+				return
+			}
+			assert.NilError(t, err)
+			assert.Equal(t, got.Type, tt.wants.Type)
+			assert.Equal(t, got.Mode, tt.wants.Mode)
+			assert.Equal(t, got.Mount.Type, tt.wants.Mount.Type)
+			assert.Equal(t, got.Mount.Source, tt.wants.Mount.Source)
+			assert.Equal(t, got.Mount.Destination, tt.wants.Mount.Destination)
+		})
+	}
+}
