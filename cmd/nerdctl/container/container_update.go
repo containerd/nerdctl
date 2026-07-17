@@ -295,10 +295,9 @@ func updateContainer(ctx context.Context, client *containerd.Client, id string, 
 				spec.Linux.Resources.CPU.Period = &opts.CPUPeriod
 			}
 		}
-		if cmd.Flags().Changed("cpus") {
-			if spec.Linux.Resources.CPU.Cpus != opts.CpusetCpus {
-				spec.Linux.Resources.CPU.Cpus = opts.CpusetCpus
-			}
+		if cmd.Flags().Changed("cpus") && opts.CPUQuota != -1 && opts.CPUPeriod != 0 {
+			spec.Linux.Resources.CPU.Quota = &opts.CPUQuota
+			spec.Linux.Resources.CPU.Period = &opts.CPUPeriod
 		}
 		if cmd.Flags().Changed("cpuset-mems") {
 			if spec.Linux.Resources.CPU.Mems != opts.CpusetMems {
