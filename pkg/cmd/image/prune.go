@@ -25,10 +25,10 @@ import (
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/log"
-	"github.com/containerd/platforms"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
+	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 )
 
 // Prune will remove all dangling images. If all is specified, will also remove all images not referenced by any container.
@@ -68,10 +68,14 @@ func Prune(ctx context.Context, client *containerd.Client, options types.ImagePr
 		return err
 	}
 
+	platformMatcher, err := platformutil.NewMatchComparer(false, nil)
+	if err != nil {
+		return err
+	}
 	delOpts := []images.DeleteOpt{images.SynchronousDelete()}
 	removedImages := make(map[string][]digest.Digest)
 	for _, image := range imagesToBeRemoved {
-		digests, err := image.RootFS(ctx, contentStore, platforms.DefaultStrict())
+		digests, err := image.RootFS(ctx, contentStore, platformMatcher)
 		if err != nil {
 			log.G(ctx).WithError(err).Warnf("failed to enumerate rootfs")
 		}

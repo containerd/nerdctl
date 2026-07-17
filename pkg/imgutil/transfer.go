@@ -42,7 +42,8 @@ import (
 func prepareImageStore(ctx context.Context, parsedReference *referenceutil.ImageReference, options types.ImagePullOptions) (*transferimage.Store, error) {
 	var storeOpts []transferimage.StoreOpt
 	if len(options.OCISpecPlatform) > 0 {
-		storeOpts = append(storeOpts, transferimage.WithPlatforms(options.OCISpecPlatform...))
+		platforms := platformutil.AppendOSFeatureVariants(options.OCISpecPlatform, platformutil.ErofsOSFeature)
+		storeOpts = append(storeOpts, transferimage.WithPlatforms(platforms...))
 	}
 
 	unpackEnabled := len(options.OCISpecPlatform) == 1
@@ -175,6 +176,7 @@ func preparePushStore(pushRef string, options types.ImagePushOptions) (*transfer
 
 	storeOpts := []transferimage.StoreOpt{}
 	if len(platformsSlice) > 0 {
+		platformsSlice = platformutil.AppendOSFeatureVariants(platformsSlice, platformutil.ErofsOSFeature)
 		storeOpts = append(storeOpts, transferimage.WithPlatforms(platformsSlice...))
 	}
 

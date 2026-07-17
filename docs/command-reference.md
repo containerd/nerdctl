@@ -1030,6 +1030,9 @@ Flags:
 - `--overlaybd-fs-type=<TYPE>`         : filesystem type for overlaybd (default: `ext4`)
 - `--overlaybd-dbstr=<STRING>`         : database config string for overlaybd
 - `--overlaybd-vsize=<SIZE>`           : virtual block device size in GB for overlaybd (default: 64)
+- `--erofs=<MODE>`                    : convert image layers to EROFS media type. Supported values: `raw`, `zstd` (see [`./erofs.md`](./erofs.md))
+- `--erofs-compressors=<COMPRESSORS>` : specify mkfs.erofs compressor options, e.g. `lz4hc,12`
+- `--erofs-mkfs-options=<OPTIONS>`    : specify extra mkfs.erofs options, e.g. `-T0 --mkfs-time`
 - `--uncompress`                       : convert tar.gz layers to uncompressed tar layers
 - `--oci`                              : convert Docker media types to OCI media types
 - `--platform=<PLATFORM>`              : convert content for a specific platform
@@ -1038,7 +1041,6 @@ Flags:
 *[**Note**: soci convert uses the default platform if nothing is specified. --platform flag can be used to specify a platform]*
 - `--soci-span-size` : Span size in bytes that soci index uses to segment layer data. Default is 4 MiB.
 - `--soci-min-layer-size`: Minimum layer size in bytes to build zTOC for. Smaller layers won't have zTOC and not lazy pulled. Default is 10 MiB.
-
 
 ### :nerd_face: nerdctl image encrypt
 

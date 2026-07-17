@@ -75,6 +75,7 @@ type ImageConvertOptions struct {
 	NydusOptions
 	OverlaybdOptions
 	SociConvertOptions
+	ErofsOptions
 }
 
 // EstargzOptions contains eStargz conversion options
@@ -150,6 +151,16 @@ type SociConvertOptions struct {
 	// SociOptions contains SOCI-specific options
 	SociOptions SociOptions
 	// #endregion
+}
+
+// ErofsOptions contains EROFS conversion options
+type ErofsOptions struct {
+	// Erofs convert image layers to EROFS media type. Supported values: "raw" and "zstd"
+	Erofs string
+	// ErofsCompressors specifies mkfs compressor options, e.g. "lz4hc,12"
+	ErofsCompressors string
+	// ErofsMkfsOptions specifies extra options for mkfs.erofs, e.g. "-T0 --mkfs-time"
+	ErofsMkfsOptions string
 }
 
 // ImageCryptOptions specifies options for `nerdctl image encrypt` and `nerdctl image decrypt`.
