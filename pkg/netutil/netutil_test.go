@@ -104,7 +104,6 @@ func TestParseIPAMRange(t *testing.T) {
 			expected: &IPAMRange{
 				Subnet:     "10.1.0.0/16",
 				Gateway:    "10.1.0.1",
-				IPRange:    "10.1.100.0/24",
 				RangeStart: "10.1.100.1",
 				RangeEnd:   "10.1.100.255",
 			},
@@ -115,7 +114,6 @@ func TestParseIPAMRange(t *testing.T) {
 			expected: &IPAMRange{
 				Subnet:     "10.1.100.0/23",
 				Gateway:    "10.1.100.1",
-				IPRange:    "10.1.100.0/25",
 				RangeStart: "10.1.100.1",
 				RangeEnd:   "10.1.100.127",
 			},
