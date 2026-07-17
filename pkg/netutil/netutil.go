@@ -627,9 +627,9 @@ func parseIPAMRange(subnet *net.IPNet, gatewayStr, ipRangeStr string) (*IPAMRang
 		if !subnet.Contains(rangeStart) || !subnet.Contains(rangeEnd) {
 			return nil, fmt.Errorf("no matching subnet %q for ip-range %q", subnet, ipRangeStr)
 		}
+		// host-local has no ipRange field; store the bounds and recompute on inspect.
 		res.RangeStart = rangeStart.String()
 		res.RangeEnd = rangeEnd.String()
-		res.IPRange = ipRangeStr
 	}
 
 	return res, nil
@@ -664,9 +664,9 @@ func ParseAuxAddresses(raw []string) (map[string]string, error) {
 // carving them out. host-local has no exclude list, but it does allocate across
 // every range in a set, so the reserved IPs become gaps between sub-ranges and
 // are never handed out. Reserved IPs outside the allocation window need no split
-// (host-local cannot reach them anyway). The base range's gateway and ip-range
-// are kept on the first sub-range so the rest of the pipeline and `network
-// inspect` behave exactly as the un-split case.
+// (host-local cannot reach them anyway). The base range's gateway is kept on
+// every sub-range; inspect rebuilds the original ip-range from the outermost
+// sub-range bounds, so nothing else has to be carried across the split.
 func splitIPAMRange(subnet *net.IPNet, base *IPAMRange, reserved []net.IP) ([]IPAMRange, error) {
 	if len(reserved) == 0 {
 		return []IPAMRange{*base}, nil
@@ -736,12 +736,10 @@ func splitIPAMRange(subnet *net.IPNet, base *IPAMRange, reserved []net.IP) ([]IP
 
 	// host-local reserves the gateway only when it is set on the range it lands
 	// in, and after splitting the gateway can be in any sub-range, so set it on
-	// all of them. The original ip-range is nerdctl-only bookkeeping for inspect,
-	// so keep it on the first sub-range alone.
+	// all of them.
 	for i := range out {
 		out[i].Gateway = base.Gateway
 	}
-	out[0].IPRange = base.IPRange
 	return out, nil
 }
 
