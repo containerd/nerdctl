@@ -17,9 +17,7 @@
 package container
 
 import (
-	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -39,59 +37,39 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
-type psTestContainer struct {
-	name    string
-	labels  map[string]string
-	volumes []string
-	network string
-}
+// setupPsTestContainer creates a test container with labels, volumes, and network.
+// When keepAlive is false, the container exits immediately with status 1.
+// Container info is stored in data.Labels() keyed by identity prefix:
+//   - container-{identity}: container name
+//   - network-{identity}: network name (same as container)
+//   - vol-{identity}: named volume name
+//   - labelkey-{identity}: label key
+//   - labelval-{identity}: label value
+//   - volume-{identity}-{0..3}: volume mount components for filter tests
+func setupPsTestContainer(data test.Data, helpers test.Helpers, identity string, keepAlive bool) {
+	containerName := data.Identifier(identity)
+	rwVolName := containerName + "-rw"
+	rwDir := data.Temp().Dir(identity + "-rw")
 
-// When keepAlive is false, the container will exit immediately with status 1.
-func preparePsTestContainer(t *testing.T, identity string, keepAlive bool) (*testutil.Base, psTestContainer) {
-	base := testutil.NewBase(t)
-
-	base.Cmd("pull", "--quiet", testutil.CommonImage).AssertOK()
-
-	testContainerName := testutil.Identifier(t) + identity
-	rwVolName := testContainerName + "-rw"
-	// A container can mount named and anonymous volumes
-	rwDir, err := os.MkdirTemp(t.TempDir(), "rw")
-	if err != nil {
-		t.Fatal(err)
-	}
-	base.Cmd("network", "create", testContainerName).AssertOK()
-	t.Cleanup(func() {
-		base.Cmd("rm", "-f", testContainerName).AssertOK()
-		base.Cmd("volume", "rm", "-f", rwVolName).Run()
-		base.Cmd("network", "rm", testContainerName).Run()
-		os.RemoveAll(rwDir)
-	})
+	helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+	helpers.Ensure("network", "create", containerName)
+	helpers.Ensure("volume", "create", rwVolName)
 
 	// A container can have multiple labels.
-	// Therefore, this test container has multiple labels to check it.
+	// Therefore, this test container has labels to check.
 	testLabels := make(map[string]string)
-	keys := []string{
-		testutil.Identifier(t) + identity,
-		testutil.Identifier(t) + identity,
-	}
-	// fill the value of testLabels
-	for _, k := range keys {
-		testLabels[k] = k
-	}
-	base.Cmd("volume", "create", rwVolName).AssertOK()
+	testLabels[containerName] = containerName
+
 	mnt1 := fmt.Sprintf("%s:/%s_mnt1", rwDir, identity)
 	mnt2 := fmt.Sprintf("%s:/%s_mnt3", rwVolName, identity)
 
 	args := []string{
-		"run",
-		"-d",
-		"--name",
-		testContainerName,
-		"--label",
-		formatter.FormatLabels(testLabels),
+		"run", "-d",
+		"--name", containerName,
+		"--label", formatter.FormatLabels(testLabels),
 		"-v", mnt1,
 		"-v", mnt2,
-		"--net", testContainerName,
+		"--net", containerName,
 	}
 	if keepAlive {
 		args = append(args, testutil.CommonImage, "top")
@@ -99,576 +77,757 @@ func preparePsTestContainer(t *testing.T, identity string, keepAlive bool) (*tes
 		args = append(args, "--restart=no", testutil.CommonImage, "false")
 	}
 
-	base.Cmd(args...).AssertOK()
+	helpers.Ensure(args...)
 	if keepAlive {
-		base.EnsureContainerStarted(testContainerName)
+		nerdtest.EnsureContainerStarted(helpers, containerName)
+		// dd if=/dev/zero of=test_file bs=1M count=25
+		// let the container occupy 25MiB space.
+		helpers.Ensure("exec", containerName, "dd", "if=/dev/zero", "of=/test_file", "bs=1M", "count=25")
 	} else {
-		base.EnsureContainerExited(testContainerName, 1)
+		nerdtest.EnsureContainerExited(helpers, containerName, 1)
 	}
 
-	// dd if=/dev/zero of=test_file bs=1M count=25
-	// let the container occupy 25MiB space.
-	if keepAlive {
-		base.Cmd("exec", testContainerName, "dd", "if=/dev/zero", "of=/test_file", "bs=1M", "count=25").AssertOK()
-	}
+	data.Labels().Set("container-"+identity, containerName)
+	data.Labels().Set("network-"+identity, containerName)
+	data.Labels().Set("vol-"+identity, rwVolName)
+	data.Labels().Set("labelkey-"+identity, containerName)
+	data.Labels().Set("labelval-"+identity, containerName)
+
 	volumes := []string{}
 	volumes = append(volumes, strings.Split(mnt1, ":")...)
 	volumes = append(volumes, strings.Split(mnt2, ":")...)
-
-	return base, psTestContainer{
-		name:    testContainerName,
-		labels:  testLabels,
-		volumes: volumes,
-		network: testContainerName,
+	for i, v := range volumes {
+		data.Labels().Set(fmt.Sprintf("volume-%s-%d", identity, i), v)
 	}
+}
+
+// cleanupPsTestContainer removes the container, volume, and network created by setupPsTestContainer.
+func cleanupPsTestContainer(data test.Data, helpers test.Helpers, identity string) {
+	containerName := data.Identifier(identity)
+	helpers.Anyhow("rm", "-f", containerName)
+	helpers.Anyhow("volume", "rm", "-f", containerName+"-rw")
+	helpers.Anyhow("network", "rm", containerName)
 }
 
 func TestContainerList(t *testing.T) {
-	base, testContainer := preparePsTestContainer(t, "list", true)
+	testCase := nerdtest.Setup()
+	testCase.NoParallel = true
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		setupPsTestContainer(data, helpers, "list", true)
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		cleanupPsTestContainer(data, helpers, "list")
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("ps", "-n", "1", "-s")
+	}
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				containerName := data.Labels().Get("container-list")
 
-	// hope there are no tests running parallel
-	base.Cmd("ps", "-n", "1", "-s").AssertOutWithFunc(func(stdout string) error {
-		// An example of nerdctl/docker ps -n 1 -s
-		// CONTAINER ID    IMAGE                               COMMAND    CREATED           STATUS    PORTS    NAMES            SIZE
-		// be8d386c991e    docker.io/library/busybox:latest    "top"      1 second ago    Up                 c1       16.0 KiB (virtual 1.3 MiB)
+				// An example of nerdctl/docker ps -n 1 -s
+				// CONTAINER ID    IMAGE                               COMMAND    CREATED           STATUS    PORTS    NAMES            SIZE
+				// be8d386c991e    docker.io/library/busybox:latest    "top"      1 second ago    Up                 c1       16.0 KiB (virtual 1.3 MiB)
+				lines := strings.Split(strings.TrimSpace(stdout), "\n")
+				assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
 
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+				tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tSIZE")
+				err := tab.ParseHeader(lines[0])
+				assert.NilError(t, err, "failed to parse header")
+
+				container, _ := tab.ReadRow(lines[1], "NAMES")
+				assert.Equal(t, container, containerName)
+
+				image, _ := tab.ReadRow(lines[1], "IMAGE")
+				assert.Equal(t, image, testutil.CommonImage)
+
+				size, _ := tab.ReadRow(lines[1], "SIZE")
+				// there is some difference between nerdctl and docker in calculating the size of the container
+				expectedSize := "26.2MB (virtual "
+				if !nerdtest.IsDocker() {
+					expectedSize = "25.0 MiB (virtual "
+				}
+				assert.Assert(t, strings.Contains(size, expectedSize),
+					"expect container size %s, but got %s", expectedSize, size)
+			},
 		}
-
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tSIZE")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-
-		container, _ := tab.ReadRow(lines[1], "NAMES")
-		assert.Equal(t, container, testContainer.name)
-
-		image, _ := tab.ReadRow(lines[1], "IMAGE")
-		assert.Equal(t, image, testutil.CommonImage)
-
-		size, _ := tab.ReadRow(lines[1], "SIZE")
-
-		// there is some difference between nerdctl and docker in calculating the size of the container
-		expectedSize := "26.2MB (virtual "
-		if !nerdtest.IsDocker() {
-			expectedSize = "25.0 MiB (virtual "
-		}
-
-		if !strings.Contains(size, expectedSize) {
-			return fmt.Errorf("expect container size %s, but got %s", expectedSize, size)
-		}
-
-		return nil
-	})
+	}
+	testCase.Run(t)
 }
 
 func TestContainerListWideMode(t *testing.T) {
-	testutil.DockerIncompatible(t)
-	base, testContainer := preparePsTestContainer(t, "listWithMode", true)
+	testCase := nerdtest.Setup()
+	testCase.NoParallel = true
+	testCase.Require = require.Not(nerdtest.Docker)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		setupPsTestContainer(data, helpers, "listWithMode", true)
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		cleanupPsTestContainer(data, helpers, "listWithMode")
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("ps", "-n", "1", "--format", "wide")
+	}
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				containerName := data.Labels().Get("container-listWithMode")
 
-	// hope there are no tests running parallel
-	base.Cmd("ps", "-n", "1", "--format", "wide").AssertOutWithFunc(func(stdout string) error {
+				// An example of nerdctl ps --format wide
+				// CONTAINER ID    IMAGE                               PLATFORM       COMMAND    CREATED              STATUS    PORTS    NAMES            RUNTIME                  SIZE
+				// 17181f208b61    docker.io/library/busybox:latest    linux/amd64    "top"      About an hour ago    Up                 busybox-17181    io.containerd.runc.v2    16.0 KiB (virtual 1.3 MiB)
+				lines := strings.Split(strings.TrimSpace(stdout), "\n")
+				assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
 
-		// An example of nerdctl ps --format wide
-		// CONTAINER ID    IMAGE                               PLATFORM       COMMAND    CREATED              STATUS    PORTS    NAMES            RUNTIME                  SIZE
-		// 17181f208b61    docker.io/library/busybox:latest    linux/amd64    "top"      About an hour ago    Up                 busybox-17181    io.containerd.runc.v2    16.0 KiB (virtual 1.3 MiB)
+				tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tRUNTIME\tPLATFORM\tSIZE")
+				err := tab.ParseHeader(lines[0])
+				assert.NilError(t, err, "failed to parse header")
 
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
+				container, _ := tab.ReadRow(lines[1], "NAMES")
+				assert.Equal(t, container, containerName)
+
+				image, _ := tab.ReadRow(lines[1], "IMAGE")
+				assert.Equal(t, image, testutil.CommonImage)
+
+				runtime, _ := tab.ReadRow(lines[1], "RUNTIME")
+				assert.Equal(t, runtime, "io.containerd.runc.v2")
+
+				size, _ := tab.ReadRow(lines[1], "SIZE")
+				expectedSize := "25.0 MiB (virtual "
+				assert.Assert(t, strings.Contains(size, expectedSize),
+					"expect container size %s, but got %s", expectedSize, size)
+			},
 		}
-
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES\tRUNTIME\tPLATFORM\tSIZE")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-
-		container, _ := tab.ReadRow(lines[1], "NAMES")
-		assert.Equal(t, container, testContainer.name)
-
-		image, _ := tab.ReadRow(lines[1], "IMAGE")
-		assert.Equal(t, image, testutil.CommonImage)
-
-		runtime, _ := tab.ReadRow(lines[1], "RUNTIME")
-		assert.Equal(t, runtime, "io.containerd.runc.v2")
-
-		size, _ := tab.ReadRow(lines[1], "SIZE")
-		expectedSize := "25.0 MiB (virtual "
-		if !strings.Contains(size, expectedSize) {
-			return fmt.Errorf("expect container size %s, but got %s", expectedSize, size)
-		}
-		return nil
-	})
+	}
+	testCase.Run(t)
 }
 
 func TestContainerListWithLabels(t *testing.T) {
-	base, testContainer := preparePsTestContainer(t, "listWithLabels", true)
+	testCase := nerdtest.Setup()
+	testCase.NoParallel = true
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		setupPsTestContainer(data, helpers, "listWithLabels", true)
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		cleanupPsTestContainer(data, helpers, "listWithLabels")
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("ps", "-n", "1", "--format", "{{.Labels}}")
+	}
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				// An example of nerdctl ps --format "{{.Labels}}"
+				// key1=value1,key2=value2,key3=value3
+				lines := strings.Split(strings.TrimSpace(stdout), "\n")
+				assert.Equal(t, len(lines), 1, "expected 1 line")
 
-	// hope there are no tests running parallel
-	base.Cmd("ps", "-n", "1", "--format", "{{.Labels}}").AssertOutWithFunc(func(stdout string) error {
+				// check labels using map
+				// 1. the results has no guarantee to show the same order.
+				// 2. the results has no guarantee to show only configured labels.
+				labelsMap, err := strutil.ParseCSVMap(lines[0])
+				assert.NilError(t, err, "failed to parse labels")
 
-		// An example of nerdctl ps --format "{{.Labels}}"
-		// key1=value1,key2=value2,key3=value3
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) != 1 {
-			return fmt.Errorf("expected 1 line, got %d", len(lines))
+				labelKey := data.Labels().Get("labelkey-listWithLabels")
+				labelVal := data.Labels().Get("labelval-listWithLabels")
+				if value, ok := labelsMap[labelKey]; ok {
+					assert.Equal(t, value, labelVal)
+				}
+			},
 		}
-
-		// check labels using map
-		// 1. the results has no guarantee to show the same order.
-		// 2. the results has no guarantee to show only configured labels.
-		labelsMap, err := strutil.ParseCSVMap(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse labels: %v", err)
-		}
-
-		for i := range testContainer.labels {
-			if value, ok := labelsMap[i]; ok {
-				assert.Equal(t, value, testContainer.labels[i])
-			}
-		}
-		return nil
-	})
+	}
+	testCase.Run(t)
 }
 
 func TestContainerListWithNames(t *testing.T) {
-	base, testContainer := preparePsTestContainer(t, "listWithNames", true)
+	testCase := nerdtest.Setup()
+	testCase.NoParallel = true
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		setupPsTestContainer(data, helpers, "listWithNames", true)
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		cleanupPsTestContainer(data, helpers, "listWithNames")
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("ps", "-n", "1", "--format", "{{.Names}}")
+	}
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				containerName := data.Labels().Get("container-listWithNames")
 
-	// hope there are no tests running parallel
-	base.Cmd("ps", "-n", "1", "--format", "{{.Names}}").AssertOutWithFunc(func(stdout string) error {
-
-		// An example of nerdctl ps --format "{{.Names}}"
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) != 1 {
-			return fmt.Errorf("expected 1 line, got %d", len(lines))
+				// An example of nerdctl ps --format "{{.Names}}"
+				lines := strings.Split(strings.TrimSpace(stdout), "\n")
+				assert.Equal(t, len(lines), 1, "expected 1 line")
+				assert.Equal(t, lines[0], containerName)
+			},
 		}
-
-		assert.Equal(t, lines[0], testContainer.name)
-
-		return nil
-	})
+	}
+	testCase.Run(t)
 }
 
 func TestContainerListWithFilter(t *testing.T) {
-	base, testContainerA := preparePsTestContainer(t, "listWithFilterA", true)
-	_, testContainerB := preparePsTestContainer(t, "listWithFilterB", true)
-	_, testContainerC := preparePsTestContainer(t, "listWithFilterC", false)
+	testCase := nerdtest.Setup()
+	testCase.NoParallel = true
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		setupPsTestContainer(data, helpers, "A", true)
+		setupPsTestContainer(data, helpers, "B", true)
+		setupPsTestContainer(data, helpers, "C", false)
 
-	base.Cmd("ps", "--filter", "name="+testContainerA.name).AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-		}
+		containerA := data.Labels().Get("container-A")
+		containerB := data.Labels().Get("container-B")
 
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
+		ctrA := nerdtest.InspectContainer(helpers, containerA)
+		data.Labels().Set("fullIdA", ctrA.ID)
+		data.Labels().Set("shortIdA", ctrA.ID[:12])
 
-		containerName, _ := tab.ReadRow(lines[1], "NAMES")
-		assert.Equal(t, containerName, testContainerA.name)
-		id, _ := tab.ReadRow(lines[1], "CONTAINER ID")
-		base.Cmd("ps", "-q", "--filter", "id="+id).AssertOutWithFunc(func(stdout string) error {
-			lines := strings.Split(strings.TrimSpace(stdout), "\n")
-			if len(lines) != 1 {
-				return fmt.Errorf("expected 1 line, got %d", len(lines))
-			}
-			if lines[0] != id {
-				return errors.New("failed to filter by id")
-			}
-			return nil
-		})
-		base.Cmd("ps", "-q", "--filter", "id="+id+id).AssertOutWithFunc(func(stdout string) error {
-			lines := strings.Split(strings.TrimSpace(stdout), "\n")
-			if len(lines) > 0 {
-				for _, line := range lines {
-					if line != "" {
-						return fmt.Errorf("unexpected container found: %s", line)
-					}
-				}
-			}
-			return nil
-		})
-		base.Cmd("ps", "-q", "--filter", "id=").AssertOutWithFunc(func(stdout string) error {
-			lines := strings.Split(strings.TrimSpace(stdout), "\n")
-			if len(lines) > 0 {
-				for _, line := range lines {
-					if line != "" {
-						return fmt.Errorf("unexpected container found: %s", line)
-					}
-				}
-			}
-			return nil
-		})
-		return nil
-	})
+		ctrB := nerdtest.InspectContainer(helpers, containerB)
+		data.Labels().Set("fullIdB", ctrB.ID)
 
-	// should support regexp
-	base.Cmd("ps", "--filter", "name=.*"+testContainerA.name+".*").AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-		}
-
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-
-		containerName, _ := tab.ReadRow(lines[1], "NAMES")
-		assert.Equal(t, containerName, testContainerA.name)
-		return nil
-	})
-
-	// fully anchored regexp
-	base.Cmd("ps", "--filter", "name=^"+testContainerA.name+"$").AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-		}
-
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-
-		containerName, _ := tab.ReadRow(lines[1], "NAMES")
-		assert.Equal(t, containerName, testContainerA.name)
-		return nil
-	})
-
-	base.Cmd("ps", "-q", "--filter", "name="+testContainerA.name+testContainerA.name).AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) > 0 {
-			for _, line := range lines {
-				if line != "" {
-					return fmt.Errorf("unexpected container found: %s", line)
-				}
-			}
-		}
-		return nil
-	})
-
-	base.Cmd("ps", "-q", "--filter", "name=").AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) == 0 {
-			return errors.New("expect at least 1 container, got 0")
-		}
-		return nil
-	})
-
-	base.Cmd("ps", "--filter", "name=listWithFilter").AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 3 {
-			return fmt.Errorf("expected at least 3 lines, got %d", len(lines))
-		}
-
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-		containerNames := map[string]struct{}{
-			testContainerA.name: {}, testContainerB.name: {},
-		}
-		for idx, line := range lines {
-			if idx == 0 {
-				continue
-			}
-			containerName, _ := tab.ReadRow(line, "NAMES")
-			if _, ok := containerNames[containerName]; !ok {
-				return fmt.Errorf("unexpected container %s found", containerName)
-			}
-		}
-		return nil
-	})
-
-	// docker filter by id only support full ID no truncate
-	// https://github.com/docker/for-linux/issues/258
-	// yet nerdctl also support truncate ID
-	base.Cmd("ps", "--no-trunc", "--filter", "since="+testContainerA.name).AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-		}
-
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-		var id string
-		for idx, line := range lines {
-			if idx == 0 {
-				continue
-			}
-			containerName, _ := tab.ReadRow(line, "NAMES")
-			if containerName != testContainerB.name {
-				return fmt.Errorf("unexpected container %s found", containerName)
-			}
-			id, _ = tab.ReadRow(line, "CONTAINER ID")
-		}
-		base.Cmd("ps", "--filter", "before="+id).AssertOutWithFunc(func(stdout string) error {
-			lines := strings.Split(strings.TrimSpace(stdout), "\n")
-			if len(lines) < 2 {
-				return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-			}
-
-			tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-			err := tab.ParseHeader(lines[0])
-			if err != nil {
-				return fmt.Errorf("failed to parse header: %v", err)
-			}
-			foundA := false
-			for idx, line := range lines {
-				if idx == 0 {
-					continue
-				}
-				containerName, _ := tab.ReadRow(line, "NAMES")
-				if containerName == testContainerA.name {
-					foundA = true
-					break
-				}
-			}
-			// there are other containers such as **wordpress** could be listed since
-			// their created times are ahead of testContainerB too
-			if !foundA {
-				return fmt.Errorf("expected container %s not found", testContainerA.name)
-			}
-			return nil
-		})
-		return nil
-	})
-
-	// docker filter by id only support full ID no truncate
-	// https://github.com/docker/for-linux/issues/258
-	// yet nerdctl also support truncate ID
-	base.Cmd("ps", "--no-trunc", "--filter", "before="+testContainerB.name).AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-		}
-
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-		foundA := false
-		var id string
-		for idx, line := range lines {
-			if idx == 0 {
-				continue
-			}
-			containerName, _ := tab.ReadRow(line, "NAMES")
-			if containerName == testContainerA.name {
-				foundA = true
-				id, _ = tab.ReadRow(line, "CONTAINER ID")
+		commonLen := 0
+		for commonLen < len(containerA) && commonLen < len(containerB) {
+			if containerA[commonLen] != containerB[commonLen] {
 				break
 			}
+			commonLen++
 		}
-		// there are other containers such as **wordpress** could be listed since
-		// their created times are ahead of testContainerB too
-		if !foundA {
-			return fmt.Errorf("expected container %s not found", testContainerA.name)
-		}
-		base.Cmd("ps", "--filter", "since="+id).AssertOutWithFunc(func(stdout string) error {
-			lines := strings.Split(strings.TrimSpace(stdout), "\n")
-			if len(lines) < 2 {
-				return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-			}
-
-			tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-			err := tab.ParseHeader(lines[0])
-			if err != nil {
-				return fmt.Errorf("failed to parse header: %v", err)
-			}
-			for idx, line := range lines {
-				if idx == 0 {
-					continue
-				}
-				containerName, _ := tab.ReadRow(line, "NAMES")
-				if containerName != testContainerB.name {
-					return fmt.Errorf("unexpected container %s found", containerName)
-				}
-			}
-			return nil
-		})
-		return nil
-	})
-
-	for _, testContainer := range []psTestContainer{testContainerA, testContainerB} {
-		for _, volume := range testContainer.volumes {
-			base.Cmd("ps", "--filter", "volume="+volume).AssertOutWithFunc(func(stdout string) error {
-				lines := strings.Split(strings.TrimSpace(stdout), "\n")
-				if len(lines) < 2 {
-					return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-				}
-
-				tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-				err := tab.ParseHeader(lines[0])
-				if err != nil {
-					return fmt.Errorf("failed to parse header: %v", err)
-				}
-				containerName, _ := tab.ReadRow(lines[1], "NAMES")
-				assert.Equal(t, containerName, testContainer.name)
-				return nil
-			})
-		}
+		data.Labels().Set("commonPrefix", strings.TrimRight(containerA[:commonLen], "-"))
 	}
-
-	base.Cmd("ps", "--filter", "network="+testContainerA.network).AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-		}
-
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-		containerName, _ := tab.ReadRow(lines[1], "NAMES")
-		assert.Equal(t, containerName, testContainerA.name)
-		return nil
-	})
-
-	for key, value := range testContainerB.labels {
-		base.Cmd("ps", "--filter", "label="+key+"="+value).AssertOutWithFunc(func(stdout string) error {
-			lines := strings.Split(strings.TrimSpace(stdout), "\n")
-			if len(lines) < 2 {
-				return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-			}
-
-			tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-			err := tab.ParseHeader(lines[0])
-			if err != nil {
-				return fmt.Errorf("failed to parse header: %v", err)
-			}
-			containerNames := map[string]struct{}{
-				testContainerB.name: {},
-			}
-			for idx, line := range lines {
-				if idx == 0 {
-					continue
-				}
-				containerName, _ := tab.ReadRow(line, "NAMES")
-				if _, ok := containerNames[containerName]; !ok {
-					return fmt.Errorf("unexpected container %s found", containerName)
-				}
-			}
-			return nil
-		})
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		cleanupPsTestContainer(data, helpers, "A")
+		cleanupPsTestContainer(data, helpers, "B")
+		cleanupPsTestContainer(data, helpers, "C")
 	}
+	testCase.SubTests = containerListFilterSubTests()
+	testCase.Run(t)
+}
 
-	base.Cmd("ps", "-a", "--filter", "exited=1").AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-		}
+func containerListFilterSubTests() []*test.Case {
+	return []*test.Case{
+		{
+			Description: "filter by name shows correct container",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "--filter", "name="+data.Labels().Get("container-A"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerA := data.Labels().Get("container-A")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
 
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-		containerNames := map[string]struct{}{
-			testContainerC.name: {},
-		}
-		for idx, line := range lines {
-			if idx == 0 {
-				continue
-			}
-			containerName, _ := tab.ReadRow(line, "NAMES")
-			if _, ok := containerNames[containerName]; !ok {
-				return fmt.Errorf("unexpected container %s found", containerName)
-			}
-		}
-		return nil
-	})
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						containerName, _ := tab.ReadRow(lines[1], "NAMES")
+						assert.Equal(t, containerName, containerA)
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by truncated id",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-q", "--filter", "id="+data.Labels().Get("shortIdA"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						shortID := data.Labels().Get("shortIdA")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Equal(t, len(lines), 1, fmt.Sprintf("expected 1 line, got %d", len(lines)))
+						assert.Equal(t, lines[0], shortID)
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by doubled id returns empty",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				id := data.Labels().Get("shortIdA")
+				return helpers.Command("ps", "-q", "--filter", "id="+id+id)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						for _, line := range strings.Split(strings.TrimSpace(stdout), "\n") {
+							assert.Equal(t, line, "", "unexpected container found: "+line)
+						}
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by empty id returns empty",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-q", "--filter", "id=")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						for _, line := range strings.Split(strings.TrimSpace(stdout), "\n") {
+							assert.Equal(t, line, "", "unexpected container found: "+line)
+						}
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by name regexp",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				containerA := data.Labels().Get("container-A")
+				return helpers.Command("ps", "--filter", "name=.*"+containerA+".*")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerA := data.Labels().Get("container-A")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
 
-	base.Cmd("ps", "-a", "--filter", "status=exited").AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-		}
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						containerName, _ := tab.ReadRow(lines[1], "NAMES")
+						assert.Equal(t, containerName, containerA)
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by name anchored regexp",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				containerA := data.Labels().Get("container-A")
+				return helpers.Command("ps", "--filter", "name=^"+containerA+"$")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerA := data.Labels().Get("container-A")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
 
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-		containerNames := map[string]struct{}{
-			testContainerC.name: {},
-		}
-		for idx, line := range lines {
-			if idx == 0 {
-				continue
-			}
-			containerName, _ := tab.ReadRow(line, "NAMES")
-			if _, ok := containerNames[containerName]; !ok {
-				return fmt.Errorf("unexpected container %s found", containerName)
-			}
-		}
-		return nil
-	})
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						containerName, _ := tab.ReadRow(lines[1], "NAMES")
+						assert.Equal(t, containerName, containerA)
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by doubled name returns empty",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				containerA := data.Labels().Get("container-A")
+				return helpers.Command("ps", "-q", "--filter", "name="+containerA+containerA)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						for _, line := range strings.Split(strings.TrimSpace(stdout), "\n") {
+							assert.Equal(t, line, "", "unexpected container found: "+line)
+						}
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by empty name returns all",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-q", "--filter", "name=")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 1, "expect at least 1 container, got 0")
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by partial name shows multiple containers",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "--filter", "name="+data.Labels().Get("commonPrefix"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerA := data.Labels().Get("container-A")
+						containerB := data.Labels().Get("container-B")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 3, "expected at least 3 lines, got %d", len(lines))
 
-	// filter container state without option "-a".
-	base.Cmd("ps", "--filter", "status=exited").AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 2 {
-			return fmt.Errorf("expected at least 2 lines, got %d", len(lines))
-		}
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						containerNames := map[string]struct{}{
+							containerA: {}, containerB: {},
+						}
+						for idx, line := range lines {
+							if idx == 0 {
+								continue
+							}
+							containerName, _ := tab.ReadRow(line, "NAMES")
+							_, ok := containerNames[containerName]
+							assert.Assert(t, ok, "unexpected container %s found", containerName)
+						}
+					},
+				}
+			},
+		},
+		// docker filter by id only support full ID no truncate
+		// https://github.com/docker/for-linux/issues/258
+		// yet nerdctl also support truncate ID
+		{
+			Description: "filter since by name shows only later container",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "--no-trunc", "--filter", "since="+data.Labels().Get("container-A"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerB := data.Labels().Get("container-B")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
 
-		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-		err := tab.ParseHeader(lines[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse header: %v", err)
-		}
-		containerNames := map[string]struct{}{
-			testContainerC.name: {},
-		}
-		for idx, line := range lines {
-			if idx == 0 {
-				continue
-			}
-			containerName, _ := tab.ReadRow(line, "NAMES")
-			if _, ok := containerNames[containerName]; !ok {
-				return fmt.Errorf("unexpected container %s found", containerName)
-			}
-		}
-		return nil
-	})
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						for idx, line := range lines {
+							if idx == 0 {
+								continue
+							}
+							name, _ := tab.ReadRow(line, "NAMES")
+							assert.Equal(t, name, containerB, "unexpected container found")
+						}
+					},
+				}
+			},
+		},
+		{
+			Description: "filter before by full id includes earlier container",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "--filter", "before="+data.Labels().Get("fullIdB"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerA := data.Labels().Get("container-A")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
+
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						// there are other containers that could be listed since
+						// their created times are ahead of containerB too
+						foundA := false
+						for idx, line := range lines {
+							if idx == 0 {
+								continue
+							}
+							name, _ := tab.ReadRow(line, "NAMES")
+							if name == containerA {
+								foundA = true
+								break
+							}
+						}
+						assert.Assert(t, foundA, "expected container %s not found", containerA)
+					},
+				}
+			},
+		},
+		{
+			Description: "filter before by name includes earlier container",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "--no-trunc", "--filter", "before="+data.Labels().Get("container-B"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerA := data.Labels().Get("container-A")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
+
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						// there are other containers that could be listed since
+						// their created times are ahead of containerB too
+						foundA := false
+						for idx, line := range lines {
+							if idx == 0 {
+								continue
+							}
+							name, _ := tab.ReadRow(line, "NAMES")
+							if name == containerA {
+								foundA = true
+								break
+							}
+						}
+						assert.Assert(t, foundA, "expected container %s not found", containerA)
+					},
+				}
+			},
+		},
+		{
+			Description: "filter since by full id shows only later container",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "--filter", "since="+data.Labels().Get("fullIdA"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerB := data.Labels().Get("container-B")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
+
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						for idx, line := range lines {
+							if idx == 0 {
+								continue
+							}
+							name, _ := tab.ReadRow(line, "NAMES")
+							assert.Equal(t, name, containerB, "unexpected container found")
+						}
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by volume",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				for _, identity := range []string{"A", "B"} {
+					containerName := data.Labels().Get("container-" + identity)
+					for i := 0; i < 4; i++ {
+						vol := data.Labels().Get(fmt.Sprintf("volume-%s-%d", identity, i))
+						helpers.Command("ps", "--filter", "volume="+vol).
+							Run(&test.Expected{
+								Output: func(stdout string, t tig.T) {
+									lines := strings.Split(strings.TrimSpace(stdout), "\n")
+									assert.Assert(t, len(lines) >= 2,
+										"expected at least 2 lines for volume=%s, got %d", vol, len(lines))
+
+									tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+									err := tab.ParseHeader(lines[0])
+									assert.NilError(t, err)
+									name, _ := tab.ReadRow(lines[1], "NAMES")
+									assert.Equal(t, name, containerName)
+								},
+							})
+					}
+				}
+			},
+		},
+		{
+			Description: "filter by network",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "--filter", "network="+data.Labels().Get("network-A"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerA := data.Labels().Get("container-A")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
+
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						containerName, _ := tab.ReadRow(lines[1], "NAMES")
+						assert.Equal(t, containerName, containerA)
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by label",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				labelKey := data.Labels().Get("labelkey-B")
+				labelVal := data.Labels().Get("labelval-B")
+				return helpers.Command("ps", "--filter", "label="+labelKey+"="+labelVal)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerB := data.Labels().Get("container-B")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
+
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						for idx, line := range lines {
+							if idx == 0 {
+								continue
+							}
+							containerName, _ := tab.ReadRow(line, "NAMES")
+							assert.Equal(t, containerName, containerB, "unexpected container found")
+						}
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by exited with -a",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-a", "--filter", "exited=1")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerC := data.Labels().Get("container-C")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
+
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						for idx, line := range lines {
+							if idx == 0 {
+								continue
+							}
+							containerName, _ := tab.ReadRow(line, "NAMES")
+							assert.Equal(t, containerName, containerC, "unexpected container found")
+						}
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by status=exited with -a",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "-a", "--filter", "status=exited")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerC := data.Labels().Get("container-C")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
+
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						for idx, line := range lines {
+							if idx == 0 {
+								continue
+							}
+							containerName, _ := tab.ReadRow(line, "NAMES")
+							assert.Equal(t, containerName, containerC, "unexpected container found")
+						}
+					},
+				}
+			},
+		},
+		{
+			Description: "filter by status=exited without -a",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("ps", "--filter", "status=exited")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						containerC := data.Labels().Get("container-C")
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
+
+						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+						err := tab.ParseHeader(lines[0])
+						assert.NilError(t, err)
+						for idx, line := range lines {
+							if idx == 0 {
+								continue
+							}
+							containerName, _ := tab.ReadRow(line, "NAMES")
+							assert.Equal(t, containerName, containerC, "unexpected container found")
+						}
+					},
+				}
+			},
+		},
+	}
 }
 
 func TestContainerListCheckCreatedTime(t *testing.T) {
-	base, _ := preparePsTestContainer(t, "checkCreatedTimeA", true)
-	preparePsTestContainer(t, "checkCreatedTimeB", true)
-	preparePsTestContainer(t, "checkCreatedTimeC", false)
-	preparePsTestContainer(t, "checkCreatedTimeD", false)
-
-	var createdTimes []string
-
-	base.Cmd("ps", "--format", "'{{json .CreatedAt}}'", "-a").AssertOutWithFunc(func(stdout string) error {
-		lines := strings.Split(strings.TrimSpace(stdout), "\n")
-		if len(lines) < 4 {
-			return fmt.Errorf("expected at least 4 lines, got %d", len(lines))
-		}
-		createdTimes = append(createdTimes, lines...)
-		return nil
-	})
-
-	slices.Reverse(createdTimes)
-	if !slices.IsSorted(createdTimes) {
-		t.Errorf("expected containers in decending order")
+	testCase := nerdtest.Setup()
+	testCase.NoParallel = true
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		setupPsTestContainer(data, helpers, "checkCreatedTimeA", true)
+		setupPsTestContainer(data, helpers, "checkCreatedTimeB", true)
+		setupPsTestContainer(data, helpers, "checkCreatedTimeC", false)
+		setupPsTestContainer(data, helpers, "checkCreatedTimeD", false)
 	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		cleanupPsTestContainer(data, helpers, "checkCreatedTimeA")
+		cleanupPsTestContainer(data, helpers, "checkCreatedTimeB")
+		cleanupPsTestContainer(data, helpers, "checkCreatedTimeC")
+		cleanupPsTestContainer(data, helpers, "checkCreatedTimeD")
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("ps", "--format", "'{{json .CreatedAt}}'", "-a")
+	}
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				lines := strings.Split(strings.TrimSpace(stdout), "\n")
+				assert.Assert(t, len(lines) >= 4, "expected at least 4 lines, got %d", len(lines))
+
+				reversed := make([]string, len(lines))
+				copy(reversed, lines)
+				slices.Reverse(reversed)
+				assert.Assert(t, slices.IsSorted(reversed), "expected containers in descending order")
+			},
+		}
+	}
+	testCase.Run(t)
 }
 
 func TestContainerListStatusFilter(t *testing.T) {
