@@ -52,23 +52,23 @@ func (c *Composer) pullServiceImage(ctx context.Context, image string, platform 
 	if po.Quiet {
 		args = append(args, "--quiet")
 	}
-	if verifier, ok := ps.Unparsed.Extensions[serviceparser.ComposeVerify]; ok {
-		args = append(args, "--verify="+verifier.(string))
+	if verifier, ok := ps.Unparsed.Extensions[serviceparser.ComposeVerify].(string); ok {
+		args = append(args, "--verify="+verifier)
 	}
-	if publicKey, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]; ok {
-		args = append(args, "--cosign-key="+publicKey.(string))
+	if publicKey, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey].(string); ok {
+		args = append(args, "--cosign-key="+publicKey)
 	}
-	if certificateIdentity, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentity]; ok {
-		args = append(args, "--cosign-certificate-identity="+certificateIdentity.(string))
+	if certificateIdentity, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentity].(string); ok {
+		args = append(args, "--cosign-certificate-identity="+certificateIdentity)
 	}
-	if certificateIdentityRegexp, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentityRegexp]; ok {
-		args = append(args, "--cosign-certificate-identity-regexp="+certificateIdentityRegexp.(string))
+	if certificateIdentityRegexp, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentityRegexp].(string); ok {
+		args = append(args, "--cosign-certificate-identity-regexp="+certificateIdentityRegexp)
 	}
-	if certificateOidcIssuer, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuer]; ok {
-		args = append(args, "--cosign-certificate-oidc-issuer="+certificateOidcIssuer.(string))
+	if certificateOidcIssuer, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuer].(string); ok {
+		args = append(args, "--cosign-certificate-oidc-issuer="+certificateOidcIssuer)
 	}
-	if certificateOidcIssuerRegexp, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuerRegexp]; ok {
-		args = append(args, "--cosign-certificate-oidc-issuer-regexp="+certificateOidcIssuerRegexp.(string))
+	if certificateOidcIssuerRegexp, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuerRegexp].(string); ok {
+		args = append(args, "--cosign-certificate-oidc-issuer-regexp="+certificateOidcIssuerRegexp)
 	}
 
 	if c.Options.Experimental {

@@ -162,27 +162,27 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 
 func imageVerifyOptionsFromCompose(ps *serviceparser.Service) types.ImageVerifyOptions {
 	var opt types.ImageVerifyOptions
-	if verifier, ok := ps.Unparsed.Extensions[serviceparser.ComposeVerify]; ok {
-		opt.Provider = verifier.(string)
+	if verifier, ok := ps.Unparsed.Extensions[serviceparser.ComposeVerify].(string); ok {
+		opt.Provider = verifier
 	} else {
 		opt.Provider = "none"
 	}
 
 	// for cosign, if key is given, use key mode, otherwise use keyless mode.
-	if keyVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey]; ok {
-		opt.CosignKey = keyVal.(string)
+	if keyVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignPublicKey].(string); ok {
+		opt.CosignKey = keyVal
 	}
-	if ciVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentity]; ok {
-		opt.CosignCertificateIdentity = ciVal.(string)
+	if ciVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentity].(string); ok {
+		opt.CosignCertificateIdentity = ciVal
 	}
-	if cirVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentityRegexp]; ok {
-		opt.CosignCertificateIdentityRegexp = cirVal.(string)
+	if cirVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateIdentityRegexp].(string); ok {
+		opt.CosignCertificateIdentityRegexp = cirVal
 	}
-	if coiVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuer]; ok {
-		opt.CosignCertificateOidcIssuer = coiVal.(string)
+	if coiVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuer].(string); ok {
+		opt.CosignCertificateOidcIssuer = coiVal
 	}
-	if coirVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuerRegexp]; ok {
-		opt.CosignCertificateOidcIssuerRegexp = coirVal.(string)
+	if coirVal, ok := ps.Unparsed.Extensions[serviceparser.ComposeCosignCertificateOidcIssuerRegexp].(string); ok {
+		opt.CosignCertificateOidcIssuerRegexp = coirVal
 	}
 	return opt
 }
