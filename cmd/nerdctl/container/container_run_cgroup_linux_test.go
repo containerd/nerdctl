@@ -29,8 +29,8 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/containerd/cgroups/v3"
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/continuity/testutil/loopback"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
@@ -38,36 +38,36 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
-	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
+	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
 func TestRunCgroupV2(t *testing.T) {
-	t.Parallel()
-	if cgroups.Mode() != cgroups.Unified {
-		t.Skip("test requires cgroup v2")
-	}
-	base := testutil.NewBase(t)
-	info := base.Info()
-	switch info.CgroupDriver {
-	case "none", "":
-		t.Skip("test requires cgroup driver")
-	}
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		nerdtest.CGroupV2,
+		nerdtest.Info(func(info dockercompat.Info) error {
+			if info.CgroupDriver == "none" || info.CgroupDriver == "" {
+				return fmt.Errorf("test requires cgroup driver")
+			}
+			if !info.MemoryLimit {
+				return fmt.Errorf("test requires MemoryLimit")
+			}
+			if !info.SwapLimit {
+				return fmt.Errorf("test requires SwapLimit")
+			}
+			if !info.CPUSet {
+				return fmt.Errorf("test requires CPUSet")
+			}
+			if !info.PidsLimit {
+				return fmt.Errorf("test requires PidsLimit")
+			}
+			return nil
+		}),
+	)
 
-	if !info.MemoryLimit {
-		t.Skip("test requires MemoryLimit")
-	}
-	if !info.SwapLimit {
-		t.Skip("test requires SwapLimit")
-	}
-	if !info.CPUSet {
-		t.Skip("test requires CPUSet")
-	}
-	if !info.PidsLimit {
-		t.Skip("test requires PidsLimit")
-	}
 	const expected1 = `42000 100000
 44040192
 44040192
@@ -84,82 +84,149 @@ func TestRunCgroupV2(t *testing.T) {
 0
 `
 
-	base.Cmd("run", "--rm",
-		"--cpus", "0.42", "--cpuset-mems", "0",
-		"--memory", "42m",
-		"--pids-limit", "42",
-		"--cpuset-cpus", "0-1",
-		"-w", "/sys/fs/cgroup", testutil.AlpineImage,
-		"cat", "cpu.max", "memory.max", "memory.swap.max",
-		"pids.max", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected1)
-	base.Cmd("run", "--rm",
-		"--cpu-quota", "42000", "--cpuset-mems", "0",
-		"--cpu-period", "100000", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m",
-		"--pids-limit", "42", "--cpuset-cpus", "0-1",
-		"-w", "/sys/fs/cgroup", testutil.AlpineImage,
-		"cat", "cpu.max", "memory.max", "memory.swap.max", "memory.low", "pids.max",
-		"cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
-
-	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate1", "-w", "/sys/fs/cgroup", "-d",
-		testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
-	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate1").Run()
-	update := []string{"update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
-		"--memory", "42m",
-		"--pids-limit", "42", "--cpuset-cpus", "0-1"}
-	if nerdtest.IsDocker() && info.CgroupVersion == "2" && info.SwapLimit {
-		// Workaround for Docker with cgroup v2:
-		// > Error response from daemon: Cannot update container 67c13276a13dd6a091cdfdebb355aa4e1ecb15fbf39c2b5c9abee89053e88fce:
-		// > Memory limit should be smaller than already set memoryswap limit, update the memoryswap at the same time
-		update = append(update, "--memory-swap=84m")
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "cpus and memory",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--cpus", "0.42", "--cpuset-mems", "0",
+					"--memory", "42m",
+					"--pids-limit", "42",
+					"--cpuset-cpus", "0-1",
+					"-w", "/sys/fs/cgroup", testutil.AlpineImage,
+					"cat", "cpu.max", "memory.max", "memory.swap.max",
+					"pids.max", "cpuset.cpus", "cpuset.mems")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.Equals(expected1),
+				}
+			},
+		},
+		{
+			Description: "explicit quota and period",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--cpu-quota", "42000", "--cpuset-mems", "0",
+					"--cpu-period", "100000", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m",
+					"--pids-limit", "42", "--cpuset-cpus", "0-1",
+					"-w", "/sys/fs/cgroup", testutil.AlpineImage,
+					"cat", "cpu.max", "memory.max", "memory.swap.max", "memory.low", "pids.max",
+					"cpuset.cpus", "cpuset.mems")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.Equals(expected2),
+				}
+			},
+		},
+		{
+			Description: "update basic",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "--name", data.Identifier(), "-w", "/sys/fs/cgroup", "-d",
+					testutil.AlpineImage, "sleep", nerdtest.Infinity)
+				update := []string{"update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
+					"--memory", "42m",
+					"--pids-limit", "42", "--cpuset-cpus", "0-1"}
+				if nerdtest.IsDocker() {
+					// Workaround for Docker with cgroup v2:
+					// > Error response from daemon: Cannot update container ...:
+					// > Memory limit should be smaller than already set memoryswap limit, update the memoryswap at the same time
+					update = append(update, "--memory-swap=84m")
+				}
+				update = append(update, data.Identifier())
+				helpers.Ensure(update...)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Identifier(),
+					"cat", "cpu.max", "memory.max", "memory.swap.max",
+					"pids.max", "cpuset.cpus", "cpuset.mems")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.Equals(expected1),
+				}
+			},
+		},
+		{
+			Description: "update with reservation and swap",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "--name", data.Identifier(), "-w", "/sys/fs/cgroup", "-d",
+					testutil.AlpineImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+				helpers.Ensure("update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
+					"--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m",
+					"--pids-limit", "42", "--cpuset-cpus", "0-1",
+					data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Identifier(),
+					"cat", "cpu.max", "memory.max", "memory.swap.max", "memory.low",
+					"pids.max", "cpuset.cpus", "cpuset.mems")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.Equals(expected2),
+				}
+			},
+		},
+		{
+			Description: "writable-cgroups true",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--security-opt", "writable-cgroups=true", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "writable-cgroups false",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--security-opt", "writable-cgroups=false", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "writable-cgroups default",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
 	}
-	update = append(update, testutil.Identifier(t)+"-testUpdate1")
-	base.Cmd(update...).AssertOK()
-	base.Cmd("exec", testutil.Identifier(t)+"-testUpdate1",
-		"cat", "cpu.max", "memory.max", "memory.swap.max",
-		"pids.max", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected1)
-
-	defer base.Cmd("rm", "-f", testutil.Identifier(t)+"-testUpdate2").Run()
-	base.Cmd("run", "--name", testutil.Identifier(t)+"-testUpdate2", "-w", "/sys/fs/cgroup", "-d",
-		testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
-	base.EnsureContainerStarted(testutil.Identifier(t) + "-testUpdate2")
-
-	base.Cmd("update", "--cpu-quota", "42000", "--cpuset-mems", "0", "--cpu-period", "100000",
-		"--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m",
-		"--pids-limit", "42", "--cpuset-cpus", "0-1",
-		testutil.Identifier(t)+"-testUpdate2").AssertOK()
-	base.Cmd("exec", testutil.Identifier(t)+"-testUpdate2",
-		"cat", "cpu.max", "memory.max", "memory.swap.max", "memory.low",
-		"pids.max", "cpuset.cpus", "cpuset.mems").AssertOutExactly(expected2)
-	base.Cmd("run", "--rm", "--security-opt", "writable-cgroups=true", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo").AssertOK()
-	base.Cmd("run", "--rm", "--security-opt", "writable-cgroups=false", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo").AssertFail()
-	base.Cmd("run", "--rm", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/foo").AssertFail()
+	testCase.Run(t)
 }
 
 func TestRunCgroupV1(t *testing.T) {
-	t.Parallel()
-	switch cgroups.Mode() {
-	case cgroups.Legacy, cgroups.Hybrid:
-	default:
-		t.Skip("test requires cgroup v1")
-	}
-	base := testutil.NewBase(t)
-	info := base.Info()
-	switch info.CgroupDriver {
-	case "none", "":
-		t.Skip("test requires cgroup driver")
-	}
-	if !info.MemoryLimit {
-		t.Skip("test requires MemoryLimit")
-	}
-	if !info.CPUShares {
-		t.Skip("test requires CPUShares")
-	}
-	if !info.CPUSet {
-		t.Skip("test requires CPUSet")
-	}
-	if !info.PidsLimit {
-		t.Skip("test requires PidsLimit")
-	}
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		require.Not(nerdtest.CGroupV2),
+		nerdtest.Info(func(info dockercompat.Info) error {
+			if info.CgroupDriver == "none" || info.CgroupDriver == "" {
+				return fmt.Errorf("test requires cgroup driver")
+			}
+			if !info.MemoryLimit {
+				return fmt.Errorf("test requires MemoryLimit")
+			}
+			if !info.CPUShares {
+				return fmt.Errorf("test requires CPUShares")
+			}
+			if !info.CPUSet {
+				return fmt.Errorf("test requires CPUSet")
+			}
+			if !info.PidsLimit {
+				return fmt.Errorf("test requires PidsLimit")
+			}
+			return nil
+		}),
+	)
+
 	quota := "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
 	period := "/sys/fs/cgroup/cpu/cpu.cfs_period_us"
 	cpusetMems := "/sys/fs/cgroup/cpuset/cpuset.mems"
@@ -170,60 +237,103 @@ func TestRunCgroupV1(t *testing.T) {
 	pidsLimit := "/sys/fs/cgroup/pids/pids.max"
 	cpuShare := "/sys/fs/cgroup/cpu/cpu.shares"
 	cpusetCpus := "/sys/fs/cgroup/cpuset/cpuset.cpus"
-
 	const expected = "42000\n100000\n0\n44040192\n6291456\n104857600\n0\n42\n2000\n0-1\n"
-	base.Cmd("run", "--rm", "--cpus", "0.42", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus).AssertOutExactly(expected)
-	base.Cmd("run", "--rm", "--cpu-quota", "42000", "--cpu-period", "100000", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus).AssertOutExactly(expected)
-	base.Cmd("run", "--rm", "--security-opt", "writable-cgroups=true", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/pids/foo").AssertOK()
-	base.Cmd("run", "--rm", "--security-opt", "writable-cgroups=false", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/pids/foo").AssertFail()
-	base.Cmd("run", "--rm", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/pids/foo").AssertFail()
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "cpus and memory",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--cpus", "0.42", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.Equals(expected),
+				}
+			},
+		},
+		{
+			Description: "explicit quota and period",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--cpu-quota", "42000", "--cpu-period", "100000", "--cpuset-mems", "0", "--memory", "42m", "--memory-reservation", "6m", "--memory-swap", "100m", "--memory-swappiness", "0", "--pids-limit", "42", "--cpu-shares", "2000", "--cpuset-cpus", "0-1", testutil.AlpineImage, "cat", quota, period, cpusetMems, memoryLimit, memoryReservation, memorySwap, memorySwappiness, pidsLimit, cpuShare, cpusetCpus)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.Equals(expected),
+				}
+			},
+		},
+		{
+			Description: "writable-cgroups true",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--security-opt", "writable-cgroups=true", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/pids/foo")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "writable-cgroups false",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--security-opt", "writable-cgroups=false", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/pids/foo")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "writable-cgroups default",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", testutil.AlpineImage, "mkdir", "/sys/fs/cgroup/pids/foo")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+	}
+	testCase.Run(t)
 }
 
 // TestIssue3781 tests https://github.com/containerd/nerdctl/issues/3781
 func TestIssue3781(t *testing.T) {
-	t.Parallel()
 	testCase := nerdtest.Setup()
-	testCase.Require = require.Not(nerdtest.Docker)
-
-	base := testutil.NewBase(t)
-	info := base.Info()
-	switch info.CgroupDriver {
-	case "none", "":
-		t.Skip("test requires cgroup driver")
-	}
-	containerName := testutil.Identifier(t)
-	base.Cmd("run", "-d", "--name", containerName, testutil.AlpineImage, "sleep", "infinity").AssertOK()
-	defer func() {
-		base.Cmd("rm", "-f", containerName)
-	}()
-	base.Cmd("update", "--cpuset-cpus", "0-1", containerName).AssertOK()
-	addr := base.ContainerdAddress()
-	client, err := containerd.New(addr, containerd.WithDefaultNamespace(testutil.Namespace))
-	assert.NilError(base.T, err)
-	ctx := context.Background()
-
-	// get container id by container name.
-	var cid string
-	var args []string
-	args = append(args, containerName)
-	walker := &containerwalker.ContainerWalker{
-		Client: client,
-		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchCount > 1 {
-				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
+	testCase.Require = require.All(
+		require.Not(nerdtest.Docker),
+		nerdtest.Info(func(info dockercompat.Info) error {
+			if info.CgroupDriver == "none" || info.CgroupDriver == "" {
+				return fmt.Errorf("test requires cgroup driver")
 			}
-			cid = found.Container.ID()
 			return nil
-		},
+		}),
+	)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.AlpineImage, "sleep", "infinity")
+		helpers.Ensure("update", "--cpuset-cpus", "0-1", data.Identifier())
 	}
-	err = walker.WalkAll(ctx, args, true)
-	assert.NilError(base.T, err)
-
-	container, err := client.LoadContainer(ctx, cid)
-	assert.NilError(base.T, err)
-	spec, err := container.Spec(ctx)
-	assert.NilError(base.T, err)
-	assert.Equal(t, spec.Linux.Resources.Pids == nil, true)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", "--format", "{{.Id}}", data.Identifier())
+	}
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			Output: func(stdout string, t tig.T) {
+				cid := strings.TrimSpace(stdout)
+				addr := defaults.DefaultAddress
+				if rootlessutil.IsRootless() {
+					stateDir, err := rootlessutil.RootlessKitStateDir()
+					assert.NilError(t, err)
+					childPid, err := rootlessutil.RootlessKitChildPid(stateDir)
+					assert.NilError(t, err)
+					addr = filepath.Join("/proc", fmt.Sprintf("%d", childPid), "root", defaults.DefaultAddress)
+				}
+				client, err := containerd.New(addr, containerd.WithDefaultNamespace(testutil.Namespace))
+				assert.NilError(t, err)
+				defer client.Close()
+				ctx := context.Background()
+				cntr, err := client.LoadContainer(ctx, cid)
+				assert.NilError(t, err)
+				spec, err := cntr.Spec(ctx)
+				assert.NilError(t, err)
+				assert.Assert(t, spec.Linux.Resources.Pids == nil)
+			},
+		}
+	}
+	testCase.Run(t)
 }
 
 func TestRunDevice(t *testing.T) {
@@ -387,98 +497,135 @@ func TestParseDevice(t *testing.T) {
 }
 
 func TestRunCgroupConf(t *testing.T) {
-	t.Parallel()
-	if cgroups.Mode() != cgroups.Unified {
-		t.Skip("test requires cgroup v2")
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		// Docker lacks --cgroup-conf
+		require.Not(nerdtest.Docker),
+		nerdtest.CGroupV2,
+		nerdtest.Info(func(info dockercompat.Info) error {
+			if info.CgroupDriver == "none" || info.CgroupDriver == "" {
+				return fmt.Errorf("test requires cgroup driver")
+			}
+			if !info.MemoryLimit {
+				return fmt.Errorf("test requires MemoryLimit")
+			}
+			return nil
+		}),
+	)
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run", "--rm", "--cgroup-conf", "memory.high=33554432", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
+			"cat", "memory.high")
 	}
-	testutil.DockerIncompatible(t) // Docker lacks --cgroup-conf
-	base := testutil.NewBase(t)
-	info := base.Info()
-	switch info.CgroupDriver {
-	case "none", "":
-		t.Skip("test requires cgroup driver")
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			Output: expect.Equals("33554432\n"),
+		}
 	}
-	if !info.MemoryLimit {
-		t.Skip("test requires MemoryLimit")
-	}
-	base.Cmd("run", "--rm", "--cgroup-conf", "memory.high=33554432", "-w", "/sys/fs/cgroup", testutil.AlpineImage,
-		"cat", "memory.high").AssertOutExactly("33554432\n")
+	testCase.Run(t)
 }
 
 func TestRunCgroupParent(t *testing.T) {
-	t.Parallel()
-	base := testutil.NewBase(t)
-	info := base.Info()
-	switch info.CgroupDriver {
-	case "none", "":
-		t.Skip("test requires cgroup driver")
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Info(func(info dockercompat.Info) error {
+		if info.CgroupDriver == "none" || info.CgroupDriver == "" {
+			return fmt.Errorf("test requires cgroup driver")
+		}
+		return nil
+	})
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		cgroupDriver := strings.TrimSpace(helpers.Capture("info", "--format", "{{.CgroupDriver}}"))
+		parent := "/foobarbaz"
+		if cgroupDriver == "systemd" {
+			// Path separators aren't allowed in systemd path. runc
+			// explicitly checks for this.
+			// https://github.com/opencontainers/runc/blob/016a0d29d1750180b2a619fc70d6fe0d80111be0/libcontainer/cgroups/systemd/common.go#L65-L68
+			parent = "foobarbaz.slice"
+		}
+		data.Labels().Set("parent", parent)
+		data.Labels().Set("cgroupDriver", cgroupDriver)
+		// cgroup2 without host cgroup ns will just output 0::/ which doesn't help much to verify
+		// we got our expected path. This approach should work for both cgroup1 and 2, there will
+		// just be many more entries for cgroup1 as there'll be an entry per controller.
+		helpers.Ensure("run", "-d", "--name", data.Identifier(),
+			"--cgroupns=host", "--cgroup-parent", parent,
+			testutil.AlpineImage, "sleep", "infinity")
 	}
-
-	containerName := testutil.Identifier(t)
-	t.Logf("Using %q cgroup driver", info.CgroupDriver)
-
-	parent := "/foobarbaz"
-	if info.CgroupDriver == "systemd" {
-		// Path separators aren't allowed in systemd path. runc
-		// explicitly checks for this.
-		// https://github.com/opencontainers/runc/blob/016a0d29d1750180b2a619fc70d6fe0d80111be0/libcontainer/cgroups/systemd/common.go#L65-L68
-		parent = "foobarbaz.slice"
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
-
-	tearDown := func() {
-		base.Cmd("rm", "-f", containerName).Run()
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("exec", data.Identifier(), "cat", "/proc/self/cgroup")
 	}
-
-	tearDown()
-	t.Cleanup(tearDown)
-
-	// cgroup2 without host cgroup ns will just output 0::/ which doesn't help much to verify
-	// we got our expected path. This approach should work for both cgroup1 and 2, there will
-	// just be many more entries for cgroup1 as there'll be an entry per controller.
-	base.Cmd(
-		"run",
-		"-d",
-		"--name",
-		containerName,
-		"--cgroupns=host",
-		"--cgroup-parent", parent,
-		testutil.AlpineImage,
-		"sleep",
-		"infinity",
-	).AssertOK()
-
-	id := base.InspectContainer(containerName).ID
-	expected := filepath.Join(parent, id)
-	if info.CgroupDriver == "systemd" {
-		expected = filepath.Join(parent, fmt.Sprintf("nerdctl-%s", id))
-		if nerdtest.IsDocker() {
-			expected = filepath.Join(parent, fmt.Sprintf("docker-%s", id))
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		parent := data.Labels().Get("parent")
+		cgroupDriver := data.Labels().Get("cgroupDriver")
+		id := strings.TrimSpace(helpers.Capture("inspect", "--format", "{{.Id}}", data.Identifier()))
+		expected := filepath.Join(parent, id)
+		if cgroupDriver == "systemd" {
+			expected = filepath.Join(parent, fmt.Sprintf("nerdctl-%s", id))
+			if nerdtest.IsDocker() {
+				expected = filepath.Join(parent, fmt.Sprintf("docker-%s", id))
+			}
+		}
+		return &test.Expected{
+			Output: expect.Contains(expected),
 		}
 	}
-	base.Cmd("exec", containerName, "cat", "/proc/self/cgroup").AssertOutContains(expected)
+	testCase.Run(t)
 }
 
 func TestRunBlkioWeightCgroupV2(t *testing.T) {
-	t.Parallel()
-	if cgroups.Mode() != cgroups.Unified {
-		t.Skip("test requires cgroup v2")
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		nerdtest.CGroupV2,
+		nerdtest.Info(func(info dockercompat.Info) error {
+			if info.CgroupDriver == "none" || info.CgroupDriver == "" {
+				return fmt.Errorf("test requires cgroup driver")
+			}
+			return nil
+		}),
+	)
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		if _, err := os.Stat("/sys/module/bfq"); err != nil {
+			helpers.T().Skip(fmt.Sprintf("test requires \"bfq\" module to be loaded: %v", err))
+		}
+		// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
+		helpers.Ensure("run", "--name", data.Identifier(), "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.AlpineImage, "sleep", nerdtest.Infinity)
+		data.Labels().Set("container", data.Identifier())
 	}
-	if _, err := os.Stat("/sys/module/bfq"); err != nil {
-		t.Skipf("test requires \"bfq\" module to be loaded: %v", err)
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
-	base := testutil.NewBase(t)
-	info := base.Info()
-	switch info.CgroupDriver {
-	case "none", "":
-		t.Skip("test requires cgroup driver")
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "initial weight",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("container"), "cat", "io.bfq.weight")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.Equals("default 300\n"),
+				}
+			},
+		},
+		{
+			Description: "update weight",
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("update", data.Labels().Get("container"), "--blkio-weight", "400")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("container"), "cat", "io.bfq.weight")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: expect.Equals("default 400\n"),
+				}
+			},
+		},
 	}
-	containerName := testutil.Identifier(t)
-	defer base.Cmd("rm", "-f", containerName).AssertOK()
-	// when bfq io scheduler is used, the io.weight knob is exposed as io.bfq.weight
-	base.Cmd("run", "--name", containerName, "--blkio-weight", "300", "-w", "/sys/fs/cgroup", testutil.AlpineImage, "sleep", nerdtest.Infinity).AssertOK()
-	base.Cmd("exec", containerName, "cat", "io.bfq.weight").AssertOutExactly("default 300\n")
-	base.Cmd("update", containerName, "--blkio-weight", "400").AssertOK()
-	base.Cmd("exec", containerName, "cat", "io.bfq.weight").AssertOutExactly("default 400\n")
+	testCase.Run(t)
 }
 
 func TestRunBlkioSettingCgroupV2(t *testing.T) {
