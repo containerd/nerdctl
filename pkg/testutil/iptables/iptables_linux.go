@@ -55,6 +55,32 @@ func ForwardExists(t *testing.T, ipt *iptables.IPTables, chain, containerIP stri
 	return found
 }
 
+// ForwardExistsFromRules checks whether an iptables forwarding rule exists
+// in the provided list of rule strings. Unlike ForwardExists, this function
+// does not query iptables directly, making it suitable for use with
+// pre-captured command output (e.g., from helpers.Custom("iptables", ...)).
+func ForwardExistsFromRules(rules []string, containerIP string, port int) (bool, error) {
+	if len(rules) < 1 {
+		return false, fmt.Errorf("not enough rules: %d", len(rules))
+	}
+
+	found := false
+	matchRule := `--dport ` + fmt.Sprintf("%d", port) + ` .+ --to-destination ` + containerIP
+
+	for _, rule := range rules {
+		foundInRule, err := regexp.MatchString(matchRule, rule)
+		if err != nil {
+			return false, fmt.Errorf("error in match string: %q", err)
+		}
+
+		if foundInRule {
+			found = foundInRule
+		}
+	}
+
+	return found, nil
+}
+
 // GetRedirectedChain returns the chain where the traffic is being redirected.
 // This is how libcni manage its port maps.
 // Suppose you have the following rule:
