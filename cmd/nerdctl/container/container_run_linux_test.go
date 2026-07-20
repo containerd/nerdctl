@@ -47,7 +47,7 @@ import (
 )
 
 func TestRunCustomRootfs(t *testing.T) {
-	testutil.DockerIncompatible(t)
+	testCase := nerdtest.Setup()
 	// FIXME: root issue is undiagnosed and this is very likely a containerd bug
 	// It appears that in certain conditions, the proxy content store info method will fail on the layer of the image
 	// Search for func (pcs *proxyContentStore) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (content.ReaderAt, error) {
@@ -57,27 +57,46 @@ func TestRunCustomRootfs(t *testing.T) {
 	// - this test is not parallelized - but the fact that namespacing it solves the problem suggest that something
 	// happening in the default namespace BEFORE this test is run is SOMETIMES setting conditions that will make this fail
 	// Possible suspects would be concurrent pulls somehow effing things up w. namespaces.
-	base := testutil.NewBaseWithNamespace(t, testutil.Identifier(t))
-	rootfs := prepareCustomRootfs(base, testutil.AlpineImage)
-	t.Cleanup(func() {
-		base.Cmd("namespace", "remove", testutil.Identifier(t)).Run()
-	})
-	defer os.RemoveAll(rootfs)
-	base.Cmd("run", "--rm", "--rootfs", rootfs, "/bin/cat", "/proc/self/environ").AssertOutContains("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
-	base.Cmd("run", "--rm", "--entrypoint", "/bin/echo", "--rootfs", rootfs, "echo", "foo").AssertOutExactly("echo foo\n")
+	testCase.Require = require.Not(nerdtest.Docker)
+	testCase.NoParallel = true
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Write(nerdtest.Namespace, test.ConfigValue(data.Identifier()))
+		rootfs := prepareCustomRootfs(data, helpers, testutil.AlpineImage)
+		data.Labels().Set("rootfs", rootfs)
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("namespace", "remove", data.Identifier())
+		if rootfs := data.Labels().Get("rootfs"); rootfs != "" {
+			os.RemoveAll(rootfs)
+		}
+	}
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "cat environ shows PATH",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--rootfs", data.Labels().Get("rootfs"), "/bin/cat", "/proc/self/environ")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")),
+		},
+		{
+			Description: "echo with entrypoint",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm", "--entrypoint", "/bin/echo", "--rootfs", data.Labels().Get("rootfs"), "echo", "foo")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("echo foo\n")),
+		},
+	}
+	testCase.Run(t)
 }
 
-func prepareCustomRootfs(base *testutil.Base, imageName string) string {
-	base.Cmd("pull", "--quiet", imageName).AssertOK()
-	tmpDir, err := os.MkdirTemp(base.T.TempDir(), "test-save")
-	assert.NilError(base.T, err)
-	defer os.RemoveAll(tmpDir)
+func prepareCustomRootfs(data test.Data, h test.Helpers, imageName string) string {
+	h.Ensure("pull", "--quiet", imageName)
+	tmpDir := data.Temp().Dir("test-save")
 	archiveTarPath := filepath.Join(tmpDir, "a.tar")
-	base.Cmd("save", "-o", archiveTarPath, imageName).AssertOK()
-	rootfs, err := os.MkdirTemp(base.T.TempDir(), "rootfs")
-	assert.NilError(base.T, err)
-	err = helpers.ExtractDockerArchive(archiveTarPath, rootfs)
-	assert.NilError(base.T, err)
+	h.Ensure("save", "-o", archiveTarPath, imageName)
+	rootfs := data.Temp().Dir("rootfs")
+	err := helpers.ExtractDockerArchive(archiveTarPath, rootfs)
+	assert.NilError(h.T(), err)
 	return rootfs
 }
 
