@@ -43,6 +43,8 @@ type ImageListOptions struct {
 	Names bool
 	// All (unimplemented yet, always true)
 	All bool
+	// Tree show the image list as a tree, with a row per platform (compatible with `docker image ls --tree`)
+	Tree bool
 }
 
 // ImageConvertOptions specifies options for `nerdctl image convert`.

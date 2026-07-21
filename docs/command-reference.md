@@ -852,6 +852,7 @@ Flags:
   - :whale: `--filter=dangling=true`: Filter images by dangling
   - :nerd_face: `--filter=reference=<image:tag>`: Filter images by reference (Matches both docker compatible wildcard pattern and regexp match)
 - :nerd_face: `--names`: Show image names
+- :whale: `--tree`: Show the image list as a tree, with a row per platform. Cannot be combined with `--quiet` or `--format`.
 
 ### :whale: nerdctl pull
 
