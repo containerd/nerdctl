@@ -17,7 +17,7 @@ require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
 	github.com/containerd/go-cni v1.1.13 //gomodjail:unconfined
-	github.com/containerd/imgcrypt/v2 v2.0.2 //gomodjail:unconfined
+	github.com/containerd/imgcrypt/v2 v2.0.3 //gomodjail:unconfined
 	github.com/containerd/log v0.1.0
 	github.com/containerd/nerdctl/mod/tigron v0.0.0
 	github.com/containerd/nydus-snapshotter v0.15.15 //gomodjail:unconfined
@@ -81,7 +81,7 @@ require (
 	github.com/containerd/go-runc v1.1.0 // indirect
 	github.com/containerd/plugin v1.1.0 // indirect
 	github.com/containerd/ttrpc v1.2.8 // indirect
-	github.com/containers/ocicrypt v1.2.1 // indirect
+	github.com/containers/ocicrypt v1.3.2 // indirect
 	github.com/creack/pty v1.1.24 // indirect
 	github.com/djherbis/times v1.6.0 // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
@@ -91,13 +91,12 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-shellwords v1.0.13 // indirect
-	github.com/miekg/pkcs11 v1.1.1 // indirect
+	github.com/miekg/pkcs11 v1.1.2 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
@@ -120,7 +119,7 @@ require (
 	github.com/sasha-s/go-deadlock v0.3.5 // indirect
 	//gomodjail:unconfined
 	github.com/sirupsen/logrus v1.9.4 // indirect
-	github.com/smallstep/pkcs7 v0.1.1 // indirect
+	github.com/smallstep/pkcs7 v0.2.1 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/stefanberger/go-pkcs11uri v0.0.0-20230803200340-78284954bff6 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
@@ -137,7 +136,7 @@ require (
 	golang.org/x/mod v0.37.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	//gomodjail:unconfined
-	google.golang.org/grpc v1.81.1 // indirect
+	google.golang.org/grpc v1.82.0 // indirect
 	//gomodjail:unconfined
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -148,7 +147,9 @@ require (
 
 require (
 	cyphar.com/go-pathrs v0.2.5 // indirect
+	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/moby/moby/api v1.55.0 // indirect
 	github.com/moby/sys/capability v0.4.0 // indirect
