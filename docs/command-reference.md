@@ -835,6 +835,11 @@ List images
 
 :warning: The image ID is usually different from Docker image ID.
 
+By default (Docker v29 compatible view) the columns are `IMAGE`, `ID`, `DISK USAGE`,
+`CONTENT SIZE` and `EXTRA` (where `U` means the image is in use by a container).
+Passing `--format`, `--quiet`, `--no-trunc`, `--digests` or `--names` falls back to the
+legacy table (`REPOSITORY`, `TAG`, `IMAGE ID`, `CREATED`, `PLATFORM`, `SIZE`, `BLOB SIZE`).
+
 Usage: `nerdctl images [OPTIONS] [REPOSITORY[:TAG]]`
 
 Flags:
@@ -843,7 +848,7 @@ Flags:
 - :whale: `-q, --quiet`: Only show numeric IDs
 - :whale: `--no-trunc`: Don't truncate output
 - :whale: `--format`: Format the output using the given Go template
-  - :whale: `--format=table` (default): Table
+  - :whale: `--format=table`: Legacy table (default is the Docker v29 compatible view)
   - :whale: `--format='{{json .}}'`: JSON
   - :nerd_face: `--format=wide`: Wide table
   - :nerd_face: `--format=json`: Alias of `--format='{{json .}}'`

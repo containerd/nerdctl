@@ -33,7 +33,14 @@ func ImagesCommand() *cobra.Command {
 	shortHelp := "List images"
 	longHelp := shortHelp + `
 
-Properties:
+By default (Docker v29 compatible view) the following columns are shown:
+- IMAGE:        Image reference ("repository:tag", "repository@digest", or "<untagged>")
+- ID:           OCI Digest. Usually different from Docker image ID. Shared for multi-platform images.
+- DISK USAGE:   Size of the unpacked snapshots
+- CONTENT SIZE: Size of the blobs (such as layer tarballs) in the content store
+- EXTRA:        Flags for the image; "U" means the image is in use by a container
+
+Passing --format, --quiet, --no-trunc, --digests or --names falls back to the legacy table:
 - REPOSITORY: Repository
 - TAG:        Tag
 - NAME:       Name of the image, --names for skip parsing as repository and tag.
