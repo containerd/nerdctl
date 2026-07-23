@@ -100,7 +100,6 @@ linters:
         - name: enforce-switch-style
           disabled: true
         - name: var-naming
-          disabled: true
     depguard:
       rules:
         main:
