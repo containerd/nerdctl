@@ -33,7 +33,6 @@ type IPAMRange struct {
 	RangeStart string `json:"rangeStart,omitempty"`
 	RangeEnd   string `json:"rangeEnd,omitempty"`
 	Gateway    string `json:"gateway,omitempty"`
-	IPRange    string `json:"ipRange,omitempty"`
 }
 
 type IPAMRoute struct {

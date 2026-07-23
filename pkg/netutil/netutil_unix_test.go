@@ -95,12 +95,14 @@ func TestPairIPAMRangesIPRange(t *testing.T) {
 		ranges, findIPv4, err := pairIPAMRanges(subnets, nil, ipRanges, true)
 		assert.NilError(t, err)
 		assert.Equal(t, true, findIPv4)
+		// The ip-range is no longer stored verbatim; its effect shows up as the
+		// rangeStart/rangeEnd bounds host-local actually uses.
 		got := map[string]string{}
 		for _, r := range ranges {
-			got[r[0].Subnet] = r[0].IPRange
+			got[r[0].Subnet] = r[0].RangeStart
 		}
-		assert.Equal(t, "10.6.1.0/24", got["10.6.0.0/16"])
-		assert.Equal(t, "2001:db8:6::/80", got["2001:db8:6::/64"])
+		assert.Equal(t, "10.6.1.1", got["10.6.0.0/16"])
+		assert.Equal(t, "2001:db8:6::1", got["2001:db8:6::/64"])
 	})
 
 	t.Run("an ip-range matching no subnet errors", func(t *testing.T) {

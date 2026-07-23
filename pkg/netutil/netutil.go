@@ -613,9 +613,9 @@ func parseIPAMRange(subnet *net.IPNet, gatewayStr, ipRangeStr string) (*IPAMRang
 		if !subnet.Contains(rangeStart) || !subnet.Contains(rangeEnd) {
 			return nil, fmt.Errorf("no matching subnet %q for ip-range %q", subnet, ipRangeStr)
 		}
+		// host-local has no ipRange field; store the bounds and recompute on inspect.
 		res.RangeStart = rangeStart.String()
 		res.RangeEnd = rangeEnd.String()
-		res.IPRange = ipRangeStr
 	}
 
 	return res, nil

@@ -134,3 +134,43 @@ func FirstIPInSubnet(addr *net.IPNet) (net.IP, error) {
 	cidr.IP[len(cidr.IP)-1]++
 	return cidr.IP, nil
 }
+
+// CIDRFromRange inverts FirstIPInSubnet/LastIPInSubnet: it rebuilds the CIDR from
+// the start and end they produced. Returns "" for empty or unparsable bounds.
+// A /31 or /127 has no distinct network and broadcast, so it recomputes as /32 or /128.
+func CIDRFromRange(startStr, endStr string) string {
+	if startStr == "" || endStr == "" {
+		return ""
+	}
+	start, end := net.ParseIP(startStr), net.ParseIP(endStr)
+	if start == nil || end == nil {
+		return ""
+	}
+	// A single-address range is a /32 or /128.
+	if start.Equal(end) {
+		if start.To4() != nil {
+			return start.String() + "/32"
+		}
+		return start.String() + "/128"
+	}
+	// Canonical byte form: 4 for v4, 16 for v6.
+	s, e, bits := start.To4(), end.To4(), 32
+	if s == nil {
+		s, e, bits = start.To16(), end.To16(), 128
+	}
+	if e == nil || len(s) != len(e) {
+		return ""
+	}
+	// Undo FirstIPInSubnet's last-byte bump to get the network.
+	network := make(net.IP, len(s))
+	copy(network, s)
+	network[len(network)-1]--
+	// end is the broadcast, so network^end is the host mask; its width is the host bits.
+	hostBits := 0
+	for i := range network {
+		for b := network[i] ^ e[i]; b != 0; b >>= 1 {
+			hostBits++
+		}
+	}
+	return fmt.Sprintf("%s/%d", network.String(), bits-hostBits)
+}

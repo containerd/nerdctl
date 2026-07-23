@@ -906,3 +906,19 @@ func TestImageFromNative(t *testing.T) {
 		}
 	})
 }
+
+func TestNetworkFromNativeIPRange(t *testing.T) {
+	// host-local stores only rangeStart/rangeEnd; inspect must recompute the
+	// --ip-range CIDR from them and report it under IPRange like Docker, while a
+	// subnet without an ip-range reports no IPRange.
+	cni := `{"name":"testnet","plugins":[{"ipam":{"ranges":[` +
+		`[{"subnet":"172.28.0.0/16","gateway":"172.28.5.254","rangeStart":"172.28.5.1","rangeEnd":"172.28.5.255"}],` +
+		`[{"subnet":"10.9.0.0/24","gateway":"10.9.0.1"}]` +
+		`]}}]}`
+	got, err := NetworkFromNative(&native.Network{CNI: []byte(cni)})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, []IPAMConfig{
+		{Subnet: "172.28.0.0/16", Gateway: "172.28.5.254", IPRange: "172.28.5.0/24"},
+		{Subnet: "10.9.0.0/24", Gateway: "10.9.0.1"},
+	}, got.IPAM.Config)
+}

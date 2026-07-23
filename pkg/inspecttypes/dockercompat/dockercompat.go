@@ -49,6 +49,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
+	subnetutil "github.com/containerd/nerdctl/v2/pkg/netutil/subnet"
 	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
 )
 
@@ -1085,9 +1086,18 @@ type structuredCNI struct {
 	Name    string `json:"name"`
 	Plugins []struct {
 		Ipam struct {
-			Ranges [][]IPAMConfig `json:"ranges"`
+			Ranges [][]cniIPAMRange `json:"ranges"`
 		} `json:"ipam"`
 	} `json:"plugins"`
+}
+
+// cniIPAMRange is the on-disk host-local range. Its bounds let inspect recompute
+// the ip-range CIDR, which host-local has no field for.
+type cniIPAMRange struct {
+	Subnet     string `json:"subnet"`
+	Gateway    string `json:"gateway"`
+	RangeStart string `json:"rangeStart"`
+	RangeEnd   string `json:"rangeEnd"`
 }
 
 type MemorySetting struct {
@@ -1196,7 +1206,14 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 	res.Name = sCNI.Name
 	for _, plugin := range sCNI.Plugins {
 		for _, ranges := range plugin.Ipam.Ranges {
-			res.IPAM.Config = append(res.IPAM.Config, ranges...)
+			for _, r := range ranges {
+				res.IPAM.Config = append(res.IPAM.Config, IPAMConfig{
+					Subnet:  r.Subnet,
+					Gateway: r.Gateway,
+					// recompute IPRange from the bounds, as Docker reports it.
+					IPRange: subnetutil.CIDRFromRange(r.RangeStart, r.RangeEnd),
+				})
+			}
 		}
 	}
 
