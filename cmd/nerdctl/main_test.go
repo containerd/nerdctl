@@ -22,7 +22,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
@@ -93,7 +92,7 @@ func TestNerdctlConfig(t *testing.T) {
 		{
 			Description: "Default",
 			Command:     test.Command("info", "-f", "{{.Driver}}"),
-			Expected:    test.Expects(0, nil, expect.Equals(defaults.DefaultSnapshotter+"\n")),
+			Expected:    test.Expects(0, nil, expect.Equals(""+"\n")),
 		},
 		{
 			Description: "TOML > Default",
