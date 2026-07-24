@@ -23,13 +23,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/containernetworking/cni/libcni"
+	"go4.org/netipx"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
@@ -341,7 +344,7 @@ func (e *CNIEnv) CreateNetwork(opts types.NetworkCreateOptions) (*NetworkConfig,
 	}
 	// A nil IPv4 defaults to enabled.
 	ipv4 := opts.IPv4 == nil || *opts.IPv4
-	ipam, err := e.generateIPAM(opts.IPAMDriver, opts.Subnets, opts.Gateway, opts.IPRange, opts.IPAMOptions, opts.IPv6, ipv4, opts.Internal)
+	ipam, auxBySubnet, err := e.generateIPAM(opts.IPAMDriver, opts.Subnets, opts.Gateway, opts.IPRange, opts.AuxAddresses, opts.IPAMOptions, opts.IPv6, ipv4, opts.Internal)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +352,18 @@ func (e *CNIEnv) CreateNetwork(opts types.NetworkCreateOptions) (*NetworkConfig,
 	if err != nil {
 		return nil, err
 	}
-	netConf, err = e.generateNetworkConfig(opts.Name, opts.Labels, plugins)
+	// Reserved aux-addresses are kept in a nerdctl label rather than the CNI
+	// config, since host-local has no field for them; network inspect reads the
+	// label back to report AuxiliaryAddresses the way Docker does.
+	netLabels := opts.Labels
+	if len(auxBySubnet) > 0 {
+		b, err := json.Marshal(auxBySubnet)
+		if err != nil {
+			return nil, err
+		}
+		netLabels = append(append([]string{}, opts.Labels...), fmt.Sprintf("%s=%s", labels.NetworkAuxAddresses, b))
+	}
+	netConf, err = e.generateNetworkConfig(opts.Name, netLabels, plugins)
 	if err != nil {
 		return nil, err
 	}
@@ -619,6 +633,116 @@ func parseIPAMRange(subnet *net.IPNet, gatewayStr, ipRangeStr string) (*IPAMRang
 	}
 
 	return res, nil
+}
+
+// ParseAuxAddresses parses Docker-style "name=IP" auxiliary-address pairs into a
+// name-to-IP map. An entry with an empty IP (including one with no "=") is
+// dropped; a later entry overrides an earlier one with the same name, matching
+// Docker; and a non-empty but unparsable IP is an error.
+func ParseAuxAddresses(raw []string) (map[string]string, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	aux := make(map[string]string, len(raw))
+	for _, kv := range raw {
+		name, ip, _ := strings.Cut(kv, "=")
+		if ip == "" {
+			continue
+		}
+		if net.ParseIP(ip) == nil {
+			return nil, fmt.Errorf("invalid aux-address %q", ip)
+		}
+		aux[name] = ip
+	}
+	if len(aux) == 0 {
+		return nil, nil
+	}
+	return aux, nil
+}
+
+// splitIPAMRange reserves the given IPs inside a subnet's allocation range by
+// carving them out. host-local has no exclude list, but it does allocate across
+// every range in a set, so the reserved IPs become gaps between sub-ranges and
+// are never handed out. Reserved IPs outside the allocation window need no split
+// (host-local cannot reach them anyway). The base range's gateway and ip-range
+// are kept on the first sub-range so the rest of the pipeline and `network
+// inspect` behave exactly as the un-split case.
+func splitIPAMRange(subnet *net.IPNet, base *IPAMRange, reserved []net.IP) ([]IPAMRange, error) {
+	if len(reserved) == 0 {
+		return []IPAMRange{*base}, nil
+	}
+
+	// Resolve the allocation window. With an ip-range the base carries its
+	// bounds; otherwise it is the whole subnet minus the network address (and,
+	// for IPv4, the broadcast).
+	startIP := net.ParseIP(base.RangeStart)
+	if startIP == nil {
+		startIP, _ = subnetutil.FirstIPInSubnet(subnet)
+	}
+	start, ok := netipx.FromStdIP(startIP)
+	if !ok {
+		return nil, fmt.Errorf("invalid range start %q for subnet %s", startIP, subnet)
+	}
+
+	var end netip.Addr
+	if endIP := net.ParseIP(base.RangeEnd); endIP != nil {
+		if end, ok = netipx.FromStdIP(endIP); !ok {
+			return nil, fmt.Errorf("invalid range end %q for subnet %s", endIP, subnet)
+		}
+	} else {
+		last, _ := subnetutil.LastIPInSubnet(subnet)
+		if end, ok = netipx.FromStdIP(last); !ok {
+			return nil, fmt.Errorf("invalid last address for subnet %s", subnet)
+		}
+		// IPv4's last address is the broadcast, which host-local never allocates,
+		// so step back to the last usable host. IPv6 has no broadcast; keep it.
+		if subnet.IP.To4() != nil {
+			end = end.Prev()
+		}
+	}
+
+	// Keep only the reservations that fall inside the window; ones outside need
+	// no carving because host-local cannot reach them anyway.
+	inWindow := make([]netip.Addr, 0, len(reserved))
+	for _, ip := range reserved {
+		if a, ok := netipx.FromStdIP(ip); ok && a.Compare(start) >= 0 && a.Compare(end) <= 0 {
+			inWindow = append(inWindow, a)
+		}
+	}
+	if len(inWindow) == 0 {
+		return []IPAMRange{*base}, nil
+	}
+
+	// Remove each reserved IP from the window; the set's ranges come back sorted
+	// and coalesced, one per gap, which is the split host-local needs.
+	var builder netipx.IPSetBuilder
+	builder.AddRange(netipx.IPRangeFrom(start, end))
+	for _, a := range inWindow {
+		builder.Remove(a)
+	}
+	set, err := builder.IPSet()
+	if err != nil {
+		return nil, err
+	}
+	ranges := set.Ranges()
+	if len(ranges) == 0 {
+		return nil, fmt.Errorf("aux-address reservations leave no allocatable IPs in subnet %s", subnet)
+	}
+
+	out := make([]IPAMRange, len(ranges))
+	for i, r := range ranges {
+		out[i] = IPAMRange{Subnet: subnet.String(), RangeStart: r.From().String(), RangeEnd: r.To().String()}
+	}
+
+	// host-local reserves the gateway only when it is set on the range it lands
+	// in, and after splitting the gateway can be in any sub-range, so set it on
+	// all of them. The original ip-range is nerdctl-only bookkeeping for inspect,
+	// so keep it on the first sub-range alone.
+	for i := range out {
+		out[i].Gateway = base.Gateway
+	}
+	out[0].IPRange = base.IPRange
+	return out, nil
 }
 
 // convert the struct to a map

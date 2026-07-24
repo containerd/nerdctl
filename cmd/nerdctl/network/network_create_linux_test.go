@@ -256,6 +256,76 @@ func TestNetworkCreate(t *testing.T) {
 				}
 			},
 		},
+		{
+			Description: "with aux-address",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier(),
+					"--subnet", "10.6.0.0/24",
+					"--gateway", "10.6.0.1",
+					"--aux-address", "router=10.6.0.5",
+					"--aux-address", "dns=10.6.0.6",
+				)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("network", "inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						netw := nerdtest.InspectNetwork(helpers, data.Identifier())
+						var aux map[string]string
+						for _, c := range netw.IPAM.Config {
+							if c.Subnet == "10.6.0.0/24" {
+								aux = c.AuxiliaryAddresses
+							}
+						}
+						assert.Equal(t, aux["router"], "10.6.0.5")
+						assert.Equal(t, aux["dns"], "10.6.0.6")
+					},
+				}
+			},
+		},
+		{
+			Description: "aux-address is reserved",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier(),
+					"--subnet", "10.6.1.0/24",
+					"--aux-address", "reserved=10.6.1.5",
+				)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				// The reserved address is carved out of the range, so requesting
+				// it explicitly must fail just as it does on Docker.
+				return helpers.Command("run", "--rm", "--net", data.Identifier(), "--ip", "10.6.1.5", testutil.CommonImage, "true")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+		},
+		{
+			Description: "an un-reserved address is allocatable",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier(),
+					"--subnet", "10.6.2.0/24",
+					"--aux-address", "reserved=10.6.2.5",
+				)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				// Positive control: an address in the same subnet that is not
+				// reserved allocates fine, so the failure above is specific to the
+				// reserved IP rather than an unrelated --ip problem.
+				return helpers.Command("run", "--rm", "--net", data.Identifier(), "--ip", "10.6.2.7", testutil.CommonImage, "true")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
 	}
 
 	testCase.Run(t)
