@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -45,6 +46,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
@@ -170,6 +172,9 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 	} else {
 		finalImageList = imageList
 	}
+	if options.Tree {
+		return printImagesTree(ctx, client, finalImageList, options)
+	}
 	digestsFlag := options.Digests
 	if options.Format == "wide" {
 		digestsFlag = true
@@ -241,6 +246,9 @@ type image struct {
 	size     int64
 	platform platforms.Platform
 	config   *ocispec.Descriptor
+	// manifestDigest is the digest of the platform-specific manifest itself
+	// (i.e., the index entry for this platform), used as the per-platform ID in the tree view.
+	manifestDigest digest.Digest
 }
 
 func readManifest(ctx context.Context, provider content.Provider, snapshotter snapshots.Snapshotter, desc ocispec.Descriptor) (*image, error) {
@@ -288,10 +296,11 @@ func readManifest(ctx context.Context, provider content.Provider, snapshotter sn
 	}
 
 	return &image{
-		blobSize: blobSize,
-		size:     size,
-		platform: plt,
-		config:   &manifest.Config,
+		blobSize:       blobSize,
+		size:           size,
+		platform:       plt,
+		config:         &manifest.Config,
+		manifestDigest: desc.Digest,
 	}, nil
 }
 
@@ -428,4 +437,151 @@ func isAttestationManifestDescriptor(desc ocispec.Descriptor) bool {
 	const manifestReferenceType = "vnd.docker.reference.type"
 	const attestationManifest = "attestation-manifest"
 	return desc.Annotations[manifestReferenceType] == attestationManifest
+}
+
+// treeNode is one image record (a single name -> target mapping) rendered as a
+// top-level row plus one child row per platform, similar to `docker image ls --tree`.
+type treeNode struct {
+	name      string // familiar "repo:tag" or "<none>:<none>"
+	id        string // target (index or manifest) digest, truncated unless --no-trunc
+	diskUsage int64  // sum of the platforms' unpacked snapshot sizes
+	blobSize  int64  // sum of the platforms' content-store blob sizes
+	inUse     bool   // true if any of its platforms is used by a container
+	children  []treeNodePlatform
+}
+
+type treeNodePlatform struct {
+	platform  string // platform string including OSVersion, e.g. "linux/amd64"
+	id        string // per-platform manifest digest, truncated unless --no-trunc
+	diskUsage int64
+	blobSize  int64
+	inUse     bool
+}
+
+// printImagesTree renders imageList as a tree with a row per platform.
+func printImagesTree(ctx context.Context, client *containerd.Client, imageList []images.Image, options *types.ImageListOptions) error {
+	// Determine which (image name, platform) pairs are currently used by containers.
+	inUse, err := imagesInUse(ctx, client)
+	if err != nil {
+		// Not fatal: fall back to an empty set so the tree still renders.
+		log.G(ctx).WithError(err).Warn("failed to determine images in use")
+		inUse = map[string]struct{}{}
+	}
+
+	provider := containerdutil.NewProvider(client)
+	snapshotter := containerdutil.SnapshotService(client, options.GOptions.Snapshotter)
+
+	w := tabwriter.NewWriter(options.Stdout, 4, 8, 4, ' ', 0)
+	fmt.Fprintln(w, "IMAGE\tID\tDISK USAGE\tCONTENT SIZE\tIN USE")
+
+	for _, img := range imageList {
+		candidates, err := read(ctx, provider, snapshotter, img.Target)
+		if err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to read image %q", img.Name)
+			continue
+		}
+
+		// Sort platforms for a stable output.
+		plats := make([]string, 0, len(candidates))
+		for p := range candidates {
+			plats = append(plats, p)
+		}
+		slices.Sort(plats)
+
+		node := treeNode{
+			name: imageTreeName(img),
+			id:   truncateImageID(img.Target.Digest.String(), options.NoTrunc),
+		}
+		for _, p := range plats {
+			c := candidates[p]
+			_, used := inUse[imageInUseKey(img.Name, platforms.Format(c.platform))]
+			node.children = append(node.children, treeNodePlatform{
+				platform:  platforms.FormatAll(c.platform),
+				id:        truncateImageID(c.manifestDigest.String(), options.NoTrunc),
+				diskUsage: c.size,
+				blobSize:  c.blobSize,
+				inUse:     used,
+			})
+			node.diskUsage += c.size
+			node.blobSize += c.blobSize
+			node.inUse = node.inUse || used
+		}
+
+		printTreeNode(w, node)
+	}
+
+	return w.Flush()
+}
+
+func printTreeNode(w io.Writer, node treeNode) {
+	fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		node.name, node.id,
+		units.HumanSize(float64(node.diskUsage)),
+		units.HumanSize(float64(node.blobSize)),
+		inUseMark(node.inUse))
+	for i, child := range node.children {
+		connector := "├─"
+		if i == len(node.children)-1 {
+			connector = "└─"
+		}
+		fmt.Fprintf(w, "%s %s\t%s\t%s\t%s\t%s\n",
+			connector, child.platform, child.id,
+			units.HumanSize(float64(child.diskUsage)),
+			units.HumanSize(float64(child.blobSize)),
+			inUseMark(child.inUse))
+	}
+}
+
+// imagesInUse returns the set of (image name, platform) pairs referenced by
+// existing containers, keyed via imageInUseKey.
+func imagesInUse(ctx context.Context, client *containerd.Client) (map[string]struct{}, error) {
+	containers, err := client.Containers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	inUse := make(map[string]struct{}, len(containers))
+	for _, c := range containers {
+		info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
+		if err != nil {
+			continue
+		}
+		inUse[imageInUseKey(info.Image, info.Labels[labels.Platform])] = struct{}{}
+	}
+	return inUse, nil
+}
+
+func imageInUseKey(name, platform string) string {
+	return name + "\x00" + platform
+}
+
+func imageTreeName(img images.Image) string {
+	repository, tag := imgutil.ParseRepoTag(img.Name)
+	if repository == "" {
+		return "<none>:<none>"
+	}
+	if tag == "" {
+		tag = "<none>"
+	}
+	return repository + ":" + tag
+}
+
+// truncateImageID mirrors the short-ID form used by the regular image listing.
+func truncateImageID(id string, noTrunc bool) string {
+	if noTrunc {
+		return id
+	}
+	if i := strings.IndexByte(id, ':'); i >= 0 {
+		id = id[i+1:]
+	}
+	if len(id) > 12 {
+		id = id[:12]
+	}
+	return id
+}
+
+func inUseMark(inUse bool) string {
+	if inUse {
+		return "✔"
+	}
+	return ""
 }

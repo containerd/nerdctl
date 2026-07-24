@@ -135,6 +135,75 @@ func TestImages(t *testing.T) {
 	testCase.Run(t)
 }
 
+func TestImagesTree(t *testing.T) {
+	nerdtest.Setup()
+
+	commonImage, _ := referenceutil.Parse(testutil.CommonImage)
+
+	testCase := &test.Case{
+		// `docker image ls --tree` is experimental and requires the containerd
+		// image store, so keep this test nerdctl-only.
+		Require: require.Not(nerdtest.Docker),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", "--quiet", commonImage.String())
+		},
+		SubTests: []*test.Case{
+			{
+				Description: "tree layout",
+				Command:     test.Command("images", "--tree"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: expect.All(
+							expect.Contains("IMAGE", "ID", "DISK USAGE", "CONTENT SIZE", "IN USE"),
+							func(stdout string, t tig.T) {
+								lines := strings.Split(strings.TrimSpace(stdout), "\n")
+								assert.Assert(t, len(lines) >= 2, "there should be at least a header and one image\n")
+								assert.Assert(t, strings.Contains(stdout, commonImage.FamiliarName()), "tree should list the image\n")
+								hasChild := false
+								for _, line := range lines {
+									trimmed := strings.TrimSpace(line)
+									if strings.HasPrefix(trimmed, "├─") || strings.HasPrefix(trimmed, "└─") {
+										hasChild = true
+										break
+									}
+								}
+								assert.Assert(t, hasChild, "tree should contain at least one platform child row\n")
+							},
+						),
+					}
+				},
+			},
+			{
+				Description: "tree conflicts with --quiet",
+				Command:     test.Command("images", "--tree", "--quiet"),
+				Expected:    test.Expects(expect.ExitCodeGenericFail, []error{errors.New("--tree and --quiet cannot be specified together")}, nil),
+			},
+			{
+				Description: "tree conflicts with --format",
+				Command:     test.Command("images", "--tree", "--format", "json"),
+				Expected:    test.Expects(expect.ExitCodeGenericFail, []error{errors.New("--tree and --format cannot be specified together")}, nil),
+			},
+			{
+				Description: "in use marker",
+				Setup: func(data test.Data, helpers test.Helpers) {
+					helpers.Ensure("create", "--name", data.Identifier(), commonImage.String(), "sleep", nerdtest.Infinity)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rm", "-f", data.Identifier())
+				},
+				Command: test.Command("images", "--tree"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: expect.Contains("✔"),
+					}
+				},
+			},
+		},
+	}
+
+	testCase.Run(t)
+}
+
 func TestImagesFilter(t *testing.T) {
 	nerdtest.Setup()
 

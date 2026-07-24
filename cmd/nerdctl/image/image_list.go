@@ -17,6 +17,7 @@
 package image
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -66,6 +67,7 @@ Properties:
 	cmd.Flags().Bool("digests", false, "Show digests (compatible with Docker, unlike ID)")
 	cmd.Flags().Bool("names", false, "Show image names")
 	cmd.Flags().BoolP("all", "a", true, "(unimplemented yet, always true)")
+	cmd.Flags().Bool("tree", false, "Show the image list as a tree, with a row per platform")
 
 	return cmd
 }
@@ -110,6 +112,20 @@ func listOptions(cmd *cobra.Command, args []string) (*types.ImageListOptions, er
 	if err != nil {
 		return nil, err
 	}
+	tree, err := cmd.Flags().GetBool("tree")
+	if err != nil {
+		return nil, err
+	}
+	if tree {
+		// The tree view has its own fixed layout, so it is incompatible with
+		// output-shaping flags, matching `docker image ls --tree`.
+		if quiet {
+			return nil, errors.New("--tree and --quiet cannot be specified together")
+		}
+		if format != "" {
+			return nil, errors.New("--tree and --format cannot be specified together")
+		}
+	}
 	return &types.ImageListOptions{
 		GOptions:         globalOptions,
 		Quiet:            quiet,
@@ -120,6 +136,7 @@ func listOptions(cmd *cobra.Command, args []string) (*types.ImageListOptions, er
 		Digests:          digests,
 		Names:            names,
 		All:              true,
+		Tree:             tree,
 		Stdout:           cmd.OutOrStdout(),
 	}, nil
 
