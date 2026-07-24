@@ -70,6 +70,10 @@ const (
 	// IP6Address is the static IP6 address of the container assigned by the user
 	IP6Address = Prefix + "ip6"
 
+	// IPAddressPerNetwork JSON-encoded map of network names to user-assigned static
+	// IPv4 addresses. Used for multi-network containers.
+	IPAddressPerNetwork = Prefix + "ip-per-network"
+
 	// LogURI is the log URI
 	LogURI = Prefix + "log-uri"
 
