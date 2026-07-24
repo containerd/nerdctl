@@ -905,6 +905,61 @@ USER test
 	testCase.Run(t)
 }
 
+func TestContainerInspectGateway(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// This test validates nerdctl's inspect conversion path
+	// Running this against Docker would not use this code path
+	testCase.Require = require.All(
+		require.Not(require.Windows),
+		require.Not(nerdtest.Docker),
+		nerdtest.Rootful,
+	)
+
+	testCase.NoParallel = true
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("network", "create", data.Identifier("net"))
+
+		helpers.Ensure("run", "-d",
+			"--name", data.Identifier("ctr"),
+			"--network", data.Identifier("net"),
+			testutil.CommonImage, "sleep", nerdtest.Infinity)
+
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier("ctr"))
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier("ctr"))
+		helpers.Anyhow("network", "rm", data.Identifier("net"))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("container", "inspect", data.Identifier("ctr"))
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, t tig.T) {
+				var containers []dockercompat.Container
+				err := json.Unmarshal([]byte(stdout), &containers)
+				assert.NilError(t, err, "Unable to unmarshal output\n")
+				assert.Equal(t, 1, len(containers), "Unexpectedly got multiple results\n")
+
+				assert.Assert(t, containers[0].NetworkSettings != nil)
+				assert.Assert(t, containers[0].NetworkSettings.Gateway != "")
+
+				network := nerdtest.InspectNetwork(helpers, data.Identifier("net"))
+				assert.Assert(t, len(network.IPAM.Config) > 0)
+				assert.Equal(t, network.IPAM.Config[0].Gateway, containers[0].NetworkSettings.Gateway)
+			},
+		}
+	}
+
+	testCase.Run(t)
+}
+
 type hostConfigValues struct {
 	Driver       string
 	ShmSize      int64

@@ -635,6 +635,7 @@ func TestNetworkSettingsFromNative(t *testing.T) {
 		{
 			name: "Given NetNS with single Interface with Port Annotation, Return populated NetworkSettings",
 			n: &native.NetNS{
+				Gateway: "10.0.4.1",
 				Interfaces: []native.NetInterface{
 					{
 						Interface: net.Interface{
@@ -661,6 +662,9 @@ func TestNetworkSettingsFromNative(t *testing.T) {
 				Annotations: map[string]string{},
 			},
 			expected: &NetworkSettings{
+				DefaultNetworkSettings: DefaultNetworkSettings{
+					Gateway: "10.0.4.1",
+				},
 				Ports: &nat.PortMap{
 					nat.Port("77/tcp"): []nat.PortBinding{
 						{
@@ -683,6 +687,7 @@ func TestNetworkSettingsFromNative(t *testing.T) {
 		{
 			name: "Given NetNS with single Interface without Port Annotations, Return valid NetworkSettings w/ empty Ports",
 			n: &native.NetNS{
+				Gateway: "10.0.4.1",
 				Interfaces: []native.NetInterface{
 					{
 						Interface: net.Interface{
@@ -701,6 +706,9 @@ func TestNetworkSettingsFromNative(t *testing.T) {
 				Annotations: map[string]string{},
 			},
 			expected: &NetworkSettings{
+				DefaultNetworkSettings: DefaultNetworkSettings{
+					Gateway: "10.0.4.1",
+				},
 				Ports: &nat.PortMap{},
 				Networks: map[string]*NetworkEndpointSettings{
 					"unknown-eth0.100": {
