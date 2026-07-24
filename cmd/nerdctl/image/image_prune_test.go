@@ -77,7 +77,7 @@ func TestImagePrune(t *testing.T) {
 				// Swapping order does not change anything.
 				helpers.Ensure("build", "-t", identifier, buildCtx)
 				imgList := helpers.Capture("images")
-				assert.Assert(t, strings.Contains(imgList, "<none>"), "Missing <none>")
+				assert.Assert(t, strings.Contains(imgList, "<untagged>"), "Missing <untagged>")
 				assert.Assert(t, strings.Contains(imgList, identifier), "Missing "+identifier)
 			},
 			Command: test.Command("image", "prune", "--force"),
@@ -90,7 +90,7 @@ func TestImagePrune(t *testing.T) {
 						},
 						func(stdout string, t tig.T) {
 							imgList := helpers.Capture("images")
-							assert.Assert(t, !strings.Contains(imgList, "<none>"), imgList)
+							assert.Assert(t, !strings.Contains(imgList, "<untagged>"), imgList)
 							assert.Assert(t, strings.Contains(imgList, identifier))
 						},
 					),
@@ -122,7 +122,7 @@ func TestImagePrune(t *testing.T) {
 				helpers.Ensure("build", buildCtx)
 				helpers.Ensure("build", "-t", identifier, buildCtx)
 				imgList := helpers.Capture("images")
-				assert.Assert(t, strings.Contains(imgList, "<none>"), "Missing <none>")
+				assert.Assert(t, strings.Contains(imgList, "<untagged>"), "Missing <untagged>")
 				assert.Assert(t, strings.Contains(imgList, identifier), "Missing "+identifier)
 				helpers.Ensure("run", "--name", identifier, identifier)
 			},
@@ -136,7 +136,7 @@ func TestImagePrune(t *testing.T) {
 						func(stdout string, t tig.T) {
 							imgList := helpers.Capture("images")
 							assert.Assert(t, strings.Contains(imgList, data.Identifier()))
-							assert.Assert(t, !strings.Contains(imgList, "<none>"), imgList)
+							assert.Assert(t, !strings.Contains(imgList, "<untagged>"), imgList)
 							helpers.Ensure("rm", "-f", data.Identifier())
 							removed := helpers.Capture("image", "prune", "--force", "--all")
 							assert.Assert(t, strings.Contains(removed, data.Identifier()))

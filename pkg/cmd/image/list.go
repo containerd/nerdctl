@@ -23,16 +23,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
 	"text/template"
 	"time"
+	"unicode/utf8"
 
 	"github.com/docker/go-units"
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/term"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
@@ -174,9 +177,19 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 	if options.Format == "wide" {
 		digestsFlag = true
 	}
+	// newView selects the Docker v29 default output (IMAGE, ID, DISK USAGE, CONTENT SIZE, EXTRA).
+	// Any "old-view" signal (--format, --quiet, --no-trunc, --digests, --names) falls back to the
+	// legacy table, mirroring Docker's tree-view fallback.
+	newView := options.Format == "" && !options.Quiet && !options.NoTrunc && !options.Digests && !options.Names
 	var tmpl *template.Template
-	switch options.Format {
-	case "", "table", "wide":
+	switch {
+	case newView:
+		// The legend is written to the underlying writer before it is wrapped in the tabwriter,
+		// so it is not aligned to the columns below. Like Docker, it is only shown on a terminal.
+		printImagesLegend(w)
+		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
+		fmt.Fprintln(w, "IMAGE\tID\tDISK USAGE\tCONTENT SIZE\tEXTRA")
+	case options.Format == "", options.Format == "table", options.Format == "wide":
 		w = tabwriter.NewWriter(w, 4, 8, 4, ' ', 0)
 		if !options.Quiet {
 			printHeader := ""
@@ -191,7 +204,7 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 			printHeader += "IMAGE ID\tCREATED\tPLATFORM\tSIZE\tBLOB SIZE"
 			fmt.Fprintln(w, printHeader)
 		}
-	case "raw":
+	case options.Format == "raw":
 		return errors.New("unsupported format: \"raw\"")
 	default:
 		if options.Quiet {
@@ -204,12 +217,21 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 		}
 	}
 
+	// In-use detection requires a container scan, so only pay for it in the new view where the
+	// EXTRA column is rendered.
+	var inUse map[string]bool
+	if newView {
+		inUse = imagesInUse(ctx, client)
+	}
+
 	printer := &imagePrinter{
 		w:           w,
 		quiet:       options.Quiet,
 		noTrunc:     options.NoTrunc,
 		digestsFlag: digestsFlag,
 		namesFlag:   options.Names,
+		newView:     newView,
+		inUse:       inUse,
 		tmpl:        tmpl,
 		client:      client,
 		provider:    containerdutil.NewProvider(client),
@@ -228,12 +250,13 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 }
 
 type imagePrinter struct {
-	w                                      io.Writer
-	quiet, noTrunc, digestsFlag, namesFlag bool
-	tmpl                                   *template.Template
-	client                                 *containerd.Client
-	provider                               content.Provider
-	snapshotter                            snapshots.Snapshotter
+	w                                               io.Writer
+	quiet, noTrunc, digestsFlag, namesFlag, newView bool
+	inUse                                           map[string]bool // image name -> referenced by at least one container
+	tmpl                                            *template.Template
+	client                                          *containerd.Client
+	provider                                        content.Provider
+	snapshotter                                     snapshots.Snapshotter
 }
 
 type image struct {
@@ -347,6 +370,10 @@ func (x *imagePrinter) printImage(ctx context.Context, img images.Image) error {
 		return err
 	}
 
+	if x.newView {
+		return x.printImageCollapsed(img, candidateImages)
+	}
+
 	for platform, desc := range candidateImages {
 		if err := x.printImageSinglePlatform(*desc.config, img, desc.blobSize, desc.size, desc.platform); err != nil {
 			log.G(ctx).WithError(err).Debugf("failed to get platform %q of image %q", platform, img.Name)
@@ -422,6 +449,110 @@ func (x *imagePrinter) printImageSinglePlatform(desc ocispec.Descriptor, img ima
 		}
 	}
 	return nil
+}
+
+// printImageCollapsed renders a single row in the Docker v29 default view (IMAGE, ID, DISK USAGE,
+// CONTENT SIZE, EXTRA), aggregating disk and content size across the platforms present in the
+// content store.
+func (x *imagePrinter) printImageCollapsed(img images.Image, candidateImages map[string]*image) error {
+	var totalSize, totalBlobSize int64
+	for _, candidate := range candidateImages {
+		totalSize += candidate.size
+		totalBlobSize += candidate.blobSize
+	}
+
+	// The new view always truncates the ID (it never coexists with --no-trunc).
+	id := img.Target.Digest.String()
+	if _, hex, ok := strings.Cut(id, ":"); ok && len(hex) >= 12 {
+		id = hex[:12]
+	}
+
+	extra := ""
+	if x.inUse[img.Name] {
+		extra = "U"
+	}
+
+	_, err := fmt.Fprintf(x.w, "%s\t%s\t%s\t%s\t%s\n",
+		newViewImageRef(img.Name),
+		id,
+		units.HumanSize(float64(totalSize)),
+		units.HumanSize(float64(totalBlobSize)),
+		extra,
+	)
+	return err
+}
+
+// printImagesLegend writes the right-aligned "In Use" legend for the Docker v29 default view.
+// Matching Docker, it is only emitted when the output is a terminal with a known width, so it
+// never pollutes piped or redirected output.
+func printImagesLegend(w io.Writer) {
+	f, ok := w.(*os.File)
+	if !ok {
+		return
+	}
+	width, _, err := term.GetSize(int(f.Fd()))
+	if err != nil || width <= 0 {
+		return
+	}
+	legend := "i Info →   U  In Use"
+	if pad := width - utf8.RuneCountInString(legend); pad > 0 {
+		legend = strings.Repeat(" ", pad) + legend
+	}
+	fmt.Fprintln(w, legend)
+}
+
+// newViewImageRef builds the IMAGE column for the Docker v29 default view: "repo:tag" for tagged
+// images, "repo@digest" for images pulled by digest, or "<untagged>" for dangling images.
+func newViewImageRef(name string) string {
+	parsed, err := referenceutil.Parse(name)
+	if err != nil {
+		return "<untagged>"
+	}
+	familiar := parsed.FamiliarName()
+	if familiar == "" {
+		return "<untagged>"
+	}
+	if parsed.Tag != "" {
+		return familiar + ":" + parsed.Tag
+	}
+	// A tag-less reference is shown as "repo@digest" only when it carries an explicit registry
+	// domain (a real pulled-by-digest image). Dangling build artifacts have a synthetic,
+	// domain-less name (e.g. "<none>@sha256:..." or "<snapshotter>@sha256:..." depending on the
+	// builder) and are rendered as "<untagged>", matching Docker.
+	if parsed.Digest != "" && referenceHasDomain(name) {
+		return familiar + "@" + parsed.Digest.String()
+	}
+	return "<untagged>"
+}
+
+// referenceHasDomain reports whether the raw image reference includes an explicit registry
+// domain, using the same heuristic as distribution/reference: the component before the first
+// "/" is a domain when it is "localhost" or contains a "." or ":".
+func referenceHasDomain(name string) bool {
+	host, _, ok := strings.Cut(name, "/")
+	if !ok {
+		return false
+	}
+	return host == "localhost" || strings.ContainsAny(host, ".:")
+}
+
+// imagesInUse returns the set of image names that are referenced by at least one container
+// (in any state), used to render the Docker v29 "In Use" (U) indicator.
+func imagesInUse(ctx context.Context, client *containerd.Client) map[string]bool {
+	inUse := map[string]bool{}
+	containerList, err := client.Containers(ctx)
+	if err != nil {
+		log.G(ctx).WithError(err).Warn("failed to list containers for image in-use detection")
+		return inUse
+	}
+	for _, container := range containerList {
+		image, err := container.Image(ctx)
+		if err != nil {
+			continue
+		}
+		inUse[image.Name()] = true
+	}
+	return inUse
 }
 
 func isAttestationManifestDescriptor(desc ocispec.Descriptor) bool {
