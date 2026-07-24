@@ -328,7 +328,7 @@ Volume flags:
   - Options specific to `image`:
     - :whale: `src`, `source`: image reference (mandatory).
     - :whale: Currently, the image filesystem is mounted read-only.
-    - unimplemented options: `image-subpath`
+    - :whale: `image-subpath`: relative path inside the image rootfs to mount instead of the whole rootfs. Must stay within the rootfs (no absolute paths or `..` traversal).
 - :whale: `--volumes-from`: Mount volumes from the specified container(s), e.g. "--volumes-from my-container".
 
 Rootfs flags:

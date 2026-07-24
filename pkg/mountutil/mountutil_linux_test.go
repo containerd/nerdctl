@@ -645,8 +645,69 @@ func TestProcessFlagMountImage(t *testing.T) {
 			},
 		},
 		{
+			// bare subpath is not a type=image option; image-subpath is.
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,subpath=etc",
+			err:     "subpath",
+		},
+		{
+			// image-subpath selects a directory inside the image rootfs.
 			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,image-subpath=etc",
-			err:     "image-subpath",
+			wants: &Processed{
+				Type:         Image,
+				Mode:         "ro",
+				Mount:        specs.Mount{Type: Image, Source: "alpine:latest", Destination: "/mnt/img"},
+				ImageSubpath: "etc",
+			},
+		},
+		{
+			// image-subpath is normalized: leading ./ and trailing / are stripped.
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,image-subpath=./etc/",
+			wants: &Processed{
+				Type:         Image,
+				Mode:         "ro",
+				Mount:        specs.Mount{Type: Image, Source: "alpine:latest", Destination: "/mnt/img"},
+				ImageSubpath: "etc",
+			},
+		},
+		{
+			// parent traversal must be rejected before the mount is built.
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,image-subpath=../etc",
+			err:     "escapes",
+		},
+		{
+			// traversal that normalizes back above root must be rejected.
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,image-subpath=a/b/../../../etc",
+			err:     "escapes",
+		},
+		{
+			// a path normalizing to "." is the whole rootfs, not a subdirectory.
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,image-subpath=.",
+			err:     "must select a subdirectory",
+		},
+		{
+			// "a/.." also normalizes to the rootfs and must be rejected.
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,image-subpath=a/..",
+			err:     "must select a subdirectory",
+		},
+		{
+			// nested subpath is normalized and preserved.
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,image-subpath=usr/lib",
+			wants: &Processed{
+				Type:         Image,
+				Mode:         "ro",
+				Mount:        specs.Mount{Type: Image, Source: "alpine:latest", Destination: "/mnt/img"},
+				ImageSubpath: "usr/lib",
+			},
+		},
+		{
+			// absolute image-subpath is rejected; it must be relative to the rootfs.
+			rawSpec: "type=image,source=alpine:latest,destination=/mnt/img,image-subpath=/etc",
+			err:     "relative",
+		},
+		{
+			// image-subpath only applies to type=image.
+			rawSpec: "type=bind,source=/tmp,destination=/mnt,image-subpath=etc",
+			err:     "only supported for type=image",
 		},
 	}
 	for _, tt := range tests {
@@ -662,6 +723,7 @@ func TestProcessFlagMountImage(t *testing.T) {
 			assert.Equal(t, got.Mount.Type, tt.wants.Mount.Type)
 			assert.Equal(t, got.Mount.Source, tt.wants.Mount.Source)
 			assert.Equal(t, got.Mount.Destination, tt.wants.Mount.Destination)
+			assert.Equal(t, got.ImageSubpath, tt.wants.ImageSubpath)
 		})
 	}
 }
