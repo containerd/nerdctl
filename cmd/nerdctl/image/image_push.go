@@ -69,6 +69,9 @@ func PushCommand() *cobra.Command {
 
 	cmd.Flags().Bool(allowNonDistFlag, false, "Allow pushing images with non-distributable blobs")
 
+	// support Docker-compatible all-tags flag
+	cmd.Flags().BoolP("all-tags", "a", false, "Push all local tags of the repository")
+
 	return cmd
 }
 
@@ -101,6 +104,10 @@ func pushOptions(cmd *cobra.Command) (types.ImagePushOptions, error) {
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
+	allTags, err := cmd.Flags().GetBool("all-tags")
+	if err != nil {
+		return types.ImagePushOptions{}, err
+	}
 	allowNonDist, err := cmd.Flags().GetBool(allowNonDistFlag)
 	if err != nil {
 		return types.ImagePushOptions{}, err
@@ -123,6 +130,7 @@ func pushOptions(cmd *cobra.Command) (types.ImagePushOptions, error) {
 		IpfsEnsureImage:                ipfsEnsureImage,
 		IpfsAddress:                    ipfsAddress,
 		Quiet:                          quiet,
+		AllTags:                        allTags,
 		AllowNondistributableArtifacts: allowNonDist,
 		Stdout:                         cmd.OutOrStdout(),
 	}, nil
