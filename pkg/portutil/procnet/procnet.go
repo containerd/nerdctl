@@ -17,6 +17,7 @@
 package procnet
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"net"
@@ -72,12 +73,20 @@ func removeEmpty(array []string) (results []string) {
 //
 // See https://serverfault.com/questions/592574/why-does-proc-net-tcp6-represents-1-as-1000
 //
-// ParseAddress is expected to be used for /proc/net/{tcp,tcp6} entries on
-// little endian machines.
-// Not sure how those entries look like on big endian machines.
-// All the code below is copied from the lima project in https://github.com/lima-vm/lima/blob/v0.8.3/pkg/guestagent/procnettcp/procnettcp.go#L95-L137
+// ParseAddress parses the entry using the current host's native byte order.
+// Use ParseAddressWithByteOrder to parse an entry whose byte order is known.
+// The parsing logic is derived from the lima project in https://github.com/lima-vm/lima/blob/v0.8.3/pkg/guestagent/procnettcp/procnettcp.go#L95-L137
 // and is licensed under the Apache License, Version 2.0
 func ParseAddress(s string) (net.IP, uint16, error) {
+	return ParseAddressWithByteOrder(s, binary.NativeEndian)
+}
+
+// ParseAddressWithByteOrder is like ParseAddress but takes the byte order of
+// the /proc data explicitly. The kernel writes each 4-byte group of the address
+// in the host's native byte order (little-endian on x86/arm64, big-endian on
+// s390x), so each group is read with that order and rewritten in network order
+// to build the net.IP.
+func ParseAddressWithByteOrder(s string, order binary.ByteOrder) (net.IP, uint16, error) {
 	split := strings.SplitN(s, ":", 2)
 	if len(split) != 2 {
 		return nil, 0, fmt.Errorf("unparsable address %q", s)
@@ -92,13 +101,11 @@ func ParseAddress(s string) (net.IP, uint16, error) {
 	ipBytes := make([]byte, len(split[0])/2) // 4 bytes (8 chars) or 16 bytes (32 chars)
 	for i := 0; i < len(split[0])/8; i++ {
 		quartet := split[0][8*i : 8*(i+1)]
-		quartetLE, err := hex.DecodeString(quartet) // surprisingly little endian, per 4 bytes
+		quartetBytes, err := hex.DecodeString(quartet)
 		if err != nil {
 			return nil, 0, fmt.Errorf("unparsable address %q: unparsable quartet %q: %w", s, quartet, err)
 		}
-		for j := 0; j < len(quartetLE); j++ {
-			ipBytes[4*i+len(quartetLE)-1-j] = quartetLE[j]
-		}
+		binary.BigEndian.PutUint32(ipBytes[4*i:], order.Uint32(quartetBytes))
 	}
 	ip := net.IP(ipBytes)
 

@@ -17,6 +17,7 @@
 package procnet
 
 import (
+	"encoding/binary"
 	"net"
 	"testing"
 
@@ -66,4 +67,25 @@ func TestParseTCP6Zero(t *testing.T) {
 
 	assert.Check(t, net.IPv6zero.Equal(entries[0].LocalIP))
 	assert.Equal(t, uint64(22), entries[0].LocalPort)
+}
+
+func TestParseAddressWithByteOrder(t *testing.T) {
+	// Big-endian hosts (e.g. s390x) keep each 4-byte group as written.
+	ip, port, err := ParseAddressWithByteOrder("7F000001:0050", binary.BigEndian)
+	assert.NilError(t, err)
+	assert.Check(t, net.ParseIP("127.0.0.1").Equal(ip))
+	assert.Equal(t, uint16(80), port)
+
+	ip, _, err = ParseAddressWithByteOrder("FE8000000000000070A657FFFE71C75D:0050", binary.BigEndian)
+	assert.NilError(t, err)
+	assert.Check(t, net.ParseIP("fe80::70a6:57ff:fe71:c75d").Equal(ip))
+
+	// Little-endian hosts (x86, arm64) reverse each 4-byte group.
+	ip, _, err = ParseAddressWithByteOrder("0100007F:0050", binary.LittleEndian)
+	assert.NilError(t, err)
+	assert.Check(t, net.ParseIP("127.0.0.1").Equal(ip))
+
+	ip, _, err = ParseAddressWithByteOrder("000080FE00000000FF57A6705DC771FE:0050", binary.LittleEndian)
+	assert.NilError(t, err)
+	assert.Check(t, net.ParseIP("fe80::70a6:57ff:fe71:c75d").Equal(ip))
 }
