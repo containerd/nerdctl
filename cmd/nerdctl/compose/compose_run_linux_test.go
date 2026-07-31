@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"gotest.tools/v3/assert"
 
@@ -34,6 +34,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
@@ -114,123 +115,135 @@ services:
 }
 
 func TestComposeRunWithServicePorts(t *testing.T) {
-	base := testutil.NewBase(t)
-	// specify the name of container in order to remove
-	// TODO: when `compose rm` is implemented, replace it.
-	containerName := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	dockerComposeYAML := fmt.Sprintf(`
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		hostPort, err := portlock.Acquire(0)
+		if err != nil {
+			helpers.T().Log(fmt.Sprintf("Failed to acquire port: %v", err))
+			helpers.T().FailNow()
+		}
+
+		dockerComposeYAML := fmt.Sprintf(`
 services:
   web:
     image: %s
     ports:
-      - 8080:80
-`, testutil.NginxAlpineImage)
+      - %d:80
+`, testutil.NginxAlpineImage, hostPort)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	defer base.Cmd("rm", "-f", "-v", containerName).Run()
-	go func() {
-		// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-		// unbuffer(1) can be installed with `apt-get install expect`.
-		unbuffer := []string{"unbuffer"}
-		base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(),
-			"run", "--service-ports", "--name", containerName, "web").Run()
-	}()
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("hostPort", strconv.Itoa(hostPort))
 
-	checkNginx := func() error {
-		resp, err := nettestutil.HTTPGet("http://127.0.0.1:8080", 5, false)
-		if err != nil {
-			return err
-		}
-		respBody, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		if !strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet) {
-			t.Logf("respBody=%q", respBody)
-			return fmt.Errorf("respBody does not contain %q", testutil.NginxAlpineIndexHTMLSnippet)
-		}
-		return nil
+		// specify the name of container in order to remove
+		// TODO: when `compose rm` is implemented, replace it.
+		cmd := helpers.Command("compose", "-f", composePath, "run", "--service-ports", "--name", data.Identifier(), "web")
+		cmd.WithPseudoTTY()
+		cmd.Background()
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 	}
-	var nginxWorking bool
-	for i := 0; i < 30; i++ {
-		t.Logf("(retry %d)", i)
-		err := checkNginx()
-		if err == nil {
-			nginxWorking = true
-			break
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
+		if composeYAML := data.Labels().Get("composeYAML"); composeYAML != "" {
+			helpers.Anyhow("compose", "-f", composeYAML, "down", "-v")
 		}
-		t.Log(err)
-		time.Sleep(3 * time.Second)
+		if portStr := data.Labels().Get("hostPort"); portStr != "" {
+			if port, err := strconv.Atoi(portStr); err == nil {
+				_ = portlock.Release(port)
+			}
+		}
 	}
-	if !nginxWorking {
-		t.Fatal("nginx is not working")
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
 	}
-	t.Log("nginx seems functional")
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, tt tig.T) {
+				resp, err := nettestutil.HTTPGet(fmt.Sprintf("http://127.0.0.1:%s", data.Labels().Get("hostPort")), 5, false)
+				assert.NilError(tt, err)
+				defer resp.Body.Close()
+				respBody, err := io.ReadAll(resp.Body)
+				assert.NilError(tt, err)
+				tt.Log(fmt.Sprintf("respBody=%q", respBody))
+				assert.Assert(tt, strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet), fmt.Sprintf("respBody does not contain %q", testutil.NginxAlpineIndexHTMLSnippet))
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeRunWithPublish(t *testing.T) {
-	base := testutil.NewBase(t)
-	// specify the name of container in order to remove
-	// TODO: when `compose rm` is implemented, replace it.
-	containerName := testutil.Identifier(t)
+	testCase := nerdtest.Setup()
 
-	dockerComposeYAML := fmt.Sprintf(`
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		hostPort, err := portlock.Acquire(0)
+		if err != nil {
+			helpers.T().Log(fmt.Sprintf("Failed to acquire port: %v", err))
+			helpers.T().FailNow()
+		}
+
+		dockerComposeYAML := fmt.Sprintf(`
 services:
   web:
     image: %s
 `, testutil.NginxAlpineImage)
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+		projectName := filepath.Base(filepath.Dir(composePath))
+		t.Logf("projectName=%q", projectName)
 
-	defer base.Cmd("rm", "-f", "-v", containerName).Run()
-	go func() {
-		// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-		// unbuffer(1) can be installed with `apt-get install expect`.
-		unbuffer := []string{"unbuffer"}
-		base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(),
-			"run", "--publish", "8080:80", "--name", containerName, "web").Run()
-	}()
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("hostPort", strconv.Itoa(hostPort))
 
-	checkNginx := func() error {
-		resp, err := nettestutil.HTTPGet("http://127.0.0.1:8080", 5, false)
-		if err != nil {
-			return err
-		}
-		respBody, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		if !strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet) {
-			t.Logf("respBody=%q", respBody)
-			return fmt.Errorf("respBody does not contain %q", testutil.NginxAlpineIndexHTMLSnippet)
-		}
-		return nil
+		// specify the name of container in order to remove
+		// TODO: when `compose rm` is implemented, replace it.
+		cmd := helpers.Command("compose", "-f", composePath, "run", "--publish", fmt.Sprintf("%d:80", hostPort), "--name", data.Identifier(), "web")
+		cmd.WithPseudoTTY()
+		cmd.Background()
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 	}
-	var nginxWorking bool
-	for i := 0; i < 30; i++ {
-		t.Logf("(retry %d)", i)
-		err := checkNginx()
-		if err == nil {
-			nginxWorking = true
-			break
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
+		if composeYAML := data.Labels().Get("composeYAML"); composeYAML != "" {
+			helpers.Anyhow("compose", "-f", composeYAML, "down", "-v")
 		}
-		t.Log(err)
-		time.Sleep(3 * time.Second)
+		if portStr := data.Labels().Get("hostPort"); portStr != "" {
+			if port, err := strconv.Atoi(portStr); err == nil {
+				_ = portlock.Release(port)
+			}
+		}
 	}
-	if !nginxWorking {
-		t.Fatal("nginx is not working")
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("inspect", data.Identifier())
 	}
-	t.Log("nginx seems functional")
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: func(stdout string, tt tig.T) {
+				resp, err := nettestutil.HTTPGet(fmt.Sprintf("http://127.0.0.1:%s", data.Labels().Get("hostPort")), 5, false)
+				assert.NilError(tt, err)
+				defer resp.Body.Close()
+				respBody, err := io.ReadAll(resp.Body)
+				assert.NilError(tt, err)
+				tt.Log(fmt.Sprintf("respBody=%q", respBody))
+				assert.Assert(tt, strings.Contains(string(respBody), testutil.NginxAlpineIndexHTMLSnippet), fmt.Sprintf("respBody does not contain %q", testutil.NginxAlpineIndexHTMLSnippet))
+			},
+		}
+	}
+
+	testCase.Run(t)
 }
 
 func TestComposeRunWithEnv(t *testing.T) {
