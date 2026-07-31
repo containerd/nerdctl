@@ -33,7 +33,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.7.0 //gomodjail:unconfined
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v29.6.2+incompatible //gomodjail:unconfined
-	github.com/docker/go-connections v0.7.0
+	github.com/docker/go-connections v0.8.0
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.3.0 //gomodjail:unconfined
 	github.com/fatih/color v1.19.0 //gomodjail:unconfined
@@ -43,8 +43,8 @@ require (
 	github.com/ipfs/go-cid v0.6.2
 	github.com/klauspost/compress v1.19.1
 	github.com/mattn/go-isatty v0.0.24 //gomodjail:unconfined
-	github.com/moby/moby/client v0.5.0
-	github.com/moby/moby/v2 v2.0.0-beta.18
+	github.com/moby/moby/client v0.5.1
+	github.com/moby/moby/v2 v2.0.0-beta.19
 	github.com/moby/sys/mount v0.3.5
 	github.com/moby/sys/signal v0.7.1
 	github.com/moby/sys/user v0.4.1 //gomodjail:unconfined
@@ -80,7 +80,7 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/go-runc v1.1.0 // indirect
 	github.com/containerd/plugin v1.1.0 // indirect
-	github.com/containerd/ttrpc v1.2.8 // indirect
+	github.com/containerd/ttrpc v1.2.9 // indirect
 	github.com/containers/ocicrypt v1.3.2 // indirect
 	github.com/creack/pty v1.1.24 // indirect
 	github.com/djherbis/times v1.6.0 // indirect
@@ -133,8 +133,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
-	golang.org/x/mod v0.37.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
+	golang.org/x/mod v0.38.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260630182238-925bb5da69e7 // indirect
 	//gomodjail:unconfined
 	google.golang.org/grpc v1.82.1 // indirect
 	//gomodjail:unconfined
