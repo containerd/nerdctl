@@ -33,7 +33,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.7.0 //gomodjail:unconfined
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v29.6.2+incompatible //gomodjail:unconfined
-	github.com/docker/go-connections v0.8.0
+	github.com/docker/go-connections v0.8.1
 	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.3.0 //gomodjail:unconfined
 	github.com/fatih/color v1.19.0 //gomodjail:unconfined
