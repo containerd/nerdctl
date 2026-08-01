@@ -20,6 +20,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/containerd/v2/core/snapshots"
 )
 
 // Image corresponds to a containerd-native image object.
@@ -34,4 +35,5 @@ type Image struct {
 	ImageConfigDesc ocispec.Descriptor `json:"ImageConfigDesc"`
 	ImageConfig     ocispec.Image      `json:"ImageConfig"`
 	Size            int64              `json:"size"`
+	Snapshots       []snapshots.Info   `json:"Snapshots,omitempty"`
 }
