@@ -25,6 +25,7 @@ import (
 	"net"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -215,10 +216,20 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 	return plugins, nil
 }
 
-func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string, ipRanges []string, opts map[string]string, ipv6, ipv4, internal bool) (map[string]interface{}, error) {
+func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string, ipRanges []string, auxAddresses []string, opts map[string]string, ipv6, ipv4, internal bool) (map[string]interface{}, map[string]map[string]string, error) {
 	var ipamConfig interface{}
+	// auxBySubnet carries each subnet's reserved aux-addresses back to the caller
+	// so they can be stored in a nerdctl label instead of the CNI config; it stays
+	// nil for drivers other than host-local, which have no such reservation.
+	var auxBySubnet map[string]map[string]string
 	switch driver {
 	case "default", "host-local":
+		// Reserved auxiliary addresses are only meaningful for host-local, where
+		// they are enforced by carving the reserved IPs out of the range below.
+		aux, err := ParseAuxAddresses(auxAddresses)
+		if err != nil {
+			return nil, nil, err
+		}
 		ipamConf := newHostLocalIPAMConfig()
 		if !internal {
 			// An IPv6-only network has no IPv4 gateway, so its default route
@@ -232,19 +243,21 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string
 				{Dst: defaultRoute},
 			}
 		}
-		ranges, findIPv4, err := e.parseIPAMRanges(subnets, gateways, ipRanges, ipv6)
+		ranges, findIPv4, auxByNet, err := e.parseIPAMRanges(subnets, gateways, ipRanges, aux, ipv6)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		auxBySubnet = auxByNet
 		if !ipv4 && findIPv4 {
-			return nil, fmt.Errorf("--ipv4=false conflicts with an IPv4 subnet")
+			return nil, nil, fmt.Errorf("--ipv4=false conflicts with an IPv4 subnet")
 		}
 		ipamConf.Ranges = append(ipamConf.Ranges, ranges...)
 		if ipv4 && !findIPv4 {
 			// The default IPv4 range uses a computed gateway and no ip-range;
 			// any user-supplied gateway or ip-range belongs to an explicit subnet.
+			// It also has no user subnet, so no aux-address can match it.
 			// Skipped when IPv4 is disabled, leaving the network IPv6-only.
-			ranges, _, _ = e.parseIPAMRanges([]string{""}, nil, nil, ipv6)
+			ranges, _, _, _ = e.parseIPAMRanges([]string{""}, nil, nil, nil, ipv6)
 			ipamConf.Ranges = append(ipamConf.Ranges, ranges...)
 		}
 		ipamConfig = ipamConf
@@ -252,7 +265,7 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string
 		ipamConf := newDHCPIPAMConfig()
 		crd, err := defaults.CNIRuntimeDir()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		ipamConf.DaemonSocketPath = filepath.Join(crd, "dhcp.sock")
 		if err := systemutil.IsSocketAccessible(ipamConf.DaemonSocketPath); err != nil {
@@ -271,7 +284,7 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string
 				SkipDefault     bool   `json:"skipDefault"`
 			}{}
 			if err := json.Unmarshal([]byte(optValue), parsed); err != nil {
-				return nil, fmt.Errorf("unparsable ipam option %s %q", optName, optValue)
+				return nil, nil, fmt.Errorf("unparsable ipam option %s %q", optName, optValue)
 			}
 			if parsed.Type == "provide" {
 				ipamConf.ProvideOptions = append(ipamConf.ProvideOptions, provideOption{
@@ -285,23 +298,23 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string
 					SkipDefault: parsed.SkipDefault,
 				})
 			} else {
-				return nil, fmt.Errorf("ipam option must have a type (provide or request)")
+				return nil, nil, fmt.Errorf("ipam option must have a type (provide or request)")
 			}
 		}
 
 		ipamConfig = ipamConf
 	default:
-		return nil, fmt.Errorf("unsupported ipam driver %q", driver)
+		return nil, nil, fmt.Errorf("unsupported ipam driver %q", driver)
 	}
 
 	ipam, err := structToMap(ipamConfig)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return ipam, nil
+	return ipam, auxBySubnet, nil
 }
 
-func (e *CNIEnv) parseIPAMRanges(subnets []string, gateways []string, ipRanges []string, ipv6 bool) ([][]IPAMRange, bool, error) {
+func (e *CNIEnv) parseIPAMRanges(subnets []string, gateways []string, ipRanges []string, aux map[string]string, ipv6 bool) ([][]IPAMRange, bool, map[string]map[string]string, error) {
 	// Resolve every requested subnet first; parseSubnet also rejects overlaps
 	// with existing networks. The pairing below then works purely on the parsed
 	// CIDRs, so it can be unit-tested without probing the host's networks.
@@ -309,24 +322,27 @@ func (e *CNIEnv) parseIPAMRanges(subnets []string, gateways []string, ipRanges [
 	for i := range subnets {
 		subnet, err := e.parseSubnet(subnets[i])
 		if err != nil {
-			return nil, false, err
+			return nil, false, nil, err
 		}
 		parsedSubnets[i] = subnet
 	}
-	return pairIPAMRanges(parsedSubnets, gateways, ipRanges, ipv6)
+	return pairIPAMRanges(parsedSubnets, gateways, ipRanges, aux, ipv6)
 }
 
-// pairIPAMRanges matches each gateway and ip-range to the subnet that contains
-// it and builds the per-subnet IPAM ranges. It is split out from subnet
-// resolution so the matching can be tested without touching live networks.
-func pairIPAMRanges(subnets []*net.IPNet, gateways []string, ipRanges []string, ipv6 bool) ([][]IPAMRange, bool, error) {
+// pairIPAMRanges matches each gateway, ip-range and aux-address to the subnet
+// that contains it and builds the per-subnet IPAM ranges. It is split out from
+// subnet resolution so the matching can be tested without touching live networks.
+// The returned auxBySubnet maps each subnet CIDR to its reserved name=IP pairs so
+// the caller can persist them outside the CNI config (host-local has no field for
+// them); it is nil when no aux-address is given.
+func pairIPAMRanges(subnets []*net.IPNet, gateways []string, ipRanges []string, aux map[string]string, ipv6 bool) ([][]IPAMRange, bool, map[string]map[string]string, error) {
 	// Parse the gateways once up front; matching them to subnets below is then
 	// just a containment check, with no parse error mixed into the loop.
 	parsedGateways := make([]net.IP, len(gateways))
 	for i, g := range gateways {
 		gw := net.ParseIP(g)
 		if gw == nil {
-			return nil, false, fmt.Errorf("failed to parse gateway %q", g)
+			return nil, false, nil, fmt.Errorf("failed to parse gateway %q", g)
 		}
 		parsedGateways[i] = gw
 	}
@@ -336,13 +352,27 @@ func pairIPAMRanges(subnets []*net.IPNet, gateways []string, ipRanges []string, 
 	for i, r := range ipRanges {
 		_, ipNet, err := net.ParseCIDR(r)
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to parse ip-range %q", r)
+			return nil, false, nil, fmt.Errorf("failed to parse ip-range %q", r)
 		}
 		parsedRanges[i] = ipNet
 	}
 
+	// Parse the aux-addresses once too, so the per-subnet loop only tests
+	// containment. aux is already validated by ParseAuxAddresses, so every value
+	// parses. matchedAux records which ones landed in a subnet, both to flag an
+	// unmatched aux as an error and to attach each aux to only the first subnet
+	// that contains it.
+	parsedAux := make(map[string]net.IP, len(aux))
+	for name, ipStr := range aux {
+		parsedAux[name] = net.ParseIP(ipStr)
+	}
+	matchedAux := make(map[string]bool, len(parsedAux))
+
 	findIPv4 := false
 	ranges := make([][]IPAMRange, 0, len(subnets))
+	// auxBySubnet holds each subnet's reserved name=IP pairs so the caller can
+	// persist them in a nerdctl label; it stays nil unless an aux-address matches.
+	var auxBySubnet map[string]map[string]string
 	usedGateways := make([]bool, len(gateways))
 	usedRanges := make([]bool, len(ipRanges))
 	for _, subnet := range subnets {
@@ -373,23 +403,68 @@ func pairIPAMRanges(subnets []*net.IPNet, gateways []string, ipRanges []string, 
 		}
 		ipamRange, err := parseIPAMRange(subnet, gateway, ipRange)
 		if err != nil {
-			return nil, findIPv4, err
+			return nil, findIPv4, nil, err
 		}
-		ranges = append(ranges, []IPAMRange{*ipamRange})
+		// Collect the aux-addresses that fall inside this subnet, rejecting the
+		// ones Docker also rejects (the network or gateway address), then reserve
+		// them by splitting the range.
+		gatewayIP := net.ParseIP(ipamRange.Gateway)
+		subnetAux := map[string]string{}
+		var reserved []net.IP
+		for name, ip := range parsedAux {
+			// Like gateway/ip-range, an aux-address attaches only to the first
+			// subnet that contains it.
+			if matchedAux[name] {
+				continue
+			}
+			if !subnet.Contains(ip) {
+				continue
+			}
+			matchedAux[name] = true
+			if ip.Equal(subnet.IP) || (gatewayIP != nil && ip.Equal(gatewayIP)) {
+				return nil, findIPv4, nil, fmt.Errorf("failed to allocate secondary ip address (%s:%s): Address already in use", name, ip)
+			}
+			subnetAux[name] = ip.String()
+			reserved = append(reserved, ip)
+		}
+		rangeSet, err := splitIPAMRange(subnet, ipamRange, reserved)
+		if err != nil {
+			return nil, findIPv4, nil, err
+		}
+		// Record the reservation against the subnet CIDR host-local writes, so the
+		// caller can store it in a label and inspect can match it back by subnet.
+		if len(subnetAux) > 0 {
+			if auxBySubnet == nil {
+				auxBySubnet = map[string]map[string]string{}
+			}
+			auxBySubnet[ipamRange.Subnet] = subnetAux
+		}
+		ranges = append(ranges, rangeSet)
 	}
-	// Only known after every subnet is seen: a gateway or ip-range that matched
-	// none is a user error, same as Docker.
+	// Only known after every subnet is seen: a gateway, ip-range or aux-address
+	// that matched no subnet is a user error, same as Docker.
 	for j, ok := range usedGateways {
 		if !ok {
-			return nil, findIPv4, fmt.Errorf("no matching subnet for gateway %q", gateways[j])
+			return nil, findIPv4, nil, fmt.Errorf("no matching subnet for gateway %q", gateways[j])
 		}
 	}
 	for j, ok := range usedRanges {
 		if !ok {
-			return nil, findIPv4, fmt.Errorf("no matching subnet for ip-range %q", ipRanges[j])
+			return nil, findIPv4, nil, fmt.Errorf("no matching subnet for ip-range %q", ipRanges[j])
 		}
 	}
-	return ranges, findIPv4, nil
+	// Report a stable IP: map iteration order is random, so sort the unmatched.
+	var unmatchedAux []string
+	for name, ip := range parsedAux {
+		if !matchedAux[name] {
+			unmatchedAux = append(unmatchedAux, ip.String())
+		}
+	}
+	if len(unmatchedAux) > 0 {
+		sort.Strings(unmatchedAux)
+		return nil, findIPv4, nil, fmt.Errorf("no matching subnet for aux-address %s", unmatchedAux[0])
+	}
+	return ranges, findIPv4, auxBySubnet, nil
 }
 
 // FirewallPluginGEQVersion checks if the firewall plugin is greater than or equal to the specified version

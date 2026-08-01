@@ -128,8 +128,172 @@ func TestParseIPAMRange(t *testing.T) {
 			assert.ErrorContains(t, err, tc.err)
 		} else {
 			assert.NilError(t, err)
-			assert.Equal(t, *tc.expected, *got)
+			assert.DeepEqual(t, *tc.expected, *got)
 		}
+	}
+}
+
+func TestParseAuxAddresses(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		raw      []string
+		expected map[string]string
+		err      string
+	}
+	testCases := []testCase{
+		{
+			raw:      nil,
+			expected: nil,
+		},
+		{
+			raw:      []string{"router=10.1.100.5", "dns=10.1.100.6"},
+			expected: map[string]string{"router": "10.1.100.5", "dns": "10.1.100.6"},
+		},
+		{
+			// An empty name is allowed, matching Docker.
+			raw:      []string{"=10.1.100.5"},
+			expected: map[string]string{"": "10.1.100.5"},
+		},
+		{
+			// An entry with no "=" has an empty IP and is dropped, matching Docker.
+			raw:      []string{"10.1.100.5"},
+			expected: nil,
+		},
+		{
+			// A later value overrides an earlier one with the same name.
+			raw:      []string{"a=10.1.100.5", "a=10.1.100.6"},
+			expected: map[string]string{"a": "10.1.100.6"},
+		},
+		{
+			raw:      []string{"v6=2001:db8::5"},
+			expected: map[string]string{"v6": "2001:db8::5"},
+		},
+		{
+			raw: []string{"bad=not-an-ip"},
+			err: "invalid aux-address",
+		},
+	}
+	for _, tc := range testCases {
+		got, err := ParseAuxAddresses(tc.raw)
+		if tc.err != "" {
+			assert.ErrorContains(t, err, tc.err)
+			continue
+		}
+		assert.NilError(t, err)
+		assert.DeepEqual(t, tc.expected, got)
+	}
+}
+
+func TestSplitIPAMRange(t *testing.T) {
+	t.Parallel()
+	ips := func(addrs ...string) []net.IP {
+		out := make([]net.IP, len(addrs))
+		for i, a := range addrs {
+			out[i] = net.ParseIP(a)
+		}
+		return out
+	}
+	type testCase struct {
+		name     string
+		subnet   string
+		base     *IPAMRange
+		reserved []net.IP
+		expected []IPAMRange
+		err      string
+	}
+	testCases := []testCase{
+		{
+			name:     "no reservation leaves the range untouched",
+			subnet:   "10.1.100.0/24",
+			base:     &IPAMRange{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1"},
+			reserved: nil,
+			expected: []IPAMRange{{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1"}},
+		},
+		{
+			name:     "a mid-subnet reservation splits the range in two",
+			subnet:   "10.1.100.0/24",
+			base:     &IPAMRange{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1"},
+			reserved: ips("10.1.100.5"),
+			expected: []IPAMRange{
+				{Subnet: "10.1.100.0/24", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.4", Gateway: "10.1.100.1"},
+				{Subnet: "10.1.100.0/24", RangeStart: "10.1.100.6", RangeEnd: "10.1.100.254", Gateway: "10.1.100.1"},
+			},
+		},
+		{
+			name:     "two reservations produce three sub-ranges",
+			subnet:   "10.1.100.0/24",
+			base:     &IPAMRange{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1"},
+			reserved: ips("10.1.100.6", "10.1.100.5"),
+			expected: []IPAMRange{
+				{Subnet: "10.1.100.0/24", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.4", Gateway: "10.1.100.1"},
+				{Subnet: "10.1.100.0/24", RangeStart: "10.1.100.7", RangeEnd: "10.1.100.254", Gateway: "10.1.100.1"},
+			},
+		},
+		{
+			// The gateway is the first usable address, so reserving the next one
+			// leaves a gateway-only sub-range; host-local reserves the gateway, so
+			// allocation still starts after the reservation.
+			name:     "a reservation right after the gateway leaves a gateway-only range",
+			subnet:   "10.1.100.0/24",
+			base:     &IPAMRange{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1"},
+			reserved: ips("10.1.100.2"),
+			expected: []IPAMRange{
+				{Subnet: "10.1.100.0/24", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.1", Gateway: "10.1.100.1"},
+				{Subnet: "10.1.100.0/24", RangeStart: "10.1.100.3", RangeEnd: "10.1.100.254", Gateway: "10.1.100.1"},
+			},
+		},
+		{
+			name:     "a reservation inside an ip-range splits within its bounds",
+			subnet:   "10.1.100.0/24",
+			base:     &IPAMRange{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1", IPRange: "10.1.100.0/28", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.15"},
+			reserved: ips("10.1.100.5"),
+			expected: []IPAMRange{
+				{Subnet: "10.1.100.0/24", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.4", Gateway: "10.1.100.1", IPRange: "10.1.100.0/28"},
+				{Subnet: "10.1.100.0/24", RangeStart: "10.1.100.6", RangeEnd: "10.1.100.15", Gateway: "10.1.100.1"},
+			},
+		},
+		{
+			name:     "a reservation outside the ip-range needs no split",
+			subnet:   "10.1.100.0/24",
+			base:     &IPAMRange{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1", IPRange: "10.1.100.0/28", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.15"},
+			reserved: ips("10.1.100.200"),
+			expected: []IPAMRange{
+				{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1", IPRange: "10.1.100.0/28", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.15"},
+			},
+		},
+		{
+			// Reserving every usable address in the window leaves nothing to hand
+			// out, which is an error rather than an empty range set.
+			name:     "reservations leaving no allocatable address error",
+			subnet:   "10.1.100.0/30",
+			base:     &IPAMRange{Subnet: "10.1.100.0/30", Gateway: "10.1.100.1"},
+			reserved: ips("10.1.100.1", "10.1.100.2"),
+			err:      "leave no allocatable",
+		},
+		{
+			name:     "an IPv6 reservation splits the range around it",
+			subnet:   "2001:db8::/64",
+			base:     &IPAMRange{Subnet: "2001:db8::/64", Gateway: "2001:db8::1"},
+			reserved: ips("2001:db8::5"),
+			// IPv6 has no broadcast, so the last address stays allocatable.
+			expected: []IPAMRange{
+				{Subnet: "2001:db8::/64", RangeStart: "2001:db8::1", RangeEnd: "2001:db8::4", Gateway: "2001:db8::1"},
+				{Subnet: "2001:db8::/64", RangeStart: "2001:db8::6", RangeEnd: "2001:db8::ffff:ffff:ffff:ffff", Gateway: "2001:db8::1"},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, subnet, err := net.ParseCIDR(tc.subnet)
+			assert.NilError(t, err)
+			got, err := splitIPAMRange(subnet, tc.base, tc.reserved)
+			if tc.err != "" {
+				assert.ErrorContains(t, err, tc.err)
+				return
+			}
+			assert.NilError(t, err)
+			assert.DeepEqual(t, tc.expected, got)
+		})
 	}
 }
 

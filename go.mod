@@ -145,6 +145,8 @@ require (
 	tags.cncf.io/container-device-interface/specs-go v1.1.0 // indirect
 )
 
+require go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
+
 require (
 	cyphar.com/go-pathrs v0.2.5 // indirect
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect

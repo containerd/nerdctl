@@ -33,8 +33,11 @@ type NetworkCreateOptions struct {
 	Subnets     []string
 	Gateway     []string
 	IPRange     []string
-	Labels      []string
-	IPv6        bool
+	// AuxAddresses holds "name=IP" auxiliary addresses (docker --aux-address).
+	// Each IP is reserved so IPAM never hands it out to a container.
+	AuxAddresses []string
+	Labels       []string
+	IPv6         bool
 	// IPv4 enables IPv4 on the network. A nil value defaults to enabled, so a
 	// directly-constructed NetworkCreateOptions keeps IPv4 on; setting it to
 	// false together with IPv6 yields an IPv6-only network.

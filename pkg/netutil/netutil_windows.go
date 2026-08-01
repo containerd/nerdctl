@@ -72,15 +72,20 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 	return plugins, nil
 }
 
-func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string, ipRanges []string, opts map[string]string, ipv6, ipv4, internal bool) (map[string]interface{}, error) {
+func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string, ipRanges []string, auxAddresses []string, opts map[string]string, ipv6, ipv4, internal bool) (map[string]interface{}, map[string]map[string]string, error) {
 	switch driver {
 	case "default":
 	default:
-		return nil, fmt.Errorf("unsupported ipam driver %q", driver)
+		return nil, nil, fmt.Errorf("unsupported ipam driver %q", driver)
 	}
 	// IPv6-only networks are not supported on Windows.
 	if !ipv4 {
-		return nil, fmt.Errorf("--ipv4=false is not supported on Windows")
+		return nil, nil, fmt.Errorf("--ipv4=false is not supported on Windows")
+	}
+	// The Windows nat IPAM has no way to reserve individual addresses, so there
+	// are never any aux-addresses to hand back to the caller.
+	if len(auxAddresses) > 0 {
+		return nil, nil, fmt.Errorf("--aux-address is not supported on Windows")
 	}
 
 	// Windows is single-subnet, so use at most one gateway and one ip-range.
@@ -96,19 +101,19 @@ func (e *CNIEnv) generateIPAM(driver string, subnets []string, gateways []string
 	ipamConfig := newWindowsIPAMConfig()
 	subnet, err := e.parseSubnet(subnets[0])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	ipamRange, err := parseIPAMRange(subnet, gatewayStr, ipRangeStr)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	ipamConfig.Subnet = ipamRange.Subnet
 	ipamConfig.Routes = append(ipamConfig.Routes, IPAMRoute{Gateway: ipamRange.Gateway})
 	ipam, err := structToMap(ipamConfig)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return ipam, nil
+	return ipam, nil, nil
 }
 
 func FirewallPluginGEQVersion(firewallPath string, versionStr string) (bool, error) {

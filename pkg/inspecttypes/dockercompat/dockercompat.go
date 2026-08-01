@@ -1052,9 +1052,10 @@ func getUlimitsFromNative(sp *specs.Spec) ([]*units.Ulimit, error) {
 }
 
 type IPAMConfig struct {
-	Subnet  string `json:"Subnet,omitempty"`
-	Gateway string `json:"Gateway,omitempty"`
-	IPRange string `json:"IPRange,omitempty"`
+	Subnet             string            `json:"Subnet,omitempty"`
+	Gateway            string            `json:"Gateway,omitempty"`
+	IPRange            string            `json:"IPRange,omitempty"`
+	AuxiliaryAddresses map[string]string `json:"AuxiliaryAddresses,omitempty"`
 }
 
 type IPAM struct {
@@ -1196,7 +1197,20 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 	res.Name = sCNI.Name
 	for _, plugin := range sCNI.Plugins {
 		for _, ranges := range plugin.Ipam.Ranges {
-			res.IPAM.Config = append(res.IPAM.Config, ranges...)
+			// A range-set normally describes one subnet; an aux-address
+			// reservation splits it into several sub-ranges that all share the
+			// subnet and gateway. Report the first entry per distinct subnet so a
+			// split subnet collapses to one IPAM.Config like Docker, without
+			// dropping entries for different subnets in the same set. The
+			// aux-addresses themselves are attached later from a nerdctl label.
+			seen := make(map[string]struct{}, len(ranges))
+			for _, r := range ranges {
+				if _, ok := seen[r.Subnet]; ok {
+					continue
+				}
+				seen[r.Subnet] = struct{}{}
+				res.IPAM.Config = append(res.IPAM.Config, r)
+			}
 		}
 	}
 
@@ -1205,7 +1219,30 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 	}
 
 	if n.NerdctlLabels != nil {
-		res.Labels = *n.NerdctlLabels
+		// Reserved aux-addresses are stored in a nerdctl label (host-local has no
+		// field for them). Decode it, attach each subnet's pairs to its config so
+		// inspect reports AuxiliaryAddresses like Docker, and keep the internal
+		// label out of the user-visible label set.
+		res.Labels = make(map[string]string, len(*n.NerdctlLabels))
+		for k, v := range *n.NerdctlLabels {
+			if k == labels.NetworkAuxAddresses {
+				// A malformed value (the label is a user-settable nerdctl/ key) must
+				// not fail the whole inspect: log it and drop the label, leaving the
+				// config without AuxiliaryAddresses rather than erroring out.
+				var auxBySubnet map[string]map[string]string
+				if err := json.Unmarshal([]byte(v), &auxBySubnet); err != nil {
+					log.L.WithError(err).Warnf("ignoring malformed %s label", labels.NetworkAuxAddresses)
+					continue
+				}
+				for i := range res.IPAM.Config {
+					if aux, ok := auxBySubnet[res.IPAM.Config[i].Subnet]; ok {
+						res.IPAM.Config[i].AuxiliaryAddresses = aux
+					}
+				}
+				continue
+			}
+			res.Labels[k] = v
+		}
 	}
 
 	// Parse network subnets for interface matching

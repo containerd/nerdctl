@@ -49,6 +49,7 @@ func createCommand() *cobra.Command {
 	cmd.Flags().StringArray("subnet", nil, `Subnet in CIDR format that represents a network segment, e.g. "10.5.0.0/16"`)
 	cmd.Flags().StringArray("gateway", nil, "IPv4 or IPv6 Gateway for the master subnet")
 	cmd.Flags().StringArray("ip-range", nil, `Allocate container ip from a sub-range`)
+	cmd.Flags().StringArray("aux-address", nil, "Auxiliary IPv4 or IPv6 addresses used by Network driver, as name=IP pairs. The IPs are reserved and never assigned to containers")
 	cmd.Flags().StringArray("label", nil, "Set metadata for a network")
 	cmd.Flags().Bool("ipv4", true, "Enable IPv4 networking (set to false together with --ipv6 for an IPv6-only network)")
 	cmd.Flags().Bool("ipv6", false, "Enable IPv6 networking")
@@ -93,6 +94,10 @@ func createAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	auxAddresses, err := cmd.Flags().GetStringArray("aux-address")
+	if err != nil {
+		return err
+	}
 	labels, err := cmd.Flags().GetStringArray("label")
 	if err != nil {
 		return err
@@ -112,18 +117,19 @@ func createAction(cmd *cobra.Command, args []string) error {
 	}
 
 	return network.Create(types.NetworkCreateOptions{
-		GOptions:    globalOptions,
-		Name:        name,
-		Driver:      driver,
-		Options:     strutil.ConvertKVStringsToMap(opts),
-		IPAMDriver:  ipamDriver,
-		IPAMOptions: strutil.ConvertKVStringsToMap(ipamOpts),
-		Subnets:     subnets,
-		Gateway:     gateways,
-		IPRange:     ipRanges,
-		Labels:      labels,
-		IPv6:        ipv6,
-		IPv4:        &ipv4,
-		Internal:    internal,
+		GOptions:     globalOptions,
+		Name:         name,
+		Driver:       driver,
+		Options:      strutil.ConvertKVStringsToMap(opts),
+		IPAMDriver:   ipamDriver,
+		IPAMOptions:  strutil.ConvertKVStringsToMap(ipamOpts),
+		Subnets:      subnets,
+		Gateway:      gateways,
+		IPRange:      ipRanges,
+		AuxAddresses: auxAddresses,
+		Labels:       labels,
+		IPv6:         ipv6,
+		IPv4:         &ipv4,
+		Internal:     internal,
 	}, cmd.OutOrStdout())
 }
