@@ -42,25 +42,25 @@ type EventOut struct {
 	ID        string
 	Namespace string
 	Topic     string
-	Status    Status
+	Action    Action
 	Event     string
 	Labels    map[string]string
 }
 
-type Status string
+type Action string
 
 const (
-	START   Status = "start"
-	UNKNOWN Status = "unknown"
+	START   Action = "start"
+	UNKNOWN Action = "unknown"
 )
 
-var statuses = [...]Status{START, UNKNOWN}
+var actions = [...]Action{START, UNKNOWN}
 
-func isStatus(status string) bool {
-	status = strings.ToLower(status)
+func isAction(action string) bool {
+	action = strings.ToLower(action)
 
-	for _, supportedStatus := range statuses {
-		if string(supportedStatus) == status {
+	for _, supportedAction := range actions {
+		if string(supportedAction) == action {
 			return true
 		}
 	}
@@ -68,7 +68,7 @@ func isStatus(status string) bool {
 	return false
 }
 
-func TopicToStatus(topic string) Status {
+func TopicToAction(topic string) Action {
 	if strings.Contains(strings.ToLower(topic), string(START)) {
 		return START
 	}
@@ -85,11 +85,11 @@ func generateEventFilter(filter, filterValue string) (func(e *EventOut) bool, er
 	switch strings.ToUpper(filter) {
 	case "EVENT", "STATUS":
 		return func(e *EventOut) bool {
-			if !isStatus(string(e.Status)) {
+			if !isAction(string(e.Action)) {
 				return false
 			}
 
-			return strings.EqualFold(string(e.Status), filterValue)
+			return strings.EqualFold(string(e.Action), filterValue)
 		}, nil
 	case "LABEL":
 		parts := strings.SplitN(filterValue, "=", 2)
@@ -240,7 +240,7 @@ func Events(ctx context.Context, client *containerd.Client, options types.System
 					labels = container.Labels
 				}
 			}
-			eOut := EventOut{e.Timestamp, id, e.Namespace, e.Topic, TopicToStatus(e.Topic), string(out), labels}
+			eOut := EventOut{e.Timestamp, id, e.Namespace, e.Topic, TopicToAction(e.Topic), string(out), labels}
 			match := applyFilters(&eOut, filterMap)
 			if match {
 				if tmpl != nil {

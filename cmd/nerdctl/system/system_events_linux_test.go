@@ -30,15 +30,10 @@ import (
 
 // startEventOutput returns the substring expected in the JSON output of a
 // container "start" event. Docker v29 dropped the legacy top-level "status"
-// field from the events API, exposing only "Action", whereas nerdctl still
-// emits a "Status" field.
-// https://github.com/moby/moby/pull/50832
-// https://github.com/containerd/nerdctl/issues/5028
+// field from the events API in favor of "Action"
+// (https://github.com/moby/moby/pull/50832), and nerdctl now matches that.
 func startEventOutput() string {
-	if nerdtest.IsDocker() {
-		return "\"Action\":\"start\""
-	}
-	return "tatus\":\"start\""
+	return "\"Action\":\"start\""
 }
 
 func testEventFilterExecutor(data test.Data, helpers test.Helpers) test.TestableCommand {
@@ -88,7 +83,7 @@ func TestEventFilters(t *testing.T) {
 			},
 			Data: test.WithLabels(map[string]string{
 				"filter": "event=START",
-				"output": "\"Status\":\"start\"",
+				"output": "\"Action\":\"start\"",
 			}),
 		},
 		{
@@ -117,7 +112,7 @@ func TestEventFilters(t *testing.T) {
 			},
 			Data: test.WithLabels(map[string]string{
 				"filter": "event=unknown",
-				"output": "\"Status\":\"unknown\"",
+				"output": "\"Action\":\"unknown\"",
 			}),
 		},
 		{
@@ -146,7 +141,7 @@ func TestEventFilters(t *testing.T) {
 			},
 			Data: test.WithLabels(map[string]string{
 				"filter": "status=unknown",
-				"output": "\"Status\":\"unknown\"",
+				"output": "\"Action\":\"unknown\"",
 			}),
 		},
 		{
