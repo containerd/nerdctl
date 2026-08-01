@@ -192,7 +192,6 @@ jobs:
 
           # FIXME: remove expect when we are done removing unbuffer from tests
           echo "::group:: installing test dependencies"
-          sudo add-apt-repository ppa:criu/ppa -y
           sudo apt-get install -qq expect criu
           echo "::endgroup::"
 
