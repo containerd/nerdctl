@@ -258,8 +258,11 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 		hs, err := hostsstore.New(dataStore, containerNamespace)
 		if err != nil {
 			log.G(ctx).WithError(err).Warnf("failed to instantiate hostsstore for %q", containerNamespace)
-		} else if err = hs.Delete(id); err != nil {
+		} else if err = hs.Delete(id); err != nil && !errors.Is(err, store.ErrNotFound) {
 			// De-allocate hosts file - soft failure
+			// Some platforms and network modes never allocate a hosts file for the container in the first
+			// place (e.g. Windows containers), so ignore NotFound errors here, similarly to the
+			// nameStore.Release call above.
 			log.G(ctx).WithError(err).Warnf("failed to remove hosts file for container %q", id)
 		}
 
