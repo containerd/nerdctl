@@ -38,6 +38,54 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
+// TestNameFilterFor is a regression test for
+// https://github.com/containerd/nerdctl/issues/5113: `nerdctl image ls
+// myapp`, where myapp is a bare repository name, returned nothing unless
+// myapp had a `:latest` tag, because referenceutil.Parse normalizes a bare
+// repository name to an implicit ":latest" tag and the resulting exact-match
+// filter therefore only ever matched that one tag.
+func TestNameFilterFor(t *testing.T) {
+	testCases := []struct {
+		name     string
+		arg      string
+		expected []string
+	}{
+		{
+			name:     "bare repository name matches any tag",
+			arg:      "myapp",
+			expected: []string{`name~=^docker\.io/library/myapp:`},
+		},
+		{
+			name:     "explicit tag matches exactly",
+			arg:      "myapp:v1",
+			expected: []string{"name==docker.io/library/myapp:v1"},
+		},
+		{
+			name:     "explicit latest tag matches exactly",
+			arg:      "myapp:latest",
+			expected: []string{"name==docker.io/library/myapp:latest"},
+		},
+		{
+			name:     "digest matches exactly",
+			arg:      "myapp@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			expected: []string{"name==docker.io/library/myapp@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+		},
+		{
+			name:     "bare repository name with domain and path is escaped for the regex",
+			arg:      "registry.example.com/foo/my.app",
+			expected: []string{`name~=^registry\.example\.com/foo/my\.app:`},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			parsedReference, err := referenceutil.Parse(tc.arg)
+			assert.NilError(t, err)
+			assert.DeepEqual(t, tc.expected, nameFilterFor(parsedReference))
+		})
+	}
+}
+
 func TestImages(t *testing.T) {
 	nerdtest.Setup()
 

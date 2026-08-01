@@ -18,6 +18,7 @@ package image
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/spf13/cobra"
 
@@ -81,7 +82,7 @@ func listOptions(cmd *cobra.Command, args []string) (*types.ImageListOptions, er
 		if err != nil {
 			return nil, err
 		}
-		filters = []string{fmt.Sprintf("name==%s", parsedReference)}
+		filters = nameFilterFor(parsedReference)
 	}
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
@@ -123,6 +124,23 @@ func listOptions(cmd *cobra.Command, args []string) (*types.ImageListOptions, er
 		Stdout:           cmd.OutOrStdout(),
 	}, nil
 
+}
+
+// nameFilterFor builds the containerd image-service filter(s) matching the
+// argument to `nerdctl image ls [REPOSITORY[:TAG]]`.
+//
+// If the argument named an explicit tag or digest, it's matched exactly.
+// Otherwise the argument was a bare repository name: referenceutil.Parse
+// normalizes that to an implicit ":latest" tag (matching how most other
+// reference-consuming commands resolve a bare name), but for listing
+// purposes that would incorrectly hide every other tag of the repository -
+// unlike `docker image ls`, which matches all tags of a bare repository
+// name. Match any tag under the repository instead.
+func nameFilterFor(parsedReference *referenceutil.ImageReference) []string {
+	if parsedReference.ExplicitTag != "" || parsedReference.Digest != "" {
+		return []string{fmt.Sprintf("name==%s", parsedReference)}
+	}
+	return []string{fmt.Sprintf("name~=^%s:", regexp.QuoteMeta(parsedReference.Name()))}
 }
 
 func imagesAction(cmd *cobra.Command, args []string) error {
