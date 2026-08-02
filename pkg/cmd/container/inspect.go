@@ -23,6 +23,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/snapshots"
+	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
@@ -94,6 +95,14 @@ func (x *containerInspector) Handler(ctx context.Context, found containerwalker.
 
 	switch x.mode {
 	case "native":
+		if n.SnapshotKey != "" {
+			info, err := x.snapshotter.Stat(ctx, n.SnapshotKey)
+			if err != nil {
+				log.G(ctx).WithError(err).Warnf("failed to get snapshot %s info", n.SnapshotKey)
+			} else {
+				n.SnapshotInfo = &info
+			}
+		}
 		x.entries = append(x.entries, n)
 	case "dockercompat":
 		d, err := dockercompat.ContainerFromNative(n)
