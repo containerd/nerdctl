@@ -78,7 +78,6 @@ jobs:
           elif [ "$RUNNER_OS" == "Linux" ]; then
             ./hack/provisioning/linux/cni.sh install "${INPUTS_LINUX_CNI_VERSION}" "amd64" "${INPUTS_LINUX_CNI_SHA}"
             sudo apt-get update -qq
-            sudo add-apt-repository ppa:criu/ppa -y
             sudo apt-get install -qq criu
           fi
         env:

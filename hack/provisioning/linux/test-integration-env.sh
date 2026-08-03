@@ -44,7 +44,8 @@ host::packages(){
     # `expect` package contains `unbuffer(1)`, which is used for emulating TTY for testing
     # `jq` is required to generate test summaries
     apt-get update -qq >/dev/null
-    add-apt-repository -y ppa:criu/ppa >/dev/null
+    # Ubuntu 22.04 needs PPA version of CRIU
+    grep -q UBUNTU_CODENAME=jammy /etc/os-release && add-apt-repository -y ppa:criu/ppa >/dev/null
     apt-get install -qq --no-install-recommends \
       apparmor \
       criu \
