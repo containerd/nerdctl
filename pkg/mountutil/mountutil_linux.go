@@ -247,7 +247,7 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw, ociRuntime string, get
 			if err != nil {
 				return nil, nil, err
 			}
-			if err := ensureMountOptionalValue(mi, "shared:"); err != nil {
+			if err := ensureMountOptionalValue(mi, got, "shared:"); err != nil {
 				return nil, nil, err
 			}
 
@@ -276,7 +276,7 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw, ociRuntime string, get
 			if err != nil {
 				return nil, nil, err
 			}
-			if err := ensureMountOptionalValue(mi, "shared:", "master:"); err != nil {
+			if err := ensureMountOptionalValue(mi, got, "shared:", "master:"); err != nil {
 				return nil, nil, err
 			}
 
@@ -320,7 +320,7 @@ func parseVolumeOptionsWithMountInfo(vType, src, optsRaw, ociRuntime string, get
 //
 // For more details about "optional" field:
 // - https://github.com/moby/sys/blob/mountinfo/v0.4.1/mountinfo/mountinfo.go#L52-L56
-func ensureMountOptionalValue(mi mount.Info, vals ...string) error {
+func ensureMountOptionalValue(mi mount.Info, propagation string, vals ...string) error {
 	var hasValue bool
 	for _, opt := range strings.Split(mi.Optional, " ") {
 		for _, mark := range vals {
@@ -330,7 +330,7 @@ func ensureMountOptionalValue(mi mount.Info, vals ...string) error {
 		}
 	}
 	if !hasValue {
-		return fmt.Errorf("mountpoint %q doesn't have optional field neither of %+v", mi.Mountpoint, vals)
+		return fmt.Errorf("mountpoint %q is not a shared or slave mount, so it cannot be bind-mounted with propagation %q; try running `mount --make-rshared %s` on the host", mi.Mountpoint, propagation, mi.Mountpoint)
 	}
 	return nil
 }

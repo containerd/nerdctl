@@ -59,6 +59,7 @@ func TestParseVolumeOptions(t *testing.T) {
 		wants                    []string
 		wantRootfsPropagation    string
 		wantFail                 bool
+		wantErrContains          string
 	}{
 		{
 			name:    "unknown option is ignored (with warning)",
@@ -176,12 +177,13 @@ func TestParseVolumeOptions(t *testing.T) {
 			wants:                    []string{"ro", "rshared"},
 		},
 		{
-			name:        "shared propagation is not allowed if the src is not shared",
-			vType:       "bind",
-			src:         "dummy",
-			optsRaw:     "ro,shared",
-			srcOptional: nil,
-			wantFail:    true,
+			name:            "shared propagation is not allowed if the src is not shared",
+			vType:           "bind",
+			src:             "dummy",
+			optsRaw:         "ro,shared",
+			srcOptional:     nil,
+			wantFail:        true,
+			wantErrContains: "mount --make-rshared dummy",
 		},
 		{
 			name:                  "make bind slave",
@@ -203,12 +205,13 @@ func TestParseVolumeOptions(t *testing.T) {
 			wants:                    []string{"ro", "slave"},
 		},
 		{
-			name:        "slave propagation is not allowed if the src is not slave",
-			vType:       "bind",
-			src:         "dummy",
-			optsRaw:     "ro,slave",
-			srcOptional: nil,
-			wantFail:    true,
+			name:            "slave propagation is not allowed if the src is not slave",
+			vType:           "bind",
+			src:             "dummy",
+			optsRaw:         "ro,slave",
+			srcOptional:     nil,
+			wantFail:        true,
+			wantErrContains: "mount --make-rshared dummy",
 		},
 	}
 	for _, tt := range tests {
@@ -222,6 +225,9 @@ func TestParseVolumeOptions(t *testing.T) {
 			})
 			if err != nil {
 				if tt.wantFail {
+					if tt.wantErrContains != "" {
+						assert.ErrorContains(t, err, tt.wantErrContains)
+					}
 					return
 				}
 				t.Errorf("failed to parse option %q: %v", tt.optsRaw, err)
