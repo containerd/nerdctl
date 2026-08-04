@@ -21,6 +21,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
+	"github.com/containerd/containerd/v2/core/snapshots"
 	"github.com/containerd/go-cni"
 )
 
@@ -28,8 +29,9 @@ import (
 // Not compatible with `docker container inspect`.
 type Container struct {
 	containers.Container
-	Spec    interface{} `json:"Spec,omitempty"`
-	Process *Process    `json:"Process,omitempty"`
+	Spec         interface{}     `json:"Spec,omitempty"`
+	Process      *Process        `json:"Process,omitempty"`
+	SnapshotInfo *snapshots.Info `json:"SnapshotInfo,omitempty"`
 }
 
 type Process struct {
