@@ -8,15 +8,32 @@ alpine:
   schemaversion: 2
   mediatype: "application/vnd.docker.distribution.manifest.list.v2+json"
   digest: "sha256:ec14c7992a97fc11425907e908340c6c3d6ff602f5f13d899e6b7027c9b4133a"
-  variants: ["linux/amd64", "linux/arm64"]
+  variants: ["linux/386", "linux/amd64", "linux/arm/v6", "linux/arm/v7", "linux/arm64", "linux/ppc64le", "linux/s390x"]
   manifests:
     linux/amd64:
       mediatype: "application/vnd.docker.distribution.manifest.v2+json"
       manifest: "sha256:e103c1b4bf019dc290bcc7aca538dc2bf7a9d0fc836e186f5fa34945c5168310"
       config: "sha256:49f356fa4513676c5e22e3a8404aad6c7262cc7aaed15341458265320786c58c"
       raw: "ewogICAic2NoZW1hVmVyc2lvbiI6IDIsCiAgICJtZWRpYVR5cGUiOiAiYXBwbGljYXRpb24vdm5kLmRvY2tlci5kaXN0cmlidXRpb24ubWFuaWZlc3QudjIranNvbiIsCiAgICJjb25maWciOiB7CiAgICAgICJtZWRpYVR5cGUiOiAiYXBwbGljYXRpb24vdm5kLmRvY2tlci5jb250YWluZXIuaW1hZ2UudjEranNvbiIsCiAgICAgICJzaXplIjogMTQ3MiwKICAgICAgImRpZ2VzdCI6ICJzaGEyNTY6NDlmMzU2ZmE0NTEzNjc2YzVlMjJlM2E4NDA0YWFkNmM3MjYyY2M3YWFlZDE1MzQxNDU4MjY1MzIwNzg2YzU4YyIKICAgfSwKICAgImxheWVycyI6IFsKICAgICAgewogICAgICAgICAibWVkaWFUeXBlIjogImFwcGxpY2F0aW9uL3ZuZC5kb2NrZXIuaW1hZ2Uucm9vdGZzLmRpZmYudGFyLmd6aXAiLAogICAgICAgICAic2l6ZSI6IDI4MTE5NDcsCiAgICAgICAgICJkaWdlc3QiOiAic2hhMjU2OmNhM2NkNDJhN2M5NTI1ZjZjZTNkNjRjMWE3MDk4MjYxM2E4MjM1ZjBjYzA1N2VjOTI0NDA1MjkyMTg1M2VmMTUiCiAgICAgIH0KICAgXQp9"
+      contentsize: 2813947
     linux/arm64:
       manifest: "sha256:071fa5de01a240dbef5be09d69f8fef2f89d68445d9175393773ee389b6f5935"
+      contentsize: 2713919
+    linux/arm/v6:
+      manifest: "sha256:cba24b50b9d81704968f65455897a3a519568b236c174c9040135c5afee5dc54"
+      contentsize: 2624114
+    linux/arm/v7:
+      manifest: "sha256:59b46c319f3b66dfda96faafd0c6959e9b2f409792d0236204f270dfd0235960"
+      contentsize: 2426106
+    linux/386:
+      manifest: "sha256:e10c13a5af47b1f2f5e3fbb9355fa82bc1234567a83a549d61d15697131e6e66"
+      contentsize: 2820800
+    linux/ppc64le:
+      manifest: "sha256:f3a907bc0278ea0de7ddafcbca3c9a63cee253a4698eb248a4416d46fc906dbd"
+      contentsize: 2815221
+    linux/s390x:
+      manifest: "sha256:44f0cac18b69c3867be12e78766393adf801560a102fe0113bb4abc981acf9bf"
+      contentsize: 2604591
 
 busybox:
   ref: "ghcr.io/containerd/busybox"
