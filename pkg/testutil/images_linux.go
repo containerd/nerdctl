@@ -19,6 +19,7 @@ package testutil
 import (
 	_ "embed"
 	"fmt"
+	"slices"
 	"sync"
 
 	"go.yaml.in/yaml/v3"
@@ -34,6 +35,9 @@ type manifestInfo struct {
 	Manifest  string `yaml:"manifest,omitempty"`
 	MediaType string `yaml:"mediatype,omitempty"`
 	Raw       string `yaml:"raw,omitempty"`
+	// ContentSize is the sum of the blob sizes of this platform (its manifest, config and layers),
+	// which is what `nerdctl images` reports as CONTENT SIZE.
+	ContentSize int64 `yaml:"contentsize,omitempty"`
 }
 
 type TestImage struct {
@@ -118,4 +122,27 @@ func GetTestImageRaw(key, platform string) string {
 		panic(fmt.Sprintf("platform %s not found for image %s", platform, key))
 	}
 	return pd.Raw
+}
+
+// GetTestImageContentSize returns the expected CONTENT SIZE of one platform of a test image, in
+// bytes: the sum of the sizes of its manifest, config and layer blobs.
+func GetTestImageContentSize(key, platform string) int64 {
+	im := lookup(key)
+	pd, ok := im.Manifests[platform]
+	if !ok {
+		panic(fmt.Sprintf("platform %s not found for image %s", platform, key))
+	}
+	return pd.ContentSize
+}
+
+// GetTestImagePlatforms returns the platforms declared for a test image, sorted, in the normalized
+// form the image listing prints them (e.g. "linux/arm64", not "linux/arm64/v8").
+func GetTestImagePlatforms(key string) []string {
+	im := lookup(key)
+	platformz := make([]string, 0, len(im.Manifests))
+	for platform := range im.Manifests {
+		platformz = append(platformz, platform)
+	}
+	slices.Sort(platformz)
+	return platformz
 }
