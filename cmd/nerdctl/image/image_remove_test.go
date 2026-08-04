@@ -143,7 +143,7 @@ func TestRemove(t *testing.T) {
 					Errors:   []error{},
 					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: expect.Contains("<none>"),
+							Output: expect.Contains("<untagged>"),
 						})
 					},
 				}
@@ -249,7 +249,7 @@ func TestRemove(t *testing.T) {
 					Errors:   []error{},
 					Output: func(stdout string, t tig.T) {
 						helpers.Command("images").Run(&test.Expected{
-							Output: expect.Contains("<none>"),
+							Output: expect.Contains("<untagged>"),
 						})
 					},
 				}
@@ -374,7 +374,7 @@ func TestRemoveKubeWithKubeHideDupe(t *testing.T) {
 	)
 	testCase.SubTests = []*test.Case{
 		{
-			Description: "After removing the tag without kube-hide-dupe, repodigest is shown as <none>",
+			Description: "After removing the tag without kube-hide-dupe, repodigest is shown as <untagged>",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("pull", "--quiet", testutil.BusyboxImage)
