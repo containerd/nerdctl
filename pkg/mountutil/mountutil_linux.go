@@ -330,7 +330,7 @@ func ensureMountOptionalValue(mi mount.Info, propagation string, vals ...string)
 		}
 	}
 	if !hasValue {
-		return fmt.Errorf("mountpoint %q is not a shared or slave mount, so it cannot be bind-mounted with propagation %q; try running `mount --make-rshared %s` on the host", mi.Mountpoint, propagation, mi.Mountpoint)
+		return fmt.Errorf("mountpoint %q is not a shared or slave mount, so it cannot be bind-mounted with propagation %q; try running `mount --make-rshared %q` on the host", mi.Mountpoint, propagation, mi.Mountpoint)
 	}
 	return nil
 }

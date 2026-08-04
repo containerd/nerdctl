@@ -183,7 +183,7 @@ func TestParseVolumeOptions(t *testing.T) {
 			optsRaw:         "ro,shared",
 			srcOptional:     nil,
 			wantFail:        true,
-			wantErrContains: "mount --make-rshared dummy",
+			wantErrContains: `mount --make-rshared "dummy"`,
 		},
 		{
 			name:                  "make bind slave",
@@ -211,7 +211,7 @@ func TestParseVolumeOptions(t *testing.T) {
 			optsRaw:         "ro,slave",
 			srcOptional:     nil,
 			wantFail:        true,
-			wantErrContains: "mount --make-rshared dummy",
+			wantErrContains: `mount --make-rshared "dummy"`,
 		},
 	}
 	for _, tt := range tests {
