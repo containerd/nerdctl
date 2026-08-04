@@ -19,6 +19,7 @@ package compose
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -37,6 +38,28 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
+
+func composeRunCleanup() test.Butler {
+	return func(data test.Data, helpers test.Helpers) {
+		composePath := data.Temp().Path("compose.yaml")
+		// Tigron runs cleanup before setup too. A fresh temp project has no
+		// manifest or resources yet, so avoid waiting for the global compose lock.
+		if _, err := os.Stat(composePath); os.IsNotExist(err) {
+			return
+		}
+		// A background compose run holds the global compose lock. Stop its exact
+		// test container first so the process exits before compose rm acquires it.
+		helpers.Anyhow("stop", data.Identifier())
+		helpers.Anyhow("compose", "-f", composePath, "rm", "-f", "-s", "-v")
+		// Docker Compose excludes one-off containers from `compose rm`, while
+		// nerdctl Compose selects every container with the project and service labels.
+		// Remove the explicit `compose run --name` container in compatibility runs.
+		if nerdtest.IsDocker() {
+			helpers.Anyhow("rm", "-f", "-v", data.Identifier())
+		}
+		helpers.Anyhow("compose", "-f", composePath, "down", "-v")
+	}
+}
 
 func TestComposeRun(t *testing.T) {
 	const expectedOutput = "speed 38400 baud"
@@ -71,10 +94,7 @@ services:
 				return cmd
 			},
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(expectedOutput)),
-			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", "-v", data.Identifier())
-				helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
-			},
+			Cleanup:  composeRunCleanup(),
 		},
 		{
 			Description: "pty run with --rm",
@@ -104,10 +124,7 @@ services:
 					Output: expect.Contains(expectedOutput),
 				}
 			},
-			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", "-v", data.Identifier())
-				helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
-			},
+			Cleanup: composeRunCleanup(),
 		},
 	}
 
@@ -116,6 +133,9 @@ services:
 
 func TestComposeRunWithServicePorts(t *testing.T) {
 	testCase := nerdtest.Setup()
+	// A background compose run holds the global compose lock until cleanup.
+	testCase.NoParallel = true
+	cleanup := composeRunCleanup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		hostPort, err := portlock.Acquire(0)
@@ -139,8 +159,6 @@ services:
 		data.Labels().Set("composeYAML", composePath)
 		data.Labels().Set("hostPort", strconv.Itoa(hostPort))
 
-		// specify the name of container in order to remove
-		// TODO: when `compose rm` is implemented, replace it.
 		cmd := helpers.Command("compose", "-f", composePath, "run", "--service-ports", "--name", data.Identifier(), "web")
 		cmd.WithPseudoTTY()
 		cmd.Background()
@@ -148,10 +166,7 @@ services:
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
-		if composeYAML := data.Labels().Get("composeYAML"); composeYAML != "" {
-			helpers.Anyhow("compose", "-f", composeYAML, "down", "-v")
-		}
+		cleanup(data, helpers)
 		if portStr := data.Labels().Get("hostPort"); portStr != "" {
 			if port, err := strconv.Atoi(portStr); err == nil {
 				_ = portlock.Release(port)
@@ -183,6 +198,9 @@ services:
 
 func TestComposeRunWithPublish(t *testing.T) {
 	testCase := nerdtest.Setup()
+	// A background compose run holds the global compose lock until cleanup.
+	testCase.NoParallel = true
+	cleanup := composeRunCleanup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		hostPort, err := portlock.Acquire(0)
@@ -204,8 +222,6 @@ services:
 		data.Labels().Set("composeYAML", composePath)
 		data.Labels().Set("hostPort", strconv.Itoa(hostPort))
 
-		// specify the name of container in order to remove
-		// TODO: when `compose rm` is implemented, replace it.
 		cmd := helpers.Command("compose", "-f", composePath, "run", "--publish", fmt.Sprintf("%d:80", hostPort), "--name", data.Identifier(), "web")
 		cmd.WithPseudoTTY()
 		cmd.Background()
@@ -213,10 +229,7 @@ services:
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
-		if composeYAML := data.Labels().Get("composeYAML"); composeYAML != "" {
-			helpers.Anyhow("compose", "-f", composeYAML, "down", "-v")
-		}
+		cleanup(data, helpers)
 		if portStr := data.Labels().Get("hostPort"); portStr != "" {
 			if port, err := strconv.Atoi(portStr); err == nil {
 				_ = portlock.Release(port)
@@ -285,10 +298,7 @@ services:
 
 	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(partialOutput))
 
-	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
-		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
-	}
+	testCase.Cleanup = composeRunCleanup()
 
 	testCase.Run(t)
 }
@@ -331,10 +341,7 @@ services:
 
 	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(partialOutput))
 
-	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
-		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
-	}
+	testCase.Cleanup = composeRunCleanup()
 
 	testCase.Run(t)
 }
@@ -376,10 +383,7 @@ services:
 
 	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(expectedOutput))
 
-	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
-		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
-	}
+	testCase.Cleanup = composeRunCleanup()
 
 	testCase.Run(t)
 }
@@ -434,10 +438,7 @@ services:
 		}
 	}
 
-	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
-		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
-	}
+	testCase.Cleanup = composeRunCleanup()
 
 	testCase.Run(t)
 }
@@ -478,10 +479,7 @@ services:
 
 	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(partialOutput))
 
-	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
-		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
-	}
+	testCase.Cleanup = composeRunCleanup()
 
 	testCase.Run(t)
 }
@@ -524,10 +522,7 @@ services:
 
 	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(partialOutput))
 
-	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
-		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
-	}
+	testCase.Cleanup = composeRunCleanup()
 
 	testCase.Run(t)
 }
@@ -582,10 +577,7 @@ services:
 		}
 	}
 
-	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("rm", "-f", "-v", data.Identifier())
-		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
-	}
+	testCase.Cleanup = composeRunCleanup()
 
 	testCase.Run(t)
 }
