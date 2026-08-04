@@ -19,6 +19,8 @@ package imageinspector
 import (
 	"context"
 
+	"github.com/opencontainers/image-spec/identity"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/snapshots"
@@ -56,6 +58,17 @@ func Inspect(ctx context.Context, client *containerd.Client, image images.Image,
 	} else {
 		n.ImageConfigDesc = imageConfigDesc
 		n.ImageConfig = imageConfig
+		chainIDs := identity.ChainIDs(imageConfig.RootFS.DiffIDs)
+		snapshots := make([]snapshots.Info, len(chainIDs))
+		for i, id := range chainIDs {
+			snapInfo, err := snapshotter.Stat(ctx, id.String())
+			if err == nil {
+				snapshots[i] = snapInfo
+			} else {
+				log.G(ctx).WithError(err).WithField("id", image.Name).Warnf("failed to get snapshot %s info", id.String())
+			}
+		}
+		n.Snapshots = snapshots
 	}
 	n.Size, err = imgutil.UnpackedImageSize(ctx, snapshotter, img)
 	if err != nil {
