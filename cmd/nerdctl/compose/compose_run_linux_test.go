@@ -28,15 +28,15 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/registry"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
-	"github.com/containerd/nerdctl/v2/pkg/testutil/testregistry"
 )
 
 func composeRunCleanup() test.Butler {
@@ -583,32 +583,31 @@ services:
 }
 
 func TestComposePushAndPullWithCosignVerify(t *testing.T) {
-	testutil.RequireExecutable(t, "cosign")
-	testutil.DockerIncompatible(t)
-	testutil.RequiresBuild(t)
-	testutil.RegisterBuildCacheCleanup(t)
-	t.Parallel()
+	const sttyPartialOutput = "speed 38400 baud"
 
-	base := testutil.NewBase(t)
-	base.Env = append(base.Env, "COSIGN_PASSWORD=1")
+	testCase := nerdtest.Setup()
 
-	keyPair := helpers.NewCosignKeyPair(t, "cosign-key-pair", "1")
-	reg := testregistry.NewWithNoAuth(base, 0, false)
-	t.Cleanup(func() {
-		keyPair.Cleanup()
-		reg.Cleanup(nil)
-	})
-
-	tID := testutil.Identifier(t)
-	testImageRefPrefix := fmt.Sprintf("127.0.0.1:%d/%s/", reg.Port, tID)
-
-	var (
-		imageSvc0 = testImageRefPrefix + "composebuild_svc0"
-		imageSvc1 = testImageRefPrefix + "composebuild_svc1"
-		imageSvc2 = testImageRefPrefix + "composebuild_svc2"
+	testCase.Require = require.All(
+		require.Binary("cosign"),
+		require.Not(nerdtest.Docker),
+		nerdtest.Build,
+		nerdtest.Registry,
 	)
 
-	dockerComposeYAML := fmt.Sprintf(`
+	testCase.Env["COSIGN_PASSWORD"] = "1"
+
+	dockerfile := fmt.Sprintf("FROM %s", testutil.CommonImage)
+
+	var reg *registry.Server
+	var composeYAML string
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		pri, pub := nerdtest.GenerateCosignKeyPair(data, helpers, "1")
+		reg = nerdtest.RegistryWithNoAuth(data, helpers, 0, false)
+		reg.Setup(data, helpers)
+
+		prefix := fmt.Sprintf("127.0.0.1:%d/%s/", reg.Port, data.Identifier())
+		composeYAML = fmt.Sprintf(`
 services:
   svc0:
     build: .
@@ -635,37 +634,63 @@ services:
     x-nerdctl-sign: none
     entrypoint:
       - stty
-`, imageSvc0, keyPair.PublicKey, keyPair.PrivateKey,
-		imageSvc1, keyPair.PrivateKey, imageSvc2)
+`, prefix+"composebuild_svc0", pub, pri, prefix+"composebuild_svc1", pri, prefix+"composebuild_svc2")
 
-	dockerfile := fmt.Sprintf(`FROM %s`, testutil.CommonImage)
+		data.Temp().Save(composeYAML, "compose.yaml")
+		data.Temp().Save(dockerfile, "Dockerfile")
 
-	comp := testutil.NewComposeDir(t, dockerComposeYAML)
-	defer comp.CleanUp()
-	comp.WriteFile("Dockerfile", dockerfile)
+		composePath := data.Temp().Path("compose.yaml")
+		// Build both services/images and push, signing svc0/svc1 with cosign (svc2 unsigned).
+		helpers.Ensure("compose", "-f", composePath, "build")
+		helpers.Ensure("compose", "-f", composePath, "push")
+	}
 
-	projectName := comp.ProjectName()
-	t.Logf("projectName=%q", projectName)
-	defer base.ComposeCmd("-f", comp.YAMLFullPath(), "down", "-v").Run()
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		composeRunCleanup()(data, helpers)
+		if reg != nil {
+			reg.Cleanup(data, helpers)
+		}
+	}
 
-	// 1. build both services/images
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "build").AssertOK()
-	// 2. compose push with cosign for svc0/svc1, (and none for svc2)
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "push").AssertOK()
-	// 3. compose pull with cosign
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "pull", "svc0").AssertOK()   // key match
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "pull", "svc1").AssertFail() // key mismatch
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "pull", "svc2").AssertOK()   // verify passed
-	// 4. compose run
-	const sttyPartialOutput = "speed 38400 baud"
-	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
-	// unbuffer(1) can be installed with `apt-get install expect`.
-	unbuffer := []string{"unbuffer"}
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "run", "svc0").AssertOutContains(sttyPartialOutput) // key match
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "run", "svc1").AssertFail()                         // key mismatch
-	base.ComposeCmdWithHelper(unbuffer, "-f", comp.YAMLFullPath(), "run", "svc2").AssertOutContains(sttyPartialOutput) // verify passed
-	// 5. compose up
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "svc0").AssertOK()   // key match
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "svc1").AssertFail() // key mismatch
-	base.ComposeCmd("-f", comp.YAMLFullPath(), "up", "svc2").AssertOK()   // verify passed
+	// Each subtest re-materializes the compose project (the signed images live in the
+	// shared registry set up above) and exercises one verify scenario:
+	// svc0 verifies against the matching key, svc1 against a mismatching key (must fail),
+	// svc2 is not verified.
+	subTest := func(description, op, svc string, tty bool, expected test.Manager) *test.Case {
+		return &test.Case{
+			Description: description,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				data.Temp().Save(composeYAML, "compose.yaml")
+				data.Temp().Save(dockerfile, "Dockerfile")
+			},
+			Cleanup: composeRunCleanup(),
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), op, svc)
+				if tty {
+					// stty (the entrypoint) requires a tty, which `run -t` provides.
+					cmd.WithPseudoTTY()
+				}
+				return cmd
+			},
+			Expected: expected,
+		}
+	}
+
+	success := test.Expects(expect.ExitCodeSuccess, nil, nil)
+	fail := test.Expects(expect.ExitCodeGenericFail, nil, nil)
+	successWithOutput := test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(sttyPartialOutput))
+
+	testCase.SubTests = []*test.Case{
+		subTest("compose pull svc0 (key match)", "pull", "svc0", false, success),
+		subTest("compose pull svc1 (key mismatch)", "pull", "svc1", false, fail),
+		subTest("compose pull svc2 (verify none)", "pull", "svc2", false, success),
+		subTest("compose run svc0 (key match)", "run", "svc0", true, successWithOutput),
+		subTest("compose run svc1 (key mismatch)", "run", "svc1", true, fail),
+		subTest("compose run svc2 (verify none)", "run", "svc2", true, successWithOutput),
+		subTest("compose up svc0 (key match)", "up", "svc0", false, success),
+		subTest("compose up svc1 (key mismatch)", "up", "svc1", false, fail),
+		subTest("compose up svc2 (verify none)", "up", "svc2", false, success),
+	}
+
+	testCase.Run(t)
 }
