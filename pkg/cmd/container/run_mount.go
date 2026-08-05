@@ -127,19 +127,24 @@ func parseMountFlags(volStore volumestore.VolumeStore, options types.ContainerCr
 const gcRootLabel = "containerd.io/gc.root"
 
 // setupImageMount ensures and unpacks ref, then creates a read-only GC-rooted
-// snapshot view of its rootfs. Image mounts are always read-only, matching
-// Docker. It returns the OCI mount for destination and the view's snapshot key.
-func setupImageMount(ctx context.Context, client *containerd.Client, options types.ContainerCreateOptions, ref, destination string) (specs.Mount, string, error) {
+// snapshot view of its rootfs. Without a subpath it returns the snapshotter's
+// own mount for destination (runc owns its lifecycle). With a subpath it
+// materializes the view on a host directory and returns a read-only bind mount
+// of the resolved subdirectory, because an OCI overlay mount cannot select a
+// subdir; that host directory is returned so it can be unmounted on removal.
+// It returns the OCI mount, the view's snapshot key, and the host materialization
+// path (empty when no subpath is used).
+func setupImageMount(ctx context.Context, client *containerd.Client, options types.ContainerCreateOptions, ref, destination, subpath string) (specs.Mount, string, string, error) {
 	ensured, err := imgutil.EnsureImage(ctx, client, ref, options.ImagePullOpt)
 	if err != nil {
-		return specs.Mount{}, "", fmt.Errorf("failed to ensure image %q for image mount: %w", ref, err)
+		return specs.Mount{}, "", "", fmt.Errorf("failed to ensure image %q for image mount: %w", ref, err)
 	}
 	if err := ensured.Image.Unpack(ctx, options.GOptions.Snapshotter); err != nil {
-		return specs.Mount{}, "", fmt.Errorf("failed to unpack image %q for image mount: %w", ref, err)
+		return specs.Mount{}, "", "", fmt.Errorf("failed to unpack image %q for image mount: %w", ref, err)
 	}
 	diffIDs, err := ensured.Image.RootFS(ctx)
 	if err != nil {
-		return specs.Mount{}, "", fmt.Errorf("failed to get rootfs of image %q for image mount: %w", ref, err)
+		return specs.Mount{}, "", "", fmt.Errorf("failed to get rootfs of image %q for image mount: %w", ref, err)
 	}
 	chainID := identity.ChainID(diffIDs).String()
 
@@ -149,16 +154,26 @@ func setupImageMount(ctx context.Context, client *containerd.Client, options typ
 		gcRootLabel: time.Now().UTC().Format(time.RFC3339),
 	}))
 	if err != nil {
-		return specs.Mount{}, "", fmt.Errorf("failed to create read-only view of image %q: %w", ref, err)
+		return specs.Mount{}, "", "", fmt.Errorf("failed to create read-only view of image %q: %w", ref, err)
 	}
-	// overlayfs and native snapshotters each yield a single mount for a view.
-	if len(mounts) != 1 {
+	// removeView drops the snapshot view on any failure after it was created.
+	removeView := func() {
 		if rmErr := s.Remove(ctx, snapshotKey); rmErr != nil && !errdefs.IsNotFound(rmErr) {
 			log.G(ctx).WithError(rmErr).Warnf("failed to remove image-mount snapshot %q", snapshotKey)
 		}
-		return specs.Mount{}, "", fmt.Errorf("image mount expects exactly one mount from the snapshotter, got %d", len(mounts))
 	}
 
+	if subpath != "" {
+		return setupImageSubpathMount(ctx, options, ref, destination, subpath, snapshotKey, mounts, removeView)
+	}
+
+	// Whole-rootfs case: hand the snapshotter's mount straight to the OCI runtime,
+	// which mounts and unmounts it with the container. overlayfs and native
+	// snapshotters each yield exactly one mount for a view.
+	if len(mounts) != 1 {
+		removeView()
+		return specs.Mount{}, "", "", fmt.Errorf("image mount expects exactly one mount from the snapshotter, got %d", len(mounts))
+	}
 	m := mounts[0]
 	opts := m.Options
 	// A view without an upper dir is already read-only; make it explicit for
@@ -171,13 +186,77 @@ func setupImageMount(ctx context.Context, client *containerd.Client, options typ
 		Source:      m.Source,
 		Destination: destination,
 		Options:     opts,
-	}, snapshotKey, nil
+	}, snapshotKey, "", nil
 }
 
-// removeImageMountViews removes the snapshotter views created for type=image
-// mounts. NotFound is ignored; other failures are logged but not fatal.
-func removeImageMountViews(ctx context.Context, s snapshots.Snapshotter, keys []string) {
-	for _, k := range keys {
+// setupImageSubpathMount materializes the view on a host dir and returns a
+// read-only bind mount of the subpath. securejoin keeps the resolved path inside
+// the rootfs; being path-based it does not guard a post-resolution symlink swap,
+// which the read-only view under a root-owned 0700 dir does not expose. On failure
+// it unwinds the mount, dir, and view; the host path is removed on container delete.
+func setupImageSubpathMount(ctx context.Context, options types.ContainerCreateOptions, ref, destination, subpath, snapshotKey string, mounts []mount.Mount, removeView func()) (specs.Mount, string, string, error) {
+	// Materialize under the data root keyed by snapshot key so it is unique per
+	// view and outlives container restarts (only removed on container deletion).
+	hostMountpoint := filepath.Join(options.GOptions.DataRoot, "image-mounts", snapshotKey)
+	if err := os.MkdirAll(hostMountpoint, 0o700); err != nil {
+		removeView()
+		return specs.Mount{}, "", "", fmt.Errorf("failed to create image-mount host dir: %w", err)
+	}
+	if err := mount.All(mounts, hostMountpoint); err != nil {
+		// mount.All may have applied some mounts before failing; unmount before
+		// removing the dir so RemoveAll never recurses into a live mount.
+		if uErr := mount.UnmountAll(hostMountpoint, 0); uErr != nil {
+			log.G(ctx).WithError(uErr).Warnf("failed to unmount image-mount host path %q after failed setup", hostMountpoint)
+		}
+		os.RemoveAll(hostMountpoint)
+		removeView()
+		return specs.Mount{}, "", "", fmt.Errorf("failed to materialize image %q for subpath mount: %w", ref, err)
+	}
+	// cleanup unwinds the host mount, its directory, and the view together.
+	cleanup := func() {
+		if uErr := mount.UnmountAll(hostMountpoint, 0); uErr != nil {
+			log.G(ctx).WithError(uErr).Warnf("failed to unmount image-mount host path %q", hostMountpoint)
+		}
+		os.RemoveAll(hostMountpoint)
+		removeView()
+	}
+
+	// securejoin resolves the subpath within the rootfs, keeping the result inside it.
+	resolved, err := securejoin.SecureJoin(hostMountpoint, subpath)
+	if err != nil {
+		cleanup()
+		return specs.Mount{}, "", "", fmt.Errorf("failed to resolve image-subpath %q: %w", subpath, err)
+	}
+	if _, err := os.Stat(resolved); err != nil {
+		cleanup()
+		if os.IsNotExist(err) {
+			return specs.Mount{}, "", "", fmt.Errorf("image-subpath %q does not exist in image %q", subpath, ref)
+		}
+		return specs.Mount{}, "", "", fmt.Errorf("failed to stat image-subpath %q: %w", subpath, err)
+	}
+	return specs.Mount{
+		Type:        "bind",
+		Source:      resolved,
+		Destination: destination,
+		Options:     []string{"rbind", "ro"},
+	}, snapshotKey, hostMountpoint, nil
+}
+
+// removeImageMounts tears down type=image mount state for a container: it
+// unmounts and removes any host materialization directories (image-subpath),
+// then removes the read-only snapshot views. NotFound is ignored; other
+// failures are logged but not fatal.
+func removeImageMounts(ctx context.Context, s snapshots.Snapshotter, hostpaths, snapshotKeys []string) {
+	// Unmount host materializations before removing the views they hold open.
+	for _, p := range hostpaths {
+		if err := mount.UnmountAll(p, 0); err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to unmount image-mount host path %q", p)
+		}
+		if err := os.RemoveAll(p); err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to remove image-mount host path %q", p)
+		}
+	}
+	for _, k := range snapshotKeys {
 		if err := s.Remove(ctx, k); err != nil && !errdefs.IsNotFound(err) {
 			log.G(ctx).WithError(err).Warnf("failed to remove image-mount snapshot %q", k)
 		}
@@ -190,14 +269,15 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 	volStore volumestore.VolumeStore, options types.ContainerCreateOptions) (opts []oci.SpecOpts, anonVolumes []string, mountPoints []*mountutil.Processed, retErr error) {
 	//nolint:prealloc
 	var (
-		userMounts      []specs.Mount
-		imageMountViews []string
+		userMounts          []specs.Mount
+		imageMountViews     []string
+		imageMountHostpaths []string
 	)
-	// Remove any image-mount views created here if this function fails, so a
-	// partial setup does not leak snapshots.
+	// Tear down any image-mount state created here if this function fails, so a
+	// partial setup does not leak snapshots or host mounts.
 	defer func() {
-		if retErr != nil && len(imageMountViews) > 0 {
-			removeImageMountViews(ctx, client.SnapshotService(options.GOptions.Snapshotter), imageMountViews)
+		if retErr != nil && (len(imageMountViews) > 0 || len(imageMountHostpaths) > 0) {
+			removeImageMounts(ctx, client.SnapshotService(options.GOptions.Snapshotter), imageMountHostpaths, imageMountViews)
 		}
 	}()
 	mounted := make(map[string]struct{})
@@ -299,13 +379,17 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 			// type=image: build the read-only view now and record its snapshot
 			// key for cleanup on container removal.
 			if x.Type == mountutil.Image {
-				m, snapshotKey, err := setupImageMount(ctx, client, options, x.Mount.Source, x.Mount.Destination)
+				m, snapshotKey, hostMountpoint, err := setupImageMount(ctx, client, options, x.Mount.Source, x.Mount.Destination, x.ImageSubpath)
 				if err != nil {
 					return nil, nil, nil, err
 				}
 				imageMountViews = append(imageMountViews, snapshotKey)
+				if hostMountpoint != "" {
+					imageMountHostpaths = append(imageMountHostpaths, hostMountpoint)
+				}
 				ociMounts[i] = m
 				x.ImageMountSnapshot = snapshotKey
+				x.ImageMountHostpath = hostMountpoint
 				mounted[filepath.Clean(x.Mount.Destination)] = struct{}{}
 				continue
 			}

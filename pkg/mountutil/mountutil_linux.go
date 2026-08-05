@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -360,6 +361,31 @@ func ProcessFlagTmpfs(s string) (*Processed, error) {
 	return res, nil
 }
 
+// validateImageSubpath normalizes an image-subpath value and rejects paths that
+// are absolute or escape the image rootfs. A value that resolves to the rootfs
+// itself (empty, or one normalizing to ".", e.g. "a/..") returns empty, the
+// no-subpath case Docker also accepts. Image paths are always forward-slash, so
+// it uses path, not filepath.
+func validateImageSubpath(p string) (string, error) {
+	if p == "" {
+		return "", nil
+	}
+	if path.IsAbs(p) {
+		return "", fmt.Errorf("image-subpath must be relative to the image rootfs, got %q", p)
+	}
+	clean := path.Clean(p)
+	// Clean collapses ".." segments; anything still leading with ".." escapes root.
+	if clean == ".." || strings.HasPrefix(clean, "../") {
+		return "", fmt.Errorf("image-subpath %q escapes the image rootfs", p)
+	}
+	// "." is the whole rootfs (e.g. from "a/.."); treat it as no subpath so the
+	// caller mounts the full image view, matching Docker.
+	if clean == "." {
+		return "", nil
+	}
+	return clean, nil
+}
+
 func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime string) (*Processed, error) {
 	fields := strings.Split(s, ",")
 	var (
@@ -370,6 +396,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 		bindNonRecursive bool
 		bindRecursive    string // "enabled", "disabled", "writable", or "readonly"
 		rwOption         string
+		imageSubpath     string
 		tmpfsSize        int64
 		tmpfsMode        os.FileMode
 		err              error
@@ -441,9 +468,9 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 				rwOption = key
 			}
 		case "image-subpath":
-			// image-subpath is Docker's option to mount a subdirectory of the
-			// image; it is not implemented yet.
-			return nil, fmt.Errorf("mount option %q is not yet supported", key)
+			// Selects a directory inside a type=image rootfs; validated below once
+			// the mount type is known.
+			imageSubpath = value
 		case "bind-propagation":
 			// here don't validate the propagation value
 			// parseVolumeOptions will do that.
@@ -480,6 +507,12 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 		}
 	}
 
+	// image-subpath only makes sense for type=image; reject it elsewhere before
+	// falling through to the legacy bind/volume/tmpfs handlers.
+	if imageSubpath != "" && mountType != Image {
+		return nil, fmt.Errorf("image-subpath is only supported for type=image")
+	}
+
 	// type=image's source is an image reference resolved later with a containerd
 	// client; validate the intent here. Like Docker, an image mount is always
 	// read-only: a readonly/ro option is accepted for compatibility but the
@@ -491,6 +524,12 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 		if dst == "" {
 			return nil, fmt.Errorf("type=image requires a destination")
 		}
+		// Normalize and bound the subpath to the image rootfs at parse time;
+		// securejoin re-checks against symlinks once the rootfs is materialized.
+		cleanSubpath, err := validateImageSubpath(imageSubpath)
+		if err != nil {
+			return nil, err
+		}
 		return &Processed{
 			Type: Image,
 			// Mode "ro" so inspect/label metadata reports the mount read-only.
@@ -500,6 +539,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 				Source:      src,
 				Destination: cleanMount(dst),
 			},
+			ImageSubpath: cleanSubpath,
 		}, nil
 	}
 
