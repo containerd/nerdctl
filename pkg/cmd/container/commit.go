@@ -51,6 +51,7 @@ func Commit(ctx context.Context, client *containerd.Client, rawRef string, req s
 		Changes:            changes,
 		Compression:        options.Compression,
 		Format:             options.Format,
+		Timeout:            options.Timeout,
 		EstargzOptions:     options.EstargzOptions,
 		ZstdChunkedOptions: options.ZstdChunkedOptions,
 	}

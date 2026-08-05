@@ -18,6 +18,7 @@ package container
 
 import (
 	"errors"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -51,6 +52,7 @@ func CommitCommand() *cobra.Command {
 	cmd.Flags().Bool("zstdchunked", false, "Convert the committed layer to zstd:chunked for lazy pulling")
 	cmd.Flags().Int("zstdchunked-compression-level", 3, "zstd:chunked compression level")
 	cmd.Flags().Int("zstdchunked-chunk-size", 0, "zstd:chunked chunk size")
+	cmd.Flags().Duration("timeout", 1*time.Hour, "Maximum duration for the commit operation (default 1h, 0 for containerd's default 24h)")
 	return cmd
 }
 
@@ -123,6 +125,11 @@ func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 		return types.ContainerCommitOptions{}, err
 	}
 
+	timeout, err := cmd.Flags().GetDuration("timeout")
+	if err != nil {
+		return types.ContainerCommitOptions{}, err
+	}
+
 	// estargz and zstdchunked are mutually exclusive
 	if estargz && zstdchunked {
 		return types.ContainerCommitOptions{}, errors.New("options --estargz and --zstdchunked lead to conflict, only one of them can be used")
@@ -137,6 +144,7 @@ func commitOptions(cmd *cobra.Command) (types.ContainerCommitOptions, error) {
 		Change:      change,
 		Compression: types.CompressionType(com),
 		Format:      types.ImageFormat(format),
+		Timeout:     timeout,
 		EstargzOptions: types.EstargzOptions{
 			Estargz:                 estargz,
 			EstargzCompressionLevel: estargzCompressionLevel,
