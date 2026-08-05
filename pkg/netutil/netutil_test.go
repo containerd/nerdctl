@@ -104,7 +104,6 @@ func TestParseIPAMRange(t *testing.T) {
 			expected: &IPAMRange{
 				Subnet:     "10.1.0.0/16",
 				Gateway:    "10.1.0.1",
-				IPRange:    "10.1.100.0/24",
 				RangeStart: "10.1.100.1",
 				RangeEnd:   "10.1.100.255",
 			},
@@ -115,7 +114,6 @@ func TestParseIPAMRange(t *testing.T) {
 			expected: &IPAMRange{
 				Subnet:     "10.1.100.0/23",
 				Gateway:    "10.1.100.1",
-				IPRange:    "10.1.100.0/25",
 				RangeStart: "10.1.100.1",
 				RangeEnd:   "10.1.100.127",
 			},
@@ -245,20 +243,20 @@ func TestSplitIPAMRange(t *testing.T) {
 		{
 			name:     "a reservation inside an ip-range splits within its bounds",
 			subnet:   "10.1.100.0/24",
-			base:     &IPAMRange{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1", IPRange: "10.1.100.0/28", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.15"},
+			base:     &IPAMRange{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.15"},
 			reserved: ips("10.1.100.5"),
 			expected: []IPAMRange{
-				{Subnet: "10.1.100.0/24", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.4", Gateway: "10.1.100.1", IPRange: "10.1.100.0/28"},
+				{Subnet: "10.1.100.0/24", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.4", Gateway: "10.1.100.1"},
 				{Subnet: "10.1.100.0/24", RangeStart: "10.1.100.6", RangeEnd: "10.1.100.15", Gateway: "10.1.100.1"},
 			},
 		},
 		{
 			name:     "a reservation outside the ip-range needs no split",
 			subnet:   "10.1.100.0/24",
-			base:     &IPAMRange{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1", IPRange: "10.1.100.0/28", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.15"},
+			base:     &IPAMRange{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.15"},
 			reserved: ips("10.1.100.200"),
 			expected: []IPAMRange{
-				{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1", IPRange: "10.1.100.0/28", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.15"},
+				{Subnet: "10.1.100.0/24", Gateway: "10.1.100.1", RangeStart: "10.1.100.1", RangeEnd: "10.1.100.15"},
 			},
 		},
 		{
