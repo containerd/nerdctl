@@ -8,7 +8,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.3-0.20251027160822-ad3df93bed29
 	github.com/Microsoft/hcsshim v0.15.0-rc.3
 	github.com/compose-spec/compose-go/v2 v2.14.0 //gomodjail:unconfined
-	github.com/containerd/accelerated-container-image v1.4.3
+	github.com/containerd/accelerated-container-image v1.4.4
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
 	github.com/containerd/containerd/api v1.11.1
