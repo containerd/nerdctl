@@ -48,6 +48,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
@@ -575,13 +576,48 @@ func imagesInUse(ctx context.Context, client *containerd.Client) map[digest.Dige
 		return inUse
 	}
 	for _, container := range containerList {
-		image, err := container.Image(ctx)
-		if err != nil {
-			continue
+		if dgst, ok := containerImageDigest(ctx, container); ok {
+			inUse[dgst] = true
 		}
-		inUse[image.Target().Digest] = true
 	}
 	return inUse
+}
+
+// containerImageDigest returns the image target a container was created from.
+//
+// The digest is read from the label nerdctl records at creation time. Resolving the image name
+// instead would follow the tag wherever it points now: after `nerdctl tag` moves a tag onto another
+// image, the container would be attributed to an image it never ran. Containers created before this
+// label existed, or outside nerdctl, still have to be resolved by name.
+func containerImageDigest(ctx context.Context, container containerd.Container) (digest.Digest, bool) {
+	// The already-loaded metadata carries the labels, so this costs no extra round trip.
+	if info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata); err == nil {
+		if dgst, ok := pinnedImageDigest(info.Labels); ok {
+			return dgst, true
+		}
+	}
+
+	image, err := container.Image(ctx)
+	if err != nil {
+		return "", false
+	}
+	return image.Target().Digest, true
+}
+
+// pinnedImageDigest returns the image target digest a container pinned at creation time. An
+// unparsable value is treated as absent, so that a hand-edited label degrades to resolving the
+// image by name rather than dropping the container from the in-use set.
+func pinnedImageDigest(containerLabels map[string]string) (digest.Digest, bool) {
+	value := containerLabels[labels.ImageDigest]
+	if value == "" {
+		return "", false
+	}
+	dgst, err := digest.Parse(value)
+	if err != nil {
+		log.L.Debugf("ignoring invalid %s label value %q", labels.ImageDigest, value)
+		return "", false
+	}
+	return dgst, true
 }
 
 func isAttestationManifestDescriptor(desc ocispec.Descriptor) bool {

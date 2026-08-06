@@ -22,6 +22,8 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/containerd/v2/core/images"
+
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
 
 func TestNewViewImageRef(t *testing.T) {
@@ -73,5 +75,48 @@ func TestSortByImageRef(t *testing.T) {
 	}
 	for i, img := range imageList {
 		assert.Equal(t, img.Name, expected[i])
+	}
+}
+
+func TestPinnedImageDigest(t *testing.T) {
+	t.Parallel()
+
+	const pinned = "sha256:09538a1f51d3ec5af0449a1640937dfdf79b0e9b8c4da5b8a883086d5c1492ef"
+
+	testCases := []struct {
+		name            string
+		containerLabels map[string]string
+		expected        string
+	}{
+		{
+			name:            "pinned at creation",
+			containerLabels: map[string]string{labels.ImageDigest: pinned},
+			expected:        pinned,
+		},
+		{
+			// Containers created before the label existed, or outside nerdctl, have to be resolved
+			// by image name instead.
+			name:            "no label",
+			containerLabels: map[string]string{labels.Platform: "linux/amd64"},
+		},
+		{
+			name:            "empty label",
+			containerLabels: map[string]string{labels.ImageDigest: ""},
+		},
+		{
+			// Falling back to the name is better than dropping the container from the in-use set.
+			name:            "unparsable label",
+			containerLabels: map[string]string{labels.ImageDigest: "not-a-digest"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			dgst, ok := pinnedImageDigest(tc.containerLabels)
+			assert.Equal(t, ok, tc.expected != "")
+			assert.Equal(t, string(dgst), tc.expected)
+		})
 	}
 }
