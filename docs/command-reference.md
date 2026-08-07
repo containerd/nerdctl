@@ -97,6 +97,7 @@
   - [:whale: nerdctl events](#whale-nerdctl-events)
   - [:whale: nerdctl info](#whale-nerdctl-info)
   - [:whale: nerdctl version](#whale-nerdctl-version)
+  - [:whale: nerdctl system df](#whale-nerdctl-system-df)
   - [:whale: nerdctl system prune](#whale-nerdctl-system-prune)
 - [Stats](#stats)
   - [:whale: nerdctl stats](#whale-nerdctl-stats)
@@ -1579,6 +1580,38 @@ Flags:
 
 - :whale: `-f, --format`: Format the output using the given Go template, e.g, `{{json .}}`
 
+### :whale: nerdctl system df
+
+Show nerdctl disk usage
+
+Usage: `nerdctl system df [OPTIONS]`
+
+Flags:
+
+- :whale: `-v, --verbose`: Show detailed information on space usage
+- :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`.
+  `table` prints the default columns, and `table TEMPLATE` (e.g. `table {{.Type}}\t{{.Size}}`)
+  prints the columns of the template with a header and aligned columns.
+
+The images, containers and volumes are reported for the current namespace only. The build cache is
+not namespaced by containerd; it is reported for the BuildKit host associated with the namespace,
+and shows up as empty when BuildKit is not running.
+
+The sizes follow Docker v29: the size of an image is the content present in the content store plus
+its unpacked snapshots, and the `SIZE` column of the `Images` row counts anything shared between
+images only once, so it is smaller than the sum of the individual image sizes.
+
+Example:
+
+```console
+$ nerdctl system df
+TYPE             TOTAL    ACTIVE    SIZE       RECLAIMABLE
+Images           17       1         18.25GB    17.26GB (94%)
+Containers       3        3         169.2MB    0B (0%)
+Local Volumes    4        3         798.6GB    22.62MB (0%)
+Build Cache      44       0         0B         0B
+```
+
 ### :whale: nerdctl system prune
 
 Remove unused data
@@ -2040,7 +2073,6 @@ Builder:
 
 Others:
 
-- `docker system df`
 - `docker context`
 - Swarm commands are unimplemented and will not be implemented: `docker swarm|node|service|config|secret|stack *`
 - Plugin commands are unimplemented and will not be implemented: `docker plugin *`
