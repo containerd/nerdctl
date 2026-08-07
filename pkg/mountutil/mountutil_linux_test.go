@@ -665,3 +665,16 @@ func TestProcessFlagMountImage(t *testing.T) {
 		})
 	}
 }
+
+func TestProcessFlagMountVolumeNoCopy(t *testing.T) {
+	got, err := ProcessFlagMount(
+		"type=volume,source=TestVolume,target=/mnt,volume-nocopy",
+		mockVolumeStore,
+		"",
+	)
+	assert.NilError(t, err)
+
+	assert.Equal(t, got.Type, Volume)
+	assert.Equal(t, got.Name, "TestVolume")
+	assert.Assert(t, got.VolumeNoCopy)
+}
