@@ -324,7 +324,8 @@ Volume flags:
     - :whale: `tmpfs-mode`: File mode of the tmpfs in **octal**.
       Defaults to `1777` or world-writable.
   - Options specific to `volume`:
-    - unimplemented options: `volume-nocopy`, `volume-label`, `volume-driver`, `volume-opt`
+    - :whale: `volume-nocopy`: Do not copy existing data from the container into the volume.
+    - unimplemented options: `volume-label`, `volume-driver`, `volume-opt`
   - Options specific to `image`:
     - :whale: `src`, `source`: image reference (mandatory).
     - :whale: Currently, the image filesystem is mounted read-only.
