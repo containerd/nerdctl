@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 
@@ -117,19 +118,7 @@ func loginClientSide(ctx context.Context, globalOptions types.GlobalCommandOptio
 	}
 	dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(globalOptions.HostsDir))
 
-	authCreds := func(acArg string) (string, string, error) {
-		if acArg == host {
-			if credentials.RegistryToken != "" {
-				// Even containerd/CRI does not support RegistryToken as of v1.4.3,
-				// so, nobody is actually using RegistryToken?
-				log.G(ctx).Warnf("RegistryToken (for %q) is not supported yet (FIXME)", host)
-			}
-			return credentials.Username, credentials.Password, nil
-		}
-		return "", "", fmt.Errorf("expected acArg to be %q, got %q", host, acArg)
-	}
-
-	dOpts = append(dOpts, dockerconfigresolver.WithAuthCreds(authCreds))
+	dOpts = append(dOpts, dockerconfigresolver.WithAuthCreds(loginAuthCreds(ctx, host, registryURL, credentials)))
 	ho, err := dockerconfigresolver.NewHostOptions(ctx, host, dOpts...)
 	if err != nil {
 		return "", err
@@ -211,4 +200,54 @@ func tryLoginWithRegHost(ctx context.Context, rh docker.RegistryHost) error {
 	}
 
 	return errors.New("too many 401 (probably)")
+}
+
+// loginAuthCreds returns the credentials callback handed to the containerd
+// authorizer during login.
+func loginAuthCreds(ctx context.Context, host string, registryURL *dockerconfigresolver.RegistryURL, credentials *dockerconfigresolver.Credentials) func(string) (string, string, error) {
+	return func(acArg string) (string, string, error) {
+		if acArg == host || isEquivalentRegistryHost(acArg, registryURL) {
+			if credentials.RegistryToken != "" {
+				// Even containerd/CRI does not support RegistryToken as of v1.4.3,
+				// so, nobody is actually using RegistryToken?
+				log.G(ctx).Warnf("RegistryToken (for %q) is not supported yet (FIXME)", host)
+			}
+			return credentials.Username, credentials.Password, nil
+		}
+		return "", "", fmt.Errorf("expected acArg to be %q, got %q", host, acArg)
+	}
+}
+
+// isEquivalentRegistryHost reports whether acArg, the host value the
+// containerd authorizer passes to the credentials callback, refers to the
+// same registry as registryURL, the address the user asked to log in to.
+//
+// Parse always appends the standard HTTPS port to registryURL when the user
+// did not specify one, while the authorizer may call back with a host that
+// omits the default port, or with a Docker Hub alias, in which case strict
+// equality fails spuriously.
+// See https://github.com/containerd/nerdctl/issues/3992 and
+// https://github.com/containerd/nerdctl/issues/3245.
+func isEquivalentRegistryHost(acArg string, registryURL *dockerconfigresolver.RegistryURL) bool {
+	acHost, acPort, err := net.SplitHostPort(acArg)
+	if err != nil {
+		// acArg carries no port
+		acHost, acPort = acArg, ""
+	}
+	// A callback host carrying an explicit non-standard port can only be
+	// equivalent by exact equality, which the caller already checked.
+	if acPort != "" && acPort != dockerconfigresolver.StandardHTTPSPort {
+		return false
+	}
+	// The user did not pass an explicit non-default port, so a callback
+	// host that merely omits the standard HTTPS port is equivalent.
+	if registryURL.Port() == dockerconfigresolver.StandardHTTPSPort && acHost == registryURL.Hostname() {
+		return true
+	}
+	// Docker Hub aliases: "docker.io" logins resolve to index.docker.io,
+	// while the actual registry endpoint is registry-1.docker.io.
+	if registryURL.Hostname() == "index.docker.io" && acHost == "registry-1.docker.io" {
+		return true
+	}
+	return false
 }
