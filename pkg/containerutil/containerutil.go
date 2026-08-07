@@ -304,13 +304,15 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 	}
 
 	// If container has health checks configured, create and start systemd timer/service files.
-	if err := healthcheck.CreateTimer(ctx, container, cfg, nerdctlCmd, nerdctlArgs); err != nil {
-		return fmt.Errorf("failed to create healthcheck timer: %w", err)
+	if hcStr, ok := lab[labels.HealthCheck]; ok && hcStr != "" {
+		// If container has health checks configured, create and start systemd timer/service files.
+		if err := healthcheck.CreateTimer(ctx, container, cfg, nerdctlCmd, nerdctlArgs, lab); err != nil {
+			return fmt.Errorf("failed to create healthcheck timer: %w", err)
+		}
+		if err := healthcheck.StartTimer(ctx, container, cfg, lab); err != nil {
+			return fmt.Errorf("failed to start healthcheck timer: %w", err)
+		}
 	}
-	if err := healthcheck.StartTimer(ctx, container, cfg); err != nil {
-		return fmt.Errorf("failed to start healthcheck timer: %w", err)
-	}
-
 	if !isAttach {
 		return nil
 	}
@@ -542,12 +544,19 @@ func Unpause(ctx context.Context, client *containerd.Client, id string, cfg *con
 		return err
 	}
 
-	// Recreate healthcheck related systemd timer/service files.
-	if err := healthcheck.CreateTimer(ctx, container, cfg, nerdctlCmd, nerdctlArgs); err != nil {
-		return fmt.Errorf("failed to create healthcheck timer: %w", err)
+	label, err := container.Labels(ctx)
+	if err != nil {
+		return err
 	}
-	if err := healthcheck.StartTimer(ctx, container, cfg); err != nil {
-		return fmt.Errorf("failed to start healthcheck timer: %w", err)
+
+	if hcStr, ok := label[labels.HealthCheck]; ok && hcStr != "" {
+		// Recreate healthcheck related systemd timer/service files.
+		if err := healthcheck.CreateTimer(ctx, container, cfg, nerdctlCmd, nerdctlArgs, label); err != nil {
+			return fmt.Errorf("failed to create healthcheck timer: %w", err)
+		}
+		if err := healthcheck.StartTimer(ctx, container, cfg, label); err != nil {
+			return fmt.Errorf("failed to start healthcheck timer: %w", err)
+		}
 	}
 
 	switch status.Status {
