@@ -41,6 +41,20 @@ type SystemEventsOptions struct {
 	Filters []string
 }
 
+// SystemDfOptions specifies options for `nerdctl system df`.
+type SystemDfOptions struct {
+	Stdout io.Writer
+	Stderr io.Writer
+	// GOptions is the global options
+	GOptions GlobalCommandOptions
+	// Format the output using the given Go template, e.g, '{{json .}}
+	Format string
+	// Verbose shows detailed information on space usage
+	Verbose bool
+	// BuildKitHost the address of BuildKit host
+	BuildKitHost string
+}
+
 // SystemPruneOptions specifies options for `nerdctl system prune`.
 type SystemPruneOptions struct {
 	Stdout io.Writer

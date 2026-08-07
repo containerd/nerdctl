@@ -27,7 +27,47 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/content"
+	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/errdefs"
 )
+
+// WalkPresentChildren calls f for target and for every descriptor reachable from it that is present
+// in the content store. Descriptors that are only referenced but not stored locally (for instance
+// the layers of an image that was pulled for another platform) are skipped, so that sizes computed
+// from the visited descriptors reflect what is actually on disk.
+func WalkPresentChildren(ctx context.Context, store content.Store, target ocispec.Descriptor, f func(context.Context, ocispec.Descriptor) error) error {
+	return images.Walk(ctx, presentChildrenHandler(store, func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		return nil, f(ctx, desc)
+	}), target)
+}
+
+// presentChildrenHandler wraps h so that it is only called for descriptors present in the store, and
+// so that the walk descends into the children of those descriptors.
+func presentChildrenHandler(store content.Store, h images.HandlerFunc) images.HandlerFunc {
+	return func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		if _, err := store.Info(ctx, desc.Digest); err != nil {
+			if errdefs.IsNotFound(err) {
+				return nil, images.ErrSkipDesc
+			}
+			return nil, err
+		}
+
+		children, err := h(ctx, desc)
+		if err != nil {
+			return nil, err
+		}
+
+		c, err := images.Children(ctx, store, desc)
+		if err != nil {
+			if errdefs.IsNotFound(err) {
+				return nil, images.ErrSkipDesc
+			}
+			return nil, err
+		}
+
+		return append(children, c...), nil
+	}
+}
 
 // ContentStore should be called to get a Provider with caching
 func NewProvider(client *containerd.Client) content.Provider {

@@ -79,8 +79,10 @@ func Remove(ctx context.Context, client *containerd.Client, volumes []string, op
 	return nil
 }
 
-func usedVolumes(ctx context.Context, containers []containerd.Container) (map[string]struct{}, error) {
-	usedVolumesList := make(map[string]struct{})
+// usedVolumes returns, per volume name, how many containers mount it. Callers that only care about
+// whether a volume is used at all can test for the presence of the key.
+func usedVolumes(ctx context.Context, containers []containerd.Container) (map[string]int64, error) {
+	usedVolumesList := make(map[string]int64)
 	for _, c := range containers {
 		l, err := c.Labels(ctx)
 		if err != nil {
@@ -93,21 +95,34 @@ func usedVolumes(ctx context.Context, containers []containerd.Container) (map[st
 			return nil, err
 		}
 
-		mountsJSON := labels.GetMount(l)
-		if mountsJSON == "" {
-			continue
-		}
-
-		var mounts []dockercompat.MountPoint
-		err = json.Unmarshal([]byte(mountsJSON), &mounts)
+		names, err := mountedVolumes(labels.GetMount(l))
 		if err != nil {
 			return nil, err
 		}
-		for _, m := range mounts {
-			if m.Type == mountutil.Volume {
-				usedVolumesList[m.Name] = struct{}{}
-			}
+		for name := range names {
+			usedVolumesList[name]++
 		}
 	}
 	return usedVolumesList, nil
+}
+
+// mountedVolumes returns the distinct volume names of a container, from the JSON-marshalled mounts
+// it carries in its labels. The names are deduplicated: a container mounting the same volume at
+// several paths is still one reference to it, which is how Docker counts the links of a volume.
+func mountedVolumes(mountsJSON string) (map[string]struct{}, error) {
+	names := make(map[string]struct{})
+	if mountsJSON == "" {
+		return names, nil
+	}
+
+	var mounts []dockercompat.MountPoint
+	if err := json.Unmarshal([]byte(mountsJSON), &mounts); err != nil {
+		return nil, err
+	}
+	for _, m := range mounts {
+		if m.Type == mountutil.Volume {
+			names[m.Name] = struct{}{}
+		}
+	}
+	return names, nil
 }

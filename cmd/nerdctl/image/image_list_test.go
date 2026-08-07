@@ -38,6 +38,17 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
 
+// padRow widens a row of a table back to the width of its header, so that its last column can be
+// read. tabutil indexes the columns by byte offset and slices without checking the bounds, and a
+// row can be shorter than the header in two ways: the trailing column is empty, and the padding of
+// the very last line is gone once the output has been trimmed.
+func padRow(header, row string) string {
+	if pad := len(header) - len(row); pad > 0 {
+		return row + strings.Repeat(" ", pad)
+	}
+	return row
+}
+
 // TestNameFilterFor is a regression test for
 // https://github.com/containerd/nerdctl/issues/5113: `nerdctl image ls
 // myapp`, where myapp is a bare repository name, returned nothing unless
@@ -203,6 +214,57 @@ func TestImages(t *testing.T) {
 								found++
 							}
 							assert.Assert(t, found > 0, "we should have found the in-use image\n")
+						},
+					}
+				},
+			},
+			{
+				Description: "In use survives a retag",
+				Setup: func(data test.Data, helpers test.Helpers) {
+					// Run a container off a private tag, then move that tag onto another image.
+					// The container still runs the original image, so that is the one that must
+					// stay marked as in use.
+					helpers.Ensure("tag", commonImage.String(), data.Identifier()+":moving")
+					helpers.Ensure("run", "-d", "--quiet", "--name", data.Identifier(),
+						data.Identifier()+":moving", "sleep", nerdtest.Infinity)
+					helpers.Ensure("tag", testutil.NginxAlpineImage, data.Identifier()+":moving")
+
+					nginx, _ := referenceutil.Parse(testutil.NginxAlpineImage)
+					data.Labels().Set("retaggedTo", nginx.FamiliarName()+":"+nginx.Tag)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					helpers.Anyhow("rm", "-f", data.Identifier())
+					helpers.Anyhow("rmi", "-f", data.Identifier()+":moving")
+				},
+				Command: test.Command("images"),
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: func(stdout string, t tig.T) {
+							lines := strings.Split(strings.TrimSpace(stdout), "\n")
+							assert.Assert(t, len(lines) >= 2, "there should be at least two lines\n")
+							tab := tabutil.NewReader("IMAGE\tID\tDISK USAGE\tCONTENT SIZE\tEXTRA")
+							err := tab.ParseHeader(lines[0])
+							assert.NilError(t, err, "ParseHeader should not fail\n")
+
+							original := commonImage.FamiliarName() + ":" + commonImage.Tag
+							retagged := data.Labels().Get("retaggedTo")
+							seen := 0
+							for _, line := range lines[1:] {
+								line = padRow(lines[0], line)
+								image, _ := tab.ReadRow(line, "IMAGE")
+								extra, _ := tab.ReadRow(line, "EXTRA")
+								switch image {
+								case original:
+									assert.Equal(t, extra, "U",
+										"the image the container runs must stay in use: "+image)
+									seen++
+								case retagged:
+									assert.Equal(t, extra, "",
+										"the image the tag now points at is not in use: "+image)
+									seen++
+								}
+							}
+							assert.Equal(t, seen, 2, "both images should be listed\n")
 						},
 					}
 				},
