@@ -51,6 +51,7 @@ type Processed struct {
 	AnonymousVolume string // anonymous volume name
 	Mode            string
 	Opts            []oci.SpecOpts
+	VolumeNoCopy    bool
 	// ImageMountSnapshot is the snapshotter key of the read-only view for a
 	// type=image mount; empty for other mount types.
 	ImageMountSnapshot string
