@@ -42,6 +42,7 @@ import (
 	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/snapshots"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/containerd/platforms"
 
@@ -252,10 +253,15 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 
 	// In-use detection requires a container scan, so only pay for it in the new view where the
 	// EXTRA column is rendered.
-	var inUse map[digest.Digest]bool
+	var inUse map[digest.Digest]int64
 	var inUseByPlatform map[platformRef]bool
 	if newView {
-		inUse, inUseByPlatform = imagesInUse(ctx, client)
+		var err error
+		if inUse, inUseByPlatform, err = imagesInUse(ctx, client); err != nil {
+			// The indicator decorates the listing, so failing to compute it must not fail the
+			// listing itself. Unlike the disk usage accounting, nothing here is unsafe to act on.
+			log.G(ctx).WithError(err).Warn("the in-use indicator is unavailable")
+		}
 		sortByImageRef(finalImageList)
 	}
 
@@ -289,8 +295,8 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 type imagePrinter struct {
 	w                                                     io.Writer
 	quiet, noTrunc, digestsFlag, namesFlag, newView, tree bool
-	inUse                                                 map[digest.Digest]bool // image target -> referenced by at least one container
-	inUseByPlatform                                       map[platformRef]bool   // image target + platform -> run by at least one container
+	inUse                                                 map[digest.Digest]int64 // image target -> number of containers referencing it
+	inUseByPlatform                                       map[platformRef]bool    // image target + platform -> run by at least one container
 	tmpl                                                  *template.Template
 	client                                                *containerd.Client
 	provider                                              content.Provider
@@ -537,7 +543,7 @@ func (x *imagePrinter) printImageCollapsed(img images.Image, candidateImages map
 	contentSize := units.HumanSizeWithPrecision(float64(totalContentSize), 3)
 
 	extra := ""
-	if x.inUse[img.Target.Digest] {
+	if x.inUse[img.Target.Digest] > 0 {
 		extra = "U"
 	}
 
@@ -700,28 +706,36 @@ type platformRef struct {
 	platform string
 }
 
-// imagesInUse returns the image target digests that are referenced by at least one container (in
-// any state), used to render the Docker v29 "In Use" (U) indicator. Docker matches containers to
-// images by digest, so every name pointing at the same target is flagged, not just the one the
-// container was created from.
+// imagesInUse returns, per image target digest, the number of containers (in any state) referencing
+// it. It is used to render the Docker v29 "In Use" (U) indicator and the CONTAINERS column of
+// `nerdctl system df --verbose`. Docker matches containers to images by digest, so every name
+// pointing at the same target is counted, not just the one the container was created from.
 //
 // The second return value narrows this down to the platform each container actually runs, for the
 // per-platform rows of the tree view. Both are collected in a single container scan.
-func imagesInUse(ctx context.Context, client *containerd.Client) (map[digest.Digest]bool, map[platformRef]bool) {
-	inUse := map[digest.Digest]bool{}
+//
+// A failure to scan the containers is returned rather than absorbed here, because the callers do
+// not agree on what it means: the listing merely loses a column, while the disk usage accounting
+// would report every image as inactive and all of its bytes as reclaimable.
+func imagesInUse(ctx context.Context, client *containerd.Client) (map[digest.Digest]int64, map[platformRef]bool, error) {
+	inUse := map[digest.Digest]int64{}
 	inUseByPlatform := map[platformRef]bool{}
 	containerList, err := client.Containers(ctx)
 	if err != nil {
-		log.G(ctx).WithError(err).Warn("failed to list containers for image in-use detection")
-		return inUse, inUseByPlatform
+		return nil, nil, fmt.Errorf("failed to list containers for image in-use detection: %w", err)
 	}
 	for _, container := range containerList {
-		if dgst, ok := containerImageDigest(ctx, container); ok {
-			inUse[dgst] = true
-			inUseByPlatform[platformRef{dgst, containerPlatform(ctx, container)}] = true
+		dgst, ok, err := containerImageDigest(ctx, container)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to resolve the image of container %q: %w", container.ID(), err)
 		}
+		if !ok {
+			continue
+		}
+		inUse[dgst]++
+		inUseByPlatform[platformRef{dgst, containerPlatform(ctx, container)}] = true
 	}
-	return inUse, inUseByPlatform
+	return inUse, inUseByPlatform, nil
 }
 
 // containerPlatform reports the platform a container runs. Containers created outside nerdctl
@@ -760,19 +774,32 @@ func normalizePlatform(platform string) string {
 // instead would follow the tag wherever it points now: after `nerdctl tag` moves a tag onto another
 // image, the container would be attributed to an image it never ran. Containers created before this
 // label existed, or outside nerdctl, still have to be resolved by name.
-func containerImageDigest(ctx context.Context, container containerd.Container) (digest.Digest, bool) {
+//
+// Resolving to no image is reported as such, without an error: a container removed while we list
+// it, one created from no image at all, and one whose image is gone all point at an image the
+// report does not cover anyway. Any other failure is returned, because a container silently dropped
+// here is an image wrongly reported as unused, and its bytes as reclaimable.
+func containerImageDigest(ctx context.Context, container containerd.Container) (digest.Digest, bool, error) {
 	// The already-loaded metadata carries the labels, so this costs no extra round trip.
-	if info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata); err == nil {
-		if dgst, ok := pinnedImageDigest(info.Labels); ok {
-			return dgst, true
+	info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
+	if err != nil {
+		if errdefs.IsNotFound(err) {
+			return "", false, nil
 		}
+		return "", false, err
+	}
+	if dgst, ok := pinnedImageDigest(info.Labels); ok {
+		return dgst, true, nil
 	}
 
 	image, err := container.Image(ctx)
 	if err != nil {
-		return "", false
+		if errdefs.IsNotFound(err) {
+			return "", false, nil
+		}
+		return "", false, err
 	}
-	return image.Target().Digest, true
+	return image.Target().Digest, true, nil
 }
 
 // pinnedImageDigest returns the image target digest a container pinned at creation time. An
