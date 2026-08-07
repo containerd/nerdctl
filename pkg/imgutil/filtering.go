@@ -323,8 +323,9 @@ func matchesAllLabels(imageCfgLabels map[string]string, filterLabels map[string]
 func matchesReferences(image images.Image, referencePatterns []string) (bool, error) {
 	var matches int
 
-	// Containerd returns ":" for dangling untagged images - see https://github.com/containerd/nerdctl/issues/3852
-	if image.Name == ":" {
+	// Dangling untagged images are named ":" or ":<digest>" - see
+	// https://github.com/containerd/nerdctl/issues/3852 and https://github.com/containerd/nerdctl/issues/4109
+	if strings.HasPrefix(image.Name, ":") {
 		return false, nil
 	}
 

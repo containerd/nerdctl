@@ -22,8 +22,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opencontainers/go-digest"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
@@ -31,6 +34,15 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 )
+
+// danglingImageName returns the synthetic name given to an image that is force-removed while
+// still referenced by a container: it must be unique per digest so that force-removing several
+// such images in the same invocation does not collide on a shared name in the image store (see
+// https://github.com/containerd/nerdctl/issues/4109). Consumers that need to recognize dangling
+// images (e.g. pkg/imgutil filtering) match on the leading ":".
+func danglingImageName(dgst digest.Digest) string {
+	return ":" + dgst.String()
+}
 
 // Remove removes a list of `images`.
 func Remove(ctx context.Context, client *containerd.Client, args []string, options types.ImageRemoveOptions) error {
@@ -83,11 +95,13 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 
 			if cid, ok := runningImages[found.Image.Name]; ok {
 				if options.Force {
-					// This is a running image, so, we need to keep a ref on it so that containerd does not GC the layers
-					// First create the new image with an empty name
+					// This is a running image, so, we need to keep a ref on it so that containerd does not GC the layers.
+					// First create the new dangling image, named uniquely per digest so that force-removing
+					// several running images in a row does not collide on a shared name (see
+					// https://github.com/containerd/nerdctl/issues/4109).
 					originalName := found.Image.Name
-					found.Image.Name = ":"
-					if _, err = is.Create(ctx, found.Image); err != nil {
+					found.Image.Name = danglingImageName(found.Image.Target.Digest)
+					if _, err = is.Create(ctx, found.Image); err != nil && !errdefs.IsAlreadyExists(err) {
 						return err
 					}
 
@@ -136,11 +150,13 @@ func Remove(ctx context.Context, client *containerd.Client, args []string, optio
 
 			if cid, ok := runningImages[found.Image.Name]; ok {
 				if options.Force {
-					// This is a running image, so, we need to keep a ref on it so that containerd does not GC the layers
-					// First create the new image with an empty name
+					// This is a running image, so, we need to keep a ref on it so that containerd does not GC the layers.
+					// First create the new dangling image, named uniquely per digest so that force-removing
+					// several running images in a row does not collide on a shared name (see
+					// https://github.com/containerd/nerdctl/issues/4109).
 					originalName := found.Image.Name
-					found.Image.Name = ":"
-					if _, err = is.Create(ctx, found.Image); err != nil {
+					found.Image.Name = danglingImageName(found.Image.Target.Digest)
+					if _, err = is.Create(ctx, found.Image); err != nil && !errdefs.IsAlreadyExists(err) {
 						return false, err
 					}
 
