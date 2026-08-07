@@ -840,6 +840,20 @@ By default (Docker v29 compatible view) the columns are `IMAGE`, `ID`, `DISK USA
 Passing `--format`, `--quiet`, `--no-trunc`, `--digests` or `--names` falls back to the
 legacy table (`REPOSITORY`, `TAG`, `IMAGE ID`, `CREATED`, `PLATFORM`, `SIZE`, `BLOB SIZE`).
 
+`--tree` keeps the same columns and adds a row per platform the image declares:
+
+```console
+$ nerdctl images --tree
+IMAGE             ID              DISK USAGE    CONTENT SIZE    EXTRA
+nginx:latest      7f553e8bbc89    211MB         67.4MB          U
+├─ linux/amd64    d9153e78d05e    72.4MB        25.2MB          U
+├─ linux/arm64    1a2b3c4d5e6f    70.1MB        24.9MB
+└─ linux/s390x    2b3c4d5e6f7a    0B            0B
+```
+
+The `U` flag on a platform row means a container runs that specific platform. Platforms that were
+never pulled are listed with zero sizes, like `docker image ls --tree` does.
+
 Usage: `nerdctl images [OPTIONS] [REPOSITORY[:TAG]]`
 
 Flags:
@@ -860,6 +874,7 @@ Flags:
   - :whale: `--filter=dangling=true`: Filter images by dangling
   - :nerd_face: `--filter=reference=<image:tag>`: Filter images by reference (Matches both docker compatible wildcard pattern and regexp match)
 - :nerd_face: `--names`: Show image names
+- :whale: `--tree`: List multi-platform images as a tree (EXPERIMENTAL). Cannot be combined with `--quiet`, `--no-trunc`, `--digests`, `--format` or `--names`.
 
 ### :whale: nerdctl pull
 
