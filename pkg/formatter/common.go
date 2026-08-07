@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"text/template"
 
 	"github.com/docker/cli/templates"
@@ -30,6 +31,38 @@ import (
 // Flusher is implemented by text/tabwriter.Writer
 type Flusher interface {
 	Flush() error
+}
+
+// tableFormatKey introduces the Docker table formats, e.g. `table {{.Type}}\t{{.Size}}`, which
+// render a header and aligned columns rather than the raw output of the template.
+const tableFormatKey = "table"
+
+// IsTableFormat reports whether format is a Docker table format: either the bare "table", which
+// selects the default columns of a command, or "table " followed by a template.
+func IsTableFormat(format string) bool {
+	return format == tableFormatKey || strings.HasPrefix(format, tableFormatKey+" ")
+}
+
+// ParseTableTemplate parses the template carried by a Docker table format. Like docker/cli, it
+// expands the literal `\t` and `\n` a shell would otherwise have to produce itself.
+//
+// It returns a second template for the header row. A header is rendered by running the very same
+// template over the column labels, so a function that transforms a value would rewrite the label
+// too and `table {{lower .Type}}` would name the column "type" instead of TYPE. The header template
+// therefore replaces those functions by ones leaving their argument alone, as docker/cli does. Only
+// `pad` is kept as it is, so that the header stays aligned with its column.
+func ParseTableTemplate(format string) (rows, header *template.Template, err error) {
+	format = strings.TrimSpace(strings.TrimPrefix(format, tableFormatKey))
+	format = strings.ReplaceAll(format, `\t`, "\t")
+	format = strings.ReplaceAll(format, `\n`, "\n")
+
+	if rows, err = ParseTemplate(format); err != nil {
+		return nil, nil, err
+	}
+	if header, err = rows.Clone(); err != nil {
+		return nil, nil, err
+	}
+	return rows, header.Funcs(templates.HeaderFunctions), nil
 }
 
 // FormatSlice formats the slice with `--format` flag.

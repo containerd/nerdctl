@@ -220,7 +220,7 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 
 	// In-use detection requires a container scan, so only pay for it in the new view where the
 	// EXTRA column is rendered.
-	var inUse map[digest.Digest]bool
+	var inUse map[digest.Digest]int64
 	if newView {
 		inUse = imagesInUse(ctx, client)
 		sortByImageRef(finalImageList)
@@ -254,7 +254,7 @@ func printImages(ctx context.Context, client *containerd.Client, imageList []ima
 type imagePrinter struct {
 	w                                               io.Writer
 	quiet, noTrunc, digestsFlag, namesFlag, newView bool
-	inUse                                           map[digest.Digest]bool // image target -> referenced by at least one container
+	inUse                                           map[digest.Digest]int64 // image target -> number of containers referencing it
 	tmpl                                            *template.Template
 	client                                          *containerd.Client
 	provider                                        content.Provider
@@ -476,7 +476,7 @@ func (x *imagePrinter) printImageCollapsed(img images.Image, candidateImages map
 	}
 
 	extra := ""
-	if x.inUse[img.Target.Digest] {
+	if x.inUse[img.Target.Digest] > 0 {
 		extra = "U"
 	}
 
@@ -564,12 +564,12 @@ func referenceHasDomain(name string) bool {
 	return host == "localhost" || strings.ContainsAny(host, ".:")
 }
 
-// imagesInUse returns the set of image target digests that are referenced by at least one
-// container (in any state), used to render the Docker v29 "In Use" (U) indicator. Docker matches
-// containers to images by digest, so every name pointing at the same target is flagged, not just
-// the one the container was created from.
-func imagesInUse(ctx context.Context, client *containerd.Client) map[digest.Digest]bool {
-	inUse := map[digest.Digest]bool{}
+// imagesInUse returns, per image target digest, the number of containers (in any state) referencing
+// it. It is used to render the Docker v29 "In Use" (U) indicator and the CONTAINERS column of
+// `nerdctl system df --verbose`. Docker matches containers to images by digest, so every name
+// pointing at the same target is counted, not just the one the container was created from.
+func imagesInUse(ctx context.Context, client *containerd.Client) map[digest.Digest]int64 {
+	inUse := map[digest.Digest]int64{}
 	containerList, err := client.Containers(ctx)
 	if err != nil {
 		log.G(ctx).WithError(err).Warn("failed to list containers for image in-use detection")
@@ -577,7 +577,7 @@ func imagesInUse(ctx context.Context, client *containerd.Client) map[digest.Dige
 	}
 	for _, container := range containerList {
 		if dgst, ok := containerImageDigest(ctx, container); ok {
-			inUse[dgst] = true
+			inUse[dgst]++
 		}
 	}
 	return inUse
