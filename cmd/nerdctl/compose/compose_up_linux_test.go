@@ -1423,3 +1423,44 @@ services:
 
 	testCase.Run(t)
 }
+
+func TestComposeUpNetworkModeHostWithoutCNIPlugins(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// --cni-path and --cni-netconfpath are nerdctl specific.
+	testCase.Require = require.Not(nerdtest.Docker)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		dockerComposeYAML := fmt.Sprintf(`
+services:
+  svc0:
+    image: %s
+    network_mode: host
+    command: "sleep infinity"
+`, testutil.CommonImage)
+
+		data.Labels().Set("composeYAML", data.Temp().Save(dockerComposeYAML, "compose.yaml"))
+		// An empty CNI_PATH and an empty netconf dir together mimic a host that never
+		// installed the CNI plugins. Services using host networking do not need them.
+		data.Labels().Set("cniPath", data.Temp().Dir("cni-bin"))
+		data.Labels().Set("cniNetConfPath", data.Temp().Dir("cni-netconf"))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command(
+			"--cni-path", data.Labels().Get("cniPath"),
+			"--cni-netconfpath", data.Labels().Get("cniNetConfPath"),
+			"compose", "-f", data.Labels().Get("composeYAML"), "up", "-d")
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow(
+			"--cni-path", data.Labels().Get("cniPath"),
+			"--cni-netconfpath", data.Labels().Get("cniNetConfPath"),
+			"compose", "-f", data.Labels().Get("composeYAML"), "down", "-v")
+	}
+
+	testCase.Run(t)
+}
