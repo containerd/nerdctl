@@ -47,6 +47,8 @@ func PushCommand() *cobra.Command {
 	cmd.Flags().Bool("all-platforms", false, "Push content for all platforms")
 	// #endregion
 
+	cmd.Flags().BoolP("all-tags", "a", false, "Push all tags of an image to the repository")
+
 	cmd.Flags().Bool("estargz", false, "Convert the image into eStargz")
 	cmd.Flags().Bool("ipfs-ensure-image", true, "Ensure the entire contents of the image is locally available before push")
 	cmd.Flags().String("ipfs-address", "", "multiaddr of IPFS API (default uses $IPFS_PATH env variable if defined or local directory ~/.ipfs)")
@@ -85,6 +87,10 @@ func pushOptions(cmd *cobra.Command) (types.ImagePushOptions, error) {
 	if err != nil {
 		return types.ImagePushOptions{}, err
 	}
+	allTags, err := cmd.Flags().GetBool("all-tags")
+	if err != nil {
+		return types.ImagePushOptions{}, err
+	}
 	estargz, err := cmd.Flags().GetBool("estargz")
 	if err != nil {
 		return types.ImagePushOptions{}, err
@@ -119,6 +125,7 @@ func pushOptions(cmd *cobra.Command) (types.ImagePushOptions, error) {
 		SociOptions:                    sociOptions,
 		Platforms:                      platform,
 		AllPlatforms:                   allPlatforms,
+		AllTags:                        allTags,
 		Estargz:                        estargz,
 		IpfsEnsureImage:                ipfsEnsureImage,
 		IpfsAddress:                    ipfsAddress,

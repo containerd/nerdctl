@@ -24,6 +24,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -57,8 +60,74 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/snapshotterutil"
 )
 
+const (
+	// Suffixes of the temporary images push creates for itself before uploading them.
+	tmpReducedPlatformSuffix = "-tmp-reduced-platform"
+	tmpEsgzSuffix            = "-tmp-esgz"
+)
+
 // Push pushes an image specified by `rawRef`.
+// With options.AllTags, `rawRef` must be a bare repository name, and every local tag of that
+// repository is pushed.
 func Push(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePushOptions) error {
+	if !options.AllTags {
+		return pushSingle(ctx, client, rawRef, options, false)
+	}
+
+	parsedReference, err := referenceutil.Parse(rawRef)
+	if err != nil {
+		return err
+	}
+	// ExplicitTag, not Tag: Parse normalizes a bare repository name to ":latest".
+	if parsedReference.ExplicitTag != "" || parsedReference.Digest != "" {
+		return errors.New("tag can't be used with --all-tags/-a")
+	}
+	if parsedReference.Protocol != "" {
+		return fmt.Errorf("--all-tags is not supported for %q references", parsedReference.Protocol)
+	}
+
+	imgs, err := localTags(ctx, client, parsedReference.Name())
+	if err != nil {
+		return err
+	}
+	if len(imgs) == 0 {
+		return fmt.Errorf("an image does not exist locally with the tag: %s", parsedReference.Name())
+	}
+
+	// A SOCI index is attached to the image manifest rather than to the tag, so it only needs to be
+	// built once per distinct target. Doing it per tag makes every tag overwrite the index pushed by
+	// the previous one: https://github.com/containerd/nerdctl/issues/3751
+	indexed := make(map[digest.Digest]struct{}, len(imgs))
+	for _, img := range imgs {
+		_, done := indexed[img.Target.Digest]
+		if err = pushSingle(ctx, client, img.Name, options, done); err != nil {
+			return err
+		}
+		indexed[img.Target.Digest] = struct{}{}
+	}
+	return nil
+}
+
+// localTags returns the local images tagged under the repository `name`, sorted by name.
+func localTags(ctx context.Context, client *containerd.Client, name string) ([]images.Image, error) {
+	// Same idiom as nameFilterFor() in cmd/nerdctl/image/image_list.go: a bare repository name
+	// matches every tag of that repository (pkg/ cannot import cmd/, hence the repeated filter).
+	imgs, err := client.ImageService().List(ctx, fmt.Sprintf("name~=^%s:", regexp.QuoteMeta(name)))
+	if err != nil {
+		return nil, err
+	}
+	// Drop the temporary images push creates for itself, which an interrupted push may have left behind.
+	imgs = slices.DeleteFunc(imgs, func(img images.Image) bool {
+		return strings.HasSuffix(img.Name, tmpReducedPlatformSuffix) || strings.HasSuffix(img.Name, tmpEsgzSuffix)
+	})
+	// ImageService().List does not guarantee an order, and the order decides which tag gets indexed.
+	slices.SortFunc(imgs, func(a, b images.Image) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	return imgs, nil
+}
+
+func pushSingle(ctx context.Context, client *containerd.Client, rawRef string, options types.ImagePushOptions, skipSoci bool) error {
 	parsedReference, err := referenceutil.Parse(rawRef)
 	if err != nil {
 		return err
@@ -120,7 +189,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 	}
 	pushRef := ref
 	if !options.AllPlatforms {
-		pushRef = ref + "-tmp-reduced-platform"
+		pushRef = ref + tmpReducedPlatformSuffix
 		// Push fails with "400 Bad Request" when the manifest is multi-platform but we do not locally have multi-platform blobs.
 		// So we create a tmp reduced-platform image to avoid the error.
 		// Ensure all the layers are here: https://github.com/containerd/nerdctl/issues/3425
@@ -140,7 +209,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 	}
 
 	if options.Estargz {
-		pushRef = ref + "-tmp-esgz"
+		pushRef = ref + tmpEsgzSuffix
 		esgzImg, err := nerdconverter.Convert(ctx, client, pushRef, ref, converter.WithPlatform(platMC), converter.WithLayerConvertFunc(eStargzConvertFunc()))
 		if err != nil {
 			return fmt.Errorf("failed to convert to eStargz: %v", err)
@@ -185,7 +254,7 @@ func Push(ctx context.Context, client *containerd.Client, rawRef string, options
 		options.SignOptions); err != nil {
 		return err
 	}
-	if options.GOptions.Snapshotter == "soci" {
+	if options.GOptions.Snapshotter == "soci" && !skipSoci {
 		if err = snapshotterutil.CreateSociIndexV1(ref, options.GOptions, options.AllPlatforms, options.Platforms, options.SociOptions); err != nil {
 			return err
 		}
@@ -281,11 +350,16 @@ func pushImageWithLocal(ctx context.Context, client *containerd.Client, parsedRe
 		if options.GOptions.InsecureRegistry {
 			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", refDomain)
 			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
-			resolver, err = dockerconfigresolver.New(ctx, refDomain, dOpts...)
+			// Rebuild the resolver rather than calling dockerconfigresolver.New, which would fall
+			// back to the process-wide dockerconfigresolver.PushTracker. That tracker is keyed by
+			// digest, not by reference, so a second push of an already-pushed digest short-circuits
+			// with ErrAlreadyExists and its tag is never written to the registry.
+			ho, err = dockerconfigresolver.NewHostOptions(ctx, refDomain, dOpts...)
 			if err != nil {
 				return err
 			}
-			return pushFunc(resolver)
+			resolverOpts.Hosts = dockerconfig.ConfigureHosts(ctx, *ho)
+			return pushFunc(docker.NewResolver(resolverOpts))
 		}
 		log.G(ctx).WithError(err).Errorf("server %q does not seem to support HTTPS", refDomain)
 		log.G(ctx).Info("Hint: you may want to try --insecure-registry to allow plain HTTP (if you are in a trusted network)")
