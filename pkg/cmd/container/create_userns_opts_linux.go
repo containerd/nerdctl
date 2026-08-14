@@ -471,7 +471,7 @@ func createSnapshotOpts(
 
 func WithUserNSRemapperLabels(uidmaps, gidmaps []specs.LinuxIDMapping) snapshots.Opt {
 	idMap := ContainerdIDMap{
-		UidMap: uidmaps,
+		UIDMap: uidmaps,
 		GidMap: gidmaps,
 	}
 	uidmapLabel, gidmapLabel := idMap.Marshal()

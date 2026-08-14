@@ -135,8 +135,6 @@ linters:
           arguments: [205]
           # 441 occurrences (at default 7). We should try to lower it (involves significant refactoring).
         - name: var-naming
-          # 1 occurrence.
-          disabled: true
 
         ##### P2: nice to have.
         - name: max-public-structs
