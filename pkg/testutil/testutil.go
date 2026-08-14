@@ -396,6 +396,7 @@ func (c *Cmd) AssertFail() {
 func (c *Cmd) AssertExitCode(exitCode int) {
 	c.Base.T.Helper()
 	res := c.runIfNecessary()
+	assert.Equal(c.Base.T, res == nil, false)
 	assert.Assert(c.Base.T, res.ExitCode == exitCode, res)
 }
 
