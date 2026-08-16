@@ -150,6 +150,37 @@ func TestRemove(t *testing.T) {
 			},
 		},
 		{
+			// Regression test for https://github.com/containerd/nerdctl/issues/4109:
+			// force-removing several images that are each in use by a running container
+			// used to create every kept-alive dangling ref under the same literal name
+			// (":"), so the second image's dangling ref creation failed with
+			// "already exists".
+			Description: "Remove multiple images with running containers - with -f",
+			NoParallel:  true,
+			Require: require.All(
+				require.Not(nerdtest.Docker),
+			),
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "--quiet", "--pull", "always", "-d", "--name", data.Identifier("a"), testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("run", "--quiet", "--pull", "always", "-d", "--name", data.Identifier("b"), testutil.NginxAlpineImage)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier("a"), data.Identifier("b"))
+			},
+			Command: test.Command("rmi", "-f", testutil.CommonImage, testutil.NginxAlpineImage),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   []error{},
+					Output: func(stdout string, t tig.T) {
+						helpers.Command("images").Run(&test.Expected{
+							Output: expect.DoesNotContain(repoName, nginxRepoName),
+						})
+					},
+				}
+			},
+		},
+		{
 			Description: "Remove image with created container - without -f",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
