@@ -48,7 +48,7 @@ require (
 	github.com/moby/sys/mount v0.3.5
 	github.com/moby/sys/signal v0.7.1
 	github.com/moby/sys/user v0.4.1 //gomodjail:unconfined
-	github.com/moby/sys/userns v0.1.0 //gomodjail:unconfined
+	github.com/moby/sys/userns v0.2.0 //gomodjail:unconfined
 	github.com/moby/term v0.5.2 //gomodjail:unconfined
 	github.com/muesli/cancelreader v0.2.2 //gomodjail:unconfined
 	github.com/opencontainers/go-digest v1.0.0
