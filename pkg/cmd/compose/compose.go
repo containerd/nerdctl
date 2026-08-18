@@ -52,7 +52,10 @@ func New(client *containerd.Client, globalOptions types.GlobalCommandOptions, op
 		return nil, err
 	}
 
-	cniEnv, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath, netutil.WithNamespace(globalOptions.Namespace), netutil.WithDefaultNetwork(globalOptions.BridgeIP))
+	// The default network is deliberately not created here. It is only needed by
+	// services that actually attach to it, and `nerdctl run` already creates it on
+	// demand.
+	cniEnv, err := netutil.NewCNIEnv(globalOptions.CNIPath, globalOptions.CNINetConfPath, netutil.WithNamespace(globalOptions.Namespace))
 	if err != nil {
 		return nil, err
 	}
