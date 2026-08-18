@@ -292,7 +292,10 @@ Volume flags:
   - :whale:     option `rshared`, `rslave`, `rprivate`: Recursive "shared" / "slave" / "private" propagation
   - :nerd_face: option `bind`: Not-recursively bind-mounted
   - :nerd_face: option `rbind`: Recursively bind-mounted
-  - unimplemented options: `:z` and `:Z` (SELinux relabeling)
+  - :whale:     option `z`: SELinux shared (multi-category) relabel of the volume content so it can be shared among containers
+  - :whale:     option `Z`: SELinux private unshared relabel of the volume content for this container only
+    - Requires SELinux on the host and nerdctl started with `--selinux-enabled` (or `selinux_enabled = true` in `nerdctl.toml`).
+    - Example: `nerdctl run --rm -v /var/data:/data:Z --selinux-enabled IMAGE`
 - :whale: `--tmpfs`: Mount a tmpfs directory, e.g. `--tmpfs /tmp:size=64m,exec`.
 - :whale: `--mount`: Attach a filesystem mount to the container.
   Consists of multiple key-value pairs, separated by commas and each
