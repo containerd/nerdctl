@@ -184,35 +184,6 @@ func TestLoginPersistence(t *testing.T) {
 	testCase.Run(t)
 }
 
-/*
-func TestAgainstNoAuth(t *testing.T) {
-	base := testutil.NewBase(t)
-	t.Parallel()
-
-	// Start the registry with the requested options
-	reg := testregistry.NewRegistry(base, nil, randomPort, &testregistry.NoAuth{}, nil)
-
-	// Register registry cleanup
-	t.Cleanup(func() {
-		reg.Cleanup(nil)
-	})
-
-	c := (&Client{}).
-		WithCredentials("invalid", "invalid")
-
-	c.Run(base, fmt.Sprintf("localhost:%d", reg.Port)).
-		AssertOK()
-
-	content, _ := os.ReadFile(filepath.Join(c.configPath, "config.json"))
-	fmt.Println(string(content))
-
-	c.Run(base, fmt.Sprintf("localhost:%d", reg.Port)).
-		AssertFail()
-
-}
-
-*/
-
 func TestLoginAgainstVariants(t *testing.T) {
 	// Skip docker, because Docker doesn't have `--hosts-dir` nor `insecure-registry` option
 	// This will test access to a wide variety of servers, with or without TLS, with basic or token authentication

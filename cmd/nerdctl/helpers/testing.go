@@ -23,17 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"testing"
-
-	"gotest.tools/v3/assert"
 )
-
-func CreateBuildContext(t *testing.T, dockerfile string) string {
-	tmpDir := t.TempDir()
-	err := os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte(dockerfile), 0644)
-	assert.NilError(t, err)
-	return tmpDir
-}
 
 func ExtractDockerArchive(archiveTarPath, rootfsPath string) error {
 	if err := os.MkdirAll(rootfsPath, 0755); err != nil {

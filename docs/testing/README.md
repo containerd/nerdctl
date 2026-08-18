@@ -104,9 +104,9 @@ GITHUB_ACTIONS=true ./hack/test-integration-rootless.sh ./hack/test-integration.
 ##### General case
 
 It should be possible to parallelize all tests - as such, please make sure you:
-- name all resources your test is manipulating after the test identifier (`testutil.Identifier(t)`)
+- name all resources your test is manipulating after the test identifier (`data.Identifier()`)
 to guarantee your test will not interact with other tests
-- do NOT use `os.Setenv` - instead, add into `base.Env`
+- do NOT use `os.Setenv` - instead, use `Setenv` on the command you are running
 - use `t.Parallel()` at the beginning of your test (and subtests as well of course)
 - in the very exceptional case where your test for some reason can NOT be parallelized, be sure to mark it explicitly as such
 with a comment explaining why
@@ -114,9 +114,7 @@ with a comment explaining why
 ##### For "blanket" destructive operations
 
 If you are going to use blanket destructive operations (like `prune`), please:
-- use a dedicated namespace: instead of calling `testutil.Base`, call `testutil.BaseWithNamespace` 
-and be sure that your namespace is named after the test id
-- remove the namespace in your test `Cleanup`
+- use a dedicated namespace: add `nerdtest.Private` to the test `Require`ments
 - since docker does not support namespaces, be sure to:
   - only enable `Parallel` if the target is NOT docker: `	if !nerdtest.IsDocker() { t.Parallel() }`
   - double check that what you do in the default namespace is safe
