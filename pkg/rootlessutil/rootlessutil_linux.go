@@ -46,21 +46,6 @@ func ParentEUID() int {
 	return i
 }
 
-func ParentEGID() int {
-	if !IsRootlessChild() {
-		return os.Getegid()
-	}
-	env := os.Getenv("ROOTLESSKIT_PARENT_EGID")
-	if env == "" {
-		panic("environment variable ROOTLESSKIT_PARENT_EGID is not set")
-	}
-	i, err := strconv.Atoi(env)
-	if err != nil {
-		panic(fmt.Errorf("failed to parse ROOTLESSKIT_PARENT_EGID=%q: %w", env, err))
-	}
-	return i
-}
-
 func NewRootlessKitClient() (client.Client, error) {
 	stateDir, err := RootlessKitStateDir()
 	if err != nil {

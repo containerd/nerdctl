@@ -51,14 +51,6 @@ type ContainerMetadata struct {
 	LogPath string
 }
 
-// MarshalJSON encodes Metadata into bytes in json format.
-func (c *ContainerMetadata) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&ContainerVersionedMetadata{
-		Version:  metadataVersion,
-		Metadata: criContainerMetadataInternal(*c),
-	})
-}
-
 // UnmarshalJSON decodes Metadata from bytes.
 func (c *ContainerMetadata) UnmarshalJSON(data []byte) error {
 	versioned := &ContainerVersionedMetadata{}

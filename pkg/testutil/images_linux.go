@@ -92,11 +92,6 @@ func GetTestImageManifestDigest(key, platform string) string {
 	return pd.Manifest
 }
 
-func GetTestImageDigest(key string) string {
-	im := lookup(key)
-	return im.Digest
-}
-
 func GetTestImageMediaType(key string) string {
 	im := lookup(key)
 	return im.MediaType

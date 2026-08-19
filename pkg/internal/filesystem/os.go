@@ -34,14 +34,6 @@ func ReadFile(filename string) (data []byte, err error) {
 	return data, nil
 }
 
-func Stat(filename string) (os.FileInfo, error) {
-	if err := ensureRecovery(filename); err != nil {
-		return nil, errors.Join(ErrFilesystemFailure, err)
-	}
-
-	return os.Stat(filename)
-}
-
 // WriteFile implements an atomic and durable alternative to os.WriteFile that does not change inodes (unlike the usual
 // approach on atomic writes that relies on renaming files).
 func WriteFile(filename string, data []byte, perm os.FileMode) error {
