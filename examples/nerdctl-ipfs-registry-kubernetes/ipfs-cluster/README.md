@@ -8,7 +8,7 @@ Usage:
   - [`ipfs-key`](https://github.com/whyrusleeping/ipfs-key) is required (see https://ipfscluster.io/documentation/guides/k8s/)
 - Deploy `bootstrap.yaml` and `nerdctl-ipfs-registry.yaml` (e.g. using `kubectl apply`)
 - Make sure nodes contain containerd >= v1.5.8
-- You might want to change some configuration written in `nerdctl-ipfs-registry.yaml` (e.g. [chaning profile based on your node's resouce requirements](https://docs.ipfs.tech/how-to/default-profile/#available-profiles))
+- You might want to change some configuration written in `nerdctl-ipfs-registry.yaml` (e.g. [chaning profile based on your node's resource requirements](https://docs.ipfs.tech/how-to/default-profile/#available-profiles))
 
 ## Example on kind
 
