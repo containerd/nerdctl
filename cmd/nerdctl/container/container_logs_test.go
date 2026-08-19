@@ -168,7 +168,7 @@ func TestLogsWithInheritedFlags(t *testing.T) {
 	testCase.Require = require.Not(nerdtest.Docker)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("-n="+testutil.Namespace, "run", "--name", data.Identifier(), testutil.CommonImage,
+		helpers.Ensure("-n="+string(helpers.Read(nerdtest.Namespace)), "run", "--name", data.Identifier(), testutil.CommonImage,
 			"sh", "-euxc", "echo foo; echo bar")
 	}
 
@@ -177,7 +177,7 @@ func TestLogsWithInheritedFlags(t *testing.T) {
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		return helpers.Command("-n="+testutil.Namespace, "logs", "-n", "1", data.Identifier())
+		return helpers.Command("-n="+string(helpers.Read(nerdtest.Namespace)), "logs", "-n", "1", data.Identifier())
 	}
 
 	// FIXME: why?

@@ -120,5 +120,3 @@ func GetDaemonIsKillable() bool {
 func GetAllowModifyUsers() bool {
 	return flagTestModifyUsers
 }
-
-const Namespace = "nerdctl-test"

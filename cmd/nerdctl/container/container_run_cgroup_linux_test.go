@@ -321,7 +321,7 @@ func TestIssue3781(t *testing.T) {
 					assert.NilError(t, err)
 					addr = filepath.Join("/proc", fmt.Sprintf("%d", childPid), "root", defaults.DefaultAddress)
 				}
-				client, err := containerd.New(addr, containerd.WithDefaultNamespace(testutil.Namespace))
+				client, err := containerd.New(addr, containerd.WithDefaultNamespace(string(helpers.Read(nerdtest.Namespace))))
 				assert.NilError(t, err)
 				defer client.Close()
 				ctx := context.Background()

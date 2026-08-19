@@ -181,7 +181,7 @@ func TestStopCleanupForwards(t *testing.T) {
 		if nerdtest.IsDocker() {
 			chain = "DOCKER"
 		} else {
-			chain = iptablesutil.GetRedirectedChain(t, ipt, "CNI-HOSTPORT-DNAT", testutil.Namespace, containerID)
+			chain = iptablesutil.GetRedirectedChain(t, ipt, "CNI-HOSTPORT-DNAT", string(helpers.Read(nerdtest.Namespace)), containerID)
 		}
 		data.Labels().Set("chain", chain)
 

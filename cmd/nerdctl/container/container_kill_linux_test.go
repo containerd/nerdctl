@@ -70,7 +70,7 @@ func TestKillCleanupForwards(t *testing.T) {
 			chain = "DOCKER"
 		} else {
 			redirectChain := "CNI-HOSTPORT-DNAT"
-			chain = iptablesutil.GetRedirectedChain(t, ipt, redirectChain, testutil.Namespace, containerID)
+			chain = iptablesutil.GetRedirectedChain(t, ipt, redirectChain, string(helpers.Read(nerdtest.Namespace)), containerID)
 		}
 
 		data.Labels().Set("chain", chain)
