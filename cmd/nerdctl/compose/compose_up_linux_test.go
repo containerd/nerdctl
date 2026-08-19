@@ -847,12 +847,11 @@ func TestComposeUpWithBypass4netns(t *testing.T) {
 	testCase.Require = require.All(
 		require.Not(nerdtest.Docker),
 		nerdtest.Rootless,
+		nerdtest.KernelVersion(">= 5.9.0-0"),
+		nerdtest.SystemService("bypass4netnsd"),
 	)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		testutil.RequireKernelVersion(t, ">= 5.9.0-0")
-		testutil.RequireSystemService(t, "bypass4netnsd")
-
 		hostPort, err := portlock.Acquire(0)
 		if err != nil {
 			helpers.T().Log(fmt.Sprintf("Failed to acquire port: %v", err))

@@ -171,10 +171,6 @@ func TestImageConvertNydusVerify(t *testing.T) {
 
 	var reg *registry.Server
 
-	// It is unclear what is problematic here, but we use the kernel version to discriminate against EL
-	// See: https://github.com/containerd/nerdctl/issues/4332
-	testutil.RequireKernelVersion(t, ">= 6.0.0-0")
-
 	testCase := &test.Case{
 		Require: require.All(
 			require.Linux,
@@ -184,6 +180,9 @@ func TestImageConvertNydusVerify(t *testing.T) {
 			require.Not(nerdtest.Docker),
 			nerdtest.Rootful,
 			nerdtest.Registry,
+			// It is unclear what is problematic here, but we use the kernel version to discriminate against EL
+			// See: https://github.com/containerd/nerdctl/issues/4332
+			nerdtest.KernelVersion(">= 6.0.0-0"),
 		),
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
