@@ -85,6 +85,10 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 	if err != nil {
 		return types.GlobalCommandOptions{}, err
 	}
+	logFile, err := cmd.Flags().GetString("log-file")
+	if err != nil {
+		return types.GlobalCommandOptions{}, err
+	}
 	address, err := cmd.Flags().GetString("address")
 	if err != nil {
 		return types.GlobalCommandOptions{}, err
@@ -167,6 +171,7 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 	return types.GlobalCommandOptions{
 		Debug:            debug,
 		DebugFull:        debugFull,
+		LogFile:          logFile,
 		Address:          address,
 		Namespace:        namespace,
 		Snapshotter:      snapshotter,
