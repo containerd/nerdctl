@@ -27,7 +27,6 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/opencontainers/go-digest"
 
 	"github.com/containerd/log"
 
@@ -163,16 +162,3 @@ func RequireSystemService(t testing.TB, sv string) {
 }
 
 const Namespace = "nerdctl-test"
-
-// Identifier can be used as a name of container, image, volume, network, etc.
-func Identifier(t testing.TB) string {
-	s := t.Name()
-	s = strings.ReplaceAll(s, " ", "_")
-	s = strings.ReplaceAll(s, "/", "-")
-	s = strings.ToLower(s)
-	s = "nerdctl-" + s
-	if len(s) > 76 {
-		s = "nerdctl-" + digest.SHA256.FromString(t.Name()).Encoded()
-	}
-	return s
-}

@@ -32,7 +32,7 @@ func TestUpdateContainer(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		containerName := testutil.Identifier(t)
+		containerName := data.Identifier()
 		data.Labels().Set("containerName", containerName)
 		helpers.Ensure("run", "-d", "--name", containerName, testutil.CommonImage, "sleep", nerdtest.Infinity)
 		nerdtest.EnsureContainerStarted(helpers, containerName)

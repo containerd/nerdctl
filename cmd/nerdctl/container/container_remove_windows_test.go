@@ -34,10 +34,11 @@ func TestRemoveHyperVContainer(t *testing.T) {
 	testCase.Require = nerdtest.HyperV
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "-d", "--isolation", "hyperv", "--name", testutil.Identifier(t), testutil.CommonImage, "sleep", nerdtest.Infinity)
-		nerdtest.EnsureContainerStarted(helpers, testutil.Identifier(t))
+		data.Labels().Set("containerName", data.Identifier())
+		helpers.Ensure("run", "-d", "--isolation", "hyperv", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 
-		inspect := nerdtest.InspectContainer(helpers, testutil.Identifier(t))
+		inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 		//check with HCS if the container is ineed a VM
 		isHypervContainer, err := testutil.HyperVContainer(inspect)
 		assert.NilError(t, err)
@@ -45,27 +46,33 @@ func TestRemoveHyperVContainer(t *testing.T) {
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("rm", "-f", testutil.Identifier(t))
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
 
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "should fail to remove when still running",
 			NoParallel:  true,
-			Command:     test.Command("rm", testutil.Identifier(t)),
-			Expected:    test.Expects(expect.ExitCodeGenericFail, nil, nil),
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("rm", data.Labels().Get("containerName"))
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 		},
 		{
 			Description: "should kill the container",
 			NoParallel:  true,
-			Command:     test.Command("kill", testutil.Identifier(t)),
-			Expected:    test.Expects(expect.ExitCodeSuccess, nil, nil),
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("kill", data.Labels().Get("containerName"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 		},
 		{
 			Description: "should remove the container when terminated",
 			NoParallel:  true,
-			Command:     test.Command("rm", testutil.Identifier(t)),
-			Expected:    test.Expects(expect.ExitCodeSuccess, nil, nil),
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("rm", data.Labels().Get("containerName"))
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 		},
 	}
 

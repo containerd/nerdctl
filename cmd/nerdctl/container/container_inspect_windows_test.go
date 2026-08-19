@@ -35,7 +35,7 @@ func TestInspectProcessContainerContainsLabel(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		containerName := testutil.Identifier(t)
+		containerName := data.Identifier()
 		data.Labels().Set("containerName", containerName)
 		helpers.Ensure("run", "-d", "--name", containerName, "--label", "foo=foo", "--label", "bar=bar", testutil.CommonImage, "sleep", nerdtest.Infinity)
 		nerdtest.EnsureContainerStarted(helpers, containerName)
@@ -75,7 +75,7 @@ func TestInspectHyperVContainerContainsLabel(t *testing.T) {
 	testCase.Require = nerdtest.HyperV
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		containerName := testutil.Identifier(t)
+		containerName := data.Identifier()
 		data.Labels().Set("containerName", containerName)
 		helpers.Ensure("run", "-d", "--name", containerName, "--isolation", "hyperv", "--label", "foo=foo", "--label", "bar=bar", testutil.CommonImage, "sleep", nerdtest.Infinity)
 		nerdtest.EnsureContainerStarted(helpers, containerName)

@@ -32,7 +32,6 @@ import (
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
 	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
-	"github.com/containerd/nerdctl/v2/pkg/testutil"
 )
 
 const testBridgeIP = "10.42.100.1/24" // nolint:unused
@@ -493,7 +492,7 @@ func TestNetworkWithDefaultNameAlreadyExists(t *testing.T) {
 	assert.NilError(t, tpl.ExecuteTemplate(buf, "test", values))
 
 	// Filename is irrelevant as long as it's not nerdctl's.
-	testConfFile := filepath.Join(cniConfTestDir, fmt.Sprintf("%s.conf", testutil.Identifier(t)))
+	testConfFile := filepath.Join(cniConfTestDir, fmt.Sprintf("%s.conf", t.Name()))
 	err = filesystem.WriteFile(testConfFile, buf.Bytes(), 0600)
 	assert.NilError(t, err)
 
@@ -561,7 +560,7 @@ func TestListNetworksMatchIncludesPseudoNetworks(t *testing.T) {
 	buf := &bytes.Buffer{}
 	assert.NilError(t, tpl.ExecuteTemplate(buf, "test", values))
 
-	testConfFile := filepath.Join(cniConfTestDir, fmt.Sprintf("%s.conf", testutil.Identifier(t)))
+	testConfFile := filepath.Join(cniConfTestDir, fmt.Sprintf("%s.conf", t.Name()))
 	assert.NilError(t, filesystem.WriteFile(testConfFile, buf.Bytes(), 0600))
 
 	matches, errs := cniEnv.ListNetworksMatch([]string{"host", "none", "regular-network"}, true)

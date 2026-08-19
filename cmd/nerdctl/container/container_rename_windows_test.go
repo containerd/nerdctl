@@ -30,7 +30,7 @@ func TestRenameProcessContainer(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		testContainerName := testutil.Identifier(t)
+		testContainerName := data.Identifier()
 		data.Labels().Set("containerName", testContainerName)
 
 		helpers.Ensure("run", "--isolation", "process", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", nerdtest.Infinity)
@@ -92,7 +92,7 @@ func TestRenameHyperVContainer(t *testing.T) {
 	testCase.Require = nerdtest.HyperV
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		testContainerName := testutil.Identifier(t)
+		testContainerName := data.Identifier()
 		data.Labels().Set("containerName", testContainerName)
 
 		helpers.Ensure("run", "--isolation", "hyperv", "-d", "--name", testContainerName, testutil.CommonImage, "sleep", nerdtest.Infinity)

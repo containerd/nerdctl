@@ -244,28 +244,26 @@ func TestRunApparmor(t *testing.T) {
 func TestRunSelinuxWithSecurityOpt(t *testing.T) {
 	testCase := nerdtest.Setup()
 	testCase.Require = nerdtest.Selinux
-	testContainer := testutil.Identifier(t)
-
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "test run with selinux-enabled",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("--selinux-enabled", "run", "-d", "--security-opt", "label=type:container_t", "--name", testContainer, testutil.CommonImage, "sleep", "infinity")
+				return helpers.Command("--selinux-enabled", "run", "-d", "--security-opt", "label=type:container_t", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", testContainer)
+				helpers.Anyhow("rm", "-f", data.Identifier())
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeSuccess,
 					Output: expect.All(
 						func(stdout string, t tig.T) {
-							inspectOut := helpers.Capture("container", "inspect", "--format", "{{.State.Pid}}", testContainer)
+							inspectOut := helpers.Capture("container", "inspect", "--format", "{{.State.Pid}}", data.Identifier())
 							pid := strings.TrimSpace(inspectOut)
 							fileName := fmt.Sprintf("/proc/%s/attr/current", pid)
-							data, err := os.ReadFile(fileName)
+							attr, err := os.ReadFile(fileName)
 							assert.NilError(t, err)
-							assert.Equal(t, strings.Contains(string(data), "container_t"), true)
+							assert.Equal(t, strings.Contains(string(attr), "container_t"), true)
 						},
 					),
 				}
@@ -277,28 +275,26 @@ func TestRunSelinuxWithSecurityOpt(t *testing.T) {
 func TestRunSelinux(t *testing.T) {
 	testCase := nerdtest.Setup()
 	testCase.Require = nerdtest.Selinux
-	testContainer := testutil.Identifier(t)
-
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "test run with selinux-enabled",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
-				return helpers.Command("--selinux-enabled", "run", "-d", "--name", testContainer, testutil.CommonImage, "sleep", "infinity")
+				return helpers.Command("--selinux-enabled", "run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", testContainer)
+				helpers.Anyhow("rm", "-f", data.Identifier())
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeSuccess,
 					Output: expect.All(
 						func(stdout string, t tig.T) {
-							inspectOut := helpers.Capture("container", "inspect", "--format", "{{.State.Pid}}", testContainer)
+							inspectOut := helpers.Capture("container", "inspect", "--format", "{{.State.Pid}}", data.Identifier())
 							pid := strings.TrimSpace(inspectOut)
 							fileName := fmt.Sprintf("/proc/%s/attr/current", pid)
-							data, err := os.ReadFile(fileName)
+							attr, err := os.ReadFile(fileName)
 							assert.NilError(t, err)
-							assert.Equal(t, strings.Contains(string(data), "container_t"), true)
+							assert.Equal(t, strings.Contains(string(attr), "container_t"), true)
 						},
 					),
 				}
@@ -311,8 +307,6 @@ func TestRunSelinux(t *testing.T) {
 func TestRunSelinuxWithVolumeLabel(t *testing.T) {
 	testCase := nerdtest.Setup()
 	testCase.Require = nerdtest.Selinux
-	testContainer := testutil.Identifier(t)
-
 	testCase.SubTests = []*test.Case{
 		{
 			Description: "test run with selinux-enabled",
@@ -320,10 +314,10 @@ func TestRunSelinuxWithVolumeLabel(t *testing.T) {
 				// The volume directory must live somewhere writable by the (possibly
 				// rootless) user running the tests: nerdctl creates it on `run`.
 				hostDir := data.Temp().Path("volume")
-				return helpers.Command("--selinux-enabled", "run", "-d", "-v", fmt.Sprintf("%s:/mnt:Z", hostDir), "--name", testContainer, testutil.CommonImage, "sleep", "infinity")
+				return helpers.Command("--selinux-enabled", "run", "-d", "-v", fmt.Sprintf("%s:/mnt:Z", hostDir), "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
 			},
 			Cleanup: func(data test.Data, helpers test.Helpers) {
-				helpers.Anyhow("rm", "-f", testContainer)
+				helpers.Anyhow("rm", "-f", data.Identifier())
 			},
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{

@@ -33,7 +33,7 @@ func TestRunWithSystemdAlways(t *testing.T) {
 	testCase.Require = require.Not(nerdtest.Docker)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		data.Labels().Set("containerName", testutil.Identifier(t))
+		data.Labels().Set("containerName", data.Identifier())
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -117,7 +117,7 @@ func TestRunWithSystemdTrueDisabled(t *testing.T) {
 	)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		data.Labels().Set("containerName", testutil.Identifier(t))
+		data.Labels().Set("containerName", data.Identifier())
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -139,7 +139,7 @@ func TestRunWithSystemdFalse(t *testing.T) {
 	testCase.Require = require.Not(nerdtest.Docker)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		data.Labels().Set("containerName", testutil.Identifier(t))
+		data.Labels().Set("containerName", data.Identifier())
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -176,7 +176,7 @@ func TestRunWithNoSystemd(t *testing.T) {
 	testCase.Require = require.Not(nerdtest.Docker)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		data.Labels().Set("containerName", testutil.Identifier(t))
+		data.Labels().Set("containerName", data.Identifier())
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -229,7 +229,7 @@ func TestRunWithSystemdPrivilegedSuccess(t *testing.T) {
 	)
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		containerName := testutil.Identifier(t)
+		containerName := data.Identifier()
 		data.Labels().Set("containerName", containerName)
 		helpers.Ensure("run", "-d", "--name", containerName, "--privileged", "--security-opt", "privileged-without-host-devices", "--systemd=true", "--entrypoint=/sbin/init", testutil.SystemdImage)
 		nerdtest.EnsureContainerStarted(helpers, containerName)
