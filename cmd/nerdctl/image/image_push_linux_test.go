@@ -17,9 +17,12 @@
 package image
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -278,7 +281,151 @@ func TestPush(t *testing.T) {
 				},
 				Expected: test.Expects(0, nil, nil),
 			},
+			{
+				Description: "all tags",
+				Require:     require.Not(nerdtest.Docker),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+					testImageRepo := fmt.Sprintf("%s:%d/%s",
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier())
+					data.Labels().Set("testImageRepo", testImageRepo)
+					helpers.Ensure("tag", testutil.CommonImage, testImageRepo+":v1")
+					helpers.Ensure("tag", testutil.CommonImage, testImageRepo+":v2")
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					if data.Labels().Get("testImageRepo") != "" {
+						helpers.Anyhow("rmi", "-f", data.Labels().Get("testImageRepo")+":v1")
+						helpers.Anyhow("rmi", "-f", data.Labels().Get("testImageRepo")+":v2")
+					}
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("push", "--insecure-registry", "--all-tags", data.Labels().Get("testImageRepo"))
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: func(stdout string, t tig.T) {
+							assertRegistryHasTags(t, registryNoAuthHTTPRandom, data.Identifier(), "v1", "v2")
+						},
+					}
+				},
+			},
+			{
+				Description: "all tags, with a tag",
+				Require:     require.Not(nerdtest.Docker),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+					testImageRef := fmt.Sprintf("%s:%d/%s:v1",
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier())
+					data.Labels().Set("testImageRef", testImageRef)
+					helpers.Ensure("tag", testutil.CommonImage, testImageRef)
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					if data.Labels().Get("testImageRef") != "" {
+						helpers.Anyhow("rmi", "-f", data.Labels().Get("testImageRef"))
+					}
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("push", "--insecure-registry", "--all-tags", data.Labels().Get("testImageRef"))
+				},
+				Expected: test.Expects(1, []error{errors.New("tag can't be used with --all-tags/-a")}, nil),
+			},
+			{
+				Description: "all tags, no local tag",
+				Require:     require.Not(nerdtest.Docker),
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					testImageRepo := fmt.Sprintf("%s:%d/%s",
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier())
+					return helpers.Command("push", "--insecure-registry", "--all-tags", testImageRepo)
+				},
+				Expected: test.Expects(1, []error{errors.New("an image does not exist locally with the tag")}, nil),
+			},
+			{
+				Description: "all tags, soci",
+				Require: require.All(
+					nerdtest.Soci,
+					require.Not(nerdtest.Docker),
+				),
+				Setup: func(data test.Data, helpers test.Helpers) {
+					helpers.Ensure("pull", "--quiet", testutil.UbuntuImage)
+					testImageRepo := fmt.Sprintf("%s:%d/%s",
+						registryNoAuthHTTPRandom.IP.String(), registryNoAuthHTTPRandom.Port, data.Identifier())
+					data.Labels().Set("testImageRepo", testImageRepo)
+					helpers.Ensure("tag", testutil.UbuntuImage, testImageRepo+":v1")
+					helpers.Ensure("tag", testutil.UbuntuImage, testImageRepo+":v2")
+				},
+				Cleanup: func(data test.Data, helpers test.Helpers) {
+					if data.Labels().Get("testImageRepo") != "" {
+						helpers.Anyhow("rmi", "-f", data.Labels().Get("testImageRepo")+":v1")
+						helpers.Anyhow("rmi", "-f", data.Labels().Get("testImageRepo")+":v2")
+					}
+				},
+				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+					return helpers.Command("push", "--snapshotter=soci", "--insecure-registry", "--all-tags", "--soci-span-size=2097152", "--soci-min-layer-size=20971520", data.Labels().Get("testImageRepo"))
+				},
+				Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+					return &test.Expected{
+						Output: func(stdout string, t tig.T) {
+							assertRegistryHasTags(t, registryNoAuthHTTPRandom, data.Identifier(), "v1", "v2")
+							assertRegistrySociIndex(t, registryNoAuthHTTPRandom, data.Identifier())
+						},
+					}
+				},
+			},
 		},
 	}
 	testCase.Run(t)
+}
+
+// referrersFallbackTagPrefix starts the tag under which the distribution spec has a registry
+// without the referrers API keep the artifacts referring to a manifest ("sha256-<hex>").
+const referrersFallbackTagPrefix = "sha256-"
+
+// registryTags returns the tags the registry lists for the repository `repo`.
+func registryTags(t tig.T, reg *registry.Server, repo string) []string {
+	t.Helper()
+
+	tagsURL := fmt.Sprintf("http://%s:%d/v2/%s/tags/list", reg.IP.String(), reg.Port, repo)
+	resp, err := http.Get(tagsURL)
+	assert.NilError(t, err, "error making http request")
+	defer func() {
+		if resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+	assert.Equal(t, resp.StatusCode, http.StatusOK, "tag list should be available")
+
+	var tagList struct {
+		Name string   `json:"name"`
+		Tags []string `json:"tags"`
+	}
+	assert.NilError(t, json.NewDecoder(resp.Body).Decode(&tagList), "error decoding the tag list")
+
+	return tagList.Tags
+}
+
+// assertRegistryHasTags verifies the registry lists every tag of `want` for the repository `repo`.
+// The listing legitimately holds more than the pushed tags: a SOCI index adds a referrers fallback
+// tag, and a re-run of the test hits a repository the previous run already populated.
+func assertRegistryHasTags(t tig.T, reg *registry.Server, repo string, want ...string) {
+	t.Helper()
+
+	tags := registryTags(t, reg, repo)
+	for _, tag := range want {
+		assert.Assert(t, slices.Contains(tags, tag), "expected tag %q in %v", tag, tags)
+	}
+}
+
+// assertRegistrySociIndex verifies a SOCI index was pushed to the repository `repo`.
+//
+// The test registry is distribution 2.x, which predates the referrers API, so SOCI attaches its
+// index through the referrers fallback tag. A push without SOCI never creates such a tag, so its
+// presence is what tells the index apart from the tags of the image itself.
+func assertRegistrySociIndex(t tig.T, reg *registry.Server, repo string) {
+	t.Helper()
+
+	tags := registryTags(t, reg, repo)
+	found := slices.ContainsFunc(tags, func(tag string) bool {
+		return strings.HasPrefix(tag, referrersFallbackTagPrefix)
+	})
+	assert.Assert(t, found, "expected a SOCI index referrers tag in %v", tags)
 }
