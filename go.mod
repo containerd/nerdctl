@@ -11,8 +11,8 @@ require (
 	github.com/containerd/accelerated-container-image v1.4.4
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
-	github.com/containerd/containerd/api v1.11.1
-	github.com/containerd/containerd/v2 v2.3.4 //gomodjail:unconfined
+	github.com/containerd/containerd/api v1.12.0-beta.0
+	github.com/containerd/containerd/v2 v2.4.0-beta.0 //gomodjail:unconfined
 	github.com/containerd/continuity v0.5.0 //gomodjail:unconfined
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
@@ -38,7 +38,7 @@ require (
 	github.com/fahedouch/go-logrotate v0.3.0 //gomodjail:unconfined
 	github.com/fatih/color v1.19.0 //gomodjail:unconfined
 	github.com/fluent/fluent-logger-golang v1.10.1
-	github.com/fsnotify/fsnotify v1.9.0 //gomodjail:unconfined
+	github.com/fsnotify/fsnotify v1.10.1 //gomodjail:unconfined
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/ipfs/go-cid v0.6.2
 	github.com/klauspost/compress v1.19.2
@@ -71,7 +71,7 @@ require (
 	golang.org/x/term v0.45.0 //gomodjail:unconfined
 	golang.org/x/text v0.41.0
 	gotest.tools/v3 v3.5.2
-	tags.cncf.io/container-device-interface v1.1.0 //gomodjail:unconfined
+	tags.cncf.io/container-device-interface v1.1.1-0.20260720132747-49ac08dcf160 //gomodjail:unconfined
 )
 
 require (
@@ -102,7 +102,6 @@ require (
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
-	github.com/moby/sys/sequential v0.7.0 // indirect
 	github.com/moby/sys/symlink v0.3.0 // indirect
 	github.com/mr-tron/base58 v1.3.0 // indirect
 	github.com/multiformats/go-base32 v0.1.0 // indirect
@@ -111,7 +110,6 @@ require (
 	github.com/multiformats/go-multibase v0.3.0 // indirect
 	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/multiformats/go-varint v0.1.0 // indirect
-	github.com/opencontainers/runtime-tools v0.9.1-0.20251114084447-edf4cb3d2116 // indirect
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -154,7 +152,6 @@ require (
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/moby/moby/api v1.55.0 // indirect
-	github.com/moby/sys/capability v0.4.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
 	sigs.k8s.io/knftables v0.0.18 // indirect
 )

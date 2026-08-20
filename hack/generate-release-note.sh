@@ -25,7 +25,7 @@ cat <<-EOX
 (To be documented)
 
 ## Compatible containerd versions
-This release of nerdctl is expected to be used with containerd v1.7, v2.0, v2.1, v2.2, or v2.3.
+This release of nerdctl is expected to be used with containerd v1.7 or later.
 Some features may not work with other releases of containerd.
 
 ## About the binaries
