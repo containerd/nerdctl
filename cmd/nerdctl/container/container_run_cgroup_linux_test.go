@@ -321,7 +321,7 @@ func TestIssue3781(t *testing.T) {
 					assert.NilError(t, err)
 					addr = filepath.Join("/proc", fmt.Sprintf("%d", childPid), "root", defaults.DefaultAddress)
 				}
-				client, err := containerd.New(addr, containerd.WithDefaultNamespace(testutil.Namespace))
+				client, err := containerd.New(addr, containerd.WithDefaultNamespace(string(helpers.Read(nerdtest.Namespace))))
 				assert.NilError(t, err)
 				defer client.Close()
 				ctx := context.Background()
@@ -630,12 +630,13 @@ func TestRunBlkioWeightCgroupV2(t *testing.T) {
 
 func TestRunBlkioSettingCgroupV2(t *testing.T) {
 	testCase := nerdtest.Setup()
-	testCase.Require = nerdtest.Rootful
-
 	// See https://github.com/containerd/nerdctl/issues/4185
 	// It is unclear if this is truly a kernel version problem, a runc issue, or a distro (EL9) issue.
 	// For now, disable the test unless on a recent kernel.
-	testutil.RequireKernelVersion(t, ">= 6.0.0-0")
+	testCase.Require = require.All(
+		nerdtest.Rootful,
+		nerdtest.KernelVersion(">= 6.0.0-0"),
+	)
 
 	const (
 		weight       = "150"

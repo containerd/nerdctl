@@ -1051,7 +1051,7 @@ CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
 				Description: "build with buildkit-host",
 				Setup: func(data test.Data, helpers test.Helpers) {
 					// Get BuildkitAddr
-					buildkitAddr, err := buildkitutil.GetBuildkitHost(testutil.Namespace)
+					buildkitAddr, err := buildkitutil.GetBuildkitHost(string(helpers.Read(nerdtest.Namespace)))
 					assert.NilError(helpers.T(), err)
 					buildkitAddr = strings.TrimPrefix(buildkitAddr, "unix://")
 
@@ -1080,7 +1080,7 @@ CMD ["echo", "nerdctl-build-test-string"]`, testutil.CommonImage)
 				Description: "build with env specified",
 				Setup: func(data test.Data, helpers test.Helpers) {
 					// Get BuildkitAddr
-					buildkitAddr, err := buildkitutil.GetBuildkitHost(testutil.Namespace)
+					buildkitAddr, err := buildkitutil.GetBuildkitHost(string(helpers.Read(nerdtest.Namespace)))
 					assert.NilError(helpers.T(), err)
 					buildkitAddr = strings.TrimPrefix(buildkitAddr, "unix://")
 

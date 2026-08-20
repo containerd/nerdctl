@@ -20,20 +20,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
-
-	"github.com/Masterminds/semver/v3"
-	"github.com/opencontainers/go-digest"
 
 	"github.com/containerd/log"
 
-	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
-	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 )
 
 var (
@@ -127,52 +119,4 @@ func GetDaemonIsKillable() bool {
 
 func GetAllowModifyUsers() bool {
 	return flagTestModifyUsers
-}
-
-func RequireKernelVersion(t testing.TB, constraint string) {
-	t.Helper()
-	c, err := semver.NewConstraint(constraint)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// EL kernel versions are not semver, so, cleanup first
-	un := strings.Split(infoutil.UnameR(), "-")[0]
-	unameR, err := semver.NewVersion(un)
-	if err != nil {
-		t.Skip(err)
-	}
-	if !c.Check(unameR) {
-		t.Skipf("version %v does not satisfy constraints %v", unameR, c)
-	}
-}
-
-func RequireSystemService(t testing.TB, sv string) {
-	t.Helper()
-	if runtime.GOOS != "linux" {
-		t.Skipf("Service %q is not supported on %q", sv, runtime.GOOS)
-	}
-	var systemctlArgs []string
-	if rootlessutil.IsRootless() {
-		systemctlArgs = append(systemctlArgs, "--user")
-	}
-	systemctlArgs = append(systemctlArgs, []string{"-q", "is-active", sv}...)
-	cmd := exec.Command("systemctl", systemctlArgs...)
-	if err := cmd.Run(); err != nil {
-		t.Skipf("Service %q does not seem active: %v: %v", sv, cmd.Args, err)
-	}
-}
-
-const Namespace = "nerdctl-test"
-
-// Identifier can be used as a name of container, image, volume, network, etc.
-func Identifier(t testing.TB) string {
-	s := t.Name()
-	s = strings.ReplaceAll(s, " ", "_")
-	s = strings.ReplaceAll(s, "/", "-")
-	s = strings.ToLower(s)
-	s = "nerdctl-" + s
-	if len(s) > 76 {
-		s = "nerdctl-" + digest.SHA256.FromString(t.Name()).Encoded()
-	}
-	return s
 }

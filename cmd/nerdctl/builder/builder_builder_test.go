@@ -75,7 +75,7 @@ CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
 				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					// Get BuildkitAddr
-					buildkitAddr, err := buildkitutil.GetBuildkitHost(testutil.Namespace)
+					buildkitAddr, err := buildkitutil.GetBuildkitHost(string(helpers.Read(nerdtest.Namespace)))
 					assert.NilError(helpers.T(), err)
 					buildkitAddr = strings.TrimPrefix(buildkitAddr, "unix://")
 
@@ -104,7 +104,7 @@ CMD ["echo", "nerdctl-test-builder-prune"]`, testutil.CommonImage)
 				Require:     require.Not(nerdtest.Docker),
 				Setup: func(data test.Data, helpers test.Helpers) {
 					// Get BuildkitAddr
-					buildkitAddr, err := buildkitutil.GetBuildkitHost(testutil.Namespace)
+					buildkitAddr, err := buildkitutil.GetBuildkitHost(string(helpers.Read(nerdtest.Namespace)))
 					assert.NilError(helpers.T(), err)
 					buildkitAddr = strings.TrimPrefix(buildkitAddr, "unix://")
 

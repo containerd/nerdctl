@@ -783,14 +783,13 @@ func TestContainerInspectBlkioSettings(t *testing.T) {
 		require.Not(nerdtest.Docker),
 		require.Not(nerdtest.Rootless),
 		nerdtest.CGroupV2,
-	)
-
-	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		// See https://github.com/containerd/nerdctl/issues/4185
 		// It is unclear if this is truly a kernel version problem, a runc issue, or a distro (EL9) issue.
 		// For now, disable the test unless on a recent kernel.
-		testutil.RequireKernelVersion(t, ">= 6.0.0-0")
+		nerdtest.KernelVersion(">= 6.0.0-0"),
+	)
 
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		var err error
 		lo, err = loopback.New(4096)
 		if err != nil {

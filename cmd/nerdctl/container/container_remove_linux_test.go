@@ -113,7 +113,7 @@ func TestContainerRmIptables(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				// Get the container ID from the label
 				containerID := data.Labels().Get("containerID")
-				id := fmt.Sprintf("%s-%s", testutil.Namespace, containerID)
+				id := fmt.Sprintf("%s-%s", helpers.Read(nerdtest.Namespace), containerID)
 				chain := cniutils.FormatChainName("bridge", id)
 				return &test.Expected{
 					ExitCode: expect.ExitCodeSuccess,

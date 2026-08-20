@@ -34,7 +34,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest/platform"
 )
 
-const defaultNamespace = testutil.Namespace
+const defaultNamespace = "nerdctl-test"
 
 // IMPORTANT note on file writing here:
 // Inside the context of a single test, there is no concurrency, as setup, command and cleanup operate in sequence

@@ -40,22 +40,22 @@ func TestRestart(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		helpers.Ensure("run", "-d", "--name", testutil.Identifier(t), testutil.NginxAlpineImage, "sleep", nerdtest.Infinity)
-		nerdtest.EnsureContainerStarted(helpers, testutil.Identifier(t))
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.NginxAlpineImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 
-		inspect := nerdtest.InspectContainer(helpers, testutil.Identifier(t))
+		inspect := nerdtest.InspectContainer(helpers, data.Identifier())
 		data.Labels().Set("pid", strconv.Itoa(inspect.State.Pid))
 
-		helpers.Ensure("restart", testutil.Identifier(t))
-		nerdtest.EnsureContainerStarted(helpers, testutil.Identifier(t))
+		helpers.Ensure("restart", data.Identifier())
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("rm", "-f", testutil.Identifier(t))
+		helpers.Anyhow("rm", "-f", data.Identifier())
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		return helpers.Command("inspect", testutil.Identifier(t))
+		return helpers.Command("inspect", data.Identifier())
 	}
 
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -80,7 +80,7 @@ func TestRestartPIDContainer(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		baseContainerName := testutil.Identifier(t)
+		baseContainerName := data.Identifier()
 		helpers.Ensure("run", "-d", "--name", baseContainerName, testutil.AlpineImage, "sleep", nerdtest.Infinity)
 		nerdtest.EnsureContainerStarted(helpers, baseContainerName)
 
@@ -129,7 +129,7 @@ func TestRestartIPCContainer(t *testing.T) {
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		const shmSize = "32m"
-		baseContainerName := testutil.Identifier(t)
+		baseContainerName := data.Identifier()
 		helpers.Ensure("run", "-d", "--shm-size", shmSize, "--ipc", "shareable", "--name", baseContainerName, testutil.AlpineImage, "sleep", nerdtest.Infinity)
 		nerdtest.EnsureContainerStarted(helpers, baseContainerName)
 
@@ -178,7 +178,7 @@ func TestRestartWithTime(t *testing.T) {
 	testCase := nerdtest.Setup()
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		containerName := testutil.Identifier(t)
+		containerName := data.Identifier()
 		helpers.Ensure("run", "-d", "--name", containerName, testutil.AlpineImage, "sleep", nerdtest.Infinity)
 		nerdtest.EnsureContainerStarted(helpers, containerName)
 

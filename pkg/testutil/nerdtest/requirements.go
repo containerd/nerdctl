@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -36,6 +37,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
 	ncdefaults "github.com/containerd/nerdctl/v2/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/infoutil"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/dockercompat"
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
@@ -585,6 +587,48 @@ func CNIFirewallVersion(requiredVersion string) *test.Requirement {
 			}
 
 			return true, fmt.Sprintf("CNI firewall plugin version is greater than or equal to required version %s", requiredVersion)
+		},
+	}
+}
+
+// KernelVersion requires the host kernel version to satisfy the given semver constraint (e.g. ">= 6.0.0-0").
+// If the kernel version cannot be parsed as semver, the requirement is not met.
+func KernelVersion(constraint string) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+			c, err := semver.NewConstraint(constraint)
+			assert.NilError(helpers.T(), err, "invalid kernel version constraint")
+			// EL kernel versions are not semver, so, cleanup first
+			un := strings.Split(infoutil.UnameR(), "-")[0]
+			unameR, err := semver.NewVersion(un)
+			if err != nil {
+				return false, fmt.Sprintf("cannot parse kernel version %q: %v", un, err)
+			}
+			if !c.Check(unameR) {
+				return false, fmt.Sprintf("kernel version %v does not satisfy constraints %v", unameR, c)
+			}
+			return true, fmt.Sprintf("kernel version %v satisfies constraints %v", unameR, c)
+		},
+	}
+}
+
+// SystemService requires the given systemd service (user service when rootless) to be active.
+func SystemService(sv string) *test.Requirement {
+	return &test.Requirement{
+		Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+			if runtime.GOOS != "linux" {
+				return false, fmt.Sprintf("service %q is not supported on %q", sv, runtime.GOOS)
+			}
+			var systemctlArgs []string
+			if rootlessutil.IsRootless() {
+				systemctlArgs = append(systemctlArgs, "--user")
+			}
+			systemctlArgs = append(systemctlArgs, "-q", "is-active", sv)
+			cmd := exec.Command("systemctl", systemctlArgs...)
+			if err := cmd.Run(); err != nil {
+				return false, fmt.Sprintf("service %q does not seem active: %v: %v", sv, cmd.Args, err)
+			}
+			return true, fmt.Sprintf("service %q is active", sv)
 		},
 	}
 }
