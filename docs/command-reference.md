@@ -461,6 +461,7 @@ Ulimit flags:
 Verify flags:
 
 - :nerd_face: `--verify`: Verify the image (none|cosign|notation). See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md) for details.
+- :nerd_face: `--disable-content-trust`: Docker compatibility flag; accepted as a no-op because nerdctl uses `--verify` and cosign-based image verification instead of Docker Content Trust.
 - :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
 - :nerd_face: `--cosign-certificate-identity`: The identity expected in a valid Fulcio certificate for --verify=cosign. Valid values include email address, DNS names, IP addresses, and URIs. Either --cosign-certificate-identity or --cosign-certificate-identity-regexp must be set for keyless flows
 - :nerd_face: `--cosign-certificate-identity-regexp`: A regular expression alternative to --cosign-certificate-identity for --verify=cosign. Accepts the Go regular expression syntax described at https://golang.org/s/re2syntax. Either --cosign-certificate-identity or --cosign-certificate-identity-regexp must be set for keyless flows
@@ -472,9 +473,8 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--device-cgroup-rule`, `--disable-content-trust`,
-    `--health-start-interval`, `--link*`, `--storage-opt`,
-    `--volume-driver`
+    `--device-cgroup-rule`, `--health-start-interval`,
+    `--link*`, `--storage-opt`, `--volume-driver`
 
 ### :whale: nerdctl exec
 
@@ -880,6 +880,7 @@ Flags:
 - :nerd_face: `--unpack`: Unpack the image for the current single platform (auto/true/false)
 - :whale: `-q, --quiet`: Suppress verbose output
 - :nerd_face: `--verify`: Verify the image (none|cosign|notation). See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md) for details.
+- :nerd_face: `--disable-content-trust`: Docker compatibility flag; accepted as a no-op because nerdctl uses `--verify` and cosign-based image verification instead of Docker Content Trust.
 - :nerd_face: `--cosign-key`: Path to the public key file, KMS, URI or Kubernetes Secret for `--verify=cosign`
 - :nerd_face: `--cosign-certificate-identity`: The identity expected in a valid Fulcio certificate for --verify=cosign. Valid values include email address, DNS names, IP addresses, and URIs. Either --cosign-certificate-identity or --cosign-certificate-identity-regexp must be set for keyless flows
 - :nerd_face: `--cosign-certificate-identity-regexp`: A regular expression alternative to --cosign-certificate-identity for --verify=cosign. Accepts the Go regular expression syntax described at https://golang.org/s/re2syntax. Either --cosign-certificate-identity or --cosign-certificate-identity-regexp must be set for keyless flows
@@ -888,7 +889,7 @@ Flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 - :nerd_face: `--soci-index-digest`: Specify a particular index digest for SOCI. If left empty, SOCI will automatically use the index determined by the selection policy.
 
-Unimplemented `docker pull` flags: `--all-tags`, `--disable-content-trust` (default true)
+Unimplemented `docker pull` flags: `--all-tags`
 
 ### :whale: nerdctl push
 
@@ -903,6 +904,7 @@ Flags:
 - :nerd_face: `--platform=(amd64|arm64|...)`: Push content for a specific platform
 - :nerd_face: `--all-platforms`: Push content for all platforms
 - :nerd_face: `--sign`: Sign the image (none|cosign|notation). See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md) for details.
+- :nerd_face: `--disable-content-trust`: Docker compatibility flag; accepted as a no-op because nerdctl uses `--sign` and cosign-based image signing instead of Docker Content Trust.
 - :nerd_face: `--cosign-key`: Path to the private key file, KMS, URI or Kubernetes Secret for `--sign=cosign`
 - :nerd_face: `--notation-key-name`: Signing key name for a key previously added to notation's key list for `--sign=notation`
 - :nerd_face: `--allow-nondistributable-artifacts`: Allow pushing images with non-distributable blobs
@@ -911,7 +913,7 @@ Flags:
 - :nerd_face: `--soci-span-size`: Span size in bytes that soci index uses to segment layer data. Default is 4 MiB.
 - :nerd_face: `--soci-min-layer-size`: Minimum layer size in bytes to build zTOC for. Smaller layers won't have zTOC and not lazy pulled. Default is 10 MiB.
 
-Unimplemented `docker push` flags: `--all-tags`, `--disable-content-trust` (default true)
+Unimplemented `docker push` flags: `--all-tags`
 
 ### :whale: nerdctl load
 

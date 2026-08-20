@@ -56,6 +56,7 @@ func PushCommand() *cobra.Command {
 	cmd.RegisterFlagCompletionFunc("sign", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"none", "cosign", "notation"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	cmd.Flags().Bool("disable-content-trust", false, "No-op for Docker compatibility; nerdctl uses --verify and --sign for image trust instead of Docker Content Trust")
 	cmd.Flags().String("cosign-key", "", "Path to the private key file, KMS URI or Kubernetes Secret for --sign=cosign")
 	cmd.Flags().String("notation-key-name", "", "Signing key name for a key previously added to notation's key list for --sign=notation")
 	// #endregion

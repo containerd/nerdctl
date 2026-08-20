@@ -45,3 +45,13 @@ func TestRunHelpDoesNotDuplicateDefaults(t *testing.T) {
 	assert.Assert(t, strings.Contains(help, "Maximum time to allow one check to run; 0 uses the image value or 30s when unset there too"))
 	assert.Assert(t, strings.Contains(help, "Consecutive failures needed to report unhealthy; 0 uses the image value or 3 when unset there too"))
 }
+
+func TestRunDisableContentTrustFlag(t *testing.T) {
+	cmd := RunCommand()
+	err := cmd.ParseFlags([]string{"--disable-content-trust"})
+	assert.NilError(t, err)
+
+	got, err := cmd.Flags().GetBool("disable-content-trust")
+	assert.NilError(t, err)
+	assert.Equal(t, got, true)
+}
