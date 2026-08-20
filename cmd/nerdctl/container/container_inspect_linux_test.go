@@ -278,7 +278,7 @@ func TestContainerInspectConfigImage(t *testing.T) {
 	nerdtest.Setup()
 
 	testCase := &test.Case{
-		Description: "Container inspect contains Config.Image field",
+		Description: "Container inspect names the image by digest, and by reference in Config.Image",
 		Setup: func(data test.Data, helpers test.Helpers) {
 			helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.AlpineImage, "sleep", nerdtest.Infinity)
 		},
@@ -297,6 +297,12 @@ func TestContainerInspectConfigImage(t *testing.T) {
 			container := containers[0]
 			assert.Assert(tt, container.Config != nil, "container Config should not be nil")
 			assert.Assert(tt, container.Config.Image != "", "Config.Image should not be empty")
+			// Docker identifies the image a container runs by digest, pinned at creation, and
+			// keeps the reference the user asked for in Config.Image.
+			assert.Assert(tt, strings.HasPrefix(container.Image, "sha256:"),
+				"Image should be a digest, got %q", container.Image)
+			assert.Assert(tt, !strings.HasPrefix(container.Config.Image, "sha256:"),
+				"Config.Image should be a reference, got %q", container.Config.Image)
 		}),
 	}
 

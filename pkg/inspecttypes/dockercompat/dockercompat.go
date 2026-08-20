@@ -340,13 +340,28 @@ var defaultCaps = map[string]struct{}{
 	"CAP_AUDIT_WRITE":      {},
 }
 
+// containerImage is the image the container was created from, the way Docker identifies it: by
+// digest, pinned when the container was created. containerd only records the image name, and a name
+// can later be retagged onto another image, so it is not an answer. The name is still the fallback
+// for the containers created before that digest was recorded, or created outside nerdctl.
+//
+// With the containerd image store, the image ID Docker reports here is the digest of the image
+// target (moby daemon/containerd/image.go, image.ID(img.Target.Digest)), which is what nerdctl
+// pins.
+func containerImage(n *native.Container) string {
+	if dgst := n.Labels[labels.ImageDigest]; dgst != "" {
+		return dgst
+	}
+	return n.Image
+}
+
 // ContainerFromNative instantiates a Docker-compatible Container from containerd-native Container.
 func ContainerFromNative(n *native.Container) (*Container, error) {
 	var hostname string
 	c := &Container{
 		ID:      n.ID,
 		Created: n.CreatedAt.Format(time.RFC3339Nano),
-		Image:   n.Image,
+		Image:   containerImage(n),
 		Name:    n.Labels[labels.Name],
 		Driver:  n.Snapshotter,
 		// XXX is this always right? what if the container OS is NOT the same as the host OS?
@@ -576,7 +591,8 @@ func ContainerFromNative(n *native.Container) (*Container, error) {
 	c.State = cs
 	c.Config = &Config{
 		Labels: n.Labels,
-		Image:  c.Image,
+		// Docker keeps the reference the user asked for here, and the digest in Image above.
+		Image: n.Image,
 	}
 	if exposedPortsJSON := n.Labels[labels.ExposedPorts]; exposedPortsJSON != "" {
 		var exposedPorts nat.PortSet
