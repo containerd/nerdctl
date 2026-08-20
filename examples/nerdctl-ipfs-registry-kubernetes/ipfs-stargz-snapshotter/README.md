@@ -8,7 +8,7 @@ Usage:
 - Deploy `bootstrap.yaml` and `nerdctl-ipfs-registry.yaml` (e.g. using `kubectl apply`)
 - Make sure nodes contain containerd >= v1.5.8 and stargz-snapshotter.
   - Here we use `ghcr.io/containerd/stargz-snapshotter:0.12.1-kind` that contains both of them. (This image requires kind >= 0.16.0)
-- You might want to change some configuration written in `nerdctl-ipfs-registry.yaml` (e.g. [chaning profile based on your node's resouce requirements](https://docs.ipfs.tech/how-to/default-profile/#available-profiles))
+- You might want to change some configuration written in `nerdctl-ipfs-registry.yaml` (e.g. [chaning profile based on your node's resource requirements](https://docs.ipfs.tech/how-to/default-profile/#available-profiles))
 
 ## About eStargz and Stargz Snapshotter
 
@@ -64,7 +64,7 @@ $ docker exec -it kind-worker /bin/bash
 (kind-worker)# nerdctl rmi ghcr.io/stargz-containers/jenkins:2.60.3-esgz
 ```
 
-> NOTE: This example copies a pre-converted eStargz image (`ghcr.io/stargz-containers/jenkins:2.60.3-esgz`) from the registry to IPFS but you can push non-eStargz image to IPFS with converting it to eStargz using `--estargz` flag of `nerdctl push`. This flag automatically performs convertion of the image to eStargz.
+> NOTE: This example copies a pre-converted eStargz image (`ghcr.io/stargz-containers/jenkins:2.60.3-esgz`) from the registry to IPFS but you can push non-eStargz image to IPFS with converting it to eStargz using `--estargz` flag of `nerdctl push`. This flag automatically performs conversion of the image to eStargz.
 
 The eStargz image added to `kind-worker` is shared to `kind-worker2` via IPFS.
 You can perform lazy pulling of this eStargz image among nodes using the following manifest.
@@ -98,7 +98,7 @@ EOF
 
 > NOTE1: Kubernetes doesn't support `ipfs://CID` URL on YAML as of now so we need to use `localhost:5050/ipfs/CID` form instead. In the future, this limitation should be eliminated.
 
-> NOTE2: stargz-snapshotter currently perfoms lazy pulling via `nerdctl ipfs registry` running on localhost instead of leveraging its [native support for fetching contents via ipfs daemon](https://github.com/containerd/stargz-snapshotter/blob/v0.12.0/docs/ipfs.md). This is because of the limitation described in NOTE1 and expected to be fixed once NOTE1 is solved.
+> NOTE2: stargz-snapshotter currently performs lazy pulling via `nerdctl ipfs registry` running on localhost instead of leveraging its [native support for fetching contents via ipfs daemon](https://github.com/containerd/stargz-snapshotter/blob/v0.12.0/docs/ipfs.md). This is because of the limitation described in NOTE1 and expected to be fixed once NOTE1 is solved.
 
 The image runs on all nodes.
 You may observe faster pulling of the image by eStargz.

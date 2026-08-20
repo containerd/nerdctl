@@ -144,7 +144,7 @@ Users of the `namestore` do not have to bother with locking. These methods are s
 This is a good example of how to leverage core store primitives to implement a developer friendly, safe storage for
 "something" (in that case "names").
 
-Finaly note an important point - mentioned above: locking should be done to the smallest possible "segment" of sub-directories.
+Finally note an important point - mentioned above: locking should be done to the smallest possible "segment" of sub-directories.
 Specifically, any store should lock only - at most - resources under the _namespace_ being manipulated.
 
 For example, a container lifecycle storage should not lock out any other container, but only its own private directory.

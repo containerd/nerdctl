@@ -126,7 +126,7 @@ func (s *server) serve(r *http.Request) (string, io.ReadSeeker, string, int64, e
 }
 
 func (s *server) serveContentByCID(ctx context.Context, targetCID string) (resC string, r io.ReadSeeker, mediaType string, size int64, err error) {
-	// TODO: make sure cidStr is a vaild CID?
+	// TODO: make sure cidStr is a valid CID?
 	c, desc, err := s.resolveCIDOfRootBlob(ctx, targetCID)
 	if err != nil {
 		return "", nil, "", 0, err
