@@ -200,16 +200,37 @@ func getContainerWait(ctx context.Context, address string, config *logging.Confi
 	if err != nil {
 		return nil, err
 	}
+	// closeAfterDelivery forwards the first delivery from ch and then closes
+	// the client, so that callers which re-arm the wait (see the wait loop in
+	// loggingProcessAdapter) do not accumulate open clients.
+	closeAfterDelivery := func(ch <-chan containerd.ExitStatus) <-chan containerd.ExitStatus {
+		out := make(chan containerd.ExitStatus, 1)
+		go func() {
+			defer close(out)
+			defer client.Close()
+			if status, ok := <-ch; ok {
+				out <- status
+			}
+		}()
+		return out
+	}
 	con, err := client.LoadContainer(ctx, config.ID)
 	if err != nil {
+		client.Close()
 		return nil, err
 	}
 
 	task, err := con.Task(ctx, nil)
 	if err == nil {
-		return task.Wait(ctx)
+		exitCh, err := task.Wait(ctx)
+		if err != nil {
+			client.Close()
+			return nil, err
+		}
+		return closeAfterDelivery(exitCh), nil
 	}
 	if !errdefs.IsNotFound(err) {
+		client.Close()
 		return nil, err
 	}
 
@@ -232,16 +253,24 @@ func getContainerWait(ctx context.Context, address string, config *logging.Confi
 	for {
 		select {
 		case <-ctx.Done():
+			client.Close()
 			return nil, errors.New("timed out waiting for container task to start")
 		case <-ticker.C:
 			task, err = con.Task(ctx, nil)
 			if err == nil {
-				return task.Wait(ctx)
+				exitCh, err := task.Wait(ctx)
+				if err != nil {
+					client.Close()
+					return nil, err
+				}
+				return closeAfterDelivery(exitCh), nil
 			}
 			if !errdefs.IsNotFound(err) {
+				client.Close()
 				return nil, err
 			}
 			if outputSeen() {
+				client.Close()
 				return alreadyExited(), nil
 			}
 		}
@@ -249,6 +278,10 @@ func getContainerWait(ctx context.Context, address string, config *logging.Confi
 }
 
 type ContainerWaitFunc func(ctx context.Context, address string, config *logging.Config, outputSeen func() bool) (<-chan containerd.ExitStatus, error)
+
+// containerWaitRetryDelay is how long the logger waits before re-arming the
+// container wait after the wait channel delivered an error instead of an exit.
+const containerWaitRetryDelay = 1 * time.Second
 
 func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, address string, getContainerWait ContainerWaitFunc, config *logging.Config) error {
 	if err := driver.PreProcess(ctx, dataStore, config); err != nil {
@@ -374,15 +407,34 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, addres
 		// keeps the stdio FIFO write ends open (so the container can be
 		// restarted), so the FIFOs may not reach EOF on exit; without this the
 		// read goroutines, and therefore the logger, could block forever.
-		exitCh, err := getContainerWait(ctx, address, config, outputSeen)
-		if err != nil {
-			// We could not determine when the container exits. Do not cancel the
-			// readers: they will finish on their own when the FIFO reaches EOF.
-			// Cancelling here could truncate a still-running container.
-			log.G(ctx).Errorf("failed to get container task wait channel: %v", err)
-			return
+		for {
+			exitCh, err := getContainerWait(ctx, address, config, outputSeen)
+			if err != nil {
+				// We could not determine when the container exits. Do not cancel the
+				// readers: they will finish on their own when the FIFO reaches EOF.
+				// Cancelling here could truncate a still-running container.
+				log.G(ctx).Errorf("failed to get container task wait channel: %v", err)
+				return
+			}
+			status := <-exitCh
+			if status.Error() == nil {
+				// The container has exited.
+				break
+			}
+			// The channel delivered a Wait RPC error, not a container exit:
+			// containerd's client sends Wait failures through the same channel
+			// as a synthetic ExitStatus (client/task.go). Treating that as an
+			// exit would cancel the readers, and with them all logging, while
+			// the container is still running. Re-arm the wait instead.
+			// https://github.com/containerd/nerdctl/issues/5137
+			log.G(ctx).WithError(status.Error()).Warn("error while waiting for container exit; retrying")
+			select {
+			case <-ctx.Done():
+				// SIGTERM: the goroutine above already cancels the readers.
+				return
+			case <-time.After(containerWaitRetryDelay):
+			}
 		}
-		<-exitCh
 		stdoutR.Cancel()
 		stderrR.Cancel()
 	}()
