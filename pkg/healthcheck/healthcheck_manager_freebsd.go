@@ -25,12 +25,12 @@ import (
 )
 
 // CreateTimer sets up the transient systemd timer and service for healthchecks.
-func CreateTimer(ctx context.Context, container containerd.Container, cfg *config.Config, nerdctlCmd string, nerdctlArgs []string) error {
+func CreateTimer(ctx context.Context, container containerd.Container, cfg *config.Config, nerdctlCmd string, nerdctlArgs []string, label map[string]string) error {
 	return nil
 }
 
 // StartTimer starts the healthcheck timer unit.
-func StartTimer(ctx context.Context, container containerd.Container, cfg *config.Config) error {
+func StartTimer(ctx context.Context, container containerd.Container, cfg *config.Config, label map[string]string) error {
 	return nil
 }
 
