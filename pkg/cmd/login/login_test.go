@@ -55,6 +55,16 @@ func TestLoginAuthCredsAcceptsEquivalentHosts(t *testing.T) {
 			acArg:   "registry-1.docker.io:443",
 		},
 		{
+			name:    "bracketed ipv6 without port",
+			address: "[::1]",
+			acArg:   "[::1]",
+		},
+		{
+			name:    "ipv6 with standard port",
+			address: "[::1]",
+			acArg:   "[::1]:443",
+		},
+		{
 			name:    "mismatched host",
 			address: "harbor.example.io",
 			acArg:   "evil.example.io",
@@ -70,6 +80,18 @@ func TestLoginAuthCredsAcceptsEquivalentHosts(t *testing.T) {
 			name:    "different explicit port",
 			address: "harbor.example.io",
 			acArg:   "harbor.example.io:8443",
+			wantErr: true,
+		},
+		{
+			name:    "docker.io alias rejected on non-standard login port",
+			address: "index.docker.io:8443",
+			acArg:   "registry-1.docker.io",
+			wantErr: true,
+		},
+		{
+			name:    "docker.io alias with port rejected on non-standard login port",
+			address: "index.docker.io:8443",
+			acArg:   "registry-1.docker.io:443",
 			wantErr: true,
 		},
 	}

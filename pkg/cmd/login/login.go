@@ -231,8 +231,9 @@ func loginAuthCreds(ctx context.Context, host string, registryURL *dockerconfigr
 func isEquivalentRegistryHost(acArg string, registryURL *dockerconfigresolver.RegistryURL) bool {
 	acHost, acPort, err := net.SplitHostPort(acArg)
 	if err != nil {
-		// acArg carries no port
-		acHost, acPort = acArg, ""
+		// acArg carries no port; Hostname strips the brackets of IPv6
+		// literals so that "[::1]" can match registryURL.Hostname()
+		acHost, acPort = (&url.URL{Host: acArg}).Hostname(), ""
 	}
 	// A callback host carrying an explicit non-standard port can only be
 	// equivalent by exact equality, which the caller already checked.
@@ -245,8 +246,12 @@ func isEquivalentRegistryHost(acArg string, registryURL *dockerconfigresolver.Re
 		return true
 	}
 	// Docker Hub aliases: "docker.io" logins resolve to index.docker.io,
-	// while the actual registry endpoint is registry-1.docker.io.
-	if registryURL.Hostname() == "index.docker.io" && acHost == "registry-1.docker.io" {
+	// while the actual registry endpoint is registry-1.docker.io. Only
+	// honor the alias when logging in over the standard HTTPS port, so a
+	// login to index.docker.io on a non-default port does not leak
+	// credentials to registry-1.docker.io.
+	if registryURL.Port() == dockerconfigresolver.StandardHTTPSPort &&
+		registryURL.Hostname() == "index.docker.io" && acHost == "registry-1.docker.io" {
 		return true
 	}
 	return false
