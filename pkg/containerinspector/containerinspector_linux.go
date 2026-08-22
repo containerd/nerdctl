@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/vishvananda/netlink"
 
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 )
@@ -55,6 +56,10 @@ func InspectNetNS(ctx context.Context, pid int) (*native.NetNS, error) {
 			res.Interfaces[i] = x
 		}
 		res.PrimaryInterface = determinePrimaryInterface(res.Interfaces)
+		routes, err := netlink.RouteList(nil, netlink.FAMILY_V4)
+		if err == nil {
+			res.Gateway = selectDefaultGateway(routes, res.PrimaryInterface)
+		}
 		return nil
 	}
 	if err := ns.WithNetNSPath(nsPath, fn); err != nil {
@@ -72,4 +77,33 @@ func determinePrimaryInterface(interfaces []native.NetInterface) int {
 		}
 	}
 	return 0
+}
+
+// isDefaultRoute reports whether route is a default route.
+// netlink synthesizes a 0.0.0.0/0 Dst for default routes rather than leaving it
+// nil, so the prefix length is what distinguishes them.
+func isDefaultRoute(route netlink.Route) bool {
+	if route.Dst == nil {
+		return true
+	}
+	ones, _ := route.Dst.Mask.Size()
+	return ones == 0
+}
+
+// selectDefaultGateway returns the IPv4 default gateway, preferring the route
+// that leaves through the primary interface. Returns "" when there is none.
+func selectDefaultGateway(routes []netlink.Route, primaryIfIndex int) string {
+	fallback := ""
+	for _, route := range routes {
+		if !isDefaultRoute(route) || route.Gw == nil || route.Gw.To4() == nil {
+			continue
+		}
+		if route.LinkIndex == primaryIfIndex {
+			return route.Gw.String()
+		}
+		if fallback == "" {
+			fallback = route.Gw.String()
+		}
+	}
+	return fallback
 }

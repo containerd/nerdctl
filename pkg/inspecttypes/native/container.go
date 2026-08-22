@@ -46,6 +46,7 @@ type NetNS struct {
 	// Zero means unset.
 	PrimaryInterface int            `json:"PrimaryInterface,omitempty"`
 	Interfaces       []NetInterface `json:"Interfaces,omitempty"`
+	Gateway          string         `json:"Gateway,omitempty"`
 	PortMappings     []cni.PortMapping
 }
 
