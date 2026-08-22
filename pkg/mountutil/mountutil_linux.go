@@ -369,6 +369,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 		bindPropagation  string
 		bindNonRecursive bool
 		bindRecursive    string // "enabled", "disabled", "writable", or "readonly"
+		volumeNoCopy     bool
 		rwOption         string
 		tmpfsSize        int64
 		tmpfsMode        os.FileMode
@@ -403,6 +404,9 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 				// Removed in Docker v29, in favor of `bind-recursive=disabled` https://github.com/docker/cli/pull/6241
 				log.L.Warn("The mount option \"bind-nonrecursive\" is deprecated; use \"bind-recursive=disabled\" instead")
 				bindNonRecursive = true
+				continue
+			case "volume-nocopy":
+				volumeNoCopy = true
 				continue
 			}
 		}
@@ -478,6 +482,10 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 		default:
 			return nil, fmt.Errorf("unexpected key '%s' in '%s'", key, field)
 		}
+	}
+
+	if volumeNoCopy && mountType != Volume {
+		return nil, fmt.Errorf("the option 'volume-nocopy' is only supported for volume mounts")
 	}
 
 	// type=image's source is an image reference resolved later with a containerd
@@ -593,6 +601,7 @@ func ProcessFlagMount(s string, volStore volumestore.VolumeStore, ociRuntime str
 		if err != nil {
 			return nil, err
 		}
+		res.VolumeNoCopy = volumeNoCopy
 		if rwOption != "" {
 			roOpts, err := readOnlyMountOptions(roMode, ociRuntime)
 			if err != nil {
