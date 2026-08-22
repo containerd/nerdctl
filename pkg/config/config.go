@@ -58,7 +58,7 @@ func New() *Config {
 		DebugFull:        false,
 		Address:          defaults.DefaultAddress,
 		Namespace:        namespaces.Default,
-		Snapshotter:      defaults.DefaultSnapshotter,
+		Snapshotter:      "",
 		CNIPath:          ncdefaults.CNIPath(),
 		CNINetConfPath:   ncdefaults.CNINetConfPath(),
 		DataRoot:         ncdefaults.DataRoot(),
