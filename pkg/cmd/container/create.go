@@ -215,6 +215,12 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		internalLabels.user = ensuredImage.ImageConfig.User
 	}
 
+	// Pin the image the container is created from. containerd only records the image name, and a
+	// name can later be retagged onto a different image.
+	if ensuredImage != nil && ensuredImage.Image != nil {
+		internalLabels.imageDigest = ensuredImage.Image.Target().Digest.String()
+	}
+
 	// Override it if User is passed
 	if options.User != "" {
 		internalLabels.user = options.User
@@ -811,6 +817,8 @@ type internalLabels struct {
 	domainname string
 	// automatically generated
 	stateDir string
+	// the digest of the image target the container was created from
+	imageDigest string
 	// network
 	networks             []string
 	ipAddress            string
@@ -917,6 +925,10 @@ func withInternalLabels(internalLabels internalLabels) (containerd.NewContainerO
 	m[labels.Platform], err = platformutil.NormalizeString(internalLabels.platform)
 	if err != nil {
 		return nil, err
+	}
+
+	if internalLabels.imageDigest != "" {
+		m[labels.ImageDigest] = internalLabels.imageDigest
 	}
 
 	if len(internalLabels.mountPoints) > 0 {

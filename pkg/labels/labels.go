@@ -87,6 +87,11 @@ const (
 	// Platform is the normalized platform string like "linux/ppc64le".
 	Platform = Prefix + "platform"
 
+	// ImageDigest is the digest of the image target the container was created from. The image name
+	// stored by containerd can be retagged to point at something else, so it is not enough to tell
+	// which image a container actually uses.
+	ImageDigest = Prefix + "image-digest"
+
 	// Mounts is the mount points for the container.
 	Mounts = Prefix + "mounts"
 
