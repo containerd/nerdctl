@@ -54,6 +54,13 @@ type Processed struct {
 	// ImageMountSnapshot is the snapshotter key of the read-only view for a
 	// type=image mount; empty for other mount types.
 	ImageMountSnapshot string
+	// ImageSubpath is the relative path inside a type=image rootfs to expose at
+	// the destination, instead of the whole rootfs. Empty means the whole rootfs.
+	ImageSubpath string
+	// ImageMountHostpath is the host directory where a type=image rootfs is
+	// materialized so an image-subpath can be bind-mounted from it. It must be
+	// unmounted and removed on container deletion. Empty when no subpath is used.
+	ImageMountHostpath string
 }
 
 type volumeSpec struct {
