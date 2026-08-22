@@ -170,6 +170,7 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, 
 
 	rootCmd.PersistentFlags().Bool("debug", cfg.Debug, "debug mode")
 	rootCmd.PersistentFlags().Bool("debug-full", cfg.DebugFull, "debug mode (with full output)")
+	helpers.AddPersistentStringFlag(rootCmd, "log-file", nil, nil, nil, aliasToBeInherited, cfg.LogFile, "NERDCTL_LOG_FILE", "Append nerdctl's own log to this file, in addition to the standard error")
 	// -a is aliases (conflicts with nerdctl images -a)
 	helpers.AddPersistentStringFlag(rootCmd, "address", []string{"a", "H"}, nil, []string{"host"}, aliasToBeInherited, cfg.Address, "CONTAINERD_ADDRESS", `containerd address, optionally with "unix://" prefix`)
 	// -n is aliases (conflicts with nerdctl logs -n)
@@ -242,6 +243,13 @@ Config file ($NERDCTL_TOML): %s
 		}
 		if debug {
 			log.SetLevel(log.DebugLevel.String())
+		}
+		if globalOptions.LogFile != "" {
+			// The handle is deliberately not kept: log.L.Fatal terminates the process,
+			// so a deferred Close would not run anyway.
+			if _, err = logging.SetLogFile(globalOptions.LogFile); err != nil {
+				return err
+			}
 		}
 		address := globalOptions.Address
 		if strings.Contains(address, "://") && !strings.HasPrefix(address, "unix://") {

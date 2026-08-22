@@ -22,10 +22,13 @@ import (
 	"strings"
 	"testing"
 
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/containerd/v2/defaults"
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -127,6 +130,55 @@ func TestNerdctlConfig(t *testing.T) {
 			Expected:    test.Expects(1, []error{errors.New("failed to load nerdctl config")}, nil),
 			Config: test.WithConfig(nerdtest.NerdctlToml, `# containerd config, not nerdctl config
 version = 2`),
+		},
+	}
+
+	testCase.Run(t)
+}
+
+// TestLogFile tests https://github.com/containerd/nerdctl/issues/4872
+func TestLogFile(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// Docker has no equivalent of --log-file
+	testCase.Require = require.Not(nerdtest.Docker)
+
+	const logFile = "nerdctl.log"
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "records the failure that is only reported on the standard error",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("--log-file", data.Temp().Path(logFile), "non-existent-command")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 1,
+					Errors:   []error{errors.New("unknown subcommand")},
+					Output: func(stdout string, t tig.T) {
+						assert.Assert(t, strings.Contains(data.Temp().Load(logFile), "unknown subcommand"),
+							"log file must contain the error")
+					},
+				}
+			},
+		},
+		{
+			Description: "appends, so that a previous invocation is not lost",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Fail("--log-file", data.Temp().Path(logFile), "non-existent-command")
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("--log-file", data.Temp().Path(logFile), "non-existent-command")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 1,
+					Output: func(stdout string, t tig.T) {
+						assert.Equal(t, strings.Count(data.Temp().Load(logFile), "unknown subcommand"), 2,
+							"log file must hold both invocations")
+					},
+				}
+			},
 		},
 	}
 

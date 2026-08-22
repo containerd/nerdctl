@@ -65,6 +65,7 @@ func addRootFlagsForConvertOptionsTest(t *testing.T, cmd *cobra.Command) {
 	flags := cmd.Flags()
 	flags.Bool("debug", false, "")
 	flags.Bool("debug-full", false, "")
+	flags.String("log-file", "", "")
 	flags.String("address", "", "")
 	flags.String("namespace", "default", "")
 	flags.String("snapshotter", "", "")

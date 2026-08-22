@@ -28,6 +28,7 @@ import (
 type Config struct {
 	Debug            bool     `toml:"debug"`
 	DebugFull        bool     `toml:"debug_full"`
+	LogFile          string   `toml:"log_file,omitempty"`
 	Address          string   `toml:"address"`
 	Namespace        string   `toml:"namespace"`
 	Snapshotter      string   `toml:"snapshotter"`
@@ -56,6 +57,7 @@ func New() *Config {
 	return &Config{
 		Debug:            false,
 		DebugFull:        false,
+		LogFile:          "",
 		Address:          defaults.DefaultAddress,
 		Namespace:        namespaces.Default,
 		Snapshotter:      defaults.DefaultSnapshotter,
