@@ -363,6 +363,12 @@ func Stop(ctx context.Context, container containerd.Container, timeout *time.Dur
 	if err != nil {
 		return err
 	}
+
+	if _, ok := l[restart.PolicyLabel]; ok {
+		if err := UpdateStatusLabel(ctx, container, containerd.Stopped); err != nil {
+			return err
+		}
+	}
 	ipc, err := ipcutil.DecodeIPCLabel(l[labels.IPC])
 	if err != nil {
 		return err
