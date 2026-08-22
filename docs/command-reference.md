@@ -952,9 +952,8 @@ Usage: `nerdctl import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]`
 Flags:
 
 - :whale: `-m, --message`: Set commit message for imported image
+- :whale: `-c, --change`: Apply a Dockerfile instruction to the created image, e.g. `--change 'CMD ["echo"]'`. Repeatable. Supported instructions: `CMD`, `ENTRYPOINT`, `ENV`, `EXPOSE`, `LABEL`, `USER`, `VOLUME`, `WORKDIR`, `STOPSIGNAL`.
 - :nerd_face: `--platform=(linux/amd64|linux/arm64|...)`: Set platform for the imported image
-
-Unimplemented `docker import` flags: `--change`
 
 ### :whale: nerdctl tag
 
