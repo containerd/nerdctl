@@ -205,6 +205,8 @@ type ImagePushOptions struct {
 	Platforms []string
 	// AllPlatforms convert content for all platforms
 	AllPlatforms bool
+	// AllTags push all the tags of the repository named by the reference
+	AllTags bool
 
 	// Estargz convert image to sStargz
 	Estargz bool

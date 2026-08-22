@@ -902,6 +902,7 @@ Flags:
 
 - :nerd_face: `--platform=(amd64|arm64|...)`: Push content for a specific platform
 - :nerd_face: `--all-platforms`: Push content for all platforms
+- :whale: `-a, --all-tags`: Push all tags of an image to the repository. `NAME` must not contain a tag.
 - :nerd_face: `--sign`: Sign the image (none|cosign|notation). See [`./cosign.md`](./cosign.md) and [`./notation.md`](./notation.md) for details.
 - :nerd_face: `--cosign-key`: Path to the private key file, KMS, URI or Kubernetes Secret for `--sign=cosign`
 - :nerd_face: `--notation-key-name`: Signing key name for a key previously added to notation's key list for `--sign=notation`
@@ -911,7 +912,7 @@ Flags:
 - :nerd_face: `--soci-span-size`: Span size in bytes that soci index uses to segment layer data. Default is 4 MiB.
 - :nerd_face: `--soci-min-layer-size`: Minimum layer size in bytes to build zTOC for. Smaller layers won't have zTOC and not lazy pulled. Default is 10 MiB.
 
-Unimplemented `docker push` flags: `--all-tags`, `--disable-content-trust` (default true)
+Unimplemented `docker push` flags: `--disable-content-trust` (default true)
 
 ### :whale: nerdctl load
 
