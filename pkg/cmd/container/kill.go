@@ -27,6 +27,7 @@ import (
 	"github.com/moby/sys/signal"
 
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/containerd/v2/pkg/cio"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/go-cni"
@@ -87,6 +88,13 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 	}()
 	if err := containerutil.UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
 		return err
+	}
+	if l, err := container.Labels(ctx); err == nil {
+		if _, ok := l[restart.PolicyLabel]; ok {
+			if err := containerutil.UpdateStatusLabel(ctx, container, containerd.Stopped); err != nil {
+				return err
+			}
+		}
 	}
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
