@@ -382,3 +382,75 @@ func TestRunRestartStatusLabel(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestRunRestartAlwaysStop(t *testing.T) {
+	testCase := nerdtest.Setup()
+	if !nerdtest.IsDocker() {
+		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"always"})
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--restart=always", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+		helpers.Ensure("stop", data.Identifier())
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		time.Sleep(3 * time.Second)
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+				assert.Equal(t, 1, len(dc))
+				assert.Assert(t, dc[0].State != nil && dc[0].State.Status == "exited")
+				if !nerdtest.IsDocker() {
+					assert.Equal(t, "stopped", dc[0].Config.Labels[restart.StatusLabel])
+				}
+			}),
+		}
+	}
+
+	testCase.Run(t)
+}
+
+func TestRunRestartAlwaysKill(t *testing.T) {
+	testCase := nerdtest.Setup()
+	if !nerdtest.IsDocker() {
+		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"always"})
+	}
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--restart=always", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+		helpers.Ensure("kill", data.Identifier())
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		time.Sleep(3 * time.Second)
+		return helpers.Command("inspect", data.Identifier())
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+				assert.Equal(t, 1, len(dc))
+				assert.Assert(t, dc[0].State != nil && dc[0].State.Status == "exited")
+				if !nerdtest.IsDocker() {
+					assert.Equal(t, "stopped", dc[0].Config.Labels[restart.StatusLabel])
+				}
+			}),
+		}
+	}
+
+	testCase.Run(t)
+}
