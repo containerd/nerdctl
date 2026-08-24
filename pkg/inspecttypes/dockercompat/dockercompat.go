@@ -49,6 +49,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/inspecttypes/native"
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
+	subnetutil "github.com/containerd/nerdctl/v2/pkg/netutil/subnet"
 	"github.com/containerd/nerdctl/v2/pkg/ocihook/state"
 )
 
@@ -1102,9 +1103,18 @@ type structuredCNI struct {
 	Name    string `json:"name"`
 	Plugins []struct {
 		Ipam struct {
-			Ranges [][]IPAMConfig `json:"ranges"`
+			Ranges [][]cniIPAMRange `json:"ranges"`
 		} `json:"ipam"`
 	} `json:"plugins"`
+}
+
+// cniIPAMRange is the on-disk host-local range. Its bounds let inspect recompute
+// the ip-range CIDR, which host-local has no field for.
+type cniIPAMRange struct {
+	Subnet     string `json:"subnet"`
+	Gateway    string `json:"gateway"`
+	RangeStart string `json:"rangeStart"`
+	RangeEnd   string `json:"rangeEnd"`
 }
 
 type MemorySetting struct {
@@ -1211,21 +1221,35 @@ func NetworkFromNative(n *native.Network) (*Network, error) {
 	}
 
 	res.Name = sCNI.Name
+	// An aux-address reservation splits one subnet into several sub-ranges that
+	// share the subnet and gateway. Collapse each distinct subnet into a single
+	// IPAM.Config like Docker, keeping the first entry's gateway and its lowest
+	// start. host-local returns a split subnet's sub-ranges sorted, so widening the
+	// end as later ones arrive rebuilds the original allocation window.
+	idxBySubnet := make(map[string]int)
+	startBySubnet := make(map[string]string)
 	for _, plugin := range sCNI.Plugins {
 		for _, ranges := range plugin.Ipam.Ranges {
-			// A range-set normally describes one subnet; an aux-address
-			// reservation splits it into several sub-ranges that all share the
-			// subnet and gateway. Report the first entry per distinct subnet so a
-			// split subnet collapses to one IPAM.Config like Docker, without
-			// dropping entries for different subnets in the same set. The
-			// aux-addresses themselves are attached later from a nerdctl label.
-			seen := make(map[string]struct{}, len(ranges))
 			for _, r := range ranges {
-				if _, ok := seen[r.Subnet]; ok {
+				idx, ok := idxBySubnet[r.Subnet]
+				if !ok {
+					idx = len(res.IPAM.Config)
+					idxBySubnet[r.Subnet] = idx
+					startBySubnet[r.Subnet] = r.RangeStart
+					res.IPAM.Config = append(res.IPAM.Config, IPAMConfig{Subnet: r.Subnet, Gateway: r.Gateway})
+				}
+				// host-local has no ipRange field, so recompute it from the outermost
+				// bounds the way Docker reports it. A window that spans the whole
+				// subnet means no --ip-range was set, so report none. The
+				// aux-addresses themselves are attached later from a nerdctl label.
+				if r.RangeEnd == "" {
 					continue
 				}
-				seen[r.Subnet] = struct{}{}
-				res.IPAM.Config = append(res.IPAM.Config, r)
+				ipRange := subnetutil.CIDRFromRange(startBySubnet[r.Subnet], r.RangeEnd)
+				if ipRange == r.Subnet {
+					ipRange = ""
+				}
+				res.IPAM.Config[idx].IPRange = ipRange
 			}
 		}
 	}
