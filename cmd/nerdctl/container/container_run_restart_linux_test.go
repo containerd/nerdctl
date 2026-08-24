@@ -383,6 +383,23 @@ func TestRunRestartStatusLabel(t *testing.T) {
 	testCase.Run(t)
 }
 
+// assertStoppedNotRestarting checks that stop/kill left the container stopped
+// and that the restart plugin will not bring it back. On older containerd
+// (e.g. v1.7), inspect may report Status as "" once the task is gone even
+// though Running is false and the container is effectively exited.
+func assertStoppedNotRestarting(dc []dockercompat.Container, t tig.T) {
+	assert.Equal(t, 1, len(dc))
+	assert.Assert(t, dc[0].State != nil, "State is nil")
+	assert.Equal(t, false, dc[0].State.Running)
+	// Must not still be running or in a restart loop.
+	assert.Assert(t, dc[0].State.Status != "running" && dc[0].State.Status != "restarting",
+		"unexpected Status %q", dc[0].State.Status)
+	if !nerdtest.IsDocker() {
+		assert.Assert(t, dc[0].Config != nil && dc[0].Config.Labels != nil)
+		assert.Equal(t, "stopped", dc[0].Config.Labels[restart.StatusLabel])
+	}
+}
+
 func TestRunRestartAlwaysStop(t *testing.T) {
 	testCase := nerdtest.Setup()
 	if !nerdtest.IsDocker() {
@@ -406,13 +423,7 @@ func TestRunRestartAlwaysStop(t *testing.T) {
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
 			ExitCode: expect.ExitCodeSuccess,
-			Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
-				assert.Equal(t, 1, len(dc))
-				assert.Assert(t, dc[0].State != nil && dc[0].State.Status == "exited")
-				if !nerdtest.IsDocker() {
-					assert.Equal(t, "stopped", dc[0].Config.Labels[restart.StatusLabel])
-				}
-			}),
+			Output: expect.JSON([]dockercompat.Container{}, assertStoppedNotRestarting),
 		}
 	}
 
@@ -442,13 +453,7 @@ func TestRunRestartAlwaysKill(t *testing.T) {
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
 			ExitCode: expect.ExitCodeSuccess,
-			Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
-				assert.Equal(t, 1, len(dc))
-				assert.Assert(t, dc[0].State != nil && dc[0].State.Status == "exited")
-				if !nerdtest.IsDocker() {
-					assert.Equal(t, "stopped", dc[0].Config.Labels[restart.StatusLabel])
-				}
-			}),
+			Output: expect.JSON([]dockercompat.Container{}, assertStoppedNotRestarting),
 		}
 	}
 
