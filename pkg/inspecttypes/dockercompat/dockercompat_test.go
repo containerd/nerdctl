@@ -418,6 +418,36 @@ func TestContainerFromNative(t *testing.T) {
 	}
 }
 
+func TestContainerFromNativeImage(t *testing.T) {
+	const (
+		ref    = "example.com/foo:latest"
+		digest = "sha256:0168606be2318a4b6a9ad9e5a6d9dbf1b0a6d7e2c8c4a1b0e5d3f2a1c0b9e8d7"
+	)
+
+	// Docker names the image a container was created from by digest, and keeps the reference the
+	// user asked for in Config.Image.
+	pinned, err := ContainerFromNative(&native.Container{
+		Container: containers.Container{
+			Image:  ref,
+			Labels: map[string]string{labels.ImageDigest: digest},
+		},
+		Spec: &specs.Spec{},
+	})
+	assert.NilError(t, err)
+	assert.Equal(t, pinned.Image, digest)
+	assert.Equal(t, pinned.Config.Image, ref)
+
+	// A container created before that digest was recorded, or created outside nerdctl, is left
+	// with the name it has.
+	unpinned, err := ContainerFromNative(&native.Container{
+		Container: containers.Container{Image: ref},
+		Spec:      &specs.Spec{},
+	})
+	assert.NilError(t, err)
+	assert.Equal(t, unpinned.Image, ref)
+	assert.Equal(t, unpinned.Config.Image, ref)
+}
+
 func TestGetCapabilitiesFromNative(t *testing.T) {
 	// Build the full default bounding set for test fixtures.
 	allDefaults := []string{
