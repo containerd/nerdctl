@@ -17,9 +17,10 @@
 package netutil
 
 type natConfig struct {
-	PluginType string                 `json:"type"`
-	Master     string                 `json:"master,omitempty"`
-	IPAM       map[string]interface{} `json:"ipam"`
+	PluginType   string                 `json:"type"`
+	Master       string                 `json:"master,omitempty"`
+	IPAM         map[string]interface{} `json:"ipam"`
+	Capabilities map[string]bool        `json:"capabilities,omitempty"`
 }
 
 func (*natConfig) GetPluginType() string {
@@ -30,6 +31,13 @@ func newNatPlugin(master string) *natConfig {
 	return &natConfig{
 		PluginType: "nat",
 		Master:     master,
+		// The Windows nat plugin has no separate portmap plugin to chain, unlike
+		// the Linux bridge driver, so it must advertise these capabilities itself
+		// for `nerdctl run -p` and container DNS to work.
+		Capabilities: map[string]bool{
+			"portMappings": true,
+			"dns":          true,
+		},
 	}
 }
 
