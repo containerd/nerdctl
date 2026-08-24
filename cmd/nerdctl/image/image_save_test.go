@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -58,6 +59,53 @@ func TestSaveContent(t *testing.T) {
 					assert.NilError(t, err)
 					etcOSRelease := string(etcOSReleaseBytes)
 					assert.Assert(t, strings.Contains(etcOSRelease, "Alpine"))
+				},
+			}
+		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestSaveReplacesExistingFile(t *testing.T) {
+	nerdtest.Setup()
+
+	const reused = "reused.tar"
+
+	testCase := &test.Case{
+		// FIXME: move to busybox for windows?
+		Require: require.Not(require.Windows),
+		Setup: func(data test.Data, helpers test.Helpers) {
+			helpers.Ensure("pull", "--quiet", testutil.NginxAlpineImage)
+			helpers.Ensure("pull", "--quiet", testutil.CommonImage)
+
+			// A bigger archive first, so that the smaller one written over it has something to
+			// leave behind.
+			path := filepath.Join(data.Temp().Path(), reused)
+			helpers.Ensure("save", "-o", path, testutil.NginxAlpineImage)
+			info, err := os.Stat(path)
+			assert.NilError(t, err)
+			data.Labels().Set("bigger", strconv.FormatInt(info.Size(), 10))
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("save", "-o", filepath.Join(data.Temp().Path(), reused), testutil.CommonImage)
+		},
+		Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+			return &test.Expected{
+				ExitCode: expect.ExitCodeSuccess,
+				Output: func(stdout string, t tig.T) {
+					info, err := os.Stat(filepath.Join(data.Temp().Path(), reused))
+					assert.NilError(t, err)
+					bigger, err := strconv.ParseInt(data.Labels().Get("bigger"), 10, 64)
+					assert.NilError(t, err)
+
+					// The file must hold the smaller archive and nothing else. A tar reader stops
+					// at the end-of-archive marker, so a tail left over from the bigger archive
+					// would go unnoticed on read, but the file would still carry the bytes of an
+					// unrelated image.
+					assert.Assert(t, info.Size() < bigger,
+						"expected the file to shrink to the new archive, still %d of %d bytes",
+						info.Size(), bigger)
 				},
 			}
 		},

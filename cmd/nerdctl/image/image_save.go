@@ -95,7 +95,10 @@ func saveAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	} else if outputPath != "" {
-		f, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY, 0644)
+		// O_TRUNC: writing a smaller archive over a bigger one would otherwise leave the tail of
+		// the bigger one past its end. A tar reader stops at the end-of-archive marker and would
+		// not notice, but the file would carry the bytes of an unrelated image.
+		f, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
 			return err
 		}
