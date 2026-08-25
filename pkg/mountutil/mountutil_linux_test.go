@@ -665,3 +665,34 @@ func TestProcessFlagMountImage(t *testing.T) {
 		})
 	}
 }
+
+func TestProcessFlagMountVolumeNoCopy(t *testing.T) {
+	tests := []struct {
+		rawSpec string
+		wants   bool
+	}{
+		{
+			rawSpec: "type=volume,source=TestVolume,target=/mnt,volume-nocopy",
+			wants:   true,
+		},
+		{
+			rawSpec: "type=volume,source=TestVolume,target=/mnt,volume-nocopy=true",
+			wants:   true,
+		},
+		{
+			rawSpec: "type=volume,source=TestVolume,target=/mnt,volume-nocopy=false",
+			wants:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.rawSpec, func(t *testing.T) {
+			got, err := ProcessFlagMount(tt.rawSpec, mockVolumeStore, "")
+			assert.NilError(t, err)
+
+			assert.Equal(t, got.Type, Volume)
+			assert.Equal(t, got.Name, "TestVolume")
+			assert.Equal(t, got.VolumeNoCopy, tt.wants)
+		})
+	}
+}

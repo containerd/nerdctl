@@ -319,7 +319,7 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 			}
 
 			// Copying content in AnonymousVolume and namedVolume
-			if x.Type == "volume" {
+			if x.Type == mountutil.Volume && !x.VolumeNoCopy {
 				if err := copyExistingContents(target, x.Mount.Source); err != nil {
 					return nil, nil, nil, err
 				}

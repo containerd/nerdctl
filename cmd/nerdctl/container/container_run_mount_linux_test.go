@@ -234,8 +234,12 @@ CMD ["cat", "/mnt/initial_file"]
 		volName := data.Identifier("vol")
 		helpers.Ensure("volume", "create", volName)
 
+		noCopyVolName := data.Identifier("nocopy-vol")
+		helpers.Ensure("volume", "create", noCopyVolName)
+
 		data.Labels().Set("img", imgName)
 		data.Labels().Set("vol", volName)
+		data.Labels().Set("nocopy-vol", noCopyVolName)
 	}
 
 	testCase.SubTests = []*test.Case{
@@ -263,12 +267,22 @@ CMD ["cat", "/mnt/initial_file"]
 			},
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("hi\n")),
 		},
+		{
+			Description: "with volume-nocopy",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				mount := fmt.Sprintf("type=volume,source=%s,target=/mnt,volume-nocopy", data.Labels().Get("nocopy-vol"))
+				return helpers.Command("run", "--rm", "--mount", mount, data.Labels().Get("img"), "sh", "-c", "test ! -e /mnt/initial_file")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
 		helpers.Anyhow("volume", "rm", data.Labels().Get("vol"))
 		helpers.Anyhow("rmi", data.Labels().Get("img"))
 		helpers.Anyhow("builder", "prune", "--all", "--force")
+		helpers.Anyhow("volume", "rm", data.Labels().Get("nocopy-vol"))
 	}
 
 	testCase.Run(t)
