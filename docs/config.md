@@ -20,6 +20,7 @@ The path can be overridden with `$NERDCTL_TOML`.
 
 debug          = false
 debug_full     = false
+log_file       = "/var/log/nerdctl.log"
 address        = "unix:///run/k3s/containerd/containerd.sock"
 namespace      = "k8s.io"
 snapshotter    = "stargz"
@@ -39,6 +40,7 @@ selinux_enabled= true
 |---------------------|------------------------------------|---------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|
 | `debug`             | `--debug`                          |                           | Debug mode                                                                                                                                                       | Since 0.16.0     |
 | `debug_full`        | `--debug-full`                     |                           | Debug mode (with full output)                                                                                                                                    | Since 0.16.0     |
+| `log_file`          | `--log-file`                       | `$NERDCTL_LOG_FILE`       | Append nerdctl's own log to this file, in addition to the standard error. Combine with `debug` to record a full trace                                            | Since 2.4.0      |
 | `address`           | `--address`,`--host`,`-a`,`-H`     | `$CONTAINERD_ADDRESS`     | containerd address                                                                                                                                               | Since 0.16.0     |
 | `namespace`         | `--namespace`,`-n`                 | `$CONTAINERD_NAMESPACE`   | containerd namespace                                                                                                                                             | Since 0.16.0     |
 | `snapshotter`       | `--snapshotter`,`--storage-driver` | `$CONTAINERD_SNAPSHOTTER` | containerd snapshotter                                                                                                                                           | Since 0.16.0     |

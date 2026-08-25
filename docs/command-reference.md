@@ -2013,6 +2013,9 @@ Flags:
   - Default: the IP address of the host
 - :nerd_face: `--userns-remap=<username>:<groupname>`: Support idmapping of containers. This options is only supported on rootful linux for container create and run if a user name and optionally group name is passed, it does idmapping based on the uidmap and gidmap ranges specified in /etc/subuid and /etc/subgid respectively. Note: `--userns-remap` is not supported for building containers. Nerdctl Build doesn't support userns-remap feature. (format: <name|uid>[:<group|gid>])
 - :nerd_face: `--selinux-enabled`: Enable selinux support
+- :nerd_face: `--log-file`: Append nerdctl's own log to this file, in addition to the standard error [`$NERDCTL_LOG_FILE`]
+  - Combine with `--debug` to record a full trace, e.g. to diagnose a failing `nerdctl run`
+  - The file is appended to, never truncated, so concurrent nerdctl invocations can share it. Rotation is left to `logrotate` or an equivalent
 
 The global flags can be also specified in `/etc/nerdctl/nerdctl.toml` (rootful) and `~/.config/nerdctl/nerdctl.toml` (rootless).
 See [`./config.md`](./config.md).
