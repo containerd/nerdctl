@@ -133,10 +133,7 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 		return "", fmt.Errorf("error while checking for containers with name %q: %w", container.Name, err)
 	}
 
-	// FIXME
-	if service.Unparsed.StdinOpen != service.Unparsed.Tty {
-		return "", fmt.Errorf("currently StdinOpen(-i) and Tty(-t) should be same")
-	}
+	// StdinOpen(-i) and Tty(-t) can be specified independently
 
 	var runFlagD bool
 	if !service.Unparsed.StdinOpen && !service.Unparsed.Tty {
