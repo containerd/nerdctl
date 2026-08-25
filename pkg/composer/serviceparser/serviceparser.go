@@ -217,12 +217,18 @@ type Build struct {
 	// TODO: call BuildKit API directly without executing `nerdctl build`
 }
 
+type ImageMountSource struct {
+	Source   string
+	Platform string
+}
+
 type Service struct {
-	Image      string
-	PullMode   string
-	Containers []Container // length = replicas
-	Build      *Build
-	Unparsed   *types.ServiceConfig
+	Image             string
+	PullMode          string
+	Containers        []Container // length = replicas
+	Build             *Build
+	Unparsed          *types.ServiceConfig
+	ImageMountSources []ImageMountSource
 }
 
 func getReplicas(svc types.ServiceConfig) (int, error) {
@@ -434,8 +440,42 @@ func getNetworks(project *types.Project, svc types.ServiceConfig) ([]networkName
 	return fullNames, nil
 }
 
+func resolveImageVolumeSources(project *types.Project, svc *types.ServiceConfig) []ImageMountSource {
+	services := project.AllServices()
+	svc.Volumes = append([]types.ServiceVolumeConfig(nil), svc.Volumes...)
+	imageMountSources := make([]ImageMountSource, 0, len(svc.Volumes))
+	for i := range svc.Volumes {
+		volume := &svc.Volumes[i]
+		if volume.Type != types.VolumeTypeImage {
+			continue
+		}
+
+		platform := svc.Platform
+		if referencedService, ok := services[volume.Source]; ok {
+			if referencedService.Image != "" {
+				volume.Source = referencedService.Image
+			} else {
+				serviceName := referencedService.Name
+				if serviceName == "" {
+					serviceName = volume.Source
+				}
+				volume.Source = DefaultImageName(project.Name, serviceName)
+			}
+			if referencedService.Platform != "" {
+				platform = referencedService.Platform
+			}
+		}
+		imageMountSources = append(imageMountSources, ImageMountSource{
+			Source:   volume.Source,
+			Platform: platform,
+		})
+	}
+	return imageMountSources
+}
+
 func Parse(project *types.Project, svc types.ServiceConfig) (*Service, error) {
 	warnUnknownFields(svc)
+	imageMountSources := resolveImageVolumeSources(project, &svc)
 
 	replicas, err := getReplicas(svc)
 	if err != nil {
@@ -443,10 +483,11 @@ func Parse(project *types.Project, svc types.ServiceConfig) (*Service, error) {
 	}
 
 	parsed := &Service{
-		Image:      svc.Image,
-		PullMode:   "missing",
-		Containers: make([]Container, replicas),
-		Unparsed:   &svc,
+		Image:             svc.Image,
+		ImageMountSources: imageMountSources,
+		PullMode:          "missing",
+		Containers:        make([]Container, replicas),
+		Unparsed:          &svc,
 	}
 
 	if svc.Build == nil {
@@ -719,13 +760,22 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 	}
 
 	for _, v := range svc.Volumes {
+		if v.Type == types.VolumeTypeImage {
+			mount, err := serviceVolumeConfigToImageMount(v)
+			if err != nil {
+				return nil, err
+			}
+			c.RunArgs = append(c.RunArgs, "--mount="+mount)
+			continue
+		}
+
 		vStr, mkdir, err := serviceVolumeConfigToFlagV(v, project)
 		if err != nil {
 			return nil, err
 		}
 
 		switch v.Type {
-		case "tmpfs":
+		case types.VolumeTypeTmpfs:
 			c.RunArgs = append(c.RunArgs, "--tmpfs="+vStr)
 		default:
 			c.RunArgs = append(c.RunArgs, "-v="+vStr)
@@ -839,6 +889,45 @@ func servicePortConfigToFlagP(c types.ServicePortConfig) (string, error) {
 		s = fmt.Sprintf("%s/%s", s, c.Protocol)
 	}
 	return s, nil
+}
+
+func serviceVolumeConfigToImageMount(c types.ServiceVolumeConfig) (string, error) {
+	if c.Source == "" {
+		return "", errors.New("image volume source is missing")
+	}
+	if strings.Contains(c.Source, ",") {
+		return "", errors.New("image volume source must not contain commas")
+	}
+	if c.Target == "" {
+		return "", errors.New("volume target is missing")
+	}
+	if !filepath.IsAbs(c.Target) {
+		return "", fmt.Errorf("volume target must be an absolute path, got %q", c.Target)
+	}
+	if strings.Contains(c.Target, ",") {
+		return "", errors.New("volume target must not contain commas")
+	}
+	if c.Bind != nil {
+		return "", errors.New("image volume does not support bind options")
+	}
+	if c.Volume != nil {
+		return "", errors.New("image volume does not support volume options")
+	}
+	if c.Tmpfs != nil {
+		return "", errors.New("image volume does not support tmpfs options")
+	}
+	if c.Consistency != "" {
+		return "", errors.New("image volume does not support consistency options")
+	}
+	if c.Image != nil && c.Image.SubPath != "" {
+		return "", errors.New("image.subpath is not yet supported")
+	}
+
+	mount := fmt.Sprintf("type=%s,source=%s,target=%s", types.VolumeTypeImage, c.Source, c.Target)
+	if c.ReadOnly {
+		mount += ",readonly"
+	}
+	return mount, nil
 }
 
 func serviceVolumeConfigToFlagV(c types.ServiceVolumeConfig, project *types.Project) (flagV string, mkdir []string, err error) {

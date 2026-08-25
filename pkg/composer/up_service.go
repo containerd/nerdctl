@@ -103,14 +103,25 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 }
 
 func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Service, allowBuild, forceBuild bool, bo BuildOptions, quiet bool, pullModeArg string) error {
+	pullMode := ps.PullMode
+	if pullModeArg != "" {
+		pullMode = pullModeArg
+	}
+
 	if ps.Build != nil && allowBuild {
 		if ps.Build.Force || forceBuild {
-			return c.buildServiceImage(ctx, ps.Image, ps.Build, ps.Unparsed.Platform, bo)
+			if err := c.buildServiceImage(ctx, ps.Image, ps.Build, ps.Unparsed.Platform, bo); err != nil {
+				return err
+			}
+			return c.ensureImageMountSources(ctx, ps, pullMode, quiet)
 		}
 		if ok, err := c.ImageExists(ctx, ps.Image); err != nil {
 			return err
 		} else if !ok {
-			return c.buildServiceImage(ctx, ps.Image, ps.Build, ps.Unparsed.Platform, bo)
+			if err := c.buildServiceImage(ctx, ps.Image, ps.Build, ps.Unparsed.Platform, bo); err != nil {
+				return err
+			}
+			return c.ensureImageMountSources(ctx, ps, pullMode, quiet)
 		}
 		// even when c.ImageExists returns true, we need to call c.EnsureImage
 		// because ps.PullMode can be "always". So no return here.
@@ -118,10 +129,26 @@ func (c *Composer) ensureServiceImage(ctx context.Context, ps *serviceparser.Ser
 	}
 
 	log.G(ctx).Infof("Ensuring image %s", ps.Image)
-	if pullModeArg != "" {
-		return c.EnsureImage(ctx, ps.Image, pullModeArg, ps.Unparsed.Platform, ps, quiet)
+	if err := c.EnsureImage(ctx, ps.Image, pullMode, ps.Unparsed.Platform, ps, quiet); err != nil {
+		return err
 	}
-	return c.EnsureImage(ctx, ps.Image, ps.PullMode, ps.Unparsed.Platform, ps, quiet)
+	return c.ensureImageMountSources(ctx, ps, pullMode, quiet)
+}
+
+func (c *Composer) ensureImageMountSources(ctx context.Context, ps *serviceparser.Service, pullMode string, quiet bool) error {
+	seen := make(map[serviceparser.ImageMountSource]struct{})
+	for _, source := range ps.ImageMountSources {
+		if _, ok := seen[source]; ok {
+			continue
+		}
+		seen[source] = struct{}{}
+
+		log.G(ctx).Infof("Ensuring image mount source %s", source.Source)
+		if err := c.EnsureImage(ctx, source.Source, pullMode, source.Platform, ps, quiet); err != nil {
+			return fmt.Errorf("failed to ensure image %q for image volume: %w", source.Source, err)
+		}
+	}
+	return nil
 }
 
 // upServiceContainer must be called after ensureServiceImage
