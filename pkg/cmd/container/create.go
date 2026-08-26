@@ -616,7 +616,7 @@ func generateRootfsOpts(args []string, id string, ensured *imgutil.EnsuredImage,
 				{Type: "tmpfs", Source: "tmpfs", Destination: "/run"},
 				{Type: "tmpfs", Source: "tmpfs", Destination: "/run/lock"},
 				{Type: "tmpfs", Source: "tmpfs", Destination: "/tmp"},
-				{Type: "tmpfs", Source: "tmpfs", Destination: "/var/lib/journal"},
+				{Type: "tmpfs", Source: "tmpfs", Destination: "/var/log/journal"},
 			}),
 		)
 		stopSignal = "SIGRTMIN+3"
