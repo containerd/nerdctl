@@ -52,6 +52,11 @@ func EnsureAllContent(ctx context.Context, client *containerd.Client, srcName st
 	imagesList, _ := read(ctx, provider, snapshotter, img.Target)
 	// Iterate through the list
 	for _, i := range imagesList {
+		// An index also lists the platforms that were never pulled. Ensuring their content would
+		// mean fetching a platform the user never asked for, so keep to what is in the store.
+		if !i.available {
+			continue
+		}
 		if platMC.Match(i.platform) {
 			err = ensureOne(ctx, client, srcName, img.Target, i.platform, options)
 			if err != nil {

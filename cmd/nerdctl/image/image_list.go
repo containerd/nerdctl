@@ -41,6 +41,9 @@ By default (Docker v29 compatible view) the following columns are shown:
 - CONTENT SIZE: Size of the blobs (such as layer tarballs) in the content store
 - EXTRA:        Flags for the image; "U" means the image is in use by a container
 
+--tree expands multi-platform images: the same columns are shown, with an additional row per
+platform the image declares. Platforms that were never pulled are listed with zero sizes.
+
 Passing --format, --quiet, --no-trunc, --digests or --names falls back to the legacy table:
 - REPOSITORY: Repository
 - TAG:        Tag
@@ -74,6 +77,7 @@ Passing --format, --quiet, --no-trunc, --digests or --names falls back to the le
 	cmd.Flags().Bool("digests", false, "Show digests (compatible with Docker, unlike ID)")
 	cmd.Flags().Bool("names", false, "Show image names")
 	cmd.Flags().BoolP("all", "a", true, "(unimplemented yet, always true)")
+	cmd.Flags().Bool("tree", false, "List multi-platform images as a tree (EXPERIMENTAL)")
 
 	return cmd
 }
@@ -118,7 +122,11 @@ func listOptions(cmd *cobra.Command, args []string) (*types.ImageListOptions, er
 	if err != nil {
 		return nil, err
 	}
-	return &types.ImageListOptions{
+	tree, err := cmd.Flags().GetBool("tree")
+	if err != nil {
+		return nil, err
+	}
+	options := &types.ImageListOptions{
 		GOptions:         globalOptions,
 		Quiet:            quiet,
 		NoTrunc:          noTrunc,
@@ -128,8 +136,15 @@ func listOptions(cmd *cobra.Command, args []string) (*types.ImageListOptions, er
 		Digests:          digests,
 		Names:            names,
 		All:              true,
+		Tree:             tree,
 		Stdout:           cmd.OutOrStdout(),
-	}, nil
+	}
+	// Validated here as well as in the logic layer, so that an invalid flag combination is
+	// reported before a containerd connection is attempted.
+	if err := image.ValidateListOptions(options); err != nil {
+		return nil, err
+	}
+	return options, nil
 
 }
 
