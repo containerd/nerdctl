@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -152,6 +153,64 @@ func TestExportRunningContainer(t *testing.T) {
 				}
 			},
 		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestExportReplacesExistingFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("export is not supported on Windows")
+	}
+
+	testCase := nerdtest.Setup()
+	testCase.NoParallel = true
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		bigger := data.Identifier("bigger")
+		smaller := data.Identifier("smaller")
+		outFile := filepath.Join(data.Temp().Path(), "reused.tar")
+
+		helpers.Ensure("create", "--name", bigger, testutil.NginxAlpineImage)
+		helpers.Ensure("create", "--name", smaller, testutil.CommonImage)
+
+		// The bigger filesystem first, so that the smaller one written over it has something to
+		// leave behind.
+		helpers.Ensure("export", "-o", outFile, bigger)
+		info, err := os.Stat(outFile)
+		assert.NilError(t, err)
+
+		data.Labels().Set("bigger", bigger)
+		data.Labels().Set("smaller", smaller)
+		data.Labels().Set("outFile", outFile)
+		data.Labels().Set("biggerSize", strconv.FormatInt(info.Size(), 10))
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Labels().Get("bigger"))
+		helpers.Anyhow("rm", "-f", data.Labels().Get("smaller"))
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("export", "-o", data.Labels().Get("outFile"), data.Labels().Get("smaller"))
+	}
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			ExitCode: 0,
+			Output: func(stdout string, t tig.T) {
+				info, err := os.Stat(data.Labels().Get("outFile"))
+				assert.NilError(t, err)
+				biggerSize, err := strconv.ParseInt(data.Labels().Get("biggerSize"), 10, 64)
+				assert.NilError(t, err)
+
+				// The file must hold the smaller archive and nothing else. A tar reader stops at
+				// the end-of-archive marker, so a tail left over from the bigger archive would go
+				// unnoticed on read, but the file would still carry the bytes of another
+				// container.
+				assert.Assert(t, info.Size() < biggerSize,
+					"expected the file to shrink to the new archive, still %d of %d bytes",
+					info.Size(), biggerSize)
+			},
+		}
 	}
 
 	testCase.Run(t)

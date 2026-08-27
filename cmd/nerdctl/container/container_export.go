@@ -68,7 +68,10 @@ func exportAction(cmd *cobra.Command, args []string) error {
 
 	writer := cmd.OutOrStdout()
 	if output != "" {
-		f, err := os.OpenFile(output, os.O_CREATE|os.O_WRONLY, 0644)
+		// O_TRUNC: writing a smaller archive over a bigger one would otherwise leave the tail of
+		// the bigger one past its end. A tar reader stops at the end-of-archive marker and would
+		// not notice, but the file would carry the bytes of another container.
+		f, err := os.OpenFile(output, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
 			return err
 		}
