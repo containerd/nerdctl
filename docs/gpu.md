@@ -90,7 +90,7 @@ is used to request a CDI device:
 nerdctl run --device=nvidia.com/gpu=all
 ```
 
-Ensure that the NVIDIA (or AMD) Container Toolkit is installed and the requested CDI devices are present in the ouptut of `nvidia-ctk cdi list` (or `amd-ctk cdi list` for AMD GPUs):
+Ensure that the NVIDIA (or AMD) Container Toolkit is installed and the requested CDI devices are present in the output of `nvidia-ctk cdi list` (or `amd-ctk cdi list` for AMD GPUs):
 
 ```
 $ nvidia-ctk cdi list

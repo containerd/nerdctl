@@ -240,7 +240,7 @@ Resource flags:
 
 Intel RDT flags:
 
-- :nerd_face: `--rdt-class=CLASS`: Name of the RDT class (or CLOS) to associate the container wit
+- :nerd_face: `--rdt-class=CLASS`: Name of the RDT class (or CLOS) to associate the container with
 
 User flags:
 
