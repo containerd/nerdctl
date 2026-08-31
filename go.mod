@@ -11,7 +11,7 @@ require (
 	github.com/containerd/accelerated-container-image v1.4.4
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
-	github.com/containerd/containerd/api v1.12.0-beta.0
+	github.com/containerd/containerd/api v1.12.0-rc.0
 	github.com/containerd/containerd/v2 v2.4.0-beta.0 //gomodjail:unconfined
 	github.com/containerd/continuity v0.5.0 //gomodjail:unconfined
 	github.com/containerd/errdefs v1.0.0
@@ -115,7 +115,7 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.1 // indirect
 	github.com/sasha-s/go-deadlock v0.3.5 // indirect
 	//gomodjail:unconfined
-	github.com/sirupsen/logrus v1.9.4 // indirect
+	github.com/sirupsen/logrus v1.10.2 // indirect
 	github.com/smallstep/pkcs7 v0.2.1 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/stefanberger/go-pkcs11uri v0.0.0-20230803200340-78284954bff6 // indirect
