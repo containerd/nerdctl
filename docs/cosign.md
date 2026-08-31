@@ -92,7 +92,7 @@ INFO[0003] cosign: failed to verify signature
 
 ## Cosign in Compose
 
-> Cosign support in Compose is also experimental and implemented based on Compose's [extension](https://github.com/compose-spec/compose-spec/blob/master/spec.md#extension) capibility.
+> Cosign support in Compose is also experimental and implemented based on Compose's [extension](https://github.com/compose-spec/compose-spec/blob/master/spec.md#extension) capability.
 
 cosign is supported in `nerdctl compose up|run|push|pull`. You can use cosign in Compose by adding the following fields in your compose yaml. These fields are _per service_, and you can enable only `verify` or only `sign` (or both).
 
