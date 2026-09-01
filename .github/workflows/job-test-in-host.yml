@@ -333,3 +333,31 @@ jobs:
           INPUTS_IPV6: ${{ inputs.ipv6 }}
           CONTAINERD_ROOTLESS_ROOTLESSKIT_PORT_DRIVER: ${{ inputs.target == 'rootless-port-slirp4netns' && 'slirp4netns' || '' }}
           CONTAINERD_ROOTLESS_ROOTLESSKIT_IPV6: ${{ inputs.ipv6 && 'true' || '' }}
+
+      - if: ${{ failure() && contains(inputs.runner, 'ubuntu') && inputs.target != '' && env.SHOULD_RUN == 'yes' }}
+        name: "Post (linux): print daemon logs"
+        env:
+          INPUTS_TARGET: ${{ inputs.target }}
+        run: |
+          echo "::group::containerd and buildkit system service logs"
+          sudo journalctl \
+            --boot \
+            --no-pager \
+            --lines=1000 \
+            --unit=containerd.service \
+            --unit=buildkit.service \
+            --unit=test-integration-buildkit-nerdctl-test.service || true
+          echo "::endgroup::"
+
+          if [[ "${INPUTS_TARGET}" == rootless* ]]; then
+            echo "::group::rootless daemon logs"
+            journalctl \
+              --user \
+              --boot \
+              --no-pager \
+              --lines=1000 \
+              --unit=containerd.service \
+              --unit=buildkit.service \
+              --unit=test-integration-buildkit-nerdctl-test.service || true
+            echo "::endgroup::"
+          fi

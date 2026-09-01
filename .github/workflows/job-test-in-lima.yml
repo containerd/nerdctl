@@ -127,3 +127,29 @@ jobs:
           else
             lima bash -c 'export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH" WITH_SUDO=true && ./hack/test-integration.sh -test.only-flaky=true'
           fi
+
+      - if: ${{ failure() }}
+        name: "Post: print daemon logs"
+        run: |
+          echo "::group::containerd and buildkit system service logs"
+          lima sudo journalctl \
+            --boot \
+            --no-pager \
+            --lines=1000 \
+            --unit=containerd.service \
+            --unit=buildkit.service \
+            --unit=test-integration-buildkit-nerdctl-test.service || true
+          echo "::endgroup::"
+
+          if [ "$TARGET" = "rootless" ]; then
+            echo "::group::rootless daemon logs"
+            lima journalctl \
+              --user \
+              --boot \
+              --no-pager \
+              --lines=1000 \
+              --unit=containerd.service \
+              --unit=buildkit.service \
+              --unit=test-integration-buildkit-nerdctl-test.service || true
+            echo "::endgroup::"
+          fi
