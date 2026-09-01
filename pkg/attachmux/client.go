@@ -64,8 +64,13 @@ func NewSession(conn net.Conn) (*Session, error) {
 	if hello.Type != ControlHello {
 		return nil, fmt.Errorf("attachmux: expected a hello, got %q", hello.Type)
 	}
-	if hello.Version != ProtocolVersion {
-		return nil, fmt.Errorf("attachmux: unsupported protocol version %d, expected %d", hello.Version, ProtocolVersion)
+	// Only a broker newer than this client is refused. A broker lives as long
+	// as its container, so after a nerdctl upgrade a new client routinely meets
+	// an older one, and there is no falling back: the container's stdio is
+	// already bound to that process. A client can read a framing older than its
+	// own; it cannot read a newer one.
+	if hello.Version > ProtocolVersion {
+		return nil, fmt.Errorf("attachmux: the container's attach socket speaks protocol version %d, this nerdctl understands up to %d", hello.Version, ProtocolVersion)
 	}
 	return &Session{conn: conn, hello: hello}, nil
 }
@@ -182,11 +187,17 @@ func (s *Session) Stream(ctx context.Context, stdin io.Reader, stdout, stderr io
 			if err := json.Unmarshal(payload, &c); err != nil {
 				continue
 			}
-			if c.Type == ControlExit {
+			switch c.Type {
+			case ControlExit:
 				s.exitMu.Lock()
 				s.exited = true
 				s.exitMu.Unlock()
 				return nil
+			case ControlDropped:
+				// The broker evicted this session for falling behind. Saying so
+				// is the whole point of the frame: otherwise this is
+				// indistinguishable from the broker dying.
+				return errors.New("attachmux: this session was disconnected because it could not keep up with the container's output")
 			}
 		}
 	}

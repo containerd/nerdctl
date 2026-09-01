@@ -28,11 +28,19 @@ import (
 )
 
 const (
-	// defaultQueueDepth is how many frames are buffered for a single session. A
-	// session that falls this far behind is disconnected: the container's output
-	// must never wait on a consumer.
+	// maxQueuedBytes is how much of the container's output is buffered for a
+	// single session before it is disconnected: the container's output must
+	// never wait on a consumer.
 	// https://github.com/containerd/nerdctl/issues/5137
-	defaultQueueDepth = 256
+	//
+	// The bound is bytes rather than frames. A TTY echoes single keystrokes, so
+	// counting frames would evict a session that is a few kilobytes behind,
+	// while a frame can be up to maxPayload, so counting frames also puts no
+	// real ceiling on memory in the logging process.
+	maxQueuedBytes = 4 << 20
+	// defaultQueueDepth caps the channel itself, as a backstop against a flood
+	// of tiny frames. maxQueuedBytes is what normally decides.
+	defaultQueueDepth = 4096
 	// writeTimeout bounds a single write to a session, so that a session that is
 	// connected but no longer draining its socket is eventually dropped instead
 	// of leaking a goroutine and its queue for the container's lifetime.
@@ -91,6 +99,8 @@ type session struct {
 	// exit is the final frame writeLoop delivers after frames has drained. See
 	// closeWith.
 	exit []byte
+	// queued is how many bytes are sitting in frames, waiting to be written.
+	queued int
 }
 
 // send queues frame for the session. It reports false only when the session's
@@ -102,12 +112,23 @@ func (s *session) send(frame []byte) bool {
 	if s.closed {
 		return true
 	}
+	if s.queued+len(frame) > maxQueuedBytes {
+		return false
+	}
 	select {
 	case s.frames <- frame:
+		s.queued += len(frame)
 		return true
 	default:
 		return false
 	}
+}
+
+// dequeued records that n bytes have left the queue.
+func (s *session) dequeued(n int) {
+	s.mu.Lock()
+	s.queued -= n
+	s.mu.Unlock()
 }
 
 // closeWith closes the session's queue, leaving exit for writeLoop to deliver
@@ -203,9 +224,19 @@ func (b *Broker) writeFrame(stream byte, p []byte) {
 	}
 	b.mu.Unlock()
 
+	if len(slow) == 0 {
+		return
+	}
+	// Tell them why. Otherwise being evicted is indistinguishable from the
+	// broker dying, and the client reports both as a lost connection.
+	dropped, err := EncodeControl(Control{Type: ControlDropped})
+	if err != nil {
+		log.L.WithError(err).Warn("attachmux: failed to encode the dropped notice")
+		dropped = nil
+	}
 	for _, s := range slow {
 		log.L.Warn("attachmux: an attach session stopped keeping up, disconnecting it")
-		s.close()
+		s.closeWith(dropped)
 	}
 }
 
@@ -377,7 +408,9 @@ func (b *Broker) writeLoop(s *session) {
 			b.dropSession(s)
 			return
 		}
-		if _, err := s.conn.Write(frame); err != nil {
+		_, err := s.conn.Write(frame)
+		s.dequeued(len(frame))
+		if err != nil {
 			b.dropSession(s)
 			return
 		}
