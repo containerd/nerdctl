@@ -31,3 +31,6 @@ func Listen(string) (net.Listener, error) { return nil, ErrUnsupported }
 
 // Dial is not implemented on this platform.
 func Dial(context.Context, string) (*Session, error) { return nil, ErrUnsupported }
+
+// RemoveSocket is not implemented on this platform.
+func RemoveSocket(string) error { return nil }

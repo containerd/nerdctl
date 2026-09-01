@@ -158,19 +158,38 @@ func NewBroker(tty bool, stdin io.WriteCloser) *Broker {
 // queue is full is disconnected instead. p is copied, so the caller is free to
 // reuse it immediately.
 func (b *Broker) Write(stream byte, p []byte) {
+	if stream == StreamControl {
+		// Control is the broker's own channel. Letting the owner of the stdio
+		// put frames on it would let container output forge a hello or an exit.
+		log.L.Warn("attachmux: refusing to write container output on the control stream")
+		return
+	}
+	// A chunk larger than a single frame is split rather than dropped: Write is
+	// the exported entry point for whoever owns the container's stdio, and the
+	// size of its read buffer is not this package's to assume.
+	for len(p) > maxPayload {
+		b.writeFrame(stream, p[:maxPayload])
+		p = p[maxPayload:]
+	}
+	b.writeFrame(stream, p)
+}
+
+func (b *Broker) writeFrame(stream byte, p []byte) {
 	if len(p) == 0 {
+		return
+	}
+
+	// Encoded outside the lock: it allocates and copies the whole chunk, and
+	// readLoop, addSession and SessionCount all contend for b.mu.
+	frame, err := EncodeFrame(stream, p)
+	if err != nil {
+		log.L.WithError(err).Warn("attachmux: dropping an output frame")
 		return
 	}
 
 	b.mu.Lock()
 	if b.closed || len(b.sessions) == 0 {
 		b.mu.Unlock()
-		return
-	}
-	frame, err := EncodeFrame(stream, p)
-	if err != nil {
-		b.mu.Unlock()
-		log.L.WithError(err).Warn("attachmux: dropping an oversized output frame")
 		return
 	}
 	var slow []*session
@@ -199,9 +218,14 @@ func (b *Broker) SessionCount() int {
 
 // Serve accepts sessions on l until ctx is done or l is closed.
 func (b *Broker) Serve(ctx context.Context, l net.Listener) error {
+	done := make(chan struct{})
+	defer close(done)
 	go func() {
-		<-ctx.Done()
-		l.Close()
+		select {
+		case <-ctx.Done():
+			l.Close()
+		case <-done:
+		}
 	}()
 
 	for {
@@ -292,8 +316,11 @@ func (b *Broker) Close(exited bool) {
 }
 
 // SetStdin gives the broker the write end of the container's stdin once it is
-// known to be usable, and reports whether the broker took it. It returns false
-// for a broker that is already closed, and the caller then closes w itself.
+// known to be usable, and reports whether the broker took it.
+//
+// It returns false when the broker is already closed, and also when it already
+// has a stdin, whether from NewBroker or from an earlier call. The caller then
+// closes w itself. A false is never evidence that the container exited.
 //
 // Stdin arrives late because whether the container has one at all can only be
 // established by opening the FIFO, which the owner has to do off the path that
@@ -400,10 +427,16 @@ func (b *Broker) readLoop(s *session) {
 			b.stdinWriteMu.Unlock()
 			if err != nil {
 				// Close closed the descriptor under a blocked write, or the
-				// container is gone. Either way this session's input has
-				// nowhere to go.
+				// container stopped reading its stdin. Either way this
+				// keystroke has nowhere to go, and nothing more.
+				//
+				// Returning here would run the deferred dropSession and take
+				// the session's *output* with it: a container that closed its
+				// stdin and kept printing would lose its terminal on the next
+				// keypress, and one that had just exited would be reported as a
+				// broken session instead of a clean exit.
 				log.L.WithError(err).Debug("attachmux: failed to write to the container stdin")
-				return
+				continue
 			}
 		}
 	}

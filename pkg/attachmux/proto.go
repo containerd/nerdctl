@@ -14,13 +14,6 @@
    limitations under the License.
 */
 
-// Package attachmux multiplexes a container's stdio between the process that
-// owns it and any number of attached CLI sessions.
-//
-// A container's stdio FIFOs cannot be shared: a FIFO has a single queue, so two
-// readers on the stdout FIFO each receive a random subset of the container's
-// output. Instead, one process owns the FIFOs and every session talks to it
-// over a socket, framed with the protocol in this file.
 package attachmux
 
 import (
@@ -30,6 +23,11 @@ import (
 	"fmt"
 	"io"
 )
+
+// The wire format between the broker and its sessions: one stream byte, three
+// reserved zero bytes, a big-endian uint32 payload length, then the payload.
+// This is the same shape docker uses for its multiplexed stdio, with stream 3
+// added for control messages.
 
 // Stream identifiers carried in a frame header.
 const (
