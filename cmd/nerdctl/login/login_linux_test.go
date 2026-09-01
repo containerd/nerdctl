@@ -21,6 +21,7 @@
 package login
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -344,10 +345,19 @@ func TestLoginAgainstVariants(t *testing.T) {
 
 						// TODO: remove specialization when we fix the localhost mess
 						if !rl.IsLocalhost() || !tc.tls {
-							c.Cmd(helpers, "http://"+regHost).Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
-							c.Cmd(helpers, "https://"+regHost).Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
-							c.Cmd(helpers, "http://"+regHost+"/whatever?foo=bar;foo:bar#foo=bar").Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
-							c.Cmd(helpers, "https://"+regHost+"/whatever?foo=bar&bar=foo;foo=foo+bar:bar#foo=bar").Run(&test.Expected{ExitCode: expect.ExitCodeSuccess})
+							// Providing an explicit scheme succeeds, but a warning telling the
+							// user that the scheme is ignored must be displayed
+							// (https://github.com/containerd/nerdctl/issues/3052)
+							schemeWarned := func() *test.Expected {
+								return &test.Expected{
+									ExitCode: expect.ExitCodeSuccess,
+									Errors:   []error{errors.New("accepted only as a convenience")},
+								}
+							}
+							c.Cmd(helpers, "http://"+regHost).Run(schemeWarned())
+							c.Cmd(helpers, "https://"+regHost).Run(schemeWarned())
+							c.Cmd(helpers, "http://"+regHost+"/whatever?foo=bar;foo:bar#foo=bar").Run(schemeWarned())
+							c.Cmd(helpers, "https://"+regHost+"/whatever?foo=bar&bar=foo;foo=foo+bar:bar#foo=bar").Run(schemeWarned())
 						}
 					}
 

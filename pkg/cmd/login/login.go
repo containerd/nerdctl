@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"golang.org/x/net/context/ctxhttp"
 
@@ -41,7 +42,28 @@ Configure a credential helper to remove this warning. See
 https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 `
 
+// schemeWarning returns a warning message if the provided server address contains an explicit
+// http or https scheme, and an empty string otherwise.
+// Accepting a scheme in the server address is only a convenience: the scheme itself is ignored
+// (see dockerconfigresolver.Parse), which may surprise users (https://github.com/containerd/nerdctl/issues/3052).
+func schemeWarning(serverAddress string) string {
+	sch, _, found := strings.Cut(serverAddress, "://")
+	if !found || (sch != "http" && sch != "https") {
+		return ""
+	}
+	warning := fmt.Sprintf("The %s:// scheme in the provided server address %q is accepted only as a convenience, "+
+		"and is otherwise ignored: connections to registries are made over https by default.", sch, serverAddress)
+	if sch == "http" {
+		warning += " To log in to a registry served over plain http, use the global --insecure-registry flag instead."
+	}
+	return warning
+}
+
 func Login(ctx context.Context, options types.LoginCommandOptions, stdout io.Writer) error {
+	if warning := schemeWarning(options.ServerAddress); warning != "" {
+		log.G(ctx).Warn(warning)
+	}
+
 	registryURL, err := dockerconfigresolver.Parse(options.ServerAddress)
 	if err != nil {
 		return err
