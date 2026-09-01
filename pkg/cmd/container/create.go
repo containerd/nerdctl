@@ -1162,7 +1162,10 @@ func writeCIDFile(path, id string) error {
 // generateLogConfig creates a LogConfig for the current container store
 func generateLogConfig(dataStore string, id string, logDriver string, logOpt []string, ns, address string) (logConfig logging.LogConfig, err error) {
 	var u *url.URL
-	if u, err = url.Parse(logDriver); err == nil && (u.Scheme != "" || logDriver == "none") {
+	// "none" is a registered no-op driver rather than an absence of logging: it
+	// still goes through the internal logging process, which is what owns the
+	// container's stdio and serves attach sessions.
+	if u, err = url.Parse(logDriver); err == nil && u.Scheme != "" {
 		logConfig.LogURI = logDriver
 	} else {
 		logConfig.Driver = logDriver

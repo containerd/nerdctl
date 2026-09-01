@@ -33,6 +33,7 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/cioutil"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/config"
@@ -43,6 +44,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/logging"
+	"github.com/containerd/nerdctl/v2/pkg/logging/loguri"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/signalutil"
 	"github.com/containerd/nerdctl/v2/pkg/taskutil"
@@ -444,6 +446,34 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	logURI := lab[labels.LogURI]
+
+	// The data store comes out of the log URI, not from resolving it again.
+	// That URI is the argv containerd hands the logging process, so the paths
+	// derived from it here and there are the same string by construction.
+	//
+	// It is taken only when the URI runs *this* binary. The magic argument on
+	// its own is not enough: a URI written by an older nerdctl still installed
+	// at another path carries it too, and spawning that would run code with no
+	// broker in it. Leaving dataStore empty otherwise makes it the single guard
+	// everything below can test.
+	dataStore := ""
+	if loguri.IsInternal(logURI) {
+		dataStore = loguri.DataStore(logURI)
+	}
+
+	// Only an interactive container gets a stdin FIFO. Creating one for a
+	// container started without -i would give it a stdin that never reaches
+	// EOF, changing the behaviour of processes that read until EOF.
+	stdinFIFO := ""
+	if createOpt.Interactive && dataStore != "" {
+		path := cioutil.StdinFIFOPath(dataStore, createOpt.GOptions.Namespace, c.ID())
+		if err := cioutil.CreateStdinFIFO(path); err != nil {
+			log.G(ctx).WithError(err).Debug("failed to create the stdin FIFO, the broker is disabled for this container")
+		} else {
+			stdinFIFO = path
+		}
+	}
+
 	detachC := make(chan struct{})
 	task, err := taskutil.NewTask(ctx, client, c, taskutil.TaskOptions{
 		AttachStreamOpt: createOpt.Attach,
@@ -456,6 +486,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		Namespace:       createOpt.GOptions.Namespace,
 		DetachC:         detachC,
 		CheckpointDir:   "",
+		StdinFIFO:       stdinFIFO,
 	})
 	if err != nil {
 		return err

@@ -61,6 +61,11 @@ type TaskOptions struct {
 	Namespace       string
 	DetachC         chan<- struct{}
 	CheckpointDir   string
+	// StdinFIFO is the stable path of the container's stdin FIFO. When it is
+	// set, the task's stdin is pinned there so that the process owning the
+	// container's stdio can find it, which is what allows more than one attach
+	// session. It is empty when the platform has no stable FIFO support.
+	StdinFIFO string
 }
 
 // NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
@@ -143,10 +148,10 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 					return nil, err
 				}
 			}
-			ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, true, in, opts.Con, nil)
+			ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, true, opts.StdinFIFO, in, opts.Con, nil)
 		} else {
 			streams := processAttachStreamsOpt(opts.AttachStreamOpt)
-			ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, streams.stdIn, streams.stdOut, streams.stdErr)
+			ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, opts.StdinFIFO, streams.stdIn, streams.stdOut, streams.stdErr)
 		}
 
 	} else if opts.IsTerminal && opts.IsDetach {
@@ -176,6 +181,14 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		ioCreator = cio.TerminalBinaryIO(parsedPath, map[string]string{
 			args[0]: args[1],
 		})
+		if opts.StdinFIFO != "" {
+			// The shim copies a terminal container's stdin FIFO into the pty
+			// regardless of the stdout scheme, so a detached container can have
+			// stdin even though its output goes to the logging process. The
+			// caller only sets StdinFIFO for `-i`, so a container started
+			// without it keeps having no stdin at all.
+			ioCreator = withStdinFIFO(ioCreator, opts.StdinFIFO)
+		}
 	} else if opts.IsTerminal && !opts.IsDetach {
 		if opts.Con == nil {
 			return nil, errors.New("got nil con with isTerminal=true")
@@ -192,7 +205,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 				return nil, err
 			}
 		}
-		ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, true, in, os.Stdout, os.Stderr)
+		ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, true, opts.StdinFIFO, in, os.Stdout, os.Stderr)
 	} else if opts.IsDetach && opts.LogURI != "" && opts.LogURI != "none" {
 		u, err := url.Parse(opts.LogURI)
 		if err != nil {
@@ -226,7 +239,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 				},
 			}
 		}
-		ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, in, os.Stdout, os.Stderr)
+		ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, opts.StdinFIFO, in, os.Stdout, os.Stderr)
 	}
 
 	taskOpts := []containerd.NewTaskOpts{
@@ -330,4 +343,28 @@ func (s *StdinCloser) Close() error {
 	}
 	s.closed = true
 	return nil
+}
+
+// withStdinFIFO returns a cio.Creator that behaves like base but additionally
+// declares path as the task's stdin.
+func withStdinFIFO(base cio.Creator, path string) cio.Creator {
+	return func(id string) (cio.IO, error) {
+		inner, err := base(id)
+		if err != nil {
+			return nil, err
+		}
+		return &stdinFIFOIO{IO: inner, path: path}, nil
+	}
+}
+
+// stdinFIFOIO overrides the stdin path of the cio.Config reported to containerd.
+type stdinFIFOIO struct {
+	cio.IO
+	path string
+}
+
+func (s *stdinFIFOIO) Config() cio.Config {
+	cfg := s.IO.Config()
+	cfg.Stdin = s.path
+	return cfg
 }
