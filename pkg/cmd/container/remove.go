@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/attachmux"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
@@ -155,6 +156,15 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 	containerNamespace, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
 		return err
+	}
+
+	// The attach socket lives outside the container's state directory, because
+	// sockaddr_un.sun_path is too short to hold that path, so removing the
+	// state directory does not take it with it. A broker that exited normally
+	// unlinked it already; one that was killed did not, and nothing else would
+	// ever collect it.
+	if err := attachmux.RemoveSocket(attachmux.SocketPath(dataStore, containerNamespace, c.ID())); err != nil {
+		log.G(ctx).WithError(err).Warn("failed to remove the container attach socket")
 	}
 
 	// Get namestore

@@ -97,13 +97,17 @@ func startBroker(ctx context.Context, dataStore, ns, id string, tty bool) (func(
 	var stopOnce sync.Once
 	stop := func(exited bool) {
 		stopOnce.Do(func() {
-			// Close releases the container's stdin along with the sessions.
-			broker.Close(exited)
+			// The listener goes first. A session that connected between
+			// Close and here would be greeted by a broker that is already
+			// closed, get its connection dropped without a hello, and have no
+			// way to tell that from a broken broker.
+			//
+			// Closing the listener also removes the socket file, but only while
+			// it is still the one this process created.
 			cancelServe()
 			listener.Close()
-			if err := attachmux.RemoveSocket(socketPath); err != nil {
-				log.G(ctx).WithError(err).Warn("failed to remove the attach socket")
-			}
+			// Close releases the container's stdin along with the sessions.
+			broker.Close(exited)
 		})
 	}
 
