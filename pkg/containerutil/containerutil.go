@@ -44,6 +44,7 @@ import (
 	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/cioutil"
 	"github.com/containerd/nerdctl/v2/pkg/config"
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
@@ -52,6 +53,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/labels/k8slabels"
+	"github.com/containerd/nerdctl/v2/pkg/logging/loguri"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/signalutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
@@ -269,6 +271,23 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 		// source: https://github.com/containerd/nerdctl/blob/main/docs/command-reference.md#whale-nerdctl-start
 		attachStreamOpt = []string{"STDOUT", "STDERR"}
 	}
+	// As in the run path, and only for a URI that runs this binary.
+	dataStore := ""
+	if loguri.IsInternal(logURI) {
+		dataStore = loguri.DataStore(logURI)
+	}
+
+	// Only an interactive container gets a stdin FIFO, as in the run path.
+	stdinFIFO := ""
+	if isInteractive && dataStore != "" {
+		path := cioutil.StdinFIFOPath(dataStore, namespace, container.ID())
+		if err := cioutil.CreateStdinFIFO(path); err != nil {
+			log.G(ctx).WithError(err).Debug("failed to create the stdin FIFO, the broker is disabled for this container")
+		} else {
+			stdinFIFO = path
+		}
+	}
+
 	task, err := taskutil.NewTask(ctx, client, container, taskutil.TaskOptions{
 		AttachStreamOpt: attachStreamOpt,
 		IsInteractive:   isInteractive,
@@ -280,6 +299,7 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 		Namespace:       namespace,
 		DetachC:         detachC,
 		CheckpointDir:   checkpointDir,
+		StdinFIFO:       stdinFIFO,
 	})
 	if err != nil {
 		return err
