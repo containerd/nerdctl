@@ -263,3 +263,43 @@ func TestSessionStreamTreatsAnExplicitCloseAsClean(t *testing.T) {
 		t.Fatal("Stream did not return after Close")
 	}
 }
+
+func TestSessionAcceptsAnOlderBroker(t *testing.T) {
+	t.Parallel()
+
+	// A broker lives as long as its container, so after an upgrade a new client
+	// routinely meets an older one, and it has nowhere to fall back to: the
+	// container's stdio is already bound to that process.
+	mine, theirs := net.Pipe()
+	t.Cleanup(func() { mine.Close() })
+
+	go func() {
+		frame, err := EncodeControl(Control{Type: ControlHello, Version: ProtocolVersion - 1, TTY: true})
+		if err != nil {
+			return
+		}
+		theirs.Write(frame)
+	}()
+
+	session, err := NewSession(mine)
+	assert.NilError(t, err)
+	assert.Equal(t, session.TTY(), true)
+}
+
+func TestSessionRefusesANewerBroker(t *testing.T) {
+	t.Parallel()
+
+	mine, theirs := net.Pipe()
+	t.Cleanup(func() { mine.Close() })
+
+	go func() {
+		frame, err := EncodeControl(Control{Type: ControlHello, Version: ProtocolVersion + 1})
+		if err != nil {
+			return
+		}
+		theirs.Write(frame)
+	}()
+
+	_, err := NewSession(mine)
+	assert.ErrorContains(t, err, "understands up to")
+}

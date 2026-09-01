@@ -120,3 +120,30 @@ func TestDialToNothing(t *testing.T) {
 	_, err := Dial(ctx, filepath.Join(t.TempDir(), "absent.sock"))
 	assert.Assert(t, err != nil)
 }
+
+func TestListenRemovesOnlyItsOwnSocket(t *testing.T) {
+	t.Parallel()
+
+	// Two brokers can briefly overlap for one container while the restart
+	// monitor swaps tasks. The one that exits second must not unlink the live
+	// socket of the one that took the path over.
+	path := filepath.Join(t.TempDir(), "attach.sock")
+
+	first, err := Listen(path)
+	assert.NilError(t, err)
+
+	second, err := Listen(path)
+	assert.NilError(t, err)
+	t.Cleanup(func() { second.Close() })
+
+	// The old broker exits last.
+	assert.NilError(t, first.Close())
+
+	_, err = os.Stat(path)
+	assert.NilError(t, err, "the surviving broker lost its socket")
+
+	// And a broker that is alone does clean up after itself.
+	assert.NilError(t, second.Close())
+	_, err = os.Stat(path)
+	assert.Assert(t, os.IsNotExist(err), "the socket outlived its broker")
+}
