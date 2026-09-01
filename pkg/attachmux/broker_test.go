@@ -626,3 +626,53 @@ func TestBrokerServeAcceptsSessions(t *testing.T) {
 		t.Fatal("Serve did not return after the context was cancelled")
 	}
 }
+
+func TestBrokerTellsAnEvictedSessionWhy(t *testing.T) {
+	t.Parallel()
+
+	// Being dropped for falling behind has to be distinguishable from the
+	// broker dying: both end the session, but only one is the user's fault and
+	// only one means the container may still be running.
+	b := NewBroker(true, nil)
+	conn := connect(t, b)
+	waitSessions(t, b, 1)
+
+	// Never read: overflow the byte bound.
+	chunk := bytes.Repeat([]byte("x"), 64<<10)
+	for b.SessionCount() > 0 {
+		b.Write(StreamStdout, chunk)
+	}
+
+	// Everything already queued arrives first, then the notice.
+	for {
+		stream, payload, err := ReadFrame(conn)
+		assert.NilError(t, err)
+		if stream != StreamControl {
+			continue
+		}
+		var c Control
+		assert.NilError(t, json.Unmarshal(payload, &c))
+		if c.Type == ControlHello {
+			continue
+		}
+		assert.Equal(t, c.Type, ControlDropped)
+		return
+	}
+}
+
+func TestBrokerBoundsAQueueByBytesNotFrames(t *testing.T) {
+	t.Parallel()
+
+	// A TTY echoes single keystrokes. Counting frames would evict a session
+	// that is only a couple of kilobytes behind.
+	b := NewBroker(true, nil)
+	conn := connect(t, b)
+	waitSessions(t, b, 1)
+	_ = conn
+
+	// Far more frames than the old 256-frame bound, but tiny ones.
+	for range 2000 {
+		b.Write(StreamStdout, []byte("x"))
+	}
+	assert.Equal(t, b.SessionCount(), 1)
+}

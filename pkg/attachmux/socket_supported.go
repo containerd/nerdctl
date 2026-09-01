@@ -100,7 +100,55 @@ func Listen(path string) (net.Listener, error) {
 		l.Close()
 		return nil, err
 	}
-	return l, nil
+
+	// Go removes the socket on Close by path, without checking that the file is
+	// still the one it created. Two brokers can briefly overlap for a single
+	// container: the restart monitor creates the new task, and with it a new
+	// logging process, while the old one is still finishing its log driver. The
+	// new broker taking the path over is correct, since it is the one attached
+	// to the live task, but the old one exiting afterwards would then unlink
+	// the live socket and leave the new broker listening on an inode nobody can
+	// reach. So the removal is done here instead, against the inode.
+	ul, ok := l.(*net.UnixListener)
+	if !ok {
+		return l, nil
+	}
+	ul.SetUnlinkOnClose(false)
+	ino, err := inodeOf(path)
+	if err != nil {
+		l.Close()
+		return nil, err
+	}
+	return &ownedListener{UnixListener: ul, path: path, ino: ino}, nil
+}
+
+// ownedListener removes its socket file on Close, but only while that file is
+// still the one Listen created.
+type ownedListener struct {
+	*net.UnixListener
+	path string
+	ino  uint64
+}
+
+func (l *ownedListener) Close() error {
+	err := l.UnixListener.Close()
+	if ino, serr := inodeOf(l.path); serr == nil && ino == l.ino {
+		os.Remove(l.path)
+	}
+	return err
+}
+
+func inodeOf(path string) (uint64, error) {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, fmt.Errorf("attachmux: cannot read the inode of %s", path)
+	}
+	// Ino is uint64 on both platforms this file is built for.
+	return st.Ino, nil
 }
 
 const (
