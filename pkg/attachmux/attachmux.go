@@ -25,6 +25,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"path/filepath"
 )
 
@@ -32,7 +33,10 @@ import (
 // implemented yet. Callers fall back to attaching directly to the container's
 // stdio, which allows a single session at a time. It lives here rather than in
 // socket_unsupported.go because callers test for it on every platform.
-var ErrUnsupported = errors.New("attachmux: multi-session attach is not supported on this platform")
+//
+// It wraps errors.ErrUnsupported, so a caller that does not care which
+// subsystem is unavailable can test for that instead.
+var ErrUnsupported = fmt.Errorf("attachmux: multi-session attach is not supported on this platform: %w", errors.ErrUnsupported)
 
 // socketNameLen is how many hex characters of the digest go into a socket file
 // name. A unix socket path has to fit in sockaddr_un.sun_path (108 bytes), and

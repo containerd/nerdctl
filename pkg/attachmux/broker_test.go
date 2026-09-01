@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -156,6 +157,48 @@ func TestBrokerMergesStdinFromEverySession(t *testing.T) {
 	assert.Assert(t, bytes.Contains([]byte(got), []byte("from-second\n")), "got %q", got)
 }
 
+func TestBrokerSplitsAnOversizedWrite(t *testing.T) {
+	t.Parallel()
+
+	// Write is the entry point for whoever owns the container's stdio, and this
+	// package does not get to assume the size of their read buffer. A chunk
+	// larger than one frame is split, not dropped.
+	b := NewBroker(true, nil)
+	conn := connect(t, b)
+	waitSessions(t, b, 1)
+
+	payload := bytes.Repeat([]byte("x"), maxPayload+1000)
+	go b.Write(StreamStdout, payload)
+
+	var got []byte
+	for len(got) < len(payload) {
+		stream, chunk, err := ReadFrame(conn)
+		assert.NilError(t, err)
+		assert.Equal(t, stream, StreamStdout)
+		got = append(got, chunk...)
+	}
+	assert.Equal(t, len(got), len(payload))
+	assert.DeepEqual(t, got, payload)
+}
+
+func TestBrokerRefusesToWriteOnTheControlStream(t *testing.T) {
+	t.Parallel()
+
+	// Control is the broker's own channel: container output must not be able to
+	// forge a hello or an exit.
+	b := NewBroker(true, nil)
+	conn := connect(t, b)
+	waitSessions(t, b, 1)
+
+	b.Write(StreamControl, []byte(`{"type":"exit"}`))
+	b.Write(StreamStdout, []byte("real output"))
+
+	stream, payload, err := ReadFrame(conn)
+	assert.NilError(t, err)
+	assert.Equal(t, stream, StreamStdout)
+	assert.Equal(t, string(payload), "real output")
+}
+
 func TestBrokerDisconnectsASessionThatStopsReading(t *testing.T) {
 	t.Parallel()
 
@@ -251,6 +294,38 @@ func TestBrokerAcceptsStdinAfterASessionConnects(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatalf("stdin did not reach the broker, got %q", stdin.String())
+}
+
+// failingWriter models the container's stdin FIFO after the container stopped
+// reading it: every write fails, the way a FIFO with no reader gives EPIPE.
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, syscall.EPIPE }
+func (failingWriter) Close() error              { return nil }
+
+func TestBrokerKeepsAnOutputSessionAfterAFailedStdinWrite(t *testing.T) {
+	t.Parallel()
+
+	// A container that closed its stdin and keeps printing, or one that has
+	// just exited, must not cost the session its output on the next keystroke.
+	// Dropping the session there also loses the exit frame, which is exactly
+	// the "unexpected disconnect is an error, not a detach" case.
+	b := NewBroker(true, failingWriter{})
+	conn := connect(t, b)
+	waitSessions(t, b, 1)
+
+	frame, err := EncodeFrame(StreamStdin, []byte("keystroke"))
+	assert.NilError(t, err)
+	_, err = conn.Write(frame)
+	assert.NilError(t, err)
+
+	// The session is still there, and still receives the container's output.
+	b.Write(StreamStdout, []byte("still printing"))
+	stream, payload, err := ReadFrame(conn)
+	assert.NilError(t, err)
+	assert.Equal(t, stream, StreamStdout)
+	assert.Equal(t, string(payload), "still printing")
+	assert.Equal(t, b.SessionCount(), 1)
 }
 
 func TestBrokerCloseReleasesStdin(t *testing.T) {
