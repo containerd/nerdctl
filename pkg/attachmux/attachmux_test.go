@@ -77,7 +77,9 @@ func TestSocketPathIsUnderTheDataStore(t *testing.T) {
 	// which is the only path it and its clients are guaranteed to agree on: the
 	// shim spawns it with an environment of just CONTAINER_ID and
 	// CONTAINER_NAMESPACE, so nothing XDG-based is available there.
-	path := SocketPath("/var/lib/nerdctl/1935db59", "default", "abc")
-	assert.Equal(t, filepath.Dir(path), "/var/lib/nerdctl/1935db59/attach")
+	const dataStore = "/var/lib/nerdctl/1935db59"
+	path := SocketPath(dataStore, "default", "abc")
+	// Joined, not spelled out: the separator is the platform's.
+	assert.Equal(t, filepath.Dir(path), filepath.Join(dataStore, "attach"))
 	assert.Equal(t, len(filepath.Base(path)), socketNameLen+len(".sock"))
 }
