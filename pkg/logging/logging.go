@@ -40,11 +40,12 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
+	"github.com/containerd/nerdctl/v2/pkg/logging/loguri"
 )
 
 const (
 	// MagicArgv1 is the magic argv1 for the containerd runtime v2 logging plugin mode.
-	MagicArgv1 = "_NERDCTL_INTERNAL_LOGGING"
+	MagicArgv1 = loguri.MagicArgv1
 	LogPath    = "log-path"
 	MaxSize    = "max-size"
 	MaxFile    = "max-file"
@@ -476,11 +477,21 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			// stopped and the driver has finished processing all output,
 			// so that waiting log viewers can be signalled when the process is complete.
 			return filesystem.WithLock(loggerLock, func() error {
+				// The container's spec tells us whether its output is a single
+				// terminal stream or separate stdout and stderr.
+				tty := isTerminal(ctx, logConfig.Address, config)
+
+				tee, stopBroker := startBroker(ctx, dataStore, config.Namespace, config.ID, tty)
+				// The adapter calls this itself with the right answer; this is
+				// the belt and braces for the paths that never reach it, and
+				// claims nothing about the container.
+				defer stopBroker(false)
+
 				if err := ready(); err != nil {
 					return err
 				}
 				// getContainerWait is extracted as parameter to allow mocking in tests.
-				return loggingProcessAdapter(ctx, driver, dataStore, logConfig.Address, getContainerWait, config, nil, nil)
+				return loggingProcessAdapter(ctx, driver, dataStore, logConfig.Address, getContainerWait, config, tee, stopBroker)
 			})
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// the file does not exist if the container was created with nerdctl < 0.20
@@ -530,4 +541,27 @@ func startTail(ctx context.Context, logName string, w *fsnotify.Watcher) (bool, 
 			return false, nil
 		}
 	}
+}
+
+// isTerminal reports whether the container was created with a terminal. A
+// terminal container has one output stream; anything else has two.
+func isTerminal(ctx context.Context, address string, config *logging.Config) bool {
+	client, err := containerd.New(strings.TrimPrefix(address, "unix://"), containerd.WithDefaultNamespace(config.Namespace))
+	if err != nil {
+		log.G(ctx).WithError(err).Debug("failed to connect to containerd to read the container spec")
+		return false
+	}
+	defer client.Close()
+
+	container, err := client.LoadContainer(ctx, config.ID)
+	if err != nil {
+		log.G(ctx).WithError(err).Debug("failed to load the container to read its spec")
+		return false
+	}
+	spec, err := container.Spec(ctx)
+	if err != nil {
+		log.G(ctx).WithError(err).Debug("failed to read the container spec")
+		return false
+	}
+	return spec.Process != nil && spec.Process.Terminal
 }
