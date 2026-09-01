@@ -507,6 +507,39 @@ CMD ["echo", "nerdctl-build-test-string"]
 	testCase.Run(t)
 }
 
+func TestBuildQuiet(t *testing.T) {
+	nerdtest.Setup()
+
+	dockerfile := fmt.Sprintf(`FROM %s
+CMD ["echo", "nerdctl-build-test-string"]
+	`, testutil.CommonImage)
+
+	testCase := &test.Case{
+		Require: nerdtest.Build,
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rmi", "-f", data.Identifier())
+		},
+		Setup: func(data test.Data, helpers test.Helpers) {
+			data.Temp().Save(dockerfile, "Dockerfile")
+			// Regardless of whether the buildkit worker loads the image into the image store
+			// or not, `build -q` must print the image identifier on stdout.
+			// https://github.com/containerd/nerdctl/issues/2015
+			imageID := strings.TrimSpace(helpers.Capture("build", "-q", "-t", data.Identifier(), data.Temp().Path()))
+			assert.Assert(helpers.T(), regexp.MustCompile(`^sha256:[0-9a-f]{64}$`).MatchString(imageID),
+				"expected `build -q` to output a valid image ID, got %q", imageID)
+			data.Labels().Set("imageID", imageID)
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			// The image ID printed by `build -q` must be usable to run the built image.
+			return helpers.Command("run", "--rm", data.Labels().Get("imageID"))
+		},
+
+		Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("nerdctl-build-test-string\n")),
+	}
+
+	testCase.Run(t)
+}
+
 func TestBuildWithLabels(t *testing.T) {
 	nerdtest.Setup()
 
