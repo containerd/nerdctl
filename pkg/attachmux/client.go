@@ -34,8 +34,17 @@ type Session struct {
 	// writeMu serialises writes to the connection.
 	writeMu sync.Mutex
 
+	// exitMu guards exited and closedByCaller.
 	exitMu sync.Mutex
 	exited bool
+	// closedByCaller records that Close was called, so that Stream can tell a
+	// deliberate teardown from the broker vanishing.
+	closedByCaller bool
+
+	// stopStdin is closed when Stream returns, so that the stdin pump stops
+	// forwarding what it is about to read. It is only set up when Stream was
+	// given a stdin.
+	stopStdin chan struct{}
 }
 
 // NewSession completes the handshake on conn and returns the session. The
@@ -75,7 +84,21 @@ func (s *Session) Exited() bool {
 }
 
 // Close closes the session's connection.
-func (s *Session) Close() error { return s.conn.Close() }
+// Close tears the session down. A Stream running concurrently returns nil
+// rather than an error: this is the caller ending the session, not the broker
+// going away.
+func (s *Session) wasClosedByCaller() bool {
+	s.exitMu.Lock()
+	defer s.exitMu.Unlock()
+	return s.closedByCaller
+}
+
+func (s *Session) Close() error {
+	s.exitMu.Lock()
+	s.closedByCaller = true
+	s.exitMu.Unlock()
+	return s.conn.Close()
+}
 
 func (s *Session) writeFrame(frame []byte) error {
 	s.writeMu.Lock()
@@ -95,6 +118,7 @@ func (s *Session) writeFrame(frame []byte) error {
 // session down.
 func (s *Session) Stream(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer) error {
 	if stdin != nil {
+		s.stopStdin = make(chan struct{})
 		go s.pumpStdin(stdin)
 	}
 
@@ -108,12 +132,20 @@ func (s *Session) Stream(ctx context.Context, stdin io.Reader, stdout, stderr io
 		}
 	}()
 
+	if stdin != nil {
+		// pumpStdin blocks in stdin.Read and cannot be interrupted, so it is
+		// left to end on its own. Tell it to stop forwarding once Stream is
+		// done, otherwise the keystroke it is already waiting for is swallowed
+		// from the terminal rather than reaching whatever runs next.
+		defer close(s.stopStdin)
+	}
+
 	for {
 		stream, payload, err := ReadFrame(s.conn)
 		if err != nil {
-			if ctx.Err() != nil {
-				// The caller ended this session: a detach, or a cancelled
-				// command. That is a normal outcome.
+			if ctx.Err() != nil || s.wasClosedByCaller() {
+				// The caller ended this session: a detach, a cancelled command,
+				// or an explicit Close. That is a normal outcome.
 				return nil
 			}
 			// Anything else is the broker going away without saying the
@@ -165,6 +197,12 @@ func (s *Session) pumpStdin(stdin io.Reader) {
 	for {
 		n, err := stdin.Read(buf)
 		if n > 0 {
+			select {
+			case <-s.stopStdin:
+				// Stream has returned; this session is over.
+				return
+			default:
+			}
 			frame, ferr := EncodeFrame(StreamStdin, buf[:n])
 			if ferr != nil {
 				return
