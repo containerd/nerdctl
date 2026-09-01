@@ -238,3 +238,28 @@ func TestSessionStreamReturnsWhenContextIsCancelled(t *testing.T) {
 		t.Fatal("Stream did not return after the context was cancelled")
 	}
 }
+
+func TestSessionStreamTreatsAnExplicitCloseAsClean(t *testing.T) {
+	t.Parallel()
+
+	// Stream's own doc says the caller tears the session down, and Close is the
+	// obvious way. Reporting that as a lost connection would be the same false
+	// positive the unexpected-disconnect branch exists to avoid.
+	b, session := pair(t, true, nil)
+	_ = b
+
+	streamed := make(chan error, 1)
+	go func() {
+		streamed <- session.Stream(context.Background(), nil, io.Discard, nil)
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	assert.NilError(t, session.Close())
+
+	select {
+	case err := <-streamed:
+		assert.NilError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Stream did not return after Close")
+	}
+}

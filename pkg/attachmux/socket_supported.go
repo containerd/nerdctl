@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -58,8 +59,15 @@ func Probe(dataStore string) error {
 	// concurrent calls inside one process do not either. Real names are hex
 	// digests, so a name starting with "probe" cannot collide with one.
 	name := fmt.Sprintf("probe%d-%d", os.Getpid(), probeSeq.Add(1))
-	if len(name) < socketNameLen {
+	switch {
+	case len(name) < socketNameLen:
 		name += strings.Repeat("p", socketNameLen-len(name))
+	case len(name) > socketNameLen:
+		// A large pid plus the counter can overrun. Trim rather than probe with
+		// a longer name than a real socket: the point is to test a path of
+		// representative length, and a longer one would reject a data store
+		// that in fact fits.
+		name = name[:socketNameLen]
 	}
 	path := filepath.Join(dir, name+".sock")
 
@@ -100,6 +108,9 @@ const (
 	dialTimeout = 5 * time.Second
 	// dialInterval is how often Dial retries while waiting.
 	dialInterval = 20 * time.Millisecond
+	// refusedGrace bounds how long Dial keeps retrying after a connection was
+	// refused, which unlike a missing socket means nothing is listening.
+	refusedGrace = 200 * time.Millisecond
 )
 
 // Dial connects to the attach socket at path and completes the handshake.
@@ -113,6 +124,7 @@ func Dial(ctx context.Context, path string) (*Session, error) {
 	ctx, cancel := context.WithTimeout(ctx, dialTimeout)
 	defer cancel()
 
+	refusedDeadline := time.Now().Add(refusedGrace)
 	var d net.Dialer
 	for {
 		conn, err := d.DialContext(ctx, "unix", path)
@@ -139,10 +151,30 @@ func Dial(ctx context.Context, path string) (*Session, error) {
 			}
 			return session, nil
 		}
+		if errors.Is(err, syscall.ECONNREFUSED) {
+			// The socket file is there but nothing is listening. A broker that
+			// was killed leaves the file behind, because Go only unlinks it on a
+			// graceful Close, so this is proof rather than a race worth waiting
+			// out. Retry only long enough to cover Listen's own window between
+			// os.Remove and bind.
+			if time.Now().After(refusedDeadline) {
+				return nil, fmt.Errorf("failed to connect to %s: %w", path, err)
+			}
+		}
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("failed to connect to %s: %w", path, err)
 		case <-time.After(dialInterval):
 		}
 	}
+}
+
+// RemoveSocket deletes an attach socket. Removing one that is not there is not
+// an error.
+func RemoveSocket(path string) error {
+	err := os.Remove(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
 }
