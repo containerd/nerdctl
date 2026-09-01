@@ -141,7 +141,12 @@ func fulfillPlatformInfo(info *dockercompat.Info, selinuxEnabled bool) {
 func mobySysInfo(info *dockercompat.Info) *sysinfo.SysInfo {
 	var mobySysInfoOpts []sysinfo.Opt
 	if info.CgroupDriver == "systemd" && info.CgroupVersion == "2" && rootlessutil.IsRootless() {
-		g := fmt.Sprintf("/user.slice/user-%d.slice", rootlessutil.ParentEUID())
+		g, err := rootlessutil.RootlessCgroup2GroupPath()
+		if err != nil {
+			// Preserve the established fallback for rootless setups that do not
+			// expose RootlessKit state, while preferring the actual delegated path.
+			g = fmt.Sprintf("/user.slice/user-%d.slice", rootlessutil.ParentEUID())
+		}
 		mobySysInfoOpts = append(mobySysInfoOpts, sysinfo.WithCgroup2GroupPath(g))
 	}
 	mobySysInfo := sysinfo.New(mobySysInfoOpts...)

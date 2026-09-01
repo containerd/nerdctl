@@ -112,8 +112,12 @@ cmd_entrypoint_check() {
 	fi
 
 	INFO "Checking cgroup v2"
-	controllers="/sys/fs/cgroup/user.slice/user-${id}.slice/user@${id}.service/cgroup.controllers"
-	if [ ! -f "${controllers}" ]; then
+	user_cgroup="$(systemctl --user show --property=ControlGroup --value)"
+	case "${user_cgroup}" in
+	/*) controllers="/sys/fs/cgroup${user_cgroup}/cgroup.controllers" ;;
+	*) controllers="" ;;
+	esac
+	if [ -z "${controllers}" ] || [ ! -f "${controllers}" ]; then
 		WARNING "Enabling cgroup v2 is highly recommended, see https://rootlesscontaine.rs/getting-started/common/cgroup2/ "
 	else
 		for f in cpu memory pids; do

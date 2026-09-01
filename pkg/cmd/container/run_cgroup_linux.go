@@ -228,14 +228,21 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions, interna
 }
 
 func generateCgroupPath(id, cgroupManager, cgroupParent string) (string, error) {
+	return generateCgroupPathWithRootless(id, cgroupManager, cgroupParent, rootlessutil.IsRootlessChild())
+}
+
+func generateCgroupPathWithRootless(id, cgroupManager, cgroupParent string, rootless bool) (string, error) {
 	var (
 		path         string
 		usingSystemd = cgroupManager == "systemd"
 		slice        = "system.slice"
 		scopePrefix  = ":nerdctl:"
 	)
-	if rootlessutil.IsRootlessChild() {
-		slice = "user.slice"
+	if rootless {
+		// An empty slice lets the OCI runtime select its rootless default.
+		// runc resolves that default relative to the user manager's actual
+		// ControlGroup, including any outer hierarchy such as WSL's prefix.
+		slice = ""
 	}
 
 	if cgroupParent == "" {
