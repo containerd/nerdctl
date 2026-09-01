@@ -45,10 +45,19 @@ const (
 	// carries no exit code: a session reads that from containerd, so that there
 	// is a single source of truth for it.
 	ControlExit = "exit"
+	// ControlDropped is sent to a session that fell too far behind, right
+	// before it is disconnected. Without it a client cannot tell being evicted
+	// from the broker dying, and reports both as a lost connection.
+	ControlDropped = "dropped"
 )
 
-// ProtocolVersion is announced in the hello message so that a future change to
-// the framing can be detected by an older client.
+// ProtocolVersion is announced in the hello message so that a change to the
+// framing can be detected.
+//
+// The compatibility rule is one-sided: a client refuses a broker whose version
+// is higher than its own, and accepts anything lower. A broker lives as long as
+// its container, so a client that is newer than the broker is the normal case
+// after an upgrade, and it has nowhere to fall back to.
 const ProtocolVersion = 1
 
 const (
