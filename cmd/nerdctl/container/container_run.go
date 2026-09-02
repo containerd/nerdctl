@@ -465,11 +465,23 @@ func runAction(cmd *cobra.Command, args []string) error {
 		dataStore = loguri.DataStore(logURI)
 	}
 
-	// Only an interactive container gets a stdin FIFO. Creating one for a
-	// container started without -i would give it a stdin that never reaches
-	// EOF, changing the behaviour of processes that read until EOF.
+	// Only an interactive terminal container gets a stdin FIFO.
+	//
+	// -i without -t is deliberately excluded. The broker holds a second writer
+	// on the FIFO for the container's lifetime, which is what makes detaching
+	// leave a terminal running, but it also means the container never sees EOF
+	// on its stdin: `echo x | nerdctl run -i alpine cat` would hang, because
+	// task.CloseIO closes the shim's writer and nerdctl's, not the broker's.
+	// A terminal container does not have that problem, since its stdin is a
+	// console rather than a pipe that ends. Multi-session stdin is limited to
+	// terminal containers anyway, because for a non-terminal one the shim's
+	// binary path does not wire stdin at all.
+	//
+	// Creating one for a container started without -i would separately give it
+	// a stdin that never reaches EOF, changing the behaviour of processes that
+	// read until EOF.
 	stdinFIFO := ""
-	if createOpt.Interactive && dataStore != "" {
+	if createOpt.Interactive && createOpt.TTY && dataStore != "" {
 		path := cioutil.StdinFIFOPath(dataStore, createOpt.GOptions.Namespace, c.ID())
 		if err := cioutil.CreateStdinFIFO(path); err != nil {
 			log.G(ctx).WithError(err).Debug("failed to create the stdin FIFO, the broker is disabled for this container")
