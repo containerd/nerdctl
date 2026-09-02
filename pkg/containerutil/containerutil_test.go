@@ -18,7 +18,12 @@ package containerutil
 
 import (
 	"reflect"
+	"syscall"
 	"testing"
+
+	"gotest.tools/v3/assert"
+
+	containerd "github.com/containerd/containerd/v2/client"
 
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
@@ -118,5 +123,61 @@ func TestGetContainerVolumes_Indexed(t *testing.T) {
 	}
 	if len(indexedResult) > 2 && indexedResult[2].Name != "vol-2" {
 		t.Errorf("Expected third volume to be named 'vol-2', got '%s'", indexedResult[2].Name)
+	}
+}
+
+func TestIsStopSignal(t *testing.T) {
+	tests := []struct {
+		name            string
+		sig             syscall.Signal
+		containerLabels map[string]string
+		expected        bool
+		expectedErr     bool
+	}{
+		{
+			name:     "SIGKILL always stops the container",
+			sig:      syscall.SIGKILL,
+			expected: true,
+		},
+		{
+			name:     "without a stopSignal label the stop signal is SIGTERM",
+			sig:      syscall.SIGTERM,
+			expected: true,
+		},
+		{
+			name:     "SIGHUP does not stop the container",
+			sig:      syscall.SIGHUP,
+			expected: false,
+		},
+		{
+			name:            "a signal matching the stopSignal label stops the container",
+			sig:             syscall.SIGQUIT,
+			containerLabels: map[string]string{containerd.StopSignalLabel: "SIGQUIT"},
+			expected:        true,
+		},
+		{
+			name:            "SIGTERM does not stop the container when stopSignal is overridden",
+			sig:             syscall.SIGTERM,
+			containerLabels: map[string]string{containerd.StopSignalLabel: "SIGQUIT"},
+			expected:        false,
+		},
+		{
+			name:            "an unparsable stopSignal label is an error",
+			sig:             syscall.SIGHUP,
+			containerLabels: map[string]string{containerd.StopSignalLabel: "NOT_A_SIGNAL"},
+			expectedErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := IsStopSignal(tt.sig, tt.containerLabels)
+			if tt.expectedErr {
+				assert.Assert(t, err != nil, "expected an error, got none")
+				return
+			}
+			assert.NilError(t, err)
+			assert.Equal(t, got, tt.expected)
+		})
 	}
 }
