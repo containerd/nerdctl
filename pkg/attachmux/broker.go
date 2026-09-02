@@ -200,6 +200,16 @@ func (b *Broker) writeFrame(stream byte, p []byte) {
 		return
 	}
 
+	// Most containers on a host have nobody attached, and their output still
+	// comes through here. Checking first means they do not pay for a copy of
+	// every chunk that is then thrown away.
+	b.mu.Lock()
+	empty := b.closed || len(b.sessions) == 0
+	b.mu.Unlock()
+	if empty {
+		return
+	}
+
 	// Encoded outside the lock: it allocates and copies the whole chunk, and
 	// readLoop, addSession and SessionCount all contend for b.mu.
 	frame, err := EncodeFrame(stream, p)
@@ -208,6 +218,7 @@ func (b *Broker) writeFrame(stream byte, p []byte) {
 		return
 	}
 
+	// Checked again: a session can have gone away while the frame was encoded.
 	b.mu.Lock()
 	if b.closed || len(b.sessions) == 0 {
 		b.mu.Unlock()

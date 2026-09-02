@@ -113,12 +113,15 @@ func Listen(path string) (net.Listener, error) {
 	if !ok {
 		return l, nil
 	}
-	ul.SetUnlinkOnClose(false)
 	ino, err := inodeOf(path)
 	if err != nil {
+		// Still Go's to unlink at this point, so closing cleans up.
 		l.Close()
 		return nil, err
 	}
+	// Taken over only once the inode is known, so that no failure above leaves
+	// the socket on disk with nobody to remove it.
+	ul.SetUnlinkOnClose(false)
 	return &ownedListener{UnixListener: ul, path: path, ino: ino}, nil
 }
 
@@ -152,62 +155,46 @@ func inodeOf(path string) (uint64, error) {
 }
 
 const (
-	// dialTimeout bounds how long Dial waits for the broker to come up.
-	dialTimeout = 5 * time.Second
-	// dialInterval is how often Dial retries while waiting.
+	// dialTimeout bounds how long DialStarting waits for the broker to come up.
+	dialTimeout  = 5 * time.Second
 	dialInterval = 20 * time.Millisecond
-	// refusedGrace bounds how long Dial keeps retrying after a connection was
-	// refused, which unlike a missing socket means nothing is listening.
-	refusedGrace = 200 * time.Millisecond
 )
 
 // Dial connects to the attach socket at path and completes the handshake.
 //
-// It retries until the socket answers, the context is done, or dialTimeout
-// elapses. containerd spawns the logging process while creating the task and
-// does not wait for it, so a client that dials straight after
-// container.NewTask can arrive before the broker has bound its socket. For a
-// container that is already running the first attempt succeeds.
+// It makes a single attempt. The caller is reaching a container that has been
+// running for a while, so a socket that is missing or refuses the connection is
+// proof that there is no broker to talk to, not a race worth waiting out.
 func Dial(ctx context.Context, path string) (*Session, error) {
-	ctx, cancel := context.WithTimeout(ctx, dialTimeout)
-	defer cancel()
+	return dial(ctx, path, false)
+}
 
-	refusedDeadline := time.Now().Add(refusedGrace)
+// DialStarting is Dial for a caller that has just created the task.
+//
+// containerd spawns the logging process while creating the task and does not
+// wait for it, so for a short while neither a missing socket nor a refused
+// connection says anything: the broker may still be binding, possibly over a
+// file left behind by a previous one. This retries until the socket answers,
+// the context is done, or dialTimeout elapses.
+func DialStarting(ctx context.Context, path string) (*Session, error) {
+	return dial(ctx, path, true)
+}
+
+func dial(ctx context.Context, path string, retry bool) (*Session, error) {
+	if retry {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, dialTimeout)
+		defer cancel()
+	}
+
 	var d net.Dialer
 	for {
 		conn, err := d.DialContext(ctx, "unix", path)
 		if err == nil {
-			// A connection can sit in the listener's backlog before the broker
-			// accepts it, so the handshake read needs a deadline of its own:
-			// a broker that died between Listen and Serve would otherwise hang
-			// the client for good.
-			if deadline, ok := ctx.Deadline(); ok {
-				if err := conn.SetReadDeadline(deadline); err != nil {
-					conn.Close()
-					return nil, err
-				}
-			}
-			session, err := NewSession(conn)
-			if err != nil {
-				conn.Close()
-				return nil, err
-			}
-			// Streaming has no deadline of its own.
-			if err := conn.SetReadDeadline(time.Time{}); err != nil {
-				session.Close()
-				return nil, err
-			}
-			return session, nil
+			return greet(ctx, conn)
 		}
-		if errors.Is(err, syscall.ECONNREFUSED) {
-			// The socket file is there but nothing is listening. A broker that
-			// was killed leaves the file behind, because Go only unlinks it on a
-			// graceful Close, so this is proof rather than a race worth waiting
-			// out. Retry only long enough to cover Listen's own window between
-			// os.Remove and bind.
-			if time.Now().After(refusedDeadline) {
-				return nil, fmt.Errorf("failed to connect to %s: %w", path, err)
-			}
+		if !retry {
+			return nil, fmt.Errorf("failed to connect to %s: %w", path, err)
 		}
 		select {
 		case <-ctx.Done():
@@ -215,6 +202,32 @@ func Dial(ctx context.Context, path string) (*Session, error) {
 		case <-time.After(dialInterval):
 		}
 	}
+}
+
+// greet completes the handshake on an accepted connection.
+func greet(ctx context.Context, conn net.Conn) (*Session, error) {
+	// A connection can sit in the listener's backlog before the broker accepts
+	// it, so the handshake read needs a deadline of its own: a broker that died
+	// between Listen and Serve would otherwise hang the client for good.
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		deadline = time.Now().Add(dialTimeout)
+	}
+	if err := conn.SetReadDeadline(deadline); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	session, err := NewSession(conn)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+	// Streaming has no deadline of its own.
+	if err := conn.SetReadDeadline(time.Time{}); err != nil {
+		session.Close()
+		return nil, err
+	}
+	return session, nil
 }
 
 // RemoveSocket deletes an attach socket. Removing one that is not there is not
