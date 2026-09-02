@@ -456,8 +456,12 @@ func runAction(cmd *cobra.Command, args []string) error {
 	// at another path carries it too, and spawning that would run code with no
 	// broker in it. Leaving dataStore empty otherwise makes it the single guard
 	// everything below can test.
+	// --disable-attach-broker is the way back to the stdio nerdctl used before
+	// multi-session attach: leaving dataStore empty is what stops the task
+	// being built for the broker, and every path below already handles that,
+	// because it is also what a foreign log driver looks like.
 	dataStore := ""
-	if loguri.IsInternal(logURI) {
+	if !createOpt.GOptions.DisableAttachBroker && loguri.IsInternal(logURI) {
 		dataStore = loguri.DataStore(logURI)
 	}
 
