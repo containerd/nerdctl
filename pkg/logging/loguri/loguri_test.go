@@ -60,7 +60,12 @@ func TestIsInternal(t *testing.T) {
 }
 
 func TestDataStore(t *testing.T) {
-	mine, err := cio.LogURIGenerator("binary", "/usr/local/bin/nerdctl", map[string]string{MagicArgv1: "/var/lib/nerdctl/1935db59"})
+	// LogURIGenerator rejects a path that is not absolute for the platform, and
+	// "/usr/local/bin/nerdctl" is not one on windows.
+	self, err := os.Executable()
+	assert.NilError(t, err)
+
+	mine, err := cio.LogURIGenerator("binary", self, map[string]string{MagicArgv1: "/var/lib/nerdctl/1935db59"})
 	assert.NilError(t, err)
 
 	// The broker derives the attach socket and the stdin FIFO from this exact

@@ -24,6 +24,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 // MagicArgv1 is the magic argv1 for the containerd runtime v2 logging plugin
@@ -66,11 +68,24 @@ func IsInternal(uri string) bool {
 	if err != nil {
 		return false
 	}
-	target, err := filepath.EvalSymlinks(u.Path)
+	target, err := filepath.EvalSymlinks(BinaryPath(u))
 	if err != nil {
 		return false
 	}
 	return target == self
+}
+
+// BinaryPath returns the executable a binary log URI names.
+//
+// cio.LogURIGenerator always gives the path a leading slash, so that a Windows
+// path does not look like a host name. That slash has to come back off before
+// the path means anything to the filesystem, which is what
+// taskutil.terminalBrokerIO does too.
+func BinaryPath(u *url.URL) string {
+	if runtime.GOOS == "windows" {
+		return strings.TrimPrefix(u.Path, "/")
+	}
+	return u.Path
 }
 
 // DataStore returns the data store recorded in an internal log URI, or an empty
