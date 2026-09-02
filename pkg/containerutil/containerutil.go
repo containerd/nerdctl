@@ -278,9 +278,11 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 		dataStore = loguri.DataStore(logURI)
 	}
 
-	// Only an interactive container gets a stdin FIFO, as in the run path.
+	// Only an interactive terminal container gets a stdin FIFO, as in the run
+	// path: the broker's second writer would keep a non-terminal container from
+	// ever seeing EOF on its stdin.
 	stdinFIFO := ""
-	if isInteractive && dataStore != "" {
+	if isInteractive && isTerminal && dataStore != "" {
 		path := cioutil.StdinFIFOPath(dataStore, namespace, container.ID())
 		if err := cioutil.CreateStdinFIFO(path); err != nil {
 			log.G(ctx).WithError(err).Debug("failed to create the stdin FIFO, the broker is disabled for this container")
