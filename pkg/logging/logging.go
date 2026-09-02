@@ -153,6 +153,12 @@ type LogConfig struct {
 	Opts    map[string]string `json:"opts,omitempty"`
 	LogURI  string            `json:"-"`
 	Address string            `json:"address"`
+	// Terminal records whether the container was created with a terminal, so
+	// that the logging process knows whether its output is a single stream
+	// without asking containerd. It is written by the CLI, which knows -t, and
+	// read before the process signals readiness to the shim, which is on the
+	// critical path of creating the task.
+	Terminal bool `json:"terminal,omitempty"`
 }
 
 // LogConfigFilePath returns the path of log-config.json
@@ -477,11 +483,12 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			// stopped and the driver has finished processing all output,
 			// so that waiting log viewers can be signalled when the process is complete.
 			return filesystem.WithLock(loggerLock, func() error {
-				// The container's spec tells us whether its output is a single
-				// terminal stream or separate stdout and stderr.
-				tty := isTerminal(ctx, logConfig.Address, config)
-
-				tee, stopBroker := startBroker(ctx, dataStore, config.Namespace, config.ID, tty)
+				// Whether the container's output is a single terminal stream
+				// or separate stdout and stderr was recorded by the CLI, which
+				// knows -t. Asking containerd here instead would put a connect
+				// and two RPCs on the critical path of creating the task: the
+				// shim blocks on ready() below.
+				tee, stopBroker := startBroker(ctx, dataStore, config.Namespace, config.ID, logConfig.Terminal)
 				// The adapter calls this itself with the right answer; this is
 				// the belt and braces for the paths that never reach it, and
 				// claims nothing about the container.
@@ -541,27 +548,4 @@ func startTail(ctx context.Context, logName string, w *fsnotify.Watcher) (bool, 
 			return false, nil
 		}
 	}
-}
-
-// isTerminal reports whether the container was created with a terminal. A
-// terminal container has one output stream; anything else has two.
-func isTerminal(ctx context.Context, address string, config *logging.Config) bool {
-	client, err := containerd.New(strings.TrimPrefix(address, "unix://"), containerd.WithDefaultNamespace(config.Namespace))
-	if err != nil {
-		log.G(ctx).WithError(err).Debug("failed to connect to containerd to read the container spec")
-		return false
-	}
-	defer client.Close()
-
-	container, err := client.LoadContainer(ctx, config.ID)
-	if err != nil {
-		log.G(ctx).WithError(err).Debug("failed to load the container to read its spec")
-		return false
-	}
-	spec, err := container.Spec(ctx)
-	if err != nil {
-		log.G(ctx).WithError(err).Debug("failed to read the container spec")
-		return false
-	}
-	return spec.Process != nil && spec.Process.Terminal
 }

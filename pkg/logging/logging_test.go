@@ -386,3 +386,59 @@ func TestLoggingProcessAdapterStopsTheBrokerBeforeTheDriverFinishes(t *testing.T
 		t.Fatal("loggingProcessAdapter did not return")
 	}
 }
+
+func TestLoggingProcessAdapterWithNoneDriverDoesNotStall(t *testing.T) {
+	// --log-driver none goes through the logging process now, because that is
+	// where the attach broker lives. The none driver discards everything, so it
+	// must do so synchronously: queueing for a consumer that never reads would
+	// stall the container on its own stdout once the buffer filled.
+	stdoutR, stdoutW := io.Pipe()
+	stderrR, stderrW := io.Pipe()
+
+	config := &logging.Config{
+		ID:        "test-container",
+		Namespace: "test-namespace",
+		Stdout:    stdoutR,
+		Stderr:    stderrR,
+	}
+
+	exitCh := make(chan containerd.ExitStatus, 1)
+	wait := func(ctx context.Context, address string, config *logging.Config, outputSeen func() bool) (<-chan containerd.ExitStatus, error) {
+		return exitCh, nil
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- loggingProcessAdapter(context.Background(), &NoneLogger{}, t.TempDir(), "", wait, config, nil, nil)
+	}()
+
+	// Comfortably more lines than the adapter's channels can hold.
+	written := make(chan error, 1)
+	go func() {
+		for range 30000 {
+			if _, err := stdoutW.Write([]byte("a line of container output\n")); err != nil {
+				written <- err
+				return
+			}
+		}
+		written <- nil
+	}()
+
+	select {
+	case err := <-written:
+		assert.NilError(t, err)
+	case <-time.After(30 * time.Second):
+		t.Fatal("the container blocked writing to a discarding log driver")
+	}
+
+	stdoutW.Close()
+	stderrW.Close()
+	exitCh <- *containerd.NewExitStatus(0, time.Now(), nil)
+
+	select {
+	case err := <-done:
+		assert.NilError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("loggingProcessAdapter did not return")
+	}
+}
