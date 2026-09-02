@@ -271,9 +271,10 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 		// source: https://github.com/containerd/nerdctl/blob/main/docs/command-reference.md#whale-nerdctl-start
 		attachStreamOpt = []string{"STDOUT", "STDERR"}
 	}
-	// As in the run path, and only for a URI that runs this binary.
+	// As in the run path: only for a URI that runs this binary, and not when
+	// the operator has switched the broker off.
 	dataStore := ""
-	if loguri.IsInternal(logURI) {
+	if !cfg.DisableAttachBroker && loguri.IsInternal(logURI) {
 		dataStore = loguri.DataStore(logURI)
 	}
 
