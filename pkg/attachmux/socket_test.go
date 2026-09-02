@@ -109,15 +109,48 @@ func TestProbeIsConcurrencySafe(t *testing.T) {
 	}
 }
 
-func TestDialToNothing(t *testing.T) {
+func TestDialToNothingFailsAtOnce(t *testing.T) {
 	t.Parallel()
 
-	// Dial retries while waiting for the broker to bind, so it gives up only
-	// when the context is done. Keep that short here.
+	// Attaching to a container that has been running for a while must not stall
+	// the CLI: a missing socket is proof there is no broker, not a race.
+	start := time.Now()
+	_, err := Dial(context.Background(), filepath.Join(t.TempDir(), "absent.sock"))
+	assert.Assert(t, err != nil)
+	assert.Assert(t, time.Since(start) < time.Second, "Dial waited %s", time.Since(start))
+}
+
+func TestDialStartingWaitsForTheBroker(t *testing.T) {
+	t.Parallel()
+
+	// The caller has just created the task, and containerd does not wait for
+	// the logging process it spawns, so the socket may not be there yet.
+	path := filepath.Join(t.TempDir(), "attach.sock")
+	b := NewBroker(true, nil)
+
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		l, err := Listen(path)
+		if err != nil {
+			return
+		}
+		go b.Serve(context.Background(), l)
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	t.Cleanup(cancel)
+	session, err := DialStarting(ctx, path)
+	assert.NilError(t, err)
+	t.Cleanup(func() { session.Close() })
+}
+
+func TestDialStartingGivesUpEventually(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	t.Cleanup(cancel)
 
-	_, err := Dial(ctx, filepath.Join(t.TempDir(), "absent.sock"))
+	_, err := DialStarting(ctx, filepath.Join(t.TempDir(), "absent.sock"))
 	assert.Assert(t, err != nil)
 }
 
