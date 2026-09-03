@@ -26,7 +26,7 @@ require (
 	github.com/containerd/stargz-snapshotter/estargz v0.18.2 //gomodjail:unconfined
 	github.com/containerd/stargz-snapshotter/ipfs v0.18.2 //gomodjail:unconfined
 	github.com/containerd/typeurl/v2 v2.3.0
-	github.com/containernetworking/cni v1.3.0 //gomodjail:unconfined
+	github.com/containernetworking/cni v1.3.1 //gomodjail:unconfined
 	github.com/containernetworking/plugins v1.9.1 //gomodjail:unconfined
 	github.com/coreos/go-iptables v0.8.0 //gomodjail:unconfined
 	github.com/coreos/go-systemd/v22 v22.7.0
