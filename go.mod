@@ -16,7 +16,7 @@ require (
 	github.com/containerd/continuity v0.5.0 //gomodjail:unconfined
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
-	github.com/containerd/go-cni v1.1.13 //gomodjail:unconfined
+	github.com/containerd/go-cni v1.1.14 //gomodjail:unconfined
 	github.com/containerd/imgcrypt/v2 v2.0.3 //gomodjail:unconfined
 	github.com/containerd/log v0.1.0
 	github.com/containerd/nerdctl/mod/tigron v0.0.0
@@ -150,7 +150,6 @@ require (
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/moby/moby/api v1.55.0 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.45.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
 	sigs.k8s.io/knftables v0.0.18 // indirect
