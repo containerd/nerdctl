@@ -784,6 +784,83 @@ func TestNetworkSettingsFromNative(t *testing.T) {
 				},
 			},
 		},
+		// Given native.NetNS whose eth0 maps to a named CNI network, Return
+		// NetworkSettings keyed by the real network name rather than "unknown-*".
+		//   UseCase: Inspect a Running Container attached to a named network (issue #2999)
+		{
+			name: "Given NetNS with eth0 and a networks annotation, Return NetworkSettings keyed by network name",
+			n: &native.NetNS{
+				Interfaces: []native.NetInterface{
+					{
+						Interface: net.Interface{
+							Index: 2,
+							MTU:   1500,
+							Name:  "eth0",
+							Flags: net.FlagUp,
+						},
+						HardwareAddr: "fa:b9:e3:9f:67:1b",
+						Flags:        []string{},
+						Addrs:        []string{"10.4.0.50/24"},
+					},
+				},
+			},
+			s: &specs.Spec{
+				Annotations: map[string]string{
+					labels.Networks: `["bridge"]`,
+				},
+			},
+			expected: &NetworkSettings{
+				Ports: &nat.PortMap{},
+				Networks: map[string]*NetworkEndpointSettings{
+					"bridge": {
+						IPAddress:   "10.4.0.50",
+						IPPrefixLen: 24,
+						MacAddress:  "fa:b9:e3:9f:67:1b",
+					},
+				},
+			},
+		},
+		// Given native.NetNS with eth0/eth1 and two networks, Return each
+		// endpoint keyed by its network name, matched in networks-list order.
+		{
+			name: "Given NetNS with eth0/eth1 and two networks, Return NetworkSettings keyed by network names",
+			n: &native.NetNS{
+				Interfaces: []native.NetInterface{
+					{
+						Interface:    net.Interface{Index: 2, MTU: 1500, Name: "eth0", Flags: net.FlagUp},
+						HardwareAddr: "fa:b9:e3:9f:67:1b",
+						Flags:        []string{},
+						Addrs:        []string{"10.4.0.50/24"},
+					},
+					{
+						Interface:    net.Interface{Index: 3, MTU: 1500, Name: "eth1", Flags: net.FlagUp},
+						HardwareAddr: "fa:b9:e3:9f:67:1c",
+						Flags:        []string{},
+						Addrs:        []string{"10.5.0.60/24"},
+					},
+				},
+			},
+			s: &specs.Spec{
+				Annotations: map[string]string{
+					labels.Networks: `["bridge","mynet"]`,
+				},
+			},
+			expected: &NetworkSettings{
+				Ports: &nat.PortMap{},
+				Networks: map[string]*NetworkEndpointSettings{
+					"bridge": {
+						IPAddress:   "10.4.0.50",
+						IPPrefixLen: 24,
+						MacAddress:  "fa:b9:e3:9f:67:1b",
+					},
+					"mynet": {
+						IPAddress:   "10.5.0.60",
+						IPPrefixLen: 24,
+						MacAddress:  "fa:b9:e3:9f:67:1c",
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testcase {
