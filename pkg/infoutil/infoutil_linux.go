@@ -17,6 +17,7 @@
 package infoutil
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"strings"
@@ -141,9 +142,12 @@ func fulfillPlatformInfo(info *dockercompat.Info, selinuxEnabled bool) {
 func mobySysInfo(info *dockercompat.Info) *sysinfo.SysInfo {
 	var mobySysInfoOpts []sysinfo.Opt
 	if info.CgroupDriver == "systemd" && info.CgroupVersion == "2" && rootlessutil.IsRootless() {
-		g := fmt.Sprintf("/user.slice/user-%d.slice", rootlessutil.ParentEUID())
-		mobySysInfoOpts = append(mobySysInfoOpts, sysinfo.WithCgroup2GroupPath(g))
+		groupPath, err := systemdUserManagerControlGroup(context.TODO())
+		if err != nil {
+			info.Warnings = append(info.Warnings, fmt.Sprintf("WARNING: Failed to detect rootless systemd cgroup: %v", err))
+			groupPath = fmt.Sprintf("/user.slice/user-%d.slice", rootlessutil.ParentEUID())
+		}
+		mobySysInfoOpts = append(mobySysInfoOpts, sysinfo.WithCgroup2GroupPath(groupPath))
 	}
-	mobySysInfo := sysinfo.New(mobySysInfoOpts...)
-	return mobySysInfo
+	return sysinfo.New(mobySysInfoOpts...)
 }

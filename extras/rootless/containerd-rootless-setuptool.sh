@@ -112,7 +112,7 @@ cmd_entrypoint_check() {
 	fi
 
 	INFO "Checking cgroup v2"
-	controllers="/sys/fs/cgroup/user.slice/user-${id}.slice/user@${id}.service/cgroup.controllers"
+	controllers="/sys/fs/cgroup$(systemctl --user show --value --property=ControlGroup)/cgroup.controllers"
 	if [ ! -f "${controllers}" ]; then
 		WARNING "Enabling cgroup v2 is highly recommended, see https://rootlesscontaine.rs/getting-started/common/cgroup2/ "
 	else
