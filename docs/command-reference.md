@@ -195,6 +195,8 @@ Network flags:
   - :nerd_face: `ns:<path>`: run inside an existing network namespace
   - :nerd_face: Unlike Docker, this flag can be specified multiple times (`--net foo --net bar`)
 - :whale: `-p, --publish`: Publish a container's port(s) to the host
+- :whale: `--expose`: Expose a port or a range of ports without publishing them to the host
+- :whale: `-P, --publish-all`: Publish all exposed ports to random ports on the host
 - :whale: `--dns`: Set custom DNS servers
 - :whale: `--dns-search`: Set custom DNS search domains
 - :whale: `--dns-opt, --dns-option`: Set DNS options
@@ -237,6 +239,7 @@ Resource flags:
   - Default: "private" on cgroup v2 hosts, "host" on cgroup v1 hosts
 - :whale: `--cgroup-parent`: Optional parent cgroup for the container
 - :whale: `--device`: Add a host device to the container
+  - :nerd_face: Also accepts [CDI](https://github.com/cncf-tags/container-device-interface) qualified device names (e.g. `vendor.com/device=foo`). See [`./gpu.md`](./gpu.md) and [`./config.md`](./config.md) (`cdi_spec_dirs`).
 
 Intel RDT flags:
 
@@ -364,6 +367,7 @@ Health check flags:
 - :whale: `--health-timeout`: Time to wait before considering the check failed (e.g., 5s)
 - :whale: `--health-retries`: Number of failures before container is considered unhealthy
 - :whale: `--health-start-period`: Start period for the container to initialize before starting health-retries countdown
+- :whale: `--health-start-interval`: (unimplemented) Interval between health checks during the start period
 - :whale: `--no-healthcheck`: Disable any health checks defined by image or CLI
 
 Logging flags:
@@ -1566,7 +1570,7 @@ Flags:
 
 Get real time events from the server.
 
-:warning: The output format is not compatible with Docker.
+:warning: The default event stream format differs from `docker events` (containerd envelope fields). Use `--format '{{json .}}'` for JSON that includes Docker v29-compatible `Action` metadata.
 
 Usage: `nerdctl events [OPTIONS]`
 
@@ -1574,7 +1578,9 @@ Flags:
 
 - :whale: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
 - :whale: `-f, --filter`: Filter containers based on given conditions
-  - :whale: `--filter event=<value>`: Event's status. Start is the only supported status.
+  - :whale: `--filter event=<value>`: Filter by event action (e.g. `start`)
+  - :whale: `--filter label=<key>`: Filter by container label key
+  - :whale: `--filter label=<key>=<value>`: Filter by container label key and value
 
 Unimplemented `docker events` flags: `--since`, `--until`
 
@@ -2056,6 +2062,10 @@ Compose:
 - `docker compose stats`
 - `docker compose wait`
 - `docker compose watch`
+
+Compose file features:
+
+- `volumes[].type: image` (OCI image volume mounts in Compose; `nerdctl run --mount type=image` is supported)
 
 Builder:
 
