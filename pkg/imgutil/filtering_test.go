@@ -25,6 +25,15 @@ import (
 	"github.com/containerd/containerd/v2/core/images"
 )
 
+func TestParseFiltersLabelValueContainingEquals(t *testing.T) {
+	filters, err := ParseFilters([]string{"label=example.payload=a=b"})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, filters.Labels, map[string]string{"example.payload": "a=b"})
+
+	_, err = ParseFilters([]string{"dangling=true=garbage"})
+	assert.Error(t, err, `invalid filter "dangling=true=garbage"`)
+}
+
 func TestApplyFilters(t *testing.T) {
 	tests := []struct {
 		name           string
