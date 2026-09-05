@@ -209,9 +209,6 @@ func TestRunRestart(t *testing.T) {
 
 func TestRunRestartWithOnFailure(t *testing.T) {
 	testCase := nerdtest.Setup()
-	if !nerdtest.IsDocker() {
-		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"on-failure"})
-	}
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("run", "-d", "--restart=on-failure:2", "--name", data.Identifier(), testutil.AlpineImage, "sh", "-c", "exit 1")
@@ -238,9 +235,6 @@ func TestRunRestartWithOnFailure(t *testing.T) {
 
 func TestRunRestartWithUnlessStopped(t *testing.T) {
 	testCase := nerdtest.Setup()
-	if !nerdtest.IsDocker() {
-		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"unless-stopped"})
-	}
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("run", "-d", "--restart=unless-stopped", "--name", data.Identifier(), testutil.AlpineImage, "sh", "-c", "exit 1")
@@ -281,8 +275,6 @@ func TestUpdateRestartPolicy(t *testing.T) {
 		// FIXME: failing on Docker since ubuntu-24.04 image 20260615.205.1
 		// https://github.com/containerd/nerdctl/issues/4978
 		testCase.Require = require.Not(nerdtest.Docker)
-	} else {
-		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"on-failure"})
 	}
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
@@ -313,9 +305,6 @@ func TestUpdateRestartPolicy(t *testing.T) {
 // and check it can work correctly.
 func TestAddRestartPolicy(t *testing.T) {
 	testCase := nerdtest.Setup()
-	if !nerdtest.IsDocker() {
-		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"on-failure"})
-	}
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.NginxAlpineImage)
@@ -354,9 +343,6 @@ func TestAddRestartPolicy(t *testing.T) {
 
 func TestRunRestartStatusLabel(t *testing.T) {
 	testCase := nerdtest.Setup()
-	if !nerdtest.IsDocker() {
-		testCase.Require = nerdtest.ContainerdPlugin("io.containerd.internal.v1", "restart", []string{"always"})
-	}
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("create", "--restart=always", "--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
