@@ -820,6 +820,7 @@ Flags:
 - :whale: `-m, --message`: Commit message
 - :whale: `-c, --change`: Apply Dockerfile instruction to the created image (supported directives: [CMD, ENTRYPOINT])
 - :whale: `-p, --pause`: Pause container during commit (default: true)
+- :nerd_face: `--timeout`: Maximum duration for the commit operation (default: 1h). Set to 0 to use containerd's default lease expiration (24h). Accepts Go duration format (e.g., `2h`, `90m`, `0s`).
 - :nerd_face: `--compression`: Commit compression algorithm (supported values: zstd or gzip) (default: gzip) (zstd is generally better for compression ratio but might not be as widely supported)
 - :nerd_face: `--format`: Format of the committed image (supported values: docker or oci) (default: docker) (docker uses Docker Schema2 media types for compatibility, oci uses OCI image format media types)
 - :nerd_face: `--estargz`: Convert the committed layer to eStargz for lazy pulling
