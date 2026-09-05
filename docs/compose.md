@@ -42,3 +42,7 @@ which was derived from [Docker Compose file version 3 specification](https://doc
 - `uid`, `gid`: Cannot be specified. The default value is not propagated from `USER` instruction of Dockerfile.
   The file owner corresponds to the original file on the host.
 - `mode`: Cannot be specified. The file is mounted as read-only, with permission bits that correspond to the original file on the host.
+
+#### `services.<SERVICE>.volumes[].type: image`
+- Whole-image mounts are supported.
+- `services.<SERVICE>.volumes[].image.subpath` is not yet supported.

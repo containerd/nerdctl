@@ -17,6 +17,7 @@
 package compose
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -1241,6 +1242,163 @@ services:
 	}
 
 	testCase.Expected = test.Expects(1, nil, nil)
+
+	testCase.Run(t)
+}
+
+func TestComposeImageVolume(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Private
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		containerName := data.Identifier("image-volume")
+		composeYAML := fmt.Sprintf(`
+services:
+  app:
+    image: %s
+    container_name: %s
+    command: ["sleep", "infinity"]
+    network_mode: none
+    volumes:
+      - type: image
+        source: %s
+        target: /website
+`, testutil.CommonImage, containerName, testutil.NginxAlpineImage)
+		composePath := data.Temp().Path("compose.yaml")
+		data.Temp().Save(composeYAML, "compose.yaml")
+
+		helpers.Anyhow("rmi", "-f", testutil.NginxAlpineImage)
+		helpers.Command("image", "inspect", testutil.NginxAlpineImage).Run(&test.Expected{
+			ExitCode: expect.ExitCodeGenericFail,
+		})
+		helpers.Ensure("compose", "-f", composePath, "up", "-d")
+		helpers.Ensure("image", "inspect", testutil.NginxAlpineImage)
+		helpers.Command("inspect", "--format", "{{json .Mounts}}", containerName).Run(&test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output:   expect.Contains(`"Type":"image"`),
+		})
+		data.Labels().Set("containerName", containerName)
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "source image files are visible",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("containerName"), "test", "-s", "/website/usr/share/nginx/html/index.html")
+			},
+			Expected: test.Expects(0, nil, nil),
+		},
+		{
+			Description: "image mount is read only",
+			NoParallel:  true,
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("exec", data.Labels().Get("containerName"), "touch", "/website/should-not-exist")
+			},
+			Expected: test.Expects(expect.ExitCodeGenericFail, []error{errors.New("Read-only file system")}, nil),
+		},
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "--volumes", "--remove-orphans")
+		helpers.Anyhow("rm", "-f", data.Identifier("image-volume"))
+		helpers.Anyhow("rmi", "-f", testutil.NginxAlpineImage)
+	}
+
+	testCase.Run(t)
+}
+
+func TestComposeImageVolumeServiceSource(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Private
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		projectName := data.Identifier("image-service-source")
+		containerName := data.Identifier("image-service-source-app")
+		composeYAML := fmt.Sprintf(`
+services:
+  source:
+    image: %s
+    profiles: [image-source]
+  app:
+    image: %s
+    container_name: %s
+    command: ["sleep", "infinity"]
+    network_mode: none
+    volumes:
+      - type: image
+        source: source
+        target: /website
+`, testutil.NginxAlpineImage, testutil.CommonImage, containerName)
+		composePath := data.Temp().Save(composeYAML, "compose.yaml")
+
+		helpers.Anyhow("rmi", "-f", testutil.NginxAlpineImage)
+		helpers.Command("image", "inspect", testutil.NginxAlpineImage).Run(&test.Expected{
+			ExitCode: expect.ExitCodeGenericFail,
+		})
+		helpers.Ensure("compose", "-p", projectName, "-f", composePath, "up", "-d")
+		helpers.Ensure("image", "inspect", testutil.NginxAlpineImage)
+		helpers.Command("inspect", "--format", "{{json .Mounts}}", containerName).Run(&test.Expected{
+			ExitCode: expect.ExitCodeSuccess,
+			Output: expect.All(
+				expect.Contains(`"Type":"image"`),
+				expect.Contains(fmt.Sprintf(`"Source":"%s"`, testutil.NginxAlpineImage)),
+			),
+		})
+		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("containerName", containerName)
+		data.Labels().Set("projectName", projectName)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("exec", data.Labels().Get("containerName"), "test", "-s", "/website/usr/share/nginx/html/index.html")
+	}
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-p", data.Identifier("image-service-source"), "-f", data.Temp().Path("compose.yaml"), "down", "--volumes", "--remove-orphans")
+		helpers.Anyhow("rm", "-f", data.Identifier("image-service-source-app"))
+		helpers.Anyhow("rmi", "-f", testutil.NginxAlpineImage)
+	}
+
+	testCase.Run(t)
+}
+
+func TestComposeImageVolumeValidationDoesNotCreateNetwork(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		nerdtest.Private,
+		require.Not(nerdtest.Docker),
+	)
+	testCase.NoParallel = true
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composeYAML := fmt.Sprintf(`
+services:
+  app:
+    image: %s
+    volumes:
+      - type: image
+        target: /website
+`, testutil.CommonImage)
+		data.Temp().Save(composeYAML, "compose.yaml")
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		projectName := data.Identifier("invalid-image-volume")
+		helpers.Command("compose", "-p", projectName, "-f", data.Temp().Path("compose.yaml"), "up", "-d").Run(&test.Expected{
+			ExitCode: expect.ExitCodeGenericFail,
+			Errors:   []error{errors.New("image volume source is missing")},
+		})
+		return helpers.Command("network", "inspect", projectName+"_default")
+	}
+	testCase.Expected = test.Expects(expect.ExitCodeGenericFail, nil, nil)
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		projectName := data.Identifier("invalid-image-volume")
+		helpers.Anyhow("network", "rm", projectName+"_default")
+		helpers.Anyhow("compose", "-p", projectName, "-f", data.Temp().Path("compose.yaml"), "down", "--volumes", "--remove-orphans")
+	}
 
 	testCase.Run(t)
 }

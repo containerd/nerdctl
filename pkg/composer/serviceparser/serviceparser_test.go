@@ -450,6 +450,302 @@ services:
 	}
 }
 
+func TestServiceVolumeConfigToImageMount(t *testing.T) {
+	t.Parallel()
+
+	target := "/website"
+	if runtime.GOOS == "windows" {
+		target = `C:\website`
+	}
+
+	testCases := []struct {
+		name    string
+		volume  types.ServiceVolumeConfig
+		want    string
+		wantErr string
+	}{
+		{
+			name: "whole image",
+			volume: types.ServiceVolumeConfig{
+				Type:   types.VolumeTypeImage,
+				Source: "nginx:alpine",
+				Target: target,
+			},
+			want: fmt.Sprintf("type=image,source=nginx:alpine,target=%s", target),
+		},
+		{
+			name: "explicit read only",
+			volume: types.ServiceVolumeConfig{
+				Type:     types.VolumeTypeImage,
+				Source:   "nginx:alpine",
+				Target:   target,
+				ReadOnly: true,
+			},
+			want: fmt.Sprintf("type=image,source=nginx:alpine,target=%s,readonly", target),
+		},
+		{
+			name: "missing source",
+			volume: types.ServiceVolumeConfig{
+				Type:   types.VolumeTypeImage,
+				Target: target,
+			},
+			wantErr: "image volume source is missing",
+		},
+		{
+			name: "missing target",
+			volume: types.ServiceVolumeConfig{
+				Type:   types.VolumeTypeImage,
+				Source: "nginx:alpine",
+			},
+			wantErr: "volume target is missing",
+		},
+		{
+			name: "relative target",
+			volume: types.ServiceVolumeConfig{
+				Type:   types.VolumeTypeImage,
+				Source: "nginx:alpine",
+				Target: "website",
+			},
+			wantErr: `volume target must be an absolute path, got "website"`,
+		},
+		{
+			name: "image subpath",
+			volume: types.ServiceVolumeConfig{
+				Type:   types.VolumeTypeImage,
+				Source: "nginx:alpine",
+				Target: target,
+				Image:  &types.ServiceVolumeImage{SubPath: "usr/share/nginx/html"},
+			},
+			wantErr: "image.subpath is not yet supported",
+		},
+		{
+			name: "bind options",
+			volume: types.ServiceVolumeConfig{
+				Type:   types.VolumeTypeImage,
+				Source: "nginx:alpine",
+				Target: target,
+				Bind:   &types.ServiceVolumeBind{},
+			},
+			wantErr: "image volume does not support bind options",
+		},
+		{
+			name: "volume options",
+			volume: types.ServiceVolumeConfig{
+				Type:   types.VolumeTypeImage,
+				Source: "nginx:alpine",
+				Target: target,
+				Volume: &types.ServiceVolumeVolume{},
+			},
+			wantErr: "image volume does not support volume options",
+		},
+		{
+			name: "tmpfs options",
+			volume: types.ServiceVolumeConfig{
+				Type:   types.VolumeTypeImage,
+				Source: "nginx:alpine",
+				Target: target,
+				Tmpfs:  &types.ServiceVolumeTmpfs{},
+			},
+			wantErr: "image volume does not support tmpfs options",
+		},
+		{
+			name: "consistency options",
+			volume: types.ServiceVolumeConfig{
+				Type:        types.VolumeTypeImage,
+				Source:      "nginx:alpine",
+				Target:      target,
+				Consistency: "cached",
+			},
+			wantErr: "image volume does not support consistency options",
+		},
+		{
+			name: "source containing comma",
+			volume: types.ServiceVolumeConfig{
+				Type:   types.VolumeTypeImage,
+				Source: "nginx:alpine,type=bind,source=/",
+				Target: target,
+			},
+			wantErr: "image volume source must not contain commas",
+		},
+		{
+			name: "target containing comma",
+			volume: types.ServiceVolumeConfig{
+				Type:   types.VolumeTypeImage,
+				Source: "nginx:alpine",
+				Target: target + ",type=bind,source=/,target=/host",
+			},
+			wantErr: "volume target must not contain commas",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := serviceVolumeConfigToImageMount(tc.volume)
+			if tc.wantErr != "" {
+				assert.ErrorContains(t, err, tc.wantErr)
+				return
+			}
+			assert.NilError(t, err)
+			assert.Equal(t, got, tc.want)
+		})
+	}
+}
+
+func TestParseImageVolume(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("test is not compatible with windows")
+	}
+
+	const dockerComposeYAML = `
+services:
+  foo:
+    image: alpine
+    volumes:
+      - type: image
+        source: nginx:alpine
+        target: /website
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	fooSvc, err := project.GetService("foo")
+	assert.NilError(t, err)
+
+	foo, err := Parse(project, fooSvc)
+	assert.NilError(t, err)
+	assert.Equal(t, len(foo.Containers), 1)
+	assert.Assert(t, in(foo.Containers[0].RunArgs, "--mount=type=image,source=nginx:alpine,target=/website"))
+	assert.Assert(t, !in(foo.Containers[0].RunArgs, "-v=nginx:alpine:/website"))
+}
+
+func TestParseImageVolumeServiceSource(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("test is not compatible with windows")
+	}
+
+	testCases := []struct {
+		name              string
+		referencedService types.ServiceConfig
+		disabled          bool
+		wantSource        string
+		wantPlatform      string
+	}{
+		{
+			name: "explicit image",
+			referencedService: types.ServiceConfig{
+				Name:     "builder",
+				Image:    "nginx:alpine",
+				Platform: "linux/amd64",
+			},
+			wantSource:   "nginx:alpine",
+			wantPlatform: "linux/amd64",
+		},
+		{
+			name: "disabled build service",
+			referencedService: types.ServiceConfig{
+				Name:     "builder",
+				Build:    &types.BuildConfig{},
+				Platform: "linux/amd64",
+			},
+			disabled:     true,
+			wantSource:   DefaultImageName("project", "builder"),
+			wantPlatform: "linux/amd64",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			app := types.ServiceConfig{
+				Name:     "app",
+				Image:    "alpine",
+				Platform: "linux/arm64",
+				Volumes: []types.ServiceVolumeConfig{{
+					Type:   types.VolumeTypeImage,
+					Source: "builder",
+					Target: "/website",
+				}},
+			}
+			project := &types.Project{
+				Name:     "project",
+				Services: types.Services{"app": app},
+			}
+			if tc.disabled {
+				project.DisabledServices = types.Services{"builder": tc.referencedService}
+			} else {
+				project.Services["builder"] = tc.referencedService
+			}
+
+			parsed, err := Parse(project, app)
+			assert.NilError(t, err)
+			assert.Equal(t, parsed.Unparsed.Volumes[0].Source, tc.wantSource)
+			assert.DeepEqual(t, parsed.ImageMountSources, []ImageMountSource{{
+				Source:   tc.wantSource,
+				Platform: tc.wantPlatform,
+			}})
+			assert.Assert(t, in(parsed.Containers[0].RunArgs,
+				fmt.Sprintf("--mount=type=image,source=%s,target=/website", tc.wantSource)))
+			assert.Equal(t, project.Services["app"].Volumes[0].Source, "builder")
+		})
+	}
+}
+
+func TestParseImageVolumePreservesOtherVolumeTypes(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("test is not compatible with windows")
+	}
+
+	const dockerComposeYAML = `
+services:
+  foo:
+    image: alpine
+    volumes:
+      - type: image
+        source: nginx:alpine
+        target: /website
+      - type: bind
+        source: /host
+        target: /bind
+      - type: volume
+        source: named
+        target: /named
+      - type: volume
+        target: /anonymous
+      - type: tmpfs
+        target: /tmpfs
+volumes:
+  named:
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	fooSvc, err := project.GetService("foo")
+	assert.NilError(t, err)
+
+	foo, err := Parse(project, fooSvc)
+	assert.NilError(t, err)
+	assert.Equal(t, len(foo.Containers), 1)
+	runArgs := foo.Containers[0].RunArgs
+	assert.Assert(t, in(runArgs, "--mount=type=image,source=nginx:alpine,target=/website"))
+	assert.Assert(t, in(runArgs, "-v=/host:/bind"))
+	assert.Assert(t, in(runArgs, fmt.Sprintf("-v=%s_named:/named", project.Name)))
+	assert.Assert(t, in(runArgs, "-v=/anonymous"))
+	assert.Assert(t, in(runArgs, "--tmpfs=/tmpfs"))
+}
+
 func TestTmpfsVolumeLongSyntax(t *testing.T) {
 	t.Parallel()
 
