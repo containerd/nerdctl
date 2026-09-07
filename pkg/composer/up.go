@@ -57,18 +57,6 @@ func (opts UpOptions) recreateStrategy() string {
 }
 
 func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) error {
-	for shortName := range c.project.Networks {
-		if err := c.upNetwork(ctx, shortName); err != nil {
-			return err
-		}
-	}
-
-	for shortName := range c.project.Volumes {
-		if err := c.upVolume(ctx, shortName); err != nil {
-			return err
-		}
-	}
-
 	for shortName, secret := range c.project.Secrets {
 		obj := types.FileObjectConfig(secret)
 		if err := validateFileObjectConfig(obj, shortName, "service", c.project); err != nil {
@@ -102,6 +90,18 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 	err := c.project.ForEachService(services, forEachFn)
 	if err != nil {
 		return err
+	}
+
+	for shortName := range c.project.Networks {
+		if err := c.upNetwork(ctx, shortName); err != nil {
+			return err
+		}
+	}
+
+	for shortName := range c.project.Volumes {
+		if err := c.upVolume(ctx, shortName); err != nil {
+			return err
+		}
 	}
 
 	// remove orphan containers before the service has be started
