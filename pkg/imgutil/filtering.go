@@ -63,7 +63,7 @@ type Filter func([]images.Image) ([]images.Image, error)
 func ParseFilters(filters []string) (*Filters, error) {
 	f := &Filters{Labels: make(map[string]string)}
 	for _, filter := range filters {
-		tempFilterToken := strings.Split(filter, "=")
+		tempFilterToken := strings.SplitN(filter, "=", 3)
 		switch len(tempFilterToken) {
 		case 1:
 			return nil, fmt.Errorf("invalid filter %q", filter)
