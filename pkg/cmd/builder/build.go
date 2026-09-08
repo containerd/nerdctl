@@ -106,13 +106,29 @@ func Build(ctx context.Context, client *containerd.Client, options types.Builder
 		return err
 	}
 
-	if options.IidFile != "" {
+	if metaFile != "" {
 		id, err := getDigestFromMetaFile(metaFile)
 		if err != nil {
-			return err
-		}
-		if err := filesystem.WriteFile(options.IidFile, []byte(id), 0644); err != nil {
-			return err
+			// A missing digest is fatal when the user explicitly asked for an iidfile, but not
+			// in quiet mode: the requested output may legitimately have no image digest
+			// (e.g. `--output type=local`).
+			if options.IidFile != "" {
+				return err
+			}
+			log.L.WithError(err).Debug("failed to get the image digest from the build metadata file")
+		} else {
+			if options.IidFile != "" {
+				if err := filesystem.WriteFile(options.IidFile, []byte(id), 0644); err != nil {
+					return err
+				}
+			}
+			// In quiet mode, the digest of a loaded image is printed by loadImage.
+			// When the image does not need loading (e.g. buildkitd with the containerd worker),
+			// print the digest here instead, so that `nerdctl build -q` outputs the image ID.
+			// https://github.com/containerd/nerdctl/issues/2015
+			if options.Quiet && !needsLoading {
+				fmt.Fprintln(options.Stdout, id)
+			}
 		}
 	}
 
@@ -452,7 +468,11 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		log.L.Warn("ignoring deprecated flag: '--rm=false'")
 	}
 
-	if options.IidFile != "" {
+	// The metadata file is needed to obtain the image digest: when --iidfile is passed,
+	// and in quiet mode when the image is not loaded (e.g. buildkitd with the containerd worker),
+	// in which case the digest is not printed by the load path.
+	// https://github.com/containerd/nerdctl/issues/2015
+	if options.IidFile != "" || (options.Quiet && !needsLoading) {
 		file, err := os.CreateTemp("", "buildkit-meta-*")
 		if err != nil {
 			return "", nil, false, "", nil, cleanup, err

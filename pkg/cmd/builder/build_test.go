@@ -18,6 +18,7 @@ package builder
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -278,6 +279,56 @@ func TestGetEffectiveSourcePolicyFile(t *testing.T) {
 
 			result := GetEffectiveSourcePolicyFile(tc.optionValue)
 			assert.Equal(t, result, tc.expected)
+		})
+	}
+}
+
+func TestGetDigestFromMetaFile(t *testing.T) {
+	t.Parallel()
+
+	const digest = "sha256:e2c8f34a2e73f9e11c93de402b9797adf95bab1e5ffb845b2cbe18f0e19dd0f1"
+
+	tests := []struct {
+		name     string
+		content  string
+		expected string
+		wantErr  bool
+	}{
+		{
+			name:     "digest present",
+			content:  fmt.Sprintf(`{"containerimage.digest": %q}`, digest),
+			expected: digest,
+		},
+		{
+			name:    "digest missing",
+			content: `{"containerimage.config.digest": "whatever"}`,
+			wantErr: true,
+		},
+		{
+			name:    "invalid json",
+			content: `{`,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "meta.json")
+			assert.NilError(t, os.WriteFile(path, []byte(tc.content), 0o600))
+
+			id, err := getDigestFromMetaFile(path)
+			if tc.wantErr {
+				assert.Assert(t, err != nil)
+			} else {
+				assert.NilError(t, err)
+				assert.Equal(t, id, tc.expected)
+			}
+
+			// The metadata file is a temporary file, and must be removed once read.
+			_, err = os.Stat(path)
+			assert.Assert(t, os.IsNotExist(err))
 		})
 	}
 }
