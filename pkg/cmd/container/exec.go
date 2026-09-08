@@ -109,6 +109,7 @@ func execActionWithContainer(ctx context.Context, client *containerd.Client, con
 	processC <- process
 	// if detach, we should not call this defer
 	if !options.Detach {
+		process.IO().Wait()
 		defer process.Delete(ctx)
 	}
 
