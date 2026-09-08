@@ -266,7 +266,7 @@ func TestPrintImageTree(t *testing.T) {
 			w:       &buf,
 			newView: true,
 			tree:    true,
-			inUse:   map[digest.Digest]bool{targetDigest: true},
+			inUse:   map[digest.Digest]int64{targetDigest: 1},
 			// Only the amd64 manifest is actually run by a container.
 			inUseByPlatform: map[platformRef]bool{{targetDigest, "linux/amd64"}: true},
 		}
@@ -297,7 +297,7 @@ func TestPrintImageTree(t *testing.T) {
 			w:       &buf,
 			newView: true,
 			tree:    true,
-			inUse:   map[digest.Digest]bool{targetDigest: true},
+			inUse:   map[digest.Digest]int64{targetDigest: 1},
 			// A container runs the older build only.
 			inUseByPlatform: map[platformRef]bool{{targetDigest, "windows(10.0.20348.2582)/amd64"}: true},
 		}
@@ -336,7 +336,7 @@ func TestPrintImageTree(t *testing.T) {
 			w:               &buf,
 			newView:         true,
 			tree:            true,
-			inUse:           map[digest.Digest]bool{},
+			inUse:           map[digest.Digest]int64{},
 			inUseByPlatform: map[platformRef]bool{},
 		}
 		candidates := map[string]*image{
@@ -364,7 +364,7 @@ func TestPrintImageTree(t *testing.T) {
 			w:               &buf,
 			newView:         true,
 			tree:            true,
-			inUse:           map[digest.Digest]bool{},
+			inUse:           map[digest.Digest]int64{},
 			inUseByPlatform: map[platformRef]bool{},
 		}
 		candidates := map[string]*image{

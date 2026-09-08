@@ -33,6 +33,7 @@ func Command() *cobra.Command {
 	}
 	// versionCommand is not here
 	cmd.AddCommand(
+		dfCommand(),
 		EventsCommand(),
 		InfoCommand(),
 		pruneCommand(),
