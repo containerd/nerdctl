@@ -55,6 +55,43 @@ jobs:
       go-version: "1.26"
       runner: ubuntu-26.04
 
+  # Runs the gomodjail static analysis gate, that verifies that the Go modules annotated
+  # `gomodjail:confined` in go.mod cannot reach a denied capability (filesystem, network,
+  # exec, raw syscalls, ...).
+  # https://github.com/AkihiroSuda/gomodjail
+  # To run locally, use `make lint-gomodjail-all`.
+  lint-gomodjail:
+    name: "gomodjail"
+    timeout-minutes: 10
+    runs-on: ubuntu-26.04
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: "Init: install go"
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version: "1.26"
+          check-latest: true
+          # This workflow also runs on push, so the setup-go cache is disabled
+          # for zizmor's cache-poisoning audit
+          cache: false
+
+      - name: "Init: install dev-tools"
+        run: |
+          echo "::group:: make install-dev-tools"
+          make install-dev-tools
+          echo "::endgroup::"
+
+      - name: "Run"
+        run: |
+          NO_COLOR=true make lint-gomodjail-all
+
   # Lint for shell and yaml files
   lint-other:
     name: "other"

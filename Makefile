@@ -27,6 +27,7 @@ DOCKER ?= docker
 GO ?= go
 GOOS ?= $(shell $(GO) env GOOS)
 GOARCH ?= $(shell $(GO) env GOARCH)
+GOHOSTOS ?= $(shell $(GO) env GOHOSTOS)
 ifeq ($(GOOS),windows)
 	BIN_EXT := .exe
 endif
@@ -83,9 +84,9 @@ endef
 ##########################
 all: binaries
 
-lint: lint-go-all lint-yaml lint-shell lint-commits lint-mod lint-licenses-all
+lint: lint-go-all lint-yaml lint-shell lint-commits lint-mod lint-gomodjail-all lint-licenses-all
 
-fix: fix-mod fix-go-all
+fix: fix-mod fix-gomodjail fix-go-all
 
 # TODO: fix race task and add it
 test: test-unit # test-unit-race test-unit-bench
@@ -175,6 +176,30 @@ lint-mod:
 		&& go mod tidy --diff
 	$(call footer, $@)
 
+# gomodjail statically verifies that the modules annotated `gomodjail:confined` in go.mod
+# cannot reach a denied capability (filesystem, network, exec, raw syscalls, ...).
+# https://github.com/AkihiroSuda/gomodjail
+lint-gomodjail:
+	$(call title, $@: $(GOOS)/$(GOARCH))
+ifeq ($(GOHOSTOS),windows)
+	@echo "Skipped: gomodjail does not support Windows hosts"
+else
+	@cd $(MAKEFILE_DIR) \
+		&& gomodjail analyze --goos=$(GOOS) --goarch=$(GOARCH) ./...
+endif
+	$(call footer, $@)
+
+# The confinement is only enforced for linux/amd64 and linux/arm64, as these are the only
+# platforms for which the gomodjail-packed binary is built (see Dockerfile), and the only
+# ones supported by the gomodjail dynamic mode. The verdicts are platform-dependent, hence
+# both architectures have to be analyzed.
+lint-gomodjail-all:
+	$(call title, $@)
+	@cd $(MAKEFILE_DIR) \
+		&& GOOS=linux GOARCH=amd64 make lint-gomodjail \
+		&& GOOS=linux GOARCH=arm64 make lint-gomodjail
+	$(call footer, $@)
+
 # FIXME: go-licenses cannot find LICENSE from root of repo when submodule is imported:
 # https://github.com/google/go-licenses/issues/186
 # This is impacting gotest.tools
@@ -221,6 +246,19 @@ fix-mod:
 		&& go mod tidy
 	$(call footer, $@)
 
+# Downgrades the `gomodjail:confined` annotation of the modules that fail `make lint-gomodjail-all`
+# to `gomodjail:unconfined`, so that the annotations in go.mod stay reviewable.
+fix-gomodjail:
+	$(call title, $@)
+ifeq ($(GOHOSTOS),windows)
+	@echo "Skipped: gomodjail does not support Windows hosts"
+else
+	@cd $(MAKEFILE_DIR) \
+		&& gomodjail fix --goos=linux --goarch=amd64 ./... \
+		&& gomodjail fix --goos=linux --goarch=arm64 ./...
+endif
+	$(call footer, $@)
+
 ##########################
 # Development tools installation
 ##########################
@@ -238,6 +276,13 @@ install-dev-tools:
 		&& go install github.com/vbatts/git-validation@7b60e35b055dd2eab5844202ffffad51d9c93922 \
 		&& go install github.com/containerd/ltag@66e6a514664ee2d11a470735519fa22b1a9eaabd \
 		&& go install gotest.tools/gotestsum@0d9599e513d70e5792bb9334869f82f6e8b53d4d
+	# gomodjail: v2.0.1 (2026-09-09)
+	# Not installed on Windows hosts: gomodjail does not build there, as its dynamic mode
+	# is compiled in unconditionally (https://github.com/AkihiroSuda/gomodjail)
+ifneq ($(GOHOSTOS),windows)
+	@cd $(MAKEFILE_DIR) \
+		&& go install github.com/AkihiroSuda/gomodjail/v2/cmd/gomodjail@5924a4079d0f70459a10973f715238dc336478ea
+endif
 	@echo "Remember to add \$$HOME/go/bin to your path"
 	$(call footer, $@)
 
@@ -319,8 +364,8 @@ artifacts: clean
 	install \
 	uninstall \
 	clean \
-	lint-go lint-go-all lint-yaml lint-shell lint-commits lint-mod lint-licenses lint-licenses-all \
-	fix-go fix-go-all fix-mod \
+	lint-go lint-go-all lint-yaml lint-shell lint-commits lint-mod lint-gomodjail lint-gomodjail-all lint-licenses lint-licenses-all \
+	fix-go fix-go-all fix-mod fix-gomodjail \
 	install-dev-tools \
 	test-unit test-unit-race test-unit-bench \
 	artifacts
