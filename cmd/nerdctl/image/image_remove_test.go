@@ -150,6 +150,38 @@ func TestRemove(t *testing.T) {
 			},
 		},
 		{
+			Description: "Issue #4109 - force-removing a second running image's image does not collide with the first dangling ref",
+			NoParallel:  true,
+			Require: require.All(
+				require.Not(nerdtest.Docker),
+			),
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "--quiet", "--pull", "always", "-d", "--name", data.Identifier()+"-1", testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("run", "--quiet", "--pull", "always", "-d", "--name", data.Identifier()+"-2", testutil.BusyboxImage, "sleep", nerdtest.Infinity)
+				// Force-remove the first running image's image now: this creates a dangling ref
+				// to keep its layers alive. Before the fix, that ref was unconditionally named
+				// ":", so the second force-remove below (the command under test) would fail
+				// creating its own dangling ref with "image \":\": already exists".
+				helpers.Ensure("rmi", "-f", testutil.CommonImage)
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier()+"-1")
+				helpers.Anyhow("rm", "-f", data.Identifier()+"-2")
+			},
+			Command: test.Command("rmi", "-f", testutil.BusyboxImage),
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Errors:   []error{},
+					Output: func(stdout string, t tig.T) {
+						helpers.Command("images").Run(&test.Expected{
+							Output: expect.Contains("<untagged>"),
+						})
+					},
+				}
+			},
+		},
+		{
 			Description: "Remove image with created container - without -f",
 			NoParallel:  true,
 			Setup: func(data test.Data, helpers test.Helpers) {
