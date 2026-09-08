@@ -71,7 +71,7 @@ require (
 	golang.org/x/term v0.45.0 //gomodjail:unconfined
 	golang.org/x/text v0.41.0
 	gotest.tools/v3 v3.5.2
-	tags.cncf.io/container-device-interface v1.1.1-0.20260720132747-49ac08dcf160 //gomodjail:unconfined
+	tags.cncf.io/container-device-interface v1.1.1 //gomodjail:unconfined
 )
 
 require (
@@ -127,18 +127,14 @@ require (
 	go.opentelemetry.io/otel v1.45.0 // indirect
 	go.opentelemetry.io/otel/metric v1.45.0 // indirect
 	go.opentelemetry.io/otel/trace v1.45.0 // indirect
-	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
-	golang.org/x/mod v0.38.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
 	//gomodjail:unconfined
 	google.golang.org/grpc v1.83.1 // indirect
 	//gomodjail:unconfined
 	google.golang.org/protobuf v1.36.12 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
-	sigs.k8s.io/yaml v1.6.0 // indirect
-	tags.cncf.io/container-device-interface/specs-go v1.1.0 // indirect
+	tags.cncf.io/container-device-interface/specs-go v1.1.1 // indirect
 )
 
 require go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
