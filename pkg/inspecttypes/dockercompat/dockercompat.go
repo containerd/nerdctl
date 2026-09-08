@@ -805,7 +805,7 @@ func statusFromNative(x containerd.Status, labels map[string]string) string {
 	}
 }
 
-func networkSettingsFromNative(n *native.NetNS, _ *specs.Spec) (*NetworkSettings, error) {
+func networkSettingsFromNative(n *native.NetNS, spec *specs.Spec) (*NetworkSettings, error) {
 	res := &NetworkSettings{
 		Networks: make(map[string]*NetworkEndpointSettings),
 	}
@@ -813,6 +813,19 @@ func networkSettingsFromNative(n *native.NetNS, _ *specs.Spec) (*NetworkSettings
 	res.Ports = &resPortMap
 	if n == nil {
 		return res, nil
+	}
+
+	// CNI names the interface for the i-th network "eth<i>" (see go-cni
+	// getIfName), in the order the container's networks were attached. Recover
+	// that ordered list from the spec annotations so each endpoint can be keyed
+	// by its real network name instead of a synthesized "unknown-*" placeholder.
+	var networks []string
+	if spec != nil {
+		if networksJSON := spec.Annotations[labels.Networks]; networksJSON != "" {
+			if err := json.Unmarshal([]byte(networksJSON), &networks); err != nil {
+				return nil, fmt.Errorf("failed to parse networks annotation %q: %w", networksJSON, err)
+			}
+		}
 	}
 
 	var primary *NetworkEndpointSettings
@@ -844,9 +857,7 @@ func networkSettingsFromNative(n *native.NetNS, _ *specs.Spec) (*NetworkSettings
 				nes.GlobalIPv6PrefixLen = ones
 			}
 		}
-		// TODO: set CNI name when possible
-		fakeDockerNetworkName := fmt.Sprintf("unknown-%s", x.Name)
-		res.Networks[fakeDockerNetworkName] = nes
+		res.Networks[cniNetworkName(x.Name, networks)] = nes
 
 		nports, err := convertToNatPort(n.PortMappings)
 		if err != nil {
@@ -869,6 +880,21 @@ func networkSettingsFromNative(n *native.NetNS, _ *specs.Spec) (*NetworkSettings
 		res.DefaultNetworkSettings.GlobalIPv6PrefixLen = primary.GlobalIPv6PrefixLen
 	}
 	return res, nil
+}
+
+// cniNetworkName maps a container interface name to the CNI network it belongs
+// to. go-cni names the i-th network's interface "<prefix><i>" (defaulting to
+// "eth0", "eth1", ...; see go-cni getIfName), so an "eth<i>" interface resolves
+// to networks[i]. Anything that does not fit that scheme (host networking, an
+// interface not created by CNI, or a missing/short networks list) falls back to
+// the historical "unknown-<name>" key.
+func cniNetworkName(ifName string, networks []string) string {
+	if idx, ok := strings.CutPrefix(ifName, cni.DefaultPrefix); ok {
+		if i, err := strconv.Atoi(idx); err == nil && i >= 0 && i < len(networks) {
+			return networks[i]
+		}
+	}
+	return fmt.Sprintf("unknown-%s", ifName)
 }
 
 func cpuSettingsFromNative(sp *specs.Spec) (*CPUSettings, error) {
