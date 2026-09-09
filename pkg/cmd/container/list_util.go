@@ -81,16 +81,20 @@ func (cl *containerFilterContext) foldFilters(ctx context.Context, filters []str
 		{"exited", cl.foldExitedFilter},
 	}
 	for _, filter := range filters {
+		// A filter is "key=value"; the key must match a supported filter type
+		// exactly. Matching on a prefix instead would misroute filters such as
+		// "labels=x" to the "label" handler, whereas Docker rejects them as
+		// unknown filters.
+		key, value, hasValue := strings.Cut(filter, "=")
 		invalidFilter := true
 		for _, folder := range folders {
-			if !strings.HasPrefix(filter, folder.filterType) {
+			if key != folder.filterType {
 				continue
 			}
-			splited := strings.SplitN(filter, "=", 2)
-			if len(splited) != 2 {
-				return fmt.Errorf("invalid argument \"%s\" for \"-f, --filter\": bad format of filter (expected name=value)", folder.filterType)
+			if !hasValue {
+				return fmt.Errorf("invalid argument \"%s\" for \"-f, --filter\": bad format of filter (expected name=value)", filter)
 			}
-			if err := folder.foldFunc(ctx, filter, splited[1]); err != nil {
+			if err := folder.foldFunc(ctx, filter, value); err != nil {
 				return err
 			}
 			invalidFilter = false

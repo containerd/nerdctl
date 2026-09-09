@@ -17,6 +17,7 @@
 package container
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -793,6 +794,41 @@ func containerListFilterSubTests() []*test.Case {
 			},
 		},
 	}
+}
+
+// TestContainerListWithInvalidFilter checks that `nerdctl ps --filter` rejects
+// unknown filter keys, including ones that merely share a prefix with a
+// supported key, the same way Docker does.
+func TestContainerListWithInvalidFilter(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "unknown filter sharing a prefix with a supported one is rejected",
+			// "labels" is not a supported filter; it must not be routed to the
+			// "label" handler.
+			Command: test.Command("ps", "-a", "--filter", "labels=foo"),
+			Expected: test.Expects(expect.ExitCodeGenericFail, []error{
+				errors.New("invalid filter 'labels=foo'"),
+			}, nil),
+		},
+		{
+			Description: "wholly unknown filter is rejected",
+			Command:     test.Command("ps", "-a", "--filter", "bogus=foo"),
+			Expected: test.Expects(expect.ExitCodeGenericFail, []error{
+				errors.New("invalid filter 'bogus=foo'"),
+			}, nil),
+		},
+		{
+			Description: "supported filter without a value is a format error",
+			Command:     test.Command("ps", "-a", "--filter", "label"),
+			Expected: test.Expects(expect.ExitCodeGenericFail, []error{
+				errors.New("bad format of filter (expected name=value)"),
+			}, nil),
+		},
+	}
+
+	testCase.Run(t)
 }
 
 func TestContainerListCheckCreatedTime(t *testing.T) {
