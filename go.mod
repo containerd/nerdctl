@@ -18,7 +18,7 @@ require (
 	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
 	github.com/containerd/go-cni v1.1.14 //gomodjail:unconfined
 	github.com/containerd/imgcrypt/v2 v2.0.3 //gomodjail:unconfined
-	github.com/containerd/log v0.1.0
+	github.com/containerd/log v0.2.0
 	github.com/containerd/nerdctl/mod/tigron v0.0.0
 	github.com/containerd/nydus-snapshotter v0.15.15 //gomodjail:unconfined
 	github.com/containerd/platforms v1.0.0-rc.5 //gomodjail:unconfined
