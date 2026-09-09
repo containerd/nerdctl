@@ -421,6 +421,9 @@ type ContainerCommitOptions struct {
 	Compression CompressionType
 	// Format specifies the image format for the committed image (docker or oci)
 	Format ImageFormat
+	// Timeout is the maximum duration for the commit operation (lease expiration).
+	// Defaults to 1 hour. Set to 0 for no timeout (24h lease).
+	Timeout time.Duration
 	// Embed EstargzOptions for eStargz conversion options
 	EstargzOptions
 	// Embed ZstdChunkedOptions for zstd:chunked conversion options
