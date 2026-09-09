@@ -57,19 +57,19 @@ require (
 	github.com/opencontainers/selinux v1.15.1
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/rootless-containers/bypass4netns v0.4.2 //gomodjail:unconfined
-	github.com/rootless-containers/rootlesskit/v3 v3.1.0 //gomodjail:unconfined
+	github.com/rootless-containers/rootlesskit/v3 v3.2.0-beta.0 //gomodjail:unconfined
 	github.com/spf13/cobra v1.10.2 //gomodjail:unconfined
 	github.com/spf13/pflag v1.0.10 //gomodjail:unconfined
 	github.com/vishvananda/netlink v1.3.1 //gomodjail:unconfined
 	github.com/vishvananda/netns v0.0.5 //gomodjail:unconfined
 	github.com/yuchanns/srslog v1.1.0
 	go.yaml.in/yaml/v3 v3.0.5
-	golang.org/x/crypto v0.56.0
+	golang.org/x/crypto v0.57.0
 	golang.org/x/net v0.58.0
 	golang.org/x/sync v0.23.0 //gomodjail:unconfined
 	golang.org/x/sys v0.48.0 //gomodjail:unconfined
-	golang.org/x/term v0.45.0 //gomodjail:unconfined
-	golang.org/x/text v0.41.0
+	golang.org/x/term v0.46.0 //gomodjail:unconfined
+	golang.org/x/text v0.42.0
 	gotest.tools/v3 v3.5.2
 	tags.cncf.io/container-device-interface v1.1.1 //gomodjail:unconfined
 )
