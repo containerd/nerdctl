@@ -31,6 +31,13 @@ eg:
 or
 `LINT_COMMIT_RANGE=target_branch..HEAD make lint`
 
+`make lint` also runs [gomodjail](https://github.com/AkihiroSuda/gomodjail) in its static analysis
+mode (`make lint-gomodjail-all`), to verify that the modules annotated `gomodjail:confined` in
+`go.mod` cannot reach a denied capability (filesystem, network, process execution, raw syscalls,
+OS state modification, or cgo). If a dependency bump makes a confined module reach one of those,
+`make fix` (or `make fix-gomodjail`) downgrades its annotation to `gomodjail:unconfined`, so that
+the decision stays visible in `go.mod`.
+
 ## Unit testing
 
 ```
