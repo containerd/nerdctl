@@ -166,7 +166,7 @@ install-dev-tools:
 	$(call title, $@)
 	# golangci: v2.13.2 (2026-08-27)
 	# git-validation: v1.2.2 (2025-02-26)
-	# ltag: main (2025-03-04)
+	# ltag: v0.3.0 (2025-03-04)
 	# go-licenses: v2.0.1 (2025-09-08)
 	@cd $(MAKEFILE_DIR) \
 		&& go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@27774aaf853a4fd21f1dd5e69439459dc1b26e68 \
