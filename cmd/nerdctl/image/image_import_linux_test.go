@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -41,6 +42,20 @@ func minimalRootfsTar(t *testing.T) *bytes.Buffer {
 	t.Helper()
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
+	assert.NilError(t, tw.Close())
+	return buf
+}
+
+// minimalImageArchiveTar returns a tar that looks like a standard image archive
+// (it carries a manifest.json), used to exercise the --change rejection path.
+func minimalImageArchiveTar(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	buf := new(bytes.Buffer)
+	tw := tar.NewWriter(buf)
+	content := []byte("[]")
+	assert.NilError(t, tw.WriteHeader(&tar.Header{Name: "manifest.json", Size: int64(len(content)), Mode: 0644}))
+	_, err := tw.Write(content)
+	assert.NilError(t, err)
 	assert.NilError(t, tw.Close())
 	return buf
 }
@@ -140,6 +155,55 @@ func TestImageImport(t *testing.T) {
 							assert.Equal(t, img.Comment, "A message")
 						},
 					),
+				}
+			},
+		},
+		{
+			Description: "image import with change",
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rmi", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("import",
+					"--change", `CMD ["echo","hi"]`,
+					"--change", "ENV FOO=bar",
+					"--change", "WORKDIR /srv",
+					"--change", "EXPOSE 8080",
+					"-", data.Identifier())
+				cmd.Feed(bytes.NewReader(minimalRootfsTar(t).Bytes()))
+				return cmd
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				identifier := data.Identifier() + ":latest"
+				return &test.Expected{
+					Output: expect.All(
+						func(stdout string, t tig.T) {
+							img := nerdtest.InspectImage(helpers, identifier)
+							assert.Assert(t, img.Config != nil)
+							assert.DeepEqual(t, img.Config.Cmd, []string{"echo", "hi"})
+							assert.Assert(t, slices.Contains(img.Config.Env, "FOO=bar"))
+							assert.Equal(t, img.Config.WorkingDir, "/srv")
+							_, ok := img.Config.ExposedPorts["8080/tcp"]
+							assert.Assert(t, ok)
+						},
+					),
+				}
+			},
+		},
+		{
+			Description: "image import --change rejected for a standard image archive",
+			// nerdctl-only: Docker's import treats any tarball as a rootfs and has
+			// no standard-image-archive rejection.
+			Require: require.Not(nerdtest.Docker),
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command("import", "--change", `CMD ["echo"]`, "-", data.Identifier())
+				cmd.Feed(bytes.NewReader(minimalImageArchiveTar(t).Bytes()))
+				return cmd
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeGenericFail,
+					Errors:   []error{errors.New("filesystem archive")},
 				}
 			},
 		},

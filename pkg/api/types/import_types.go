@@ -28,4 +28,7 @@ type ImageImportOptions struct {
 	Reference string
 	Message   string
 	Platform  string
+	// Changes holds Dockerfile-style instructions (--change) applied to the
+	// imported image's config, e.g. `CMD ["echo"]` or `ENV FOO=bar`.
+	Changes []string
 }

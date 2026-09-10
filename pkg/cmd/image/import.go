@@ -49,6 +49,12 @@ import (
 )
 
 func Import(ctx context.Context, client *containerd.Client, options types.ImageImportOptions) (string, error) {
+	// Validate --change before any layer work, so a syntactic error fails fast
+	// instead of after the (possibly large) layer is compressed and committed.
+	if err := applyChanges(&ocispec.ImageConfig{}, options.Changes); err != nil {
+		return "", err
+	}
+
 	prefix := options.Reference
 	if prefix == "" {
 		prefix = fmt.Sprintf("import-%s", time.Now().Format("2006-01-02"))
@@ -111,6 +117,12 @@ func ensureOCIArchive(ctx context.Context, client *containerd.Client, r io.ReadC
 
 	combined := io.NopCloser(io.MultiReader(buf, r))
 	if isStandardArchive {
+		// A standard image archive already carries its own config; --change only
+		// applies to a filesystem (rootfs) import, which builds a fresh config.
+		if len(options.Changes) > 0 {
+			r.Close()
+			return nil, func() {}, fmt.Errorf("--change is only supported when importing a filesystem archive, not a standard image archive")
+		}
 		return combined, func() { r.Close() }, nil
 	}
 
@@ -266,6 +278,11 @@ func buildImageConfig(diffID digest.Digest, options types.ImageImportOptions) ([
 			Created: &created,
 			Comment: options.Message,
 		}},
+	}
+
+	// Apply any --change instructions to the fresh config.
+	if err := applyChanges(&imgConfig.Config, options.Changes); err != nil {
+		return nil, "", err
 	}
 
 	configJSON, err := json.Marshal(imgConfig)
