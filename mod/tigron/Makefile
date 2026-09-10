@@ -167,14 +167,12 @@ install-dev-tools:
 	# golangci: v2.13.2 (2026-08-27)
 	# git-validation: v1.2.2 (2025-02-26)
 	# ltag: main (2025-03-04)
-	# go-licenses: v2.0.0-alpha.1 (2024-06-27)
-	# stubbing go-licenses with dependency upgrade due to non-compatibility with golang 1.25rc1
-	# Issue: https://github.com/google/go-licenses/issues/312
+	# go-licenses: v2.0.1 (2025-09-08)
 	@cd $(MAKEFILE_DIR) \
 		&& go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@27774aaf853a4fd21f1dd5e69439459dc1b26e68 \
 		&& go install github.com/vbatts/git-validation@7b60e35b055dd2eab5844202ffffad51d9c93922 \
 		&& go install github.com/containerd/ltag@66e6a514664ee2d11a470735519fa22b1a9eaabd \
-		&& go install github.com/Shubhranshu153/go-licenses/v2@f8c503d1357dffb6c97ed3b94e912ab294dde24a
+		&& go install github.com/google/go-licenses/v2@3e084b0caf710f7bfead967567539214f598c0a2
 	@echo "Remember to add \$$HOME/go/bin to your path"
 	$(call footer, $@)
 
