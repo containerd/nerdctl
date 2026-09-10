@@ -153,6 +153,6 @@ jobs:
       no-hyperv: ${{ matrix.canary && true || false }}
       go-version: 1.26
       windows-cni-version: v0.3.3
-      docker-version: 5:29.6.1-1~ubuntu.26.04~resolute
+      docker-version: 5:29.8.0-1~ubuntu.26.04~resolute
       windows-containerd-version: 2.4.0-beta.0
       windows-containerd-sha: ae0df8baf1556a292da69b185d4912ddb955ecc2e47d1e0b754233b2df93acc9
