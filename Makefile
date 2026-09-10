@@ -204,12 +204,16 @@ lint-gomodjail-all:
 # https://github.com/google/go-licenses/issues/186
 # This is impacting gotest.tools
 # FIXME: go-base36 is multi-license (MIT/Apache), using a custom boilerplate file that go-licenses fails to understand
+# filepath-securejoin is MPL-2.0, which is not in the allowed list, but is explicitly allowed by CNCF:
+# https://github.com/cncf/foundation/issues/1154
+# It is a transitive dependency (pulled in by go-selinux) that cannot currently be removed.
 lint-licenses:
 	$(call title, $@: $(GOOS))
 	@cd $(MAKEFILE_DIR) \
 		&& go-licenses check --include_tests --allowed_licenses=Apache-2.0,BSD-2-Clause,BSD-2-Clause-FreeBSD,BSD-3-Clause,MIT,ISC,Python-2.0,PostgreSQL,X11,Zlib \
 		  --ignore gotest.tools \
 		  --ignore github.com/multiformats/go-base36 \
+		  --ignore github.com/cyphar/filepath-securejoin \
 		  ./...
 	$(call footer, $@)
 
