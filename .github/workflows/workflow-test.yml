@@ -36,8 +36,8 @@ jobs:
       timeout: 10
       go-version: 1.26
       windows-cni-version: v0.3.3
-      linux-cni-version: v1.7.1
-      linux-cni-sha: 1a28a0506bfe5bcdc981caf1a49eeab7e72da8321f1119b7be85f22621013098
+      linux-cni-version: v1.9.1
+      linux-cni-sha: b98f74a0f8522f0a83867178729c1aa70f2158f90c45a2ca8fa791db1c76b303
 
   # This job builds the dependency target of the test-image for all supported architectures and cache it in GHA
   build-dependencies:
