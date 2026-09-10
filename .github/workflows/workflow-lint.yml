@@ -17,7 +17,7 @@ jobs:
   # 3. for canary (if there is a canary go version), does lint for all supported goos
   lint-go:
     name: "go${{ inputs.hack }}"
-    uses: ./.github/workflows/job-lint-go.yml
+    uses: $/.github/workflows/job-lint-go.yml
     strategy:
       fail-fast: false
       matrix:
@@ -49,7 +49,7 @@ jobs:
   # Run common project checks (commits, licenses, etc)
   lint-project-checks:
     name: "project checks"
-    uses: ./.github/workflows/job-lint-project.yml
+    uses: $/.github/workflows/job-lint-project.yml
     with:
       timeout: 5
       go-version: "1.26"
@@ -58,7 +58,7 @@ jobs:
   # Lint for shell and yaml files
   lint-other:
     name: "other"
-    uses: ./.github/workflows/job-lint-other.yml
+    uses: $/.github/workflows/job-lint-other.yml
     with:
       timeout: 5
       runner: ubuntu-26.04
@@ -66,7 +66,7 @@ jobs:
   # Verify we can actually build on all supported platforms, and a bunch of architectures
   build-for-go:
     name: "build for${{ inputs.hack }}"
-    uses: ./.github/workflows/job-build.yml
+    uses: $/.github/workflows/job-build.yml
     strategy:
       fail-fast: false
       matrix:

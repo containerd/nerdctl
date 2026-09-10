@@ -16,7 +16,7 @@ jobs:
   test-unit:
     # Note: inputs.hack is undefined - its purpose is to prevent GitHub Actions from displaying all matrix variants as part of the name.
     name: "unit${{ inputs.hack }}"
-    uses: ./.github/workflows/job-test-unit.yml
+    uses: $/.github/workflows/job-test-unit.yml
     strategy:
       fail-fast: false
       matrix:
@@ -42,7 +42,7 @@ jobs:
   # This job builds the dependency target of the test-image for all supported architectures and cache it in GHA
   build-dependencies:
     name: "dependencies${{ inputs.hack }}"
-    uses: ./.github/workflows/job-test-dependencies.yml
+    uses: $/.github/workflows/job-test-dependencies.yml
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +60,7 @@ jobs:
 
   test-integration-host-linux:
     name: "in-host${{ inputs.hack }}"
-    uses: ./.github/workflows/job-test-in-host.yml
+    uses: $/.github/workflows/job-test-in-host.yml
     needs: build-dependencies
     strategy:
       fail-fast: false
@@ -129,7 +129,7 @@ jobs:
 
   test-integration-host:
     name: "in-host${{ inputs.hack }}"
-    uses: ./.github/workflows/job-test-in-host.yml
+    uses: $/.github/workflows/job-test-in-host.yml
     strategy:
       fail-fast: false
       matrix:
