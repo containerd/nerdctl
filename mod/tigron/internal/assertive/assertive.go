@@ -77,7 +77,8 @@ func Contains(testing tig.T, actual, contains string, msg ...string) {
 		strings.Contains(actual, contains),
 		actual,
 		fmt.Sprintf("~= `%v`", contains),
-		msg...)
+		msg...,
+	)
 }
 
 // DoesNotContain fails a test if the actual string contains the other string.
@@ -89,7 +90,8 @@ func DoesNotContain(testing tig.T, actual, contains string, msg ...string) {
 		!strings.Contains(actual, contains),
 		actual,
 		fmt.Sprintf("! ~= `%v`", contains),
-		msg...)
+		msg...,
+	)
 }
 
 // HasSuffix fails a test if the string does not end with suffix.
@@ -101,7 +103,8 @@ func HasSuffix(testing tig.T, actual, suffix string, msg ...string) {
 		strings.HasSuffix(actual, suffix),
 		actual,
 		fmt.Sprintf("`%v` $", suffix),
-		msg...)
+		msg...,
+	)
 }
 
 // HasPrefix fails a test if the string does not start with prefix.
@@ -113,7 +116,8 @@ func HasPrefix(testing tig.T, actual, prefix string, msg ...string) {
 		strings.HasPrefix(actual, prefix),
 		actual,
 		fmt.Sprintf("^ `%v`", prefix),
-		msg...)
+		msg...,
+	)
 }
 
 // Match fails a test if the string does not match the regexp.

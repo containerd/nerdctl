@@ -47,7 +47,9 @@ func (cl *ConcreteLogger) Log(args ...any) {
 		cl.wrappedLog.Log(
 			append(
 				append([]any{"[" + time.Now().Format(time.RFC3339) + "]"}, cl.meta...),
-				args...)...)
+				args...,
+			)...,
+		)
 	}
 }
 

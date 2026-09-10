@@ -51,6 +51,10 @@ linters:
         - pattern: ^os\.ReadFile.*$
           pkg: github.com/containerd/nerdctl/v2/pkg
           msg: use filesystem.ReadFile instead of os.ReadFile
+    govet:
+      disable:
+        # 1 occurrence. Suggests replacing the legacy `reflect.Ptr` alias by `reflect.Pointer`.
+        - inline
     staticcheck:
       checks:
         # Below is the default set
@@ -69,11 +73,18 @@ linters:
         # 10 occurrences.
         # Convert if/else-if chain to tagged switch https://staticcheck.dev/docs/checks#QF1003
         - "-QF1003"
+        # 4 occurrences.
+        # Use fmt.Fprintf instead of WriteString(fmt.Sprintf(...)) https://staticcheck.dev/docs/checks#QF1012
+        - "-QF1012"
 
         ##### These have been vetted to be disabled.
         # 55 occurrences. Omit embedded fields from selector expression https://staticcheck.dev/docs/checks#QF1008
         # Usefulness is questionable.
         - "-QF1008"
+        # 19 occurrences, on non-Linux GOOS only, and all false positives: the rootlessutil
+        # stubs for those platforms unconditionally return an error, so the callers' error
+        # checks do look "always true". https://staticcheck.dev/docs/checks#SA4023
+        - "-SA4023"
 
     revive:
       enable-all-rules: true
@@ -136,6 +147,21 @@ linters:
           # 441 occurrences (at default 7). We should try to lower it (involves significant refactoring).
         - name: var-naming
           # 1 occurrence.
+          disabled: true
+        - name: use-slices-sort
+          # 19 occurrences. Would replace sort.Strings/sort.Slice by the slices package.
+          disabled: true
+        - name: identical-switch-branches
+          # 7 occurrences.
+          disabled: true
+        - name: use-waitgroup-go
+          # 4 occurrences. Would replace wg.Add()/go/wg.Done() by wg.Go().
+          disabled: true
+        - name: identical-ifelseif-branches
+          # 1 occurrence.
+          disabled: true
+        - name: package-naming
+          # 1 occurrence (pkg/api/types). Renaming a public package is not worth the churn.
           disabled: true
 
         ##### P2: nice to have.

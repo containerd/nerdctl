@@ -36,6 +36,7 @@ linters:
     # These are the linters that we know we do not want
     - cyclop            # provided by revive
     - exhaustruct       # does not serve much of a purpose
+    - exhaustruct_v5    # ibid (exhaustruct was renamed in golangci-lint v2.13)
     - errcheck          # provided by revive
     - errchkjson        # forces handling of json err (eg: prevents _), which is too much
     - forcetypeassert   # provided by revive
@@ -55,8 +56,10 @@ linters:
     - testifylint       # no testify
     - zerologlint       # no zerolog
     - funcorder
+    - modernize         # 8 occurrences. New in golangci-lint v2.13. Not reviewed yet.
     - noctx
     - noinlineerr
+    - perfsprint        # 1 occurrence. New in golangci-lint v2.13. Not reviewed yet.
     - wsl_v5
   settings:
     interfacebloat:
@@ -101,6 +104,12 @@ linters:
           disabled: true
         - name: var-naming
           disabled: true
+        - name: identical-switch-branches
+          # 2 occurrences.
+          disabled: true
+        - name: package-naming
+          # 1 occurrence (utils). Renaming a public package is not worth the churn.
+          disabled: true
     depguard:
       rules:
         main:
@@ -137,7 +146,11 @@ formatters:
       no-prefix-comments: true
       custom-order: true
     gofumpt:
-      extra-rules: true
+      # Formerly `extra-rules: true`, which is deprecated and covers exactly these three.
+      extra:
+        group-params: true
+        clothe-returns: true
+        balance-calls: true
     golines:
       max-len: 120
       tab-len: 4
