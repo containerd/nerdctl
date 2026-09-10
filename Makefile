@@ -264,18 +264,17 @@ endif
 ##########################
 install-dev-tools:
 	$(call title, $@)
-	# golangci: v2.4.0 (2025-08-14)
-	# git-validation: main (2025-02-25)
-	# ltag: main (2025-03-04)
-	# go-licenses: v2.0.0-alpha.1 (2024-06-27)
-	# stubbing go-licenses with dependency upgrade due to non-compatibility with golang 1.25rc1
-	# Issue: https://github.com/google/go-licenses/issues/312
+	# golangci: v2.13.2 (2026-08-27)
+	# git-validation: v1.2.2 (2025-02-26)
+	# ltag: v0.3.0 (2025-03-04)
+	# gotestsum: v1.13.0 (2025-09-11)
+	# go-licenses: v2.0.1 (2025-09-08)
 	@cd $(MAKEFILE_DIR) \
-	        && go install github.com/Shubhranshu153/go-licenses/v2@f8c503d1357dffb6c97ed3b94e912ab294dde24a \
-		&& go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@43d03392d7dc3746fa776dbddd66dfcccff70651 \
+	        && go install github.com/google/go-licenses/v2@3e084b0caf710f7bfead967567539214f598c0a2 \
+		&& go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@27774aaf853a4fd21f1dd5e69439459dc1b26e68 \
 		&& go install github.com/vbatts/git-validation@7b60e35b055dd2eab5844202ffffad51d9c93922 \
 		&& go install github.com/containerd/ltag@66e6a514664ee2d11a470735519fa22b1a9eaabd \
-		&& go install gotest.tools/gotestsum@0d9599e513d70e5792bb9334869f82f6e8b53d4d
+		&& go install gotest.tools/gotestsum@c4a0df2e75a225d979a444342dd3db752b53619f
 	# gomodjail: v2.0.1 (2026-09-09)
 	# Not installed on Windows hosts: gomodjail does not build there, as its dynamic mode
 	# is compiled in unconditionally (https://github.com/AkihiroSuda/gomodjail)
