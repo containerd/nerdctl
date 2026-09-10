@@ -180,7 +180,7 @@ func (gc *GenericCommand) Run(expect *Expected) {
 	}
 
 	debug = append(debug,
-		[]any{"➡️", commandDecorator + " " + gc.cmd.Binary + " " + strings.Join(gc.cmd.Args, " ")},
+		[]any{"➡️", commandDecorator + " " + gc.cmd.Binary + " " + strings.Join(gc.cmd.Args, " ") + " " + time.Now().Format("2006-01-02 15:04:05.000")},
 	)
 
 	// Wait for the command and if Err is not nil, append it to the debug information
