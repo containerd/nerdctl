@@ -18,7 +18,7 @@
 
 set -o errexit -o errtrace -o functrace -o nounset -o pipefail
 
-WINCNI_VERSION="${WINCNI_VERSION:-v0.3.1}"
+WINCNI_VERSION="${WINCNI_VERSION:-v0.3.3}"
 
 git config --global advice.detachedHead false
 
