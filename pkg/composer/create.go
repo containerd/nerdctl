@@ -204,10 +204,7 @@ func (c *Composer) createServiceContainer(ctx context.Context, service *servicep
 		log.G(ctx).Debugf("Running %v", cmd.Args)
 	}
 
-	// FIXME
-	if service.Unparsed.StdinOpen != service.Unparsed.Tty {
-		return "", fmt.Errorf("currently StdinOpen(-i) and Tty(-t) should be same")
-	}
+	// StdinOpen(-i) and Tty(-t) can be specified independently
 
 	err = cmd.Run()
 	if err != nil {
