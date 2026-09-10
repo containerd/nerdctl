@@ -265,7 +265,7 @@ endif
 install-dev-tools:
 	$(call title, $@)
 	# golangci: v2.13.2 (2026-08-27)
-	# git-validation: main (2025-02-25)
+	# git-validation: v1.2.2 (2025-02-26)
 	# ltag: main (2025-03-04)
 	# gotestsum: v1.13.0 (2025-09-11)
 	# go-licenses: v2.0.0-alpha.1 (2024-06-27)

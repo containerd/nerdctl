@@ -165,7 +165,7 @@ up:
 install-dev-tools:
 	$(call title, $@)
 	# golangci: v2.13.2 (2026-08-27)
-	# git-validation: main (2025-02-25)
+	# git-validation: v1.2.2 (2025-02-26)
 	# ltag: main (2025-03-04)
 	# go-licenses: v2.0.0-alpha.1 (2024-06-27)
 	# stubbing go-licenses with dependency upgrade due to non-compatibility with golang 1.25rc1
