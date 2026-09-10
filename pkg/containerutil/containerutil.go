@@ -258,8 +258,25 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 	}
 
 	if oldTask, err := container.Task(ctx, nil); err == nil {
+		if status, err := oldTask.Status(ctx); err == nil {
+			if status.Status == containerd.Created {
+				sig, err := signal.ParseSignal("SIGKILL")
+				if err != nil {
+					return err
+				}
+				err = oldTask.Kill(ctx, sig)
+				if err != nil {
+					return err
+				}
+				statusC, err := oldTask.Wait(ctx)
+				if err != nil {
+					return err
+				}
+				<-statusC
+			}
+		}
 		if _, err := oldTask.Delete(ctx); err != nil {
-			log.G(ctx).WithError(err).Debug("failed to delete old task")
+			log.G(ctx).WithError(err).Error("failed to delete old task")
 		}
 	}
 	detachC := make(chan struct{})
