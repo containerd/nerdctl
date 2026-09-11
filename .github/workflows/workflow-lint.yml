@@ -17,7 +17,7 @@ jobs:
   # 3. for canary (if there is a canary go version), does lint for all supported goos
   lint-go:
     name: "go${{ inputs.hack }}"
-    uses: ./.github/workflows/job-lint-go.yml
+    uses: $/.github/workflows/job-lint-go.yml
     strategy:
       fail-fast: false
       matrix:
@@ -49,7 +49,7 @@ jobs:
   # Run common project checks (commits, licenses, etc)
   lint-project-checks:
     name: "project checks"
-    uses: ./.github/workflows/job-lint-project.yml
+    uses: $/.github/workflows/job-lint-project.yml
     with:
       timeout: 5
       go-version: "1.26"
@@ -95,7 +95,7 @@ jobs:
   # Lint for shell and yaml files
   lint-other:
     name: "other"
-    uses: ./.github/workflows/job-lint-other.yml
+    uses: $/.github/workflows/job-lint-other.yml
     with:
       timeout: 5
       runner: ubuntu-26.04
@@ -103,7 +103,7 @@ jobs:
   # Verify we can actually build on all supported platforms, and a bunch of architectures
   build-for-go:
     name: "build for${{ inputs.hack }}"
-    uses: ./.github/workflows/job-build.yml
+    uses: $/.github/workflows/job-build.yml
     strategy:
       fail-fast: false
       matrix:
@@ -129,7 +129,7 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
       - name: "Run: zizmor"
-        uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054  # v0.6.2
+        uses: zizmorcore/zizmor-action@70fb788f84895a7701f5643d103d587e460b5c99  # v0.6.3
         with:
           inputs: .github/workflows
           # Do not send workflow diagnostics to GitHub Advanced Security code scanning in this project right now.
