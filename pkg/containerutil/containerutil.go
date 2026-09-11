@@ -482,6 +482,22 @@ func getSignal(signalValue string, containerLabels map[string]string) (syscall.S
 	return signal.ParseSignal("SIGTERM")
 }
 
+// IsStopSignal reports whether sig is expected to stop the container, as
+// opposed to being merely delivered to the running process (e.g. SIGHUP).
+// Signals other than SIGKILL must match the container's own stop signal.
+func IsStopSignal(sig syscall.Signal, containerLabels map[string]string) (bool, error) {
+	if sig == syscall.SIGKILL {
+		return true, nil
+	}
+
+	stopSignal, err := getSignal("", containerLabels)
+	if err != nil {
+		return false, err
+	}
+
+	return sig == stopSignal, nil
+}
+
 func waitContainerStop(ctx context.Context, task containerd.Task, exitCh <-chan containerd.ExitStatus, id string) error {
 	select {
 	case <-ctx.Done():

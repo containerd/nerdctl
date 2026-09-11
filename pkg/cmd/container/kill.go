@@ -85,9 +85,22 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 			containerutil.UpdateErrorLabel(ctx, container, err)
 		}
 	}()
-	if err := containerutil.UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
+	containerLabels, err := container.Labels(ctx)
+	if err != nil {
 		return err
 	}
+	stops, err := containerutil.IsStopSignal(signal, containerLabels)
+	if err != nil {
+		return err
+	}
+	// Recording a non-stopping signal as an explicit stop would permanently
+	// suppress the restart policy of a container that is still running.
+	if stops {
+		if err := containerutil.UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
+			return err
+		}
+	}
+
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		return err
