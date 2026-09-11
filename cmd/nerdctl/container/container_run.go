@@ -17,10 +17,13 @@
 package container
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -33,6 +36,7 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/attachmux"
 	"github.com/containerd/nerdctl/v2/pkg/cioutil"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
@@ -490,6 +494,26 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	useBroker := createOpt.TTY && !createOpt.Detach && dataStore != "" &&
+		(!createOpt.Interactive || stdinFIFO != "") &&
+		attachmux.Probe(dataStore) == nil
+
+	streamCtx, cancelStream := context.WithCancel(ctx)
+	defer cancelStream()
+
+	// Built before NewTask: consoleutil.NewDetachableStdin parses the detach
+	// keys and rejects a malformed --detach-keys, and that has to keep
+	// happening before a task exists, not after.
+	var brokerStdin io.Reader
+	if useBroker && createOpt.Interactive {
+		// Detaching is local to this session: it ends the stream and leaves the
+		// container, and any other session, running.
+		brokerStdin, err = consoleutil.NewDetachableStdin(con, createOpt.DetachKeys, cancelStream)
+		if err != nil {
+			return err
+		}
+	}
+
 	detachC := make(chan struct{})
 	task, err := taskutil.NewTask(ctx, client, c, taskutil.TaskOptions{
 		AttachStreamOpt: createOpt.Attach,
@@ -503,6 +527,7 @@ func runAction(cmd *cobra.Command, args []string) error {
 		DetachC:         detachC,
 		CheckpointDir:   "",
 		StdinFIFO:       stdinFIFO,
+		UseBroker:       useBroker,
 	})
 	if err != nil {
 		return err
@@ -514,6 +539,55 @@ func runAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
+	streamed := make(chan struct{})
+	streamErr := make(chan error, 1)
+	if useBroker {
+		// The same pure function, over the same data store string, that the
+		// broker used to pick where to listen.
+		socketPath := attachmux.SocketPath(dataStore, createOpt.GOptions.Namespace, c.ID())
+		// DialStarting retries: containerd spawns the logging process while
+		// creating the task and does not wait for it, so the broker may not
+		// have bound its socket yet.
+		session, err := attachmux.DialStarting(ctx, socketPath)
+		if err != nil {
+			// The task was created with its stdio going to the logging process,
+			// so this session has no other way to show the container's output.
+			// Delete the task: it has not been started, so nothing has run yet
+			// and the user gets a clean failure rather than a container they
+			// cannot see.
+			if _, delErr := task.Delete(ctx); delErr != nil {
+				log.G(ctx).WithError(delErr).Warn("failed to delete the task after attach setup failed")
+			}
+			return fmt.Errorf("failed to connect to the container attach socket: %w", err)
+		}
+		defer session.Close()
+
+		in := brokerStdin
+		go func() {
+			defer close(streamed)
+			if err := session.Stream(streamCtx, in, con, nil); err != nil {
+				// The broker went away without the container exiting. Report it:
+				// signalling detachC would make this look like the user pressing
+				// the detach keys, and the command would exit 0 while the
+				// container's output was silently lost.
+				streamErr <- err
+				return
+			}
+			if session.Exited() {
+				// The container is gone: the select below takes statusC, and
+				// signalling detachC here would make it report a detach instead.
+				return
+			}
+			select {
+			case detachC <- struct{}{}:
+			case <-ctx.Done():
+			}
+		}()
+	} else {
+		close(streamed)
+	}
+
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
@@ -555,6 +629,33 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// handleExit is what both the container-exited and the session-failed
+	// branches below end in. sessionErr, when set, is an attach session failure
+	// that happened alongside the exit: the container's own exit code wins,
+	// because that is what a script reads, and a broken session at that point
+	// only means the tail of the output may be missing.
+	handleExit := func(status containerd.ExitStatus, sessionErr error) error {
+		if createOpt.Rm {
+			if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
+				log.L.Error(taskDeleteErr)
+			}
+		}
+		code, _, err := status.Result()
+		if err != nil {
+			return err
+		}
+		if code != 0 {
+			if sessionErr != nil {
+				log.G(ctx).WithError(sessionErr).Warn("the attach session failed, the container output may be incomplete")
+			}
+			return errutil.NewExitCoderErr(int(code))
+		}
+		if sessionErr != nil {
+			return fmt.Errorf("the container attach session failed: %w", sessionErr)
+		}
+		return nil
+	}
+
 	select {
 	// io.Wait() would return when either 1) the user detaches from the container OR 2) the container is about to exit.
 	//
@@ -570,19 +671,30 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 		io.Wait()
 		isDetached = true
+	case err := <-streamErr:
+		select {
+		case status := <-statusC:
+			return handleExit(status, err)
+		default:
+		}
+		return fmt.Errorf("the container attach session failed: %w", err)
 	case status := <-statusC:
-		if createOpt.Rm {
-			if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
-				log.L.Error(taskDeleteErr)
+		// Let the session drain what the broker still has queued. The container
+		// has exited, so this resolves as soon as the broker finishes reading
+		// the stdio and announces the exit. The stream's own result is picked
+		// up here as well; on the legacy path `streamed` is already closed and
+		// `streamErr` never carries anything, so this is a no-op there.
+		var sessionErr error
+		select {
+		case <-streamed:
+			select {
+			case sessionErr = <-streamErr:
+			default:
 			}
+		case <-time.After(attachmux.DrainTimeout):
+			sessionErr = errors.New("timed out waiting for the attach session to drain")
 		}
-		code, _, err := status.Result()
-		if err != nil {
-			return err
-		}
-		if code != 0 {
-			return errutil.NewExitCoderErr(int(code))
-		}
+		return handleExit(status, sessionErr)
 	}
 	return nil
 }
