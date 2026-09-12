@@ -31,6 +31,7 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/attachmux"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
@@ -253,6 +254,20 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			if err := nameStore.Release(name, id); err != nil && !errors.Is(err, store.ErrNotFound) {
 				log.G(ctx).WithError(err).Warnf("failed to release container name %s", name)
 			}
+		}
+
+		// The attach socket lives outside the container's state directory,
+		// because sockaddr_un.sun_path is too short to hold that path, so
+		// removing the state directory does not take it with it. A broker that
+		// exited normally unlinked it already; one that was killed did not, and
+		// nothing else would ever collect it.
+		//
+		// It has to be here, after the container is gone. Earlier, a `nerdctl
+		// rm` that stops at the running-container check would have unlinked the
+		// socket of a container that keeps running, leaving its broker on an
+		// inode nobody can reach and no way to attach to it again.
+		if err := attachmux.RemoveSocket(attachmux.SocketPath(dataStore, containerNamespace, id)); err != nil {
+			log.G(ctx).WithError(err).Warnf("failed to remove the attach socket for container %q", id)
 		}
 
 		hs, err := hostsstore.New(dataStore, containerNamespace)

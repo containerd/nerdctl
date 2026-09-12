@@ -301,7 +301,7 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 	// 1, nerdctl run --name demo -it imagename
 	// 2, ctrl + c to stop demo container
 	// 3, nerdctl start/restart demo
-	logConfig, err := generateLogConfig(dataStore, id, options.LogDriver, options.LogOpt, options.GOptions.Namespace, options.GOptions.Address)
+	logConfig, err := generateLogConfig(dataStore, id, options.LogDriver, options.LogOpt, options.GOptions.Namespace, options.GOptions.Address, options.GOptions.DisableAttachBroker, options.TTY)
 	if err != nil {
 		return nil, generateRemoveStateDirFunc(ctx, id, internalLabels), err
 	}
@@ -1160,9 +1160,15 @@ func writeCIDFile(path, id string) error {
 }
 
 // generateLogConfig creates a LogConfig for the current container store
-func generateLogConfig(dataStore string, id string, logDriver string, logOpt []string, ns, address string) (logConfig logging.LogConfig, err error) {
+func generateLogConfig(dataStore string, id string, logDriver string, logOpt []string, ns, address string, disableAttachBroker, terminal bool) (logConfig logging.LogConfig, err error) {
+	logConfig.Terminal = terminal
 	var u *url.URL
-	if u, err = url.Parse(logDriver); err == nil && (u.Scheme != "" || logDriver == "none") {
+	// "none" is a registered no-op driver rather than an absence of logging: it
+	// still goes through the internal logging process, which is what owns the
+	// container's stdio and serves attach sessions. With the broker switched
+	// off there is nothing to own it, so "none" short-circuits again and the
+	// container runs without a logging process at all, as it did before.
+	if u, err = url.Parse(logDriver); err == nil && (u.Scheme != "" || (disableAttachBroker && logDriver == "none")) {
 		logConfig.LogURI = logDriver
 	} else {
 		logConfig.Driver = logDriver

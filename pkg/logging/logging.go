@@ -40,11 +40,12 @@ import (
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/internal/filesystem"
+	"github.com/containerd/nerdctl/v2/pkg/logging/loguri"
 )
 
 const (
 	// MagicArgv1 is the magic argv1 for the containerd runtime v2 logging plugin mode.
-	MagicArgv1 = "_NERDCTL_INTERNAL_LOGGING"
+	MagicArgv1 = loguri.MagicArgv1
 	LogPath    = "log-path"
 	MaxSize    = "max-size"
 	MaxFile    = "max-file"
@@ -152,6 +153,12 @@ type LogConfig struct {
 	Opts    map[string]string `json:"opts,omitempty"`
 	LogURI  string            `json:"-"`
 	Address string            `json:"address"`
+	// Terminal records whether the container was created with a terminal, so
+	// that the logging process knows whether its output is a single stream
+	// without asking containerd. It is written by the CLI, which knows -t, and
+	// read before the process signals readiness to the shim, which is on the
+	// critical path of creating the task.
+	Terminal bool `json:"terminal,omitempty"`
 }
 
 // LogConfigFilePath returns the path of log-config.json
@@ -250,7 +257,30 @@ func getContainerWait(ctx context.Context, address string, config *logging.Confi
 
 type ContainerWaitFunc func(ctx context.Context, address string, config *logging.Config, outputSeen func() bool) (<-chan containerd.ExitStatus, error)
 
-func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, address string, getContainerWait ContainerWaitFunc, config *logging.Config) error {
+// exitConfirmTimeout bounds how long the logging process waits, after the
+// container's stdio has ended, for containerd to confirm the container exited.
+// Only a confirmed exit is announced to attached sessions.
+const exitConfirmTimeout = 2 * time.Second
+
+// loggingProcessAdapter reads the container's stdio and hands it to the log
+// driver. When tee is non-nil, it also receives every chunk exactly as it was
+// read, before any line splitting: that is what feeds attached sessions, which
+// must see partial lines and terminal escape sequences unchanged.
+//
+// stop, when non-nil, is called as soon as the container's stdio has been read
+// and before the driver's PostProcess, so that attached sessions learn about
+// the exit without waiting for a slow log driver. Its argument says whether the
+// container is known to have exited; reading the stdio to the end does not on
+// its own establish that.
+func loggingProcessAdapter(
+	ctx context.Context,
+	driver Driver,
+	dataStore, address string,
+	getContainerWait ContainerWaitFunc,
+	config *logging.Config,
+	tee func(stream string, p []byte),
+	stop func(exited bool),
+) error {
 	if err := driver.PreProcess(ctx, dataStore, config); err != nil {
 		return err
 	}
@@ -303,14 +333,18 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, addres
 		}
 	}
 
-	var wg sync.WaitGroup
+	// readers counts the goroutines reading the container's stdio; driverWG the
+	// one draining the log driver's queue. They are separate so that the attach
+	// sessions can be told the container is gone as soon as its output has been
+	// read, without waiting for a slow or network-backed driver.
+	var readers, driverWG sync.WaitGroup
 
 	// processStream reads a container stdio FIFO directly and emits its output
 	// split into newline-terminated lines. Complete lines are emitted as they are
 	// read; a trailing fragment without a newline is buffered until more output
 	// arrives (so a long line is not split) and emitted when the stream ends.
 	processStream := func(stream string, reader io.Reader, dataChan chan string) {
-		defer wg.Done()
+		defer readers.Done()
 		if !isSync {
 			defer close(dataChan)
 		}
@@ -332,6 +366,9 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, addres
 		for {
 			nr, err := reader.Read(buf)
 			if nr > 0 {
+				if tee != nil {
+					tee(stream, buf[:nr])
+				}
 				copiedBytes.Add(int64(nr))
 				pending = append(pending, buf[:nr]...)
 				emitLines()
@@ -359,16 +396,20 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, addres
 			}
 		}
 	}
-	wg.Add(2)
+	readers.Add(2)
 	go processStream(streamStdout, stdoutR, stdout)
 	go processStream(streamStderr, stderrR, stderr)
 	if !isSync {
-		wg.Add(1)
+		driverWG.Add(1)
 		go func() {
-			defer wg.Done()
+			defer driverWG.Done()
 			driver.Process(stdout, stderr)
 		}()
 	}
+	// containerExited is closed once containerd has reported the exit. It is
+	// what distinguishes "the container is gone" from "this process is being
+	// shut down", which reach the readers the same way.
+	containerExited := make(chan struct{})
 	go func() {
 		// Wait for the container to exit, then cancel the readers. containerd
 		// keeps the stdio FIFO write ends open (so the container can be
@@ -382,11 +423,38 @@ func loggingProcessAdapter(ctx context.Context, driver Driver, dataStore, addres
 			log.G(ctx).Errorf("failed to get container task wait channel: %v", err)
 			return
 		}
-		<-exitCh
+		status := <-exitCh
+		if status.Error() == nil {
+			// A Wait RPC failure arrives on this same channel as a synthetic
+			// ExitStatus (containerd client/task.go), so only a clean status is
+			// evidence that the container is gone. Anything else must not be
+			// announced to attached sessions, which treat it as proof and stop
+			// streaming. See #5137.
+			close(containerExited)
+		}
 		stdoutR.Cancel()
 		stderrR.Cancel()
 	}()
-	wg.Wait()
+	readers.Wait()
+	if stop != nil {
+		// Announce the exit to the attached sessions now that the container's
+		// output has all been read. A session waiting for the broker's exit
+		// message while the driver drains would give up and report a failure
+		// for a container that ran fine.
+		//
+		// The readers can also end on EOF a moment before the goroutine above
+		// observes the exit, so wait briefly rather than sampling. On the normal
+		// path that goroutine is what cancelled them, so this is already closed.
+		exited := false
+		select {
+		case <-containerExited:
+			exited = true
+		case <-time.After(exitConfirmTimeout):
+			log.G(ctx).Debug("the container stdio ended without a confirmed exit")
+		}
+		stop(exited)
+	}
+	driverWG.Wait()
 	return driver.PostProcess()
 }
 
@@ -415,11 +483,22 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 			// stopped and the driver has finished processing all output,
 			// so that waiting log viewers can be signalled when the process is complete.
 			return filesystem.WithLock(loggerLock, func() error {
+				// Whether the container's output is a single terminal stream
+				// or separate stdout and stderr was recorded by the CLI, which
+				// knows -t. Asking containerd here instead would put a connect
+				// and two RPCs on the critical path of creating the task: the
+				// shim blocks on ready() below.
+				tee, stopBroker := startBroker(ctx, dataStore, config.Namespace, config.ID, logConfig.Terminal)
+				// The adapter calls this itself with the right answer; this is
+				// the belt and braces for the paths that never reach it, and
+				// claims nothing about the container.
+				defer stopBroker(false)
+
 				if err := ready(); err != nil {
 					return err
 				}
 				// getContainerWait is extracted as parameter to allow mocking in tests.
-				return loggingProcessAdapter(ctx, driver, dataStore, logConfig.Address, getContainerWait, config)
+				return loggingProcessAdapter(ctx, driver, dataStore, logConfig.Address, getContainerWait, config, tee, stopBroker)
 			})
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// the file does not exist if the container was created with nerdctl < 0.20

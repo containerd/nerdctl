@@ -44,6 +44,8 @@ import (
 	"github.com/containerd/go-cni"
 	"github.com/containerd/log"
 
+	"github.com/containerd/nerdctl/v2/pkg/attachmux"
+	"github.com/containerd/nerdctl/v2/pkg/cioutil"
 	"github.com/containerd/nerdctl/v2/pkg/config"
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
 	"github.com/containerd/nerdctl/v2/pkg/errutil"
@@ -52,6 +54,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/ipcutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/labels/k8slabels"
+	"github.com/containerd/nerdctl/v2/pkg/logging/loguri"
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/signalutil"
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
@@ -269,6 +272,46 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 		// source: https://github.com/containerd/nerdctl/blob/main/docs/command-reference.md#whale-nerdctl-start
 		attachStreamOpt = []string{"STDOUT", "STDERR"}
 	}
+	// As in the run path: only for a URI that runs this binary, and not when
+	// the operator has switched the broker off.
+	dataStore := ""
+	if !cfg.DisableAttachBroker && loguri.IsInternal(logURI) {
+		dataStore = loguri.DataStore(logURI)
+	}
+
+	// Only an interactive terminal container gets a stdin FIFO, as in the run
+	// path: the broker's second writer would keep a non-terminal container from
+	// ever seeing EOF on its stdin.
+	stdinFIFO := ""
+	if isInteractive && isTerminal && dataStore != "" {
+		path := cioutil.StdinFIFOPath(dataStore, namespace, container.ID())
+		if err := cioutil.CreateStdinFIFO(path); err != nil {
+			log.G(ctx).WithError(err).Debug("failed to create the stdin FIFO, the broker is disabled for this container")
+		} else {
+			stdinFIFO = path
+		}
+	}
+
+	useBroker := isTerminal && dataStore != "" &&
+		(!isInteractive || stdinFIFO != "") &&
+		attachmux.Probe(dataStore) == nil
+
+	streamCtx, cancelStream := context.WithCancel(ctx)
+	defer cancelStream()
+
+	// `start -ai` is interactive: it needs a detachable stdin, otherwise the
+	// detach sequence is never seen and the command hangs. This is what
+	// TestStartDetachKeys in cmd/nerdctl/container/container_start_linux_test.go
+	// exercises. Built before NewTask so that a malformed --detach-keys is
+	// still rejected before a task exists.
+	var brokerStdin io.Reader
+	if useBroker && isAttach && isInteractive {
+		brokerStdin, err = consoleutil.NewDetachableStdin(con, detachKeys, cancelStream)
+		if err != nil {
+			return err
+		}
+	}
+
 	task, err := taskutil.NewTask(ctx, client, container, taskutil.TaskOptions{
 		AttachStreamOpt: attachStreamOpt,
 		IsInteractive:   isInteractive,
@@ -280,6 +323,8 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 		Namespace:       namespace,
 		DetachC:         detachC,
 		CheckpointDir:   checkpointDir,
+		StdinFIFO:       stdinFIFO,
+		UseBroker:       useBroker,
 	})
 	if err != nil {
 		return err
@@ -288,6 +333,39 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 	if err != nil {
 		return err
 	}
+
+	streamed := make(chan struct{})
+	streamErr := make(chan error, 1)
+	if useBroker && isAttach {
+		socketPath := attachmux.SocketPath(dataStore, namespace, container.ID())
+		session, err := attachmux.DialStarting(ctx, socketPath)
+		if err != nil {
+			if _, delErr := task.Delete(ctx); delErr != nil {
+				log.G(ctx).WithError(delErr).Warn("failed to delete the task after attach setup failed")
+			}
+			return fmt.Errorf("failed to connect to the container attach socket: %w", err)
+		}
+		defer session.Close()
+
+		in := brokerStdin
+		go func() {
+			defer close(streamed)
+			if err := session.Stream(streamCtx, in, con, nil); err != nil {
+				streamErr <- err
+				return
+			}
+			if session.Exited() {
+				return
+			}
+			select {
+			case detachC <- struct{}{}:
+			case <-ctx.Done():
+			}
+		}()
+	} else {
+		close(streamed)
+	}
+
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
@@ -323,6 +401,26 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 	}
 	sigc := signalutil.ForwardAllSignals(ctx, task)
 	defer signalutil.StopCatch(sigc)
+	// handleExit is what both the container-exited and the session-failed
+	// branches below end in: the container's own exit code wins over a session
+	// failure that happened alongside it.
+	handleExit := func(status containerd.ExitStatus, sessionErr error) error {
+		code, _, err := status.Result()
+		if err != nil {
+			return err
+		}
+		if code != 0 {
+			if sessionErr != nil {
+				log.G(ctx).WithError(sessionErr).Warn("the attach session failed, the container output may be incomplete")
+			}
+			return errutil.NewExitCoderErr(int(code))
+		}
+		if sessionErr != nil {
+			return fmt.Errorf("the container attach session failed: %w", sessionErr)
+		}
+		return nil
+	}
+
 	select {
 	// io.Wait() would return when either 1) the user detaches from the container OR 2) the container is about to exit.
 	//
@@ -337,14 +435,25 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 			return errors.New("got a nil IO from the task")
 		}
 		io.Wait()
+	case err := <-streamErr:
+		select {
+		case status := <-statusC:
+			return handleExit(status, err)
+		default:
+		}
+		return fmt.Errorf("the container attach session failed: %w", err)
 	case status := <-statusC:
-		code, _, err := status.Result()
-		if err != nil {
-			return err
+		var sessionErr error
+		select {
+		case <-streamed:
+			select {
+			case sessionErr = <-streamErr:
+			default:
+			}
+		case <-time.After(attachmux.DrainTimeout):
+			sessionErr = errors.New("timed out waiting for the attach session to drain")
 		}
-		if code != 0 {
-			return errutil.NewExitCoderErr(int(code))
-		}
+		return handleExit(status, sessionErr)
 	}
 	return nil
 }

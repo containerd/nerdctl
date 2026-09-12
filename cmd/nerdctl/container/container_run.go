@@ -17,10 +17,13 @@
 package container
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -33,6 +36,8 @@ import (
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/completion"
 	"github.com/containerd/nerdctl/v2/pkg/annotations"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/attachmux"
+	"github.com/containerd/nerdctl/v2/pkg/cioutil"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
 	"github.com/containerd/nerdctl/v2/pkg/config"
@@ -43,6 +48,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/logging"
+	"github.com/containerd/nerdctl/v2/pkg/logging/loguri"
 	"github.com/containerd/nerdctl/v2/pkg/netutil"
 	"github.com/containerd/nerdctl/v2/pkg/signalutil"
 	"github.com/containerd/nerdctl/v2/pkg/taskutil"
@@ -444,6 +450,70 @@ func runAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	logURI := lab[labels.LogURI]
+
+	// The data store comes out of the log URI, not from resolving it again.
+	// That URI is the argv containerd hands the logging process, so the paths
+	// derived from it here and there are the same string by construction.
+	//
+	// It is taken only when the URI runs *this* binary. The magic argument on
+	// its own is not enough: a URI written by an older nerdctl still installed
+	// at another path carries it too, and spawning that would run code with no
+	// broker in it. Leaving dataStore empty otherwise makes it the single guard
+	// everything below can test.
+	// --disable-attach-broker is the way back to the stdio nerdctl used before
+	// multi-session attach: leaving dataStore empty is what stops the task
+	// being built for the broker, and every path below already handles that,
+	// because it is also what a foreign log driver looks like.
+	dataStore := ""
+	if !createOpt.GOptions.DisableAttachBroker && loguri.IsInternal(logURI) {
+		dataStore = loguri.DataStore(logURI)
+	}
+
+	// Only an interactive terminal container gets a stdin FIFO.
+	//
+	// -i without -t is deliberately excluded. The broker holds a second writer
+	// on the FIFO for the container's lifetime, which is what makes detaching
+	// leave a terminal running, but it also means the container never sees EOF
+	// on its stdin: `echo x | nerdctl run -i alpine cat` would hang, because
+	// task.CloseIO closes the shim's writer and nerdctl's, not the broker's.
+	// A terminal container does not have that problem, since its stdin is a
+	// console rather than a pipe that ends. Multi-session stdin is limited to
+	// terminal containers anyway, because for a non-terminal one the shim's
+	// binary path does not wire stdin at all.
+	//
+	// Creating one for a container started without -i would separately give it
+	// a stdin that never reaches EOF, changing the behaviour of processes that
+	// read until EOF.
+	stdinFIFO := ""
+	if createOpt.Interactive && createOpt.TTY && dataStore != "" {
+		path := cioutil.StdinFIFOPath(dataStore, createOpt.GOptions.Namespace, c.ID())
+		if err := cioutil.CreateStdinFIFO(path); err != nil {
+			log.G(ctx).WithError(err).Debug("failed to create the stdin FIFO, the broker is disabled for this container")
+		} else {
+			stdinFIFO = path
+		}
+	}
+
+	useBroker := createOpt.TTY && !createOpt.Detach && dataStore != "" &&
+		(!createOpt.Interactive || stdinFIFO != "") &&
+		attachmux.Probe(dataStore) == nil
+
+	streamCtx, cancelStream := context.WithCancel(ctx)
+	defer cancelStream()
+
+	// Built before NewTask: consoleutil.NewDetachableStdin parses the detach
+	// keys and rejects a malformed --detach-keys, and that has to keep
+	// happening before a task exists, not after.
+	var brokerStdin io.Reader
+	if useBroker && createOpt.Interactive {
+		// Detaching is local to this session: it ends the stream and leaves the
+		// container, and any other session, running.
+		brokerStdin, err = consoleutil.NewDetachableStdin(con, createOpt.DetachKeys, cancelStream)
+		if err != nil {
+			return err
+		}
+	}
+
 	detachC := make(chan struct{})
 	task, err := taskutil.NewTask(ctx, client, c, taskutil.TaskOptions{
 		AttachStreamOpt: createOpt.Attach,
@@ -456,6 +526,8 @@ func runAction(cmd *cobra.Command, args []string) error {
 		Namespace:       createOpt.GOptions.Namespace,
 		DetachC:         detachC,
 		CheckpointDir:   "",
+		StdinFIFO:       stdinFIFO,
+		UseBroker:       useBroker,
 	})
 	if err != nil {
 		return err
@@ -467,6 +539,55 @@ func runAction(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
+	streamed := make(chan struct{})
+	streamErr := make(chan error, 1)
+	if useBroker {
+		// The same pure function, over the same data store string, that the
+		// broker used to pick where to listen.
+		socketPath := attachmux.SocketPath(dataStore, createOpt.GOptions.Namespace, c.ID())
+		// DialStarting retries: containerd spawns the logging process while
+		// creating the task and does not wait for it, so the broker may not
+		// have bound its socket yet.
+		session, err := attachmux.DialStarting(ctx, socketPath)
+		if err != nil {
+			// The task was created with its stdio going to the logging process,
+			// so this session has no other way to show the container's output.
+			// Delete the task: it has not been started, so nothing has run yet
+			// and the user gets a clean failure rather than a container they
+			// cannot see.
+			if _, delErr := task.Delete(ctx); delErr != nil {
+				log.G(ctx).WithError(delErr).Warn("failed to delete the task after attach setup failed")
+			}
+			return fmt.Errorf("failed to connect to the container attach socket: %w", err)
+		}
+		defer session.Close()
+
+		in := brokerStdin
+		go func() {
+			defer close(streamed)
+			if err := session.Stream(streamCtx, in, con, nil); err != nil {
+				// The broker went away without the container exiting. Report it:
+				// signalling detachC would make this look like the user pressing
+				// the detach keys, and the command would exit 0 while the
+				// container's output was silently lost.
+				streamErr <- err
+				return
+			}
+			if session.Exited() {
+				// The container is gone: the select below takes statusC, and
+				// signalling detachC here would make it report a detach instead.
+				return
+			}
+			select {
+			case detachC <- struct{}{}:
+			case <-ctx.Done():
+			}
+		}()
+	} else {
+		close(streamed)
+	}
+
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
@@ -508,6 +629,33 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// handleExit is what both the container-exited and the session-failed
+	// branches below end in. sessionErr, when set, is an attach session failure
+	// that happened alongside the exit: the container's own exit code wins,
+	// because that is what a script reads, and a broken session at that point
+	// only means the tail of the output may be missing.
+	handleExit := func(status containerd.ExitStatus, sessionErr error) error {
+		if createOpt.Rm {
+			if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
+				log.L.Error(taskDeleteErr)
+			}
+		}
+		code, _, err := status.Result()
+		if err != nil {
+			return err
+		}
+		if code != 0 {
+			if sessionErr != nil {
+				log.G(ctx).WithError(sessionErr).Warn("the attach session failed, the container output may be incomplete")
+			}
+			return errutil.NewExitCoderErr(int(code))
+		}
+		if sessionErr != nil {
+			return fmt.Errorf("the container attach session failed: %w", sessionErr)
+		}
+		return nil
+	}
+
 	select {
 	// io.Wait() would return when either 1) the user detaches from the container OR 2) the container is about to exit.
 	//
@@ -523,19 +671,30 @@ func runAction(cmd *cobra.Command, args []string) error {
 		}
 		io.Wait()
 		isDetached = true
+	case err := <-streamErr:
+		select {
+		case status := <-statusC:
+			return handleExit(status, err)
+		default:
+		}
+		return fmt.Errorf("the container attach session failed: %w", err)
 	case status := <-statusC:
-		if createOpt.Rm {
-			if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
-				log.L.Error(taskDeleteErr)
+		// Let the session drain what the broker still has queued. The container
+		// has exited, so this resolves as soon as the broker finishes reading
+		// the stdio and announces the exit. The stream's own result is picked
+		// up here as well; on the legacy path `streamed` is already closed and
+		// `streamErr` never carries anything, so this is a no-op there.
+		var sessionErr error
+		select {
+		case <-streamed:
+			select {
+			case sessionErr = <-streamErr:
+			default:
 			}
+		case <-time.After(attachmux.DrainTimeout):
+			sessionErr = errors.New("timed out waiting for the attach session to drain")
 		}
-		code, _, err := status.Result()
-		if err != nil {
-			return err
-		}
-		if code != 0 {
-			return errutil.NewExitCoderErr(int(code))
-		}
+		return handleExit(status, sessionErr)
 	}
 	return nil
 }
