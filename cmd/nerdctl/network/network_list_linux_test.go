@@ -112,6 +112,31 @@ func TestNetworkLsFilter(t *testing.T) {
 				}
 			},
 		},
+		{
+			Description: "filter multiple names",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("network", "ls", "--quiet",
+					"--filter", "name="+data.Labels().Get("net1"),
+					"--filter", "name="+data.Labels().Get("net2"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					Output: func(stdout string, t tig.T) {
+						lines := strings.Split(strings.TrimSpace(stdout), "\n")
+						assert.Equal(t, len(lines), 2)
+						netIDs := map[string]struct{}{
+							data.Labels().Get("netID1")[:12]: {},
+							data.Labels().Get("netID2")[:12]: {},
+						}
+						for _, id := range lines {
+							_, ok := netIDs[id]
+							assert.Assert(t, ok)
+							delete(netIDs, id)
+						}
+					},
+				}
+			},
+		},
 	}
 
 	testCase.Run(t)
