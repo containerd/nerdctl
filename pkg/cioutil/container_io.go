@@ -115,7 +115,7 @@ func (c *ncio) Cancel() {
 	}
 }
 
-func NewContainerIO(namespace string, logURI string, tty bool, stdin io.Reader, stdout, stderr io.Writer) cio.Creator {
+func NewContainerIO(namespace string, logURI string, tty bool, stdinFIFO string, stdin io.Reader, stdout, stderr io.Writer) cio.Creator {
 	return func(id string) (_ cio.IO, err error) {
 		var (
 			cmd     *exec.Cmd
@@ -207,6 +207,13 @@ func NewContainerIO(namespace string, logURI string, tty bool, stdin io.Reader, 
 		fifos, err := cio.NewFIFOSetInDir(streams.FIFODir, id, streams.Terminal)
 		if err != nil {
 			return nil, err
+		}
+
+		// Pin stdin to a stable path so that the process owning the container's
+		// stdio can find it. containerd's generated FIFO directory is random and
+		// changes across restarts.
+		if stdinFIFO != "" {
+			fifos.Stdin = stdinFIFO
 		}
 
 		if streams.Stdin == nil {

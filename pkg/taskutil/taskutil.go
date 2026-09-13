@@ -47,6 +47,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/cioutil"
 	"github.com/containerd/nerdctl/v2/pkg/consoleutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerdutil"
+	"github.com/containerd/nerdctl/v2/pkg/logging/loguri"
 )
 
 // TaskOptions contains options for creating a new task
@@ -61,6 +62,16 @@ type TaskOptions struct {
 	Namespace       string
 	DetachC         chan<- struct{}
 	CheckpointDir   string
+	// UseBroker makes a foreground terminal session hand the container's stdio
+	// to the internal logging process and stream through the attach socket
+	// instead of draining the FIFOs itself. That keeps the container's output
+	// drained after this session detaches.
+	UseBroker bool
+	// StdinFIFO is the stable path of the container's stdin FIFO. When it is
+	// set, the task's stdin is pinned there so that the process owning the
+	// container's stdio can find it, which is what allows more than one attach
+	// session. It is empty when the platform has no stable FIFO support.
+	StdinFIFO string
 }
 
 // NewTask is from https://github.com/containerd/containerd/blob/v1.4.3/cmd/ctr/commands/tasks/tasks_unix.go#L70-L108
@@ -127,7 +138,16 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 		io.Cancel()
 	}
 	var ioCreator cio.Creator
-	if len(opts.AttachStreamOpt) != 0 {
+	switch {
+	case opts.UseBroker && opts.IsTerminal:
+		// The logging process owns the container's stdio; this session streams
+		// over the attach socket, the same way `nerdctl attach` does. This
+		// covers both a foreground `run -it` and `start -a` on a TTY container.
+		ioCreator, err = terminalBrokerIO(opts)
+		if err != nil {
+			return nil, err
+		}
+	case len(opts.AttachStreamOpt) != 0:
 		log.G(ctx).Debug("attaching output instead of using the log-uri")
 		// when attaching a TTY we use writee for stdio and binary for log persistence
 		if opts.IsTerminal {
@@ -143,40 +163,18 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 					return nil, err
 				}
 			}
-			ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, true, in, opts.Con, nil)
+			ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, true, opts.StdinFIFO, in, opts.Con, nil)
 		} else {
 			streams := processAttachStreamsOpt(opts.AttachStreamOpt)
-			ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, streams.stdIn, streams.stdOut, streams.stdErr)
+			ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, opts.StdinFIFO, streams.stdIn, streams.stdOut, streams.stdErr)
 		}
 
-	} else if opts.IsTerminal && opts.IsDetach {
-		u, err := url.Parse(opts.LogURI)
+	case opts.IsTerminal && opts.IsDetach:
+		ioCreator, err = terminalBrokerIO(opts)
 		if err != nil {
 			return nil, err
 		}
-
-		var args []string
-		for k, vs := range u.Query() {
-			args = append(args, k)
-			if len(vs) > 0 {
-				args = append(args, vs[0])
-			}
-		}
-
-		// args[0]: _NERDCTL_INTERNAL_LOGGING
-		// args[1]: /var/lib/nerdctl/1935db59
-		if len(args) != 2 {
-			return nil, errors.New("parse logging path error")
-		}
-		parsedPath := u.Path
-		// For Windows, remove the leading slash
-		if (runtime.GOOS == "windows") && (strings.HasPrefix(parsedPath, "/")) {
-			parsedPath = strings.TrimLeft(parsedPath, "/")
-		}
-		ioCreator = cio.TerminalBinaryIO(parsedPath, map[string]string{
-			args[0]: args[1],
-		})
-	} else if opts.IsTerminal && !opts.IsDetach {
+	case opts.IsTerminal && !opts.IsDetach:
 		if opts.Con == nil {
 			return nil, errors.New("got nil con with isTerminal=true")
 		}
@@ -192,14 +190,14 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 				return nil, err
 			}
 		}
-		ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, true, in, os.Stdout, os.Stderr)
-	} else if opts.IsDetach && opts.LogURI != "" && opts.LogURI != "none" {
+		ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, true, opts.StdinFIFO, in, os.Stdout, os.Stderr)
+	case opts.IsDetach && opts.LogURI != "" && opts.LogURI != "none":
 		u, err := url.Parse(opts.LogURI)
 		if err != nil {
 			return nil, err
 		}
 		ioCreator = cio.LogURI(u)
-	} else {
+	default:
 		var in io.Reader
 		if opts.IsInteractive {
 			if sv, err := containerdutil.ServerSemVer(ctx, client); err != nil {
@@ -226,7 +224,7 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 				},
 			}
 		}
-		ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, in, os.Stdout, os.Stderr)
+		ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, opts.StdinFIFO, in, os.Stdout, os.Stderr)
 	}
 
 	taskOpts := []containerd.NewTaskOpts{
@@ -330,4 +328,60 @@ func (s *StdinCloser) Close() error {
 	}
 	s.closed = true
 	return nil
+}
+
+// withStdinFIFO returns a cio.Creator that behaves like base but additionally
+// declares path as the task's stdin.
+func withStdinFIFO(base cio.Creator, path string) cio.Creator {
+	return func(id string) (cio.IO, error) {
+		inner, err := base(id)
+		if err != nil {
+			return nil, err
+		}
+		return &stdinFIFOIO{IO: inner, path: path}, nil
+	}
+}
+
+// stdinFIFOIO overrides the stdin path of the cio.Config reported to containerd.
+type stdinFIFOIO struct {
+	cio.IO
+	path string
+}
+
+func (s *stdinFIFOIO) Config() cio.Config {
+	cfg := s.IO.Config()
+	cfg.Stdin = s.path
+	return cfg
+}
+
+// terminalBrokerIO builds the IO for a terminal container whose stdio is owned
+// by the internal logging process: output goes to the logging binary, and stdin
+// is the stable FIFO the logging process writes to.
+func terminalBrokerIO(opts TaskOptions) (cio.Creator, error) {
+	u, err := url.Parse(opts.LogURI)
+	if err != nil {
+		return nil, err
+	}
+
+	var args []string
+	for k, vs := range u.Query() {
+		args = append(args, k)
+		if len(vs) > 0 {
+			args = append(args, vs[0])
+		}
+	}
+	// args[0]: _NERDCTL_INTERNAL_LOGGING
+	// args[1]: /var/lib/nerdctl/1935db59
+	if len(args) != 2 {
+		return nil, errors.New("parse logging path error")
+	}
+	creator := cio.TerminalBinaryIO(loguri.BinaryPath(u), map[string]string{
+		args[0]: args[1],
+	})
+	if opts.StdinFIFO == "" {
+		// No -i: the container gets no stdin, exactly as before. The broker
+		// still owns and fans out its output.
+		return creator, nil
+	}
+	return withStdinFIFO(creator, opts.StdinFIFO), nil
 }

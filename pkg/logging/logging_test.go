@@ -20,12 +20,15 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"math/rand"
 	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"gotest.tools/v3/assert"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
@@ -116,7 +119,7 @@ func TestLoggingProcessAdapter(t *testing.T) {
 		return exitChan, nil
 	}
 
-	err := loggingProcessAdapter(ctx, driver, "testDataStore", "", getContainerWaitMock, config)
+	err := loggingProcessAdapter(ctx, driver, "testDataStore", "", getContainerWaitMock, config, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +188,7 @@ func TestLoggingProcessAdapterTrailingChunk(t *testing.T) {
 		return make(chan containerd.ExitStatus), nil
 	}
 
-	if err := loggingProcessAdapter(ctx, driver, "testDataStore", "", getContainerWaitMock, config); err != nil {
+	if err := loggingProcessAdapter(ctx, driver, "testDataStore", "", getContainerWaitMock, config, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -231,7 +234,7 @@ func TestLoggingProcessAdapterSyncTrailingChunk(t *testing.T) {
 		return make(chan containerd.ExitStatus), nil
 	}
 
-	if err := loggingProcessAdapter(ctx, driver, "testDataStore", "", getContainerWaitMock, config); err != nil {
+	if err := loggingProcessAdapter(ctx, driver, "testDataStore", "", getContainerWaitMock, config, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -248,4 +251,194 @@ func generateRandomString(size int) string {
 		sb.WriteByte(characters[rand.Intn(len(characters))])
 	}
 	return sb.String()
+}
+
+func TestLoggingProcessAdapterTeesRawOutput(t *testing.T) {
+	// The broker has to see the container's bytes exactly as they arrive,
+	// before they are split into log lines, so that terminal escape sequences
+	// and partial lines reach an attached session unchanged.
+	stdoutR, stdoutW := io.Pipe()
+	stderrR, stderrW := io.Pipe()
+
+	config := &logging.Config{
+		ID:        "test-container",
+		Namespace: "test-namespace",
+		Stdout:    stdoutR,
+		Stderr:    stderrR,
+	}
+
+	var mu sync.Mutex
+	teed := map[string][]byte{}
+	tee := func(stream string, p []byte) {
+		mu.Lock()
+		defer mu.Unlock()
+		teed[stream] = append(teed[stream], p...)
+	}
+
+	driver := &MockDriver{}
+	exitCh := make(chan containerd.ExitStatus, 1)
+	wait := func(ctx context.Context, address string, config *logging.Config, outputSeen func() bool) (<-chan containerd.ExitStatus, error) {
+		return exitCh, nil
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- loggingProcessAdapter(context.Background(), driver, t.TempDir(), "", wait, config, tee, nil)
+	}()
+
+	// A chunk with no trailing newline is exactly the case the log driver
+	// buffers but an attached terminal must see immediately.
+	_, err := stdoutW.Write([]byte("prompt$ "))
+	assert.NilError(t, err)
+	_, err = stderrW.Write([]byte("warning\n"))
+	assert.NilError(t, err)
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		ok := string(teed["stdout"]) == "prompt$ " && string(teed["stderr"]) == "warning\n"
+		mu.Unlock()
+		if ok {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	mu.Lock()
+	gotOut, gotErr := string(teed["stdout"]), string(teed["stderr"])
+	mu.Unlock()
+	assert.Equal(t, gotOut, "prompt$ ")
+	assert.Equal(t, gotErr, "warning\n")
+
+	stdoutW.Close()
+	stderrW.Close()
+	exitCh <- *containerd.NewExitStatus(0, time.Now(), nil)
+
+	select {
+	case err := <-done:
+		assert.NilError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("loggingProcessAdapter did not return")
+	}
+}
+
+// slowDriver lingers in Process after its channels are closed, the way a
+// network-backed log driver does when it is still flushing.
+type slowDriver struct {
+	MockDriver
+	release chan struct{}
+}
+
+func (d *slowDriver) Process(stdout <-chan string, stderr <-chan string) error {
+	// Drain the way MockDriver does, then linger the way a network-backed
+	// driver does while it flushes.
+	if err := d.MockDriver.Process(stdout, stderr); err != nil {
+		return err
+	}
+	<-d.release
+	return nil
+}
+
+func TestLoggingProcessAdapterStopsTheBrokerBeforeTheDriverFinishes(t *testing.T) {
+	// The attached sessions must be told the container is gone as soon as its
+	// output has been read. Waiting for the log driver first would let a session
+	// time out and report a failure for a container that ran fine.
+	stdoutR, stdoutW := io.Pipe()
+	stderrR, stderrW := io.Pipe()
+
+	config := &logging.Config{
+		ID:        "test-container",
+		Namespace: "test-namespace",
+		Stdout:    stdoutR,
+		Stderr:    stderrR,
+	}
+
+	driver := &slowDriver{release: make(chan struct{})}
+	exitCh := make(chan containerd.ExitStatus, 1)
+	wait := func(ctx context.Context, address string, config *logging.Config, outputSeen func() bool) (<-chan containerd.ExitStatus, error) {
+		return exitCh, nil
+	}
+
+	stopped := make(chan bool, 1)
+	done := make(chan error, 1)
+	go func() {
+		done <- loggingProcessAdapter(context.Background(), driver, t.TempDir(), "", wait, config, nil,
+			func(exited bool) { stopped <- exited })
+	}()
+
+	stdoutW.Close()
+	stderrW.Close()
+	exitCh <- *containerd.NewExitStatus(0, time.Now(), nil)
+
+	select {
+	case exited := <-stopped:
+		// containerd reported a clean exit above, so the sessions may be told.
+		assert.Equal(t, exited, true)
+	case <-time.After(5 * time.Second):
+		t.Fatal("the broker was not stopped while the driver was still running")
+	}
+
+	close(driver.release)
+	select {
+	case err := <-done:
+		assert.NilError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("loggingProcessAdapter did not return")
+	}
+}
+
+func TestLoggingProcessAdapterWithNoneDriverDoesNotStall(t *testing.T) {
+	// --log-driver none goes through the logging process now, because that is
+	// where the attach broker lives. The none driver discards everything, so it
+	// must do so synchronously: queueing for a consumer that never reads would
+	// stall the container on its own stdout once the buffer filled.
+	stdoutR, stdoutW := io.Pipe()
+	stderrR, stderrW := io.Pipe()
+
+	config := &logging.Config{
+		ID:        "test-container",
+		Namespace: "test-namespace",
+		Stdout:    stdoutR,
+		Stderr:    stderrR,
+	}
+
+	exitCh := make(chan containerd.ExitStatus, 1)
+	wait := func(ctx context.Context, address string, config *logging.Config, outputSeen func() bool) (<-chan containerd.ExitStatus, error) {
+		return exitCh, nil
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- loggingProcessAdapter(context.Background(), &NoneLogger{}, t.TempDir(), "", wait, config, nil, nil)
+	}()
+
+	// Comfortably more lines than the adapter's channels can hold.
+	written := make(chan error, 1)
+	go func() {
+		for range 30000 {
+			if _, err := stdoutW.Write([]byte("a line of container output\n")); err != nil {
+				written <- err
+				return
+			}
+		}
+		written <- nil
+	}()
+
+	select {
+	case err := <-written:
+		assert.NilError(t, err)
+	case <-time.After(30 * time.Second):
+		t.Fatal("the container blocked writing to a discarding log driver")
+	}
+
+	stdoutW.Close()
+	stderrW.Close()
+	exitCh <- *containerd.NewExitStatus(0, time.Now(), nil)
+
+	select {
+	case err := <-done:
+		assert.NilError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("loggingProcessAdapter did not return")
+	}
 }
