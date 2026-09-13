@@ -20,7 +20,7 @@ require (
 	github.com/containerd/imgcrypt/v2 v2.0.3 //gomodjail:unconfined
 	github.com/containerd/log v0.2.0 //gomodjail:unconfined
 	github.com/containerd/nerdctl/mod/tigron v0.0.0 //gomodjail:unconfined
-	github.com/containerd/nydus-snapshotter v0.15.15 //gomodjail:unconfined
+	github.com/containerd/nydus-snapshotter v0.15.16 //gomodjail:unconfined
 	github.com/containerd/platforms v1.0.0-rc.5 //gomodjail:unconfined
 	github.com/containerd/stargz-snapshotter v0.18.2 //gomodjail:unconfined
 	github.com/containerd/stargz-snapshotter/estargz v0.18.2 //gomodjail:unconfined
