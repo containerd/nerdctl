@@ -68,6 +68,9 @@ type Opts struct {
 	Changes     Changes
 	Compression types.CompressionType
 	Format      types.ImageFormat
+	// Timeout is the maximum duration for the commit operation (lease expiration).
+	// Defaults to 1 hour. Set to 0 to use containerd's default (24h).
+	Timeout time.Duration
 	types.EstargzOptions
 	types.ZstdChunkedOptions
 }
@@ -174,8 +177,16 @@ func Commit(ctx context.Context, client *containerd.Client, container containerd
 		sn     = client.SnapshotService(snName)
 	)
 
-	// Don't gc me and clean the dirty data after 1 hour!
-	ctx, done, err := client.WithLease(ctx, leases.WithRandomID(), leases.WithExpiration(1*time.Hour))
+	// Set lease expiration based on the configured timeout.
+	// The CLI flag defaults to 1h for backward compatibility.
+	// Set --timeout=0 to use containerd's default lease expiration (24h).
+	var done func(context.Context) error
+	if opts.Timeout <= 0 {
+		// Use containerd's default lease expiration (24h) by passing no opts.
+		ctx, done, err = client.WithLease(ctx)
+	} else {
+		ctx, done, err = client.WithLease(ctx, leases.WithRandomID(), leases.WithExpiration(opts.Timeout))
+	}
 	if err != nil {
 		return emptyDigest, fmt.Errorf("failed to create lease for commit: %w", err)
 	}
