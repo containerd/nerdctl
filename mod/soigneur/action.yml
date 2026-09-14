@@ -1,0 +1,148 @@
+# Soigneur: a composite action that collects the test failures a repository's CI reported over a
+# period of time, and publishes them to a single, long-lived GitHub issue: the flaky test
+# dashboard.
+#
+# The data source is the archived log of every workflow run of the window, so the token needs
+# `actions: read` (and `issues: write` to publish). See README.md for the marker lines it expects
+# the test jobs to write (flaky-annotate.sh).
+name: "Soigneur"
+description: "Keep a flaky test dashboard: the failures the CI reported, in a single issue"
+author: "The containerd Authors"
+
+branding:
+  icon: "activity"
+  color: "orange"
+
+inputs:
+  token:
+    description: "Token used to read the run logs and to write the issue (actions:read, issues:write)"
+    required: false
+    default: ${{ github.token }}
+  repository:
+    description: "Repository to report on"
+    required: false
+    default: ${{ github.repository }}
+  branch:
+    description: "Branch to report on"
+    required: false
+    default: "main"
+  days:
+    description: "Size of the window to report on, in days"
+    required: false
+    default: "7"
+  event:
+    description: "Only report on the runs of that event, empty for all"
+    required: false
+    default: "push"
+  workflows:
+    description: "Only report on the runs of these workflow files, comma-separated, empty for all"
+    required: false
+    default: ""
+  max-runs:
+    description: "Maximum number of workflow runs to analyze, which bounds the work"
+    required: false
+    default: "200"
+  max-tests:
+    description: "Maximum number of tests to detail"
+    required: false
+    default: "25"
+  max-links:
+    description: "Maximum number of links per test"
+    required: false
+    default: "5"
+  parallel:
+    description: "Number of concurrent API requests"
+    required: false
+    default: "8"
+  publish:
+    description: "Whether to write the report to the dashboard issue"
+    required: false
+    default: "true"
+  issue-number:
+    description: "The dashboard issue, as a number: open it by hand once, then name it here"
+    required: true
+  comment:
+    description: "Whether to post the digest as a comment, to notify the subscribers"
+    required: false
+    default: "true"
+  summary:
+    description: "Whether to write the report to the run summary"
+    required: false
+    default: "true"
+  docs-url:
+    description: "Where the project documents its flaky tests, linked from the report"
+    required: false
+    default: ""
+  footer-notes:
+    description: "Extra markdown for the report's methodology section, for project-specific caveats"
+    required: false
+    default: ""
+
+outputs:
+  report-file:
+    description: "Path of the markdown report"
+    value: ${{ steps.collect.outputs.report-file }}
+  json-file:
+    description: "Path of the aggregated data, as json"
+    value: ${{ steps.collect.outputs.json-file }}
+  digest:
+    description: "One-line summary of the report"
+    value: ${{ steps.collect.outputs.digest }}
+  issue-url:
+    description: "URL of the dashboard issue, empty when publishing is disabled"
+    value: ${{ steps.publish.outputs.issue-url }}
+
+runs:
+  using: composite
+  steps:
+    - name: "Collect"
+      id: collect
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        SOIGNEUR_REPO: ${{ inputs.repository }}
+        SOIGNEUR_BRANCH: ${{ inputs.branch }}
+        SOIGNEUR_DAYS: ${{ inputs.days }}
+        SOIGNEUR_EVENT: ${{ inputs.event }}
+        SOIGNEUR_WORKFLOWS: ${{ inputs.workflows }}
+        SOIGNEUR_MAX_RUNS: ${{ inputs.max-runs }}
+        SOIGNEUR_MAX_TESTS: ${{ inputs.max-tests }}
+        SOIGNEUR_MAX_LINKS: ${{ inputs.max-links }}
+        SOIGNEUR_PARALLEL: ${{ inputs.parallel }}
+        SOIGNEUR_DOCS_URL: ${{ inputs.docs-url }}
+        SOIGNEUR_FOOTER: ${{ inputs.footer-notes }}
+        SOIGNEUR_SUMMARY: ${{ inputs.summary }}
+        SOIGNEUR_RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        report="$RUNNER_TEMP"/flaky-report.md
+        digest="$RUNNER_TEMP"/flaky-digest.txt
+        json="$RUNNER_TEMP"/flaky-report.json
+
+        SOIGNEUR_DIGEST_OUT="$digest" SOIGNEUR_JSON_OUT="$json" \
+          "$ACTION_PATH"/flaky-report.sh > "$report"
+
+        {
+          echo "report-file=$report"
+          echo "json-file=$json"
+          echo "digest=$(head -n 1 "$digest")"
+        } >> "$GITHUB_OUTPUT"
+
+        case "${SOIGNEUR_SUMMARY,,}" in
+          1 | t | true | y | yes | on) cat "$report" >> "$GITHUB_STEP_SUMMARY" ;;
+        esac
+
+    - name: "Publish"
+      id: publish
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        SOIGNEUR_REPO: ${{ inputs.repository }}
+        SOIGNEUR_PUBLISH: ${{ inputs.publish }}
+        SOIGNEUR_ISSUE_NUMBER: ${{ inputs.issue-number }}
+        SOIGNEUR_ISSUE_COMMENT: ${{ inputs.comment }}
+        ACTION_PATH: ${{ github.action_path }}
+        REPORT_FILE: ${{ steps.collect.outputs.report-file }}
+      run: |
+        url="$("$ACTION_PATH"/flaky-issue.sh "$REPORT_FILE" "$RUNNER_TEMP"/flaky-digest.txt)"
+        echo "issue-url=$url" >> "$GITHUB_OUTPUT"
