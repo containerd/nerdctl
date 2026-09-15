@@ -51,8 +51,8 @@ func runCommand() *cobra.Command {
 	cmd.Flags().Bool("no-deps", false, "Don't start dependencies")
 	// TODO: no-TTY flag
 	//       In docker-compose's documentation, no-TTY is automatically detected
-	//       But, it follows `-i` flag because currently `run` command needs `-it` simultaneously.
 	cmd.Flags().BoolP("interactive", "i", true, "Keep STDIN open even if not attached")
+	cmd.Flags().BoolP("tty", "t", false, "Allocate a pseudo-TTY")
 	cmd.Flags().Bool("rm", false, "Automatically remove the container when it exits")
 	cmd.Flags().StringP("user", "u", "", "Username or UID (format: <name|uid>[:<group|gid>])")
 	cmd.Flags().StringArrayP("volume", "v", nil, "Bind mount a volume")
@@ -119,8 +119,14 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// FIXME : https://github.com/containerd/nerdctl/blob/v0.22.2/cmd/nerdctl/run.go#L100
-	tty := interactive
+	tty, err := cmd.Flags().GetBool("tty")
+	if err != nil {
+		return err
+	}
+	// For backward compatibility, if -t is not explicitly set, follow -i
+	if !cmd.Flags().Changed("tty") {
+		tty = interactive
+	}
 	rm, err := cmd.Flags().GetBool("rm")
 	if err != nil {
 		return err
