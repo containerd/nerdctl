@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"math/rand"
 	"os"
 	"strings"
@@ -148,6 +149,120 @@ func TestLoggingProcessAdapter(t *testing.T) {
 // stream. The container's stdio FIFOs are modelled with os.Pipe; closing the
 // write end models the container exiting and containerd closing the FIFO.
 // Regression test for https://github.com/containerd/nerdctl/issues/5006
+
+// TestLoggingProcessAdapterTrailingChunk verifies that the logger forwards all
+// of the container's output, including a final chunk that has no trailing
+// newline, rather than holding that chunk back until something closes the
+// stream. The container's stdio FIFOs are modelled with os.Pipe; closing the
+// write end models the container exiting and containerd closing the FIFO.
+// Regression test for https://github.com/containerd/nerdctl/issues/5006
+
+// TestLoggingProcessAdapterWaitError verifies that the logger does not treat a
+// Wait failure as a container exit. containerd's client delivers Wait RPC
+// errors through the exit channel as a synthetic ExitStatus carrying an error;
+// if the logger cancelled its readers on such a delivery, all logging would
+// silently stop while the container keeps running — and, in the foreground
+// attach path, wedge `nerdctl run` behind the no-longer-drained logger pipes.
+// The logger must instead re-arm the wait and keep reading until a real exit
+// arrives. Regression test for
+// https://github.com/containerd/nerdctl/issues/5137
+func TestLoggingProcessAdapterWaitError(t *testing.T) {
+	stdoutR, stdoutW, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stderrR, stderrW, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stdoutR.Close()
+	defer stderrR.Close()
+	defer stderrW.Close()
+
+	driver := &SyncMockDriver{}
+	config := &logging.Config{
+		Stdout: stdoutR,
+		Stderr: stderrR,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// The first wait channel delivers a Wait RPC error (a synthetic exit); the
+	// second delivers a real exit once the test has verified that logging
+	// survived the first delivery.
+	rearmed := make(chan struct{})
+	realExitCh := make(chan containerd.ExitStatus, 1)
+	var waitCalls int
+	var getContainerWaitMock ContainerWaitFunc = func(ctx context.Context, address string, config *logging.Config, outputSeen func() bool) (<-chan containerd.ExitStatus, error) {
+		waitCalls++
+		if waitCalls == 1 {
+			errChan := make(chan containerd.ExitStatus, 1)
+			errChan <- *containerd.NewExitStatus(255, time.Time{}, errors.New("transient wait RPC failure"))
+			return errChan, nil
+		}
+		close(rearmed)
+		return realExitCh, nil
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- loggingProcessAdapter(ctx, driver, "testDataStore", "", getContainerWaitMock, config)
+	}()
+
+	if _, err := stdoutW.Write([]byte("before wait error\n")); err != nil {
+		t.Fatal(err)
+	}
+
+	// The logger must re-arm the wait rather than cancel its readers.
+	select {
+	case <-rearmed:
+	case <-time.After(30 * time.Second):
+		t.Fatal("logger did not re-arm the container wait after the wait channel delivered an error")
+	}
+
+	// Output produced after the errored delivery must still be logged.
+	if _, err := stdoutW.Write([]byte("after wait error\n")); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		driver.mu.Lock()
+		got := strings.Join(driver.receivedStdout, "")
+		driver.mu.Unlock()
+		if strings.Contains(got, "after wait error") {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("output written after the errored wait delivery was never logged; got stdout: %q", got)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// A real exit must still terminate the logger. Close both write ends so
+	// the stream readers finish via EOF: on Windows, cancelreader cannot
+	// cancel a blocked pipe read, so the readers must not be left waiting on
+	// an open pipe when the exit is delivered.
+	stdoutW.Close()
+	stderrW.Close()
+	realExitCh <- containerd.ExitStatus{}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("logger did not terminate on the real container exit")
+	}
+
+	driver.mu.Lock()
+	defer driver.mu.Unlock()
+	stdout := strings.Join(driver.receivedStdout, "")
+	if !strings.Contains(stdout, "before wait error") || !strings.Contains(stdout, "after wait error") {
+		t.Fatalf("expected stdout to contain output from before and after the errored wait delivery, got: %q", stdout)
+	}
+}
+
 func TestLoggingProcessAdapterTrailingChunk(t *testing.T) {
 	const expected = "'Hello World!\nThere is no newline'"
 
