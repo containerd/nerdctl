@@ -214,11 +214,14 @@ func networkMatchesFilter(net *netutil.NetworkConfig, labelFilterFuncs []func(*m
 			return false
 		}
 	}
+	if len(nameFilterFuncs) == 0 {
+		return true
+	}
 	for _, nameFilterFunc := range nameFilterFuncs {
-		if !nameFilterFunc(net.Name) {
-			return false
+		if nameFilterFunc(net.Name) {
+			return true
 		}
 	}
 
-	return true
+	return false
 }
