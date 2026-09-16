@@ -16,7 +16,7 @@ permissions:
 jobs:
   test-integration-el:
     name: "EL${{ inputs.hack }}"
-    uses: ./.github/workflows/job-test-in-lima.yml
+    uses: $/.github/workflows/job-test-in-lima.yml
     strategy:
       fail-fast: false
       # EL8 is used for testing compatibility with cgroup v1.
@@ -37,7 +37,7 @@ jobs:
 
   test-integration-freebsd:
     name: "FreeBSD"
-    uses: ./.github/workflows/job-test-in-lima-freebsd.yml
+    uses: $/.github/workflows/job-test-in-lima-freebsd.yml
     with:
       timeout: 15
       runner: ubuntu-26.04
