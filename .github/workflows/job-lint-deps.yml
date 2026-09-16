@@ -1,0 +1,66 @@
+# This job runs the linters that vet the dependency tree declared in go.mod.
+#
+# - gosocialcheck reports the dependencies which do not appear to be adopted by a trusted
+#   project (CNCF Graduated). Modules that are trusted anyway are annotated
+#   `gosocialcheck:trusted` in go.mod.
+#   https://github.com/AkihiroSuda/gosocialcheck
+#   This is advisory, not a gate: `--gha` reports the findings as annotations on the run and
+#   on the PR, and always exits 0.
+#   To run locally, use `make lint-gosocialcheck` (without `--gha`, so it does exit non-zero).
+name: job-lint-deps
+
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: true
+        type: number
+      go-version:
+        required: true
+        type: string
+      runner:
+        required: true
+        type: string
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  lint-deps:
+    name: "dependencies"
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: ${{ inputs.runner }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # gosocialcheck's `--gha` fetches the base branch on demand to rank the findings whose
+          # go.sum line changed in the PR first, so a shallow checkout is enough.
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: "Init: install go"
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version }}
+          check-latest: true
+          # The calling workflow also runs on push, so the setup-go cache is disabled
+          # for zizmor's cache-poisoning audit
+          cache: false
+
+      - name: "Init: install dev-tools"
+        run: |
+          echo "::group:: make install-dev-tools"
+          make install-dev-tools
+          echo "::endgroup::"
+
+      - name: "Run: gosocialcheck"
+        env:
+          # gosocialcheck queries the GitHub API, which is heavily rate-limited when anonymous
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NO_COLOR=true make lint-gosocialcheck GOSOCIALCHECK_FLAGS=--gha
