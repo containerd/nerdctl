@@ -119,6 +119,9 @@ func runAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if detach && !cmd.Flags().Changed("interactive") {
+		interactive = false
+	}
 	// FIXME : https://github.com/containerd/nerdctl/blob/v0.22.2/cmd/nerdctl/run.go#L100
 	tty := interactive
 	rm, err := cmd.Flags().GetBool("rm")

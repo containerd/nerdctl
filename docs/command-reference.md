@@ -1985,7 +1985,7 @@ Flags:
 - :whale: `-d, —detach`: Detached mode: Run containers in the background.
 - :whale: `--entrypoint`: Overwrite the default ENTRYPOINT of the image.
 - :whale: `-e, —env`: Set environment variables.
-- :whale: `-i, —interactive`: Keep STDIN open even if not attached (default true).
+- :whale: `-i, —interactive`: Keep STDIN open even if not attached (default true; false with `--detach`).
 - :whale: `-l, —label`: Set metadata on container.
 - :whale: `--name`: Assign a name to the container.
 - :whale: `--no-build`: Don't build an image, even if it's missing.
