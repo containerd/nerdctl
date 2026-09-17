@@ -75,6 +75,7 @@ require (
 	github.com/vishvananda/netns v0.0.5 //gomodjail:unconfined
 	github.com/yuchanns/srslog v1.1.0 //gomodjail:unconfined
 	go.yaml.in/yaml/v3 v3.0.5
+	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
 	gotest.tools/v3 v3.5.2 //gomodjail:unconfined
 	tags.cncf.io/container-device-interface v1.1.1 //gomodjail:unconfined
 )
@@ -99,9 +100,13 @@ require (
 )
 
 require (
+	cyphar.com/go-pathrs v0.2.5 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
+	github.com/ProtonMail/go-crypto v1.4.1 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	//gomodjail:unconfined
 	github.com/cilium/ebpf v0.22.0 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	//gomodjail:unconfined
 	github.com/containers/ocicrypt v1.3.2 // indirect
 	//gomodjail:unconfined
@@ -115,6 +120,8 @@ require (
 	//gomodjail:unconfined
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	//gomodjail:unconfined
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	//gomodjail:unconfined
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
@@ -158,7 +165,9 @@ require (
 	//gomodjail:unconfined
 	go.opentelemetry.io/otel v1.46.0 // indirect
 	go.opentelemetry.io/otel/metric v1.46.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.46.0 // indirect
 	go.opentelemetry.io/otel/trace v1.46.0 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260825221802-da73d73af1c5 // indirect
 	//gomodjail:unconfined
 	google.golang.org/grpc v1.83.2 // indirect
@@ -166,22 +175,9 @@ require (
 	google.golang.org/protobuf v1.36.12 // indirect
 	//gomodjail:unconfined
 	lukechampine.com/blake3 v1.3.0 // indirect
-	tags.cncf.io/container-device-interface/specs-go v1.1.1 // indirect
-)
-
-require go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
-
-require (
-	cyphar.com/go-pathrs v0.2.5 // indirect
-	github.com/ProtonMail/go-crypto v1.4.1 // indirect
-	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cloudflare/circl v1.6.3 // indirect
-	//gomodjail:unconfined
-	github.com/google/uuid v1.6.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.46.0 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
 	//gomodjail:unconfined
 	sigs.k8s.io/knftables v0.0.18 // indirect
+	tags.cncf.io/container-device-interface/specs-go v1.1.1 // indirect
 )
 
 replace github.com/containerd/nerdctl/mod/tigron v0.0.0 => ./mod/tigron
