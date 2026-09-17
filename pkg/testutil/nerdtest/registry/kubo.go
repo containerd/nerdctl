@@ -50,6 +50,13 @@ func NewKuboRegistry(data test.Data, helpers test.Helpers, t *testing.T, current
 		"-d",
 		"-p", fmt.Sprintf("%s:%d:%d", listenIP, port, port),
 		"--name", containerName,
+		// The kubo image declares a HEALTHCHECK (`ipfs dag stat ...`), and nerdctl runs the very
+		// first probe as soon as the container starts - right while the command below is still
+		// running `ipfs init` and `ipfs config`. Both ends open the IPFS repo, only one of them
+		// can hold /data/ipfs/repo.lock, and the loser dies with "someone else has the lock",
+		// which breaks the && chain and leaves us without a daemon. Readiness is established by
+		// polling the API below anyway, so the probe buys us nothing here.
+		"--no-healthcheck",
 		"--entrypoint=/bin/sh",
 		platform.KuboImage,
 		"-c", "--",
