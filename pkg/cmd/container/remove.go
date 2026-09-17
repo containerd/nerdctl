@@ -203,21 +203,14 @@ func RemoveContainer(ctx context.Context, c containerd.Container, globalOptions 
 			retErr = err
 			return
 		}
-
 		netOpts, err := containerutil.NetworkOptionsFromSpec(spec)
-		if err != nil {
-			retErr = err
-			return
-		}
-
-		portSlice, err := portutil.LoadPortMappings(dataStore, globalOptions.Namespace, id, containerLabels)
-		if err != nil {
-			retErr = err
-			return
-		}
-		netOpts.PortMappings = portSlice
-
 		if err == nil {
+			portSlice, err := portutil.LoadPortMappings(dataStore, globalOptions.Namespace, id, containerLabels)
+			if err != nil {
+				retErr = err
+				return
+			}
+			netOpts.PortMappings = portSlice
 			networkManager, err := containerutil.NewNetworkingOptionsManager(globalOptions, netOpts, client)
 			if err != nil {
 				retErr = fmt.Errorf("failed to instantiate network options manager: %w", err)

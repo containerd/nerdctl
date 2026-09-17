@@ -18,6 +18,7 @@ package container
 
 import (
 	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 	"testing"
@@ -28,6 +29,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/rootlessutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -126,6 +128,94 @@ func TestContainerRmIptables(t *testing.T) {
 			},
 		},
 	}
+
+	testCase.Run(t)
+}
+
+func TestRemoveContainerWithoutNetworkAnnotation(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Require = nerdtest.OnlyKubernetes
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		identifier := data.Identifier()
+		namespace := identifier
+		containerID := ""
+
+		kubectlPath, _ := exec.LookPath("kubectl")
+
+		createNamespace := helpers.Custom(kubectlPath)
+		createNamespace.WithArgs("create", "namespace", namespace)
+		createNamespace.Run(&test.Expected{})
+
+		kube := func(args ...string) test.TestableCommand {
+			cmd := helpers.Custom(kubectlPath)
+			cmd.WithArgs("--namespace=" + namespace)
+			cmd.WithArgs(args...)
+			return cmd
+		}
+
+		// Kubernetes creates containers through CRI in the k8s.io containerd
+		// namespace. These containers do not have nerdctl-specific network
+		// annotations, which reproduces the scenario from #5207.
+		kube(
+			"run",
+			"--restart=Never",
+			"--image",
+			testutil.CommonImage,
+			identifier,
+			"--",
+			"sleep",
+			nerdtest.Infinity,
+		).Run(&test.Expected{})
+
+		cmd := kube(
+			"wait",
+			"pod",
+			identifier,
+			"--for=condition=ready",
+			"--timeout=1m",
+		)
+		cmd.WithTimeout(70 * time.Second)
+		cmd.Run(&test.Expected{})
+
+		// Retrieve the actual containerd container ID created by Kubernetes.
+		kube(
+			"get",
+			"pods",
+			identifier,
+			"-o",
+			"jsonpath={ .status.containerStatuses[0].containerID }",
+		).Run(&test.Expected{
+			Output: func(stdout string, t tig.T) {
+				containerID = strings.TrimPrefix(stdout, "containerd://")
+			},
+		})
+
+		data.Labels().Set("containerID", containerID)
+
+		// Stop the CRI-created container without deleting it from containerd.
+		// nerdctl rm must still succeed even without nerdctl network metadata.
+		helpers.Ensure("stop", containerID)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		kubectlPath, err := exec.LookPath("kubectl")
+		if err != nil {
+			return
+		}
+
+		cmd := helpers.Custom(kubectlPath)
+		cmd.WithArgs("delete", "namespace", data.Identifier(), "--ignore-not-found=true")
+		cmd.WithTimeout(30 * time.Second)
+		cmd.Run(nil)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("rm", data.Labels().Get("containerID"))
+	}
+
+	testCase.Expected = test.Expects(0, nil, nil)
 
 	testCase.Run(t)
 }
