@@ -46,6 +46,7 @@ REVISION ?= $(shell git -C $(MAKEFILE_DIR) rev-parse HEAD 2>/dev/null || echo no
 LINT_COMMIT_RANGE ?= main..HEAD
 GO_BUILD_LDFLAGS ?= -s -w
 GO_BUILD_FLAGS ?=
+GOSOCIALCHECK_FLAGS ?=
 
 BUILDTAGS ?=
 GO_TAGS=$(if $(BUILDTAGS),-tags "$(strip $(BUILDTAGS))",)
@@ -200,6 +201,17 @@ lint-gomodjail-all:
 		&& GOOS=linux GOARCH=arm64 make lint-gomodjail
 	$(call footer, $@)
 
+# gosocialcheck reports dependencies that do not appear to be adopted by a trusted project
+# (CNCF Graduated). Modules that are trusted anyway are annotated `gosocialcheck:trusted` in go.mod.
+# https://github.com/AkihiroSuda/gosocialcheck
+# Not part of `make lint`: the verdict is advisory, and CI runs it with GOSOCIALCHECK_FLAGS=--gha,
+# which reports findings as workflow annotations and always exits 0.
+lint-gosocialcheck:
+	$(call title, $@)
+	@cd $(MAKEFILE_DIR) \
+		&& gosocialcheck run $(GOSOCIALCHECK_FLAGS) ./...
+	$(call footer, $@)
+
 # FIXME: go-licenses cannot find LICENSE from root of repo when submodule is imported:
 # https://github.com/google/go-licenses/issues/186
 # This is impacting gotest.tools
@@ -273,12 +285,14 @@ install-dev-tools:
 	# ltag: v0.3.0 (2025-03-04)
 	# gotestsum: v1.13.0 (2025-09-11)
 	# go-licenses: v2.0.1 (2025-09-08)
+	# gosocialcheck: v0.2.0 (2026-09-11)
 	@cd $(MAKEFILE_DIR) \
 	        && go install github.com/google/go-licenses/v2@3e084b0caf710f7bfead967567539214f598c0a2 \
 		&& go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@27774aaf853a4fd21f1dd5e69439459dc1b26e68 \
 		&& go install github.com/vbatts/git-validation@7b60e35b055dd2eab5844202ffffad51d9c93922 \
 		&& go install github.com/containerd/ltag@66e6a514664ee2d11a470735519fa22b1a9eaabd \
-		&& go install gotest.tools/gotestsum@c4a0df2e75a225d979a444342dd3db752b53619f
+		&& go install gotest.tools/gotestsum@c4a0df2e75a225d979a444342dd3db752b53619f \
+		&& go install github.com/AkihiroSuda/gosocialcheck/cmd/gosocialcheck@2c7caa6b92b1661a3a767cd8b768a49fc640016a
 	# gomodjail: v2.0.1 (2026-09-09)
 	# Not installed on Windows hosts: gomodjail does not build there, as its dynamic mode
 	# is compiled in unconditionally (https://github.com/AkihiroSuda/gomodjail)
@@ -367,7 +381,7 @@ artifacts: clean
 	install \
 	uninstall \
 	clean \
-	lint-go lint-go-all lint-yaml lint-shell lint-commits lint-mod lint-gomodjail lint-gomodjail-all lint-licenses lint-licenses-all \
+	lint-go lint-go-all lint-yaml lint-shell lint-commits lint-mod lint-gomodjail lint-gomodjail-all lint-gosocialcheck lint-licenses lint-licenses-all \
 	fix-go fix-go-all fix-mod fix-gomodjail \
 	install-dev-tools \
 	test-unit test-unit-race test-unit-bench \
