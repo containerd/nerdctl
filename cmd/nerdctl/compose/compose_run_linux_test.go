@@ -131,6 +131,26 @@ services:
 	testCase.Run(t)
 }
 
+func TestComposeRunDetached(t *testing.T) {
+	dockerComposeYAML := fmt.Sprintf(`
+services:
+  alpine:
+    image: %s
+    network_mode: none
+`, testutil.CommonImage)
+
+	testCase := nerdtest.Setup()
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Temp().Save(dockerComposeYAML, "compose.yaml")
+	}
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "run", "-d", "--name", data.Identifier(), "alpine", "sleep", "1h")
+	}
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, nil)
+	testCase.Cleanup = composeRunCleanup()
+	testCase.Run(t)
+}
+
 func TestComposeRunWithServicePorts(t *testing.T) {
 	testCase := nerdtest.Setup()
 	// A background compose run holds the global compose lock until cleanup.
