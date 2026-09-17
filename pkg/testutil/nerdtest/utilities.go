@@ -159,6 +159,26 @@ func EnsureContainerStarted(helpers test.Helpers, con string) {
 	}
 }
 
+// EnsureContainerRemoved waits for a container to be gone from `ps -a`.
+// This is meant for containers started with `--rm`: removal there happens after the container
+// process is over, and is not finished by the time the command that was attached to it returns.
+func EnsureContainerRemoved(helpers test.Helpers, con string) {
+	helpers.T().Helper()
+	removed := false
+	for i := 0; i < maxRetry && !removed; i++ {
+		removed = !strings.Contains(helpers.Capture("ps", "-a"), con)
+		if !removed {
+			time.Sleep(sleep)
+		}
+	}
+
+	if !removed {
+		helpers.T().Log(helpers.Capture("ps", "-a"))
+		helpers.T().Log(fmt.Sprintf("container %s still not removed after %d retries", con, maxRetry))
+		helpers.T().FailNow()
+	}
+}
+
 func EnsureContainerExited(helpers test.Helpers, con string, exitCode int) {
 	helpers.T().Helper()
 	exited := false

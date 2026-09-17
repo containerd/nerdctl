@@ -204,7 +204,7 @@ func TestAttachForAutoRemovedContainer(t *testing.T) {
 			Output: expect.All(
 				expect.Contains("markmark"),
 				func(stdout string, t tig.T) {
-					assert.Assert(t, !strings.Contains(helpers.Capture("ps", "-a"), data.Identifier()))
+					nerdtest.EnsureContainerRemoved(helpers, data.Identifier())
 				},
 			),
 		}
