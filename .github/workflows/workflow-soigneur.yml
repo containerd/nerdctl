@@ -1,0 +1,37 @@
+# Tests Soigneur, the flaky test dashboard living in mod/soigneur. Everything it does is offline:
+# the GitHub API is stubbed, and the fixtures are written by the test itself.
+name: soigneur
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    paths:
+      - 'mod/soigneur/**'
+      # The marker lines are a contract between the two halves, and this is the other half.
+      - 'hack/github/gotestsum-reporter.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: "test"
+    timeout-minutes: 10
+    runs-on: ubuntu-26.04
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: "Init: checkout"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: "Run"
+        run: |
+          ./mod/soigneur/test.sh

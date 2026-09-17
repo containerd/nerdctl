@@ -106,6 +106,9 @@ soigneur::main(){
   echo "$url"
 }
 
+# Sourcing this script defines its functions and runs nothing: that is how test.sh reaches them.
+[ "${BASH_SOURCE[0]}" == "${0}" ] || return 0
+
 [ "$#" -ge 1 ] || {
   echo "usage: $0 <report.md> [digest.txt]" >&2
   exit 1

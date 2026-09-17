@@ -131,4 +131,7 @@ soigneur::main(){
   fi
 }
 
+# Sourcing this script defines its functions and runs nothing: that is how test.sh reaches them.
+[ "${BASH_SOURCE[0]}" == "${0}" ] || return 0
+
 soigneur::main "$@"
