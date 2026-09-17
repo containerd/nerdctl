@@ -28,10 +28,10 @@ github.com/containerd/cgroups/v3 v3.1.3 h1:eUNflyMddm18+yrDmZPn3jI7C5hJ9ahABE5q6
 github.com/containerd/cgroups/v3 v3.1.3/go.mod h1:PKZ2AcWmSBsY/tJUVhtS/rluX0b1uq1GmPO1ElCmbOw=
 github.com/containerd/console v1.0.5 h1:R0ymNeydRqH2DmakFNdmjR2k0t7UPuiOV/N/27/qqsc=
 github.com/containerd/console v1.0.5/go.mod h1:YynlIjWYF8myEu6sdkwKIvGQq+cOckRm6So2avqoYAk=
-github.com/containerd/containerd/api v1.12.0-rc.0 h1:Uu/0brBDz8nW/Vo+g8ah/iJkhZML+1z+X44g8q70MVw=
-github.com/containerd/containerd/api v1.12.0-rc.0/go.mod h1:EBcSzoi9Vl18cdODaXUCskf3D2NT8lsSXeZJnU5jIUc=
-github.com/containerd/containerd/v2 v2.4.0-beta.0 h1:uFwtEE0kwGngxOT0WVW3/mozESCVg+8hKUExSis7SLY=
-github.com/containerd/containerd/v2 v2.4.0-beta.0/go.mod h1:GOAqkxqN53nSzBcz9Y5jAM9JELRMo67r34O/HDCY4Ro=
+github.com/containerd/containerd/api v1.12.0 h1:kuQm82SbDrCuO4n7hf2L8zsBtZLuympyq5X/VotfX2A=
+github.com/containerd/containerd/api v1.12.0/go.mod h1:EBcSzoi9Vl18cdODaXUCskf3D2NT8lsSXeZJnU5jIUc=
+github.com/containerd/containerd/v2 v2.4.0 h1:mZLYWkPAgF4tfTjinClrRfvUxmxHxg1PQL7cjrrpTtk=
+github.com/containerd/containerd/v2 v2.4.0/go.mod h1:gHZz+v5y8mGt9grF3ynuaa3r6bXLmghBZWTAftHAUtg=
 github.com/containerd/continuity v0.5.0 h1:7a85HZpCSs+1Zps0Ee3DPSuAWY+0SJM1JNM51nlEVDg=
 github.com/containerd/continuity v0.5.0/go.mod h1:/lNJvtJKUQStBzpVQ1+rasXO1LAWtUQssk28EZvJ3nE=
 github.com/containerd/errdefs v1.0.0 h1:tg5yIfIlQIrxYtu9ajqY42W3lpS19XqdxRQeEwYG8PI=
@@ -48,6 +48,8 @@ github.com/containerd/imgcrypt/v2 v2.0.3 h1:yM6//IOTtca9TpxPP8prJqLDuidbF/VhUQuj
 github.com/containerd/imgcrypt/v2 v2.0.3/go.mod h1:Sjfd3uOiBWtb1dUo1yS5Z/ZxdfMU7MpBr2pzs9HoRDs=
 github.com/containerd/log v0.2.0 h1:BewD/umNgVnoczglOpX8eRMyEy5t5iPlu5AIpnWDONc=
 github.com/containerd/log v0.2.0/go.mod h1:/M7L7CXKcPTfNC74XzaK+5H5KbO5+4lJVpuVI6vRLoM=
+github.com/containerd/log/otel v0.1.0 h1:Az5rFFo0+c4v2yC8ROR63sWsZpKl/vhtUnUhqLSpE6U=
+github.com/containerd/log/otel v0.1.0/go.mod h1:65C5iYF2xIQByCyxzoO2KKKK1+/tGxD4XqhdlrTtvzE=
 github.com/containerd/nydus-snapshotter v0.15.16 h1:FkAmNADhOQFeWZtrHcDz04ZoOKsIeKZtKbz7PHxIFtc=
 github.com/containerd/nydus-snapshotter v0.15.16/go.mod h1:x+/i5WkV8w4jSXbdv57YSMWvkzT2JFwpeIDJxvcYe38=
 github.com/containerd/platforms v1.0.0-rc.5 h1:vXd569rDrz8LeMXzAnBsy6LADV5YtsD8oyaRarxdmSU=
@@ -105,8 +107,8 @@ github.com/fluent/fluent-logger-golang v1.10.1 h1:wu54iN1O2afll5oQrtTjhgZRwWcfOe
 github.com/fluent/fluent-logger-golang v1.10.1/go.mod h1:qOuXG4ZMrXaSTk12ua+uAb21xfNYOzn0roAtp7mfGAE=
 github.com/fsnotify/fsnotify v1.10.1 h1:b0/UzAf9yR5rhf3RPm9gf3ehBPpf0oZKIjtpKrx59Ho=
 github.com/fsnotify/fsnotify v1.10.1/go.mod h1:TLheqan6HD6GBK6PrDWyDPBaEV8LspOxvPSjC+bVfgo=
-github.com/go-jose/go-jose/v4 v4.1.4 h1:moDMcTHmvE6Groj34emNPLs/qtYXRVcd6S7NHbHz3kA=
-github.com/go-jose/go-jose/v4 v4.1.4/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
+github.com/go-jose/go-jose/v4 v4.1.5 h1:RjgjO2LOtWOJKUC5wpwY9LR3B3vwVAz6JS2YHfYU6eA=
+github.com/go-jose/go-jose/v4 v4.1.5/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/logr v1.4.4 h1:tG4xh9yMsRCAiodLVTxyrkzSZ9+o0L1Kg/+cPVcbP/8=
 github.com/go-logr/logr v1.4.4/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
