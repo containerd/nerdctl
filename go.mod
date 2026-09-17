@@ -1,7 +1,7 @@
 //gomodjail:confined
 module github.com/containerd/nerdctl/v2
 
-go 1.26.3
+go 1.26.6
 
 // containerd, Docker/Moby, OCI, and golang.org/x packages are trusted
 //gosocialcheck:trusted
@@ -9,8 +9,8 @@ require (
 	github.com/containerd/accelerated-container-image v1.4.4 //gomodjail:unconfined
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
-	github.com/containerd/containerd/api v1.12.0-rc.0 //gomodjail:unconfined
-	github.com/containerd/containerd/v2 v2.4.0-beta.0 //gomodjail:unconfined
+	github.com/containerd/containerd/api v1.12.0 //gomodjail:unconfined
+	github.com/containerd/containerd/v2 v2.4.0 //gomodjail:unconfined
 	github.com/containerd/continuity v0.5.0 //gomodjail:unconfined
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
@@ -85,6 +85,7 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	//gomodjail:unconfined
 	github.com/containerd/go-runc v1.2.1 // indirect
+	github.com/containerd/log/otel v0.1.0 // indirect
 	github.com/containerd/plugin v1.1.0 // indirect
 	//gomodjail:unconfined
 	github.com/containerd/ttrpc v1.2.9 // indirect
@@ -114,7 +115,7 @@ require (
 	//gomodjail:unconfined
 	github.com/djherbis/times v1.6.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.5 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	//gomodjail:unconfined
