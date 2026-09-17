@@ -135,7 +135,9 @@ soigneur::runs(){
             workflow: (.path | sub("^\\.github/workflows/"; "")),
             at: .created_at
           }
-        | select(($wanted | length) == 0 or ($wanted | index(.workflow)))'
+        # `index` evaluates its argument against its own input, which is $wanted, the array:
+        # the name to look for has to reach it another way.
+        | select(($wanted | length) == 0 or (.workflow | IN($wanted[])))'
 }
 
 # A job log holds whatever the tests printed, so a test that prints a line shaped like a marker
@@ -328,6 +330,9 @@ soigneur::main(){
   [ "$SOIGNEUR_DIGEST_OUT" == "" ] || jq -r '.digest' < "$tmp"/report.json > "$SOIGNEUR_DIGEST_OUT"
   jq -r '.markdown' < "$tmp"/report.json
 }
+
+# Sourcing this script defines its functions and runs nothing: that is how test.sh reaches them.
+[ "${BASH_SOURCE[0]}" == "${0}" ] || return 0
 
 case "${1:-}" in
   --collect-run)
