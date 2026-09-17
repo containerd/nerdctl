@@ -620,12 +620,29 @@ COPY --from=builder /go/src/logger/logger /
 			ExitCode: expect.ExitCodeSuccess,
 			Output: func(stdout string, t tig.T) {
 				containerID := strings.TrimSpace(stdout)
-				logBytes, err := os.ReadFile(filepath.Join(os.TempDir(),
-					fmt.Sprintf("%s_stdout.log", containerID)))
-				assert.NilError(t, err)
-				log := string(logBytes)
-				assert.Assert(t, strings.Contains(log, "foo"))
-				assert.Assert(t, strings.Contains(log, "bar"))
+				// The logging binary is a process of its own, draining the container stdout pipe on
+				// its own schedule: when `run -d` hands us the container id back, the container has
+				// not necessarily said anything yet, and the binary has possibly not even been
+				// scheduled. Wait for the container to be over, then for the binary to have written
+				// down what it said.
+				nerdtest.EnsureContainerExited(helpers, data.Identifier(), 0)
+
+				logPath := filepath.Join(os.TempDir(), fmt.Sprintf("%s_stdout.log", containerID))
+
+				var log string
+				for i := 0; i < 20; i++ {
+					logBytes, err := os.ReadFile(logPath)
+					if err == nil {
+						log = string(logBytes)
+						if strings.Contains(log, "foo") && strings.Contains(log, "bar") {
+							break
+						}
+					}
+					time.Sleep(time.Second)
+				}
+
+				assert.Assert(t, strings.Contains(log, "foo"), "%q does not contain %q", log, "foo")
+				assert.Assert(t, strings.Contains(log, "bar"), "%q does not contain %q", log, "bar")
 			},
 		}
 	}

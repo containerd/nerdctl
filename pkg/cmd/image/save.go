@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
@@ -101,7 +102,7 @@ func Save(ctx context.Context, client *containerd.Client, images []string, optio
 		storeOpts = append(storeOpts, transferimage.WithExtraReference(imageRef))
 	}
 
-	w := nopWriteCloser{options.Stdout}
+	w := &signalWriteCloser{Writer: options.Stdout, closed: make(chan struct{})}
 
 	progressOutput := io.Writer(os.Stderr)
 	if options.Quiet {
@@ -110,17 +111,40 @@ func Save(ctx context.Context, client *containerd.Client, images []string, optio
 	pf, done := transferutil.ProgressHandler(ctx, progressOutput)
 	defer done()
 
-	return client.Transfer(ctx,
+	if err = client.Transfer(ctx,
 		transferimage.NewStore("", storeOpts...),
 		tarchive.NewImageExportStream(w, "", exportOpts...),
 		transfer.WithProgress(pf),
-	)
+	); err != nil {
+		return err
+	}
+
+	// The transfer service hands the archive back over a stream that a goroutine of its own
+	// copies into `w`, and Transfer returns as soon as the daemon is done - which is before that
+	// goroutine has necessarily drained what is still in flight. The goroutine closes the writer
+	// when it is over, so that is what we wait for: returning any earlier hands the caller a
+	// truncated archive.
+	select {
+	case <-w.closed:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
-type nopWriteCloser struct {
+// signalWriteCloser is an io.WriteCloser that reports, through the `closed` channel, that it has
+// been closed - and tolerates being closed more than once, as io.Closer does not promise not to.
+type signalWriteCloser struct {
 	io.Writer
+
+	once   sync.Once
+	closed chan struct{}
 }
 
-func (nopWriteCloser) Close() error {
+func (w *signalWriteCloser) Close() error {
+	w.once.Do(func() {
+		close(w.closed)
+	})
+
 	return nil
 }
