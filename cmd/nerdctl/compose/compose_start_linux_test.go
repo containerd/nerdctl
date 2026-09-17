@@ -25,6 +25,7 @@ import (
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
+	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
 )
@@ -43,19 +44,20 @@ services:
 	testCase := nerdtest.Setup()
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
-		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down")
+		helpers.Anyhow("compose", "-p", data.Identifier("project"), "-f", data.Temp().Path("compose.yaml"), "down")
 	}
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		projectName := data.Identifier("project")
 		data.Temp().Save(dockerComposeYAML, "compose.yaml")
-		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
-		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "start")
-		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "stop", "--timeout", "1", "svc0")
-		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "kill", "svc1")
+		helpers.Ensure("compose", "-p", projectName, "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+		helpers.Ensure("compose", "-p", projectName, "-f", data.Temp().Path("compose.yaml"), "start")
+		helpers.Ensure("compose", "-p", projectName, "-f", data.Temp().Path("compose.yaml"), "stop", "--timeout", "1", "svc0")
+		helpers.Ensure("compose", "-p", projectName, "-f", data.Temp().Path("compose.yaml"), "kill", "svc1")
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		return helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "start")
+		return helpers.Command("compose", "-p", data.Identifier("project"), "-f", data.Temp().Path("compose.yaml"), "start")
 	}
 
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
@@ -63,8 +65,15 @@ services:
 			ExitCode: 0,
 			Errors:   nil,
 			Output: func(stdout string, t tig.T) {
-				svc0 := helpers.Capture("compose", "-f", data.Temp().Path("compose.yaml"), "ps", "svc0")
-				svc1 := helpers.Capture("compose", "-f", data.Temp().Path("compose.yaml"), "ps", "svc1")
+				projectName := data.Identifier("project")
+				// `compose start` returns once it has asked for the containers to be started, and
+				// `compose ps` only lists the ones that are actually running: without waiting, the
+				// service that is the slowest to come up is simply missing from the listing.
+				nerdtest.EnsureContainerStarted(helpers, serviceparser.DefaultContainerName(projectName, "svc0", "1"))
+				nerdtest.EnsureContainerStarted(helpers, serviceparser.DefaultContainerName(projectName, "svc1", "1"))
+
+				svc0 := helpers.Capture("compose", "-p", projectName, "-f", data.Temp().Path("compose.yaml"), "ps", "svc0")
+				svc1 := helpers.Capture("compose", "-p", projectName, "-f", data.Temp().Path("compose.yaml"), "ps", "svc1")
 				comp := expect.Match(regexp.MustCompile("Up|running"))
 				comp(svc0, t)
 				comp(svc1, t)
