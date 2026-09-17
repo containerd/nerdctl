@@ -96,7 +96,7 @@ jobs:
   # Advisory only: this job always succeeds, the findings show up as annotations.
   lint-deps:
     name: "deps"
-    uses: ./.github/workflows/job-lint-deps.yml
+    uses: $/.github/workflows/job-lint-deps.yml
     with:
       timeout: 10
       go-version: "1.26"
