@@ -5,6 +5,9 @@ and principles about writing tests.
 
 For more comprehensive information about nerdctl test tools, see [tools.md](tools.md).
 
+For flaky tests - how the CI reports them, and what to do about them - see
+[flaky.md](flaky.md).
+
 ## Code, fix, lint, rinse, repeat
 
 ```

@@ -1,0 +1,73 @@
+# This workflow collects the test failures that the CI reported over the last week, and publishes
+# them to a single GitHub issue: the "flaky test dashboard", containerd/nerdctl#5202.
+#
+# Everything reusable lives in the mod/soigneur action: the data source is the archived
+# logs of the test runs, in which hack/github/gotestsum-reporter.sh left one marker line per
+# failing test, so there is no database, no test result artifact, and no server involved.
+# See docs/testing/flaky.md.
+name: flaky-test-dashboard
+
+on:
+  schedule:
+    # Every Monday at 07:00 UTC: a quiet hour, since collecting a week does download the logs of
+    # every test run of that week (about 50 MB, and one API request per run).
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Size of the window to report on, in days"
+        required: false
+        default: "7"
+        type: string
+      branch:
+        description: "Branch to report on"
+        required: false
+        default: "main"
+        type: string
+      publish:
+        description: "Update the dashboard issue (otherwise, only write to the run summary)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+# The dashboard is a single issue: two runs rewriting it, and commenting on it, at the same time
+# would be visible. Queue them instead.
+concurrency:
+  group: flaky-test-dashboard
+  cancel-in-progress: false
+
+jobs:
+  dashboard:
+    name: "collect and publish"
+    # Never run on forks: this would open an issue in the fork.
+    if: ${{ github.repository == 'containerd/nerdctl' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    permissions:
+      contents: read  # fetch the action from this repository
+      actions: read  # list the workflow runs, and download their logs
+      issues: write  # create, and update, the dashboard issue
+
+    steps:
+      # `$/` resolves the action from this repository at the ref the workflow runs at, so there
+      # is nothing to check out, and no working tree that a previous step could have altered.
+      - name: "Run"
+        uses: $/mod/soigneur
+        with:
+          # https://github.com/containerd/nerdctl/issues/5202 is *the* dashboard: its description
+          # is rewritten, and the digest posted as a comment. Nothing ever opens an issue.
+          issue-number: "5202"
+          branch: ${{ inputs.branch || 'main' }}
+          days: ${{ inputs.days || '7' }}
+          # The other workflows have no test to report on, and downloading their logs would only
+          # spend requests. Keep this in sync when a test workflow is added.
+          workflows: "workflow-test.yml,workflow-flaky.yml,workflow-tigron.yml"
+          # For a schedule, `inputs.publish` is empty, and publishing is what the schedule is for.
+          publish: ${{ inputs.publish || github.event_name == 'schedule' }}
+          docs-url: "https://github.com/containerd/nerdctl/blob/main/docs/testing/flaky.md"
+          footer-notes: |
+            - Only the integration suites report per-test data: the unit tests, Windows, and
+              FreeBSD do not run the reporter.
