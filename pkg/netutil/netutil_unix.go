@@ -137,6 +137,8 @@ func (e *CNIEnv) generateCNIPlugins(driver string, name string, ipam map[string]
 			bridge.IPMasq = iPMasq
 		}
 		bridge.HairpinMode = true
+		bridge.Capabilities["portMappings"] = true
+		bridge.Capabilities["dns"] = true
 		if ipv6 {
 			bridge.Capabilities["ips"] = true
 		}
