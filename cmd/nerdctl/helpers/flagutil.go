@@ -162,6 +162,10 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 	if err != nil {
 		return types.GlobalCommandOptions{}, err
 	}
+	disableAttachBroker, err := cmd.Flags().GetBool("disable-attach-broker")
+	if err != nil {
+		return types.GlobalCommandOptions{}, err
+	}
 	// Point to dataRoot for filesystem-helpers implementing rollback / backups.
 	err = fs.InitFS(dataRoot)
 	if err != nil {
@@ -169,27 +173,28 @@ func ProcessRootCmdFlags(cmd *cobra.Command) (types.GlobalCommandOptions, error)
 	}
 
 	return types.GlobalCommandOptions{
-		Debug:            debug,
-		DebugFull:        debugFull,
-		LogFile:          logFile,
-		Address:          address,
-		Namespace:        namespace,
-		Snapshotter:      snapshotter,
-		CNIPath:          cniPath,
-		CNINetConfPath:   cniConfigPath,
-		DataRoot:         dataRoot,
-		CgroupManager:    cgroupManager,
-		InsecureRegistry: insecureRegistry,
-		HostsDir:         hostsDir,
-		Experimental:     experimental,
-		HostGatewayIP:    hostGatewayIP,
-		BridgeIP:         bridgeIP,
-		KubeHideDupe:     kubeHideDupe,
-		CDISpecDirs:      cdiSpecDirs,
-		DNS:              dns,
-		DNSOpts:          dnsOpts,
-		DNSSearch:        dnsSearch,
-		SelinuxEnabled:   selinuxEnabled,
+		Debug:               debug,
+		DebugFull:           debugFull,
+		LogFile:             logFile,
+		Address:             address,
+		Namespace:           namespace,
+		Snapshotter:         snapshotter,
+		CNIPath:             cniPath,
+		CNINetConfPath:      cniConfigPath,
+		DataRoot:            dataRoot,
+		CgroupManager:       cgroupManager,
+		InsecureRegistry:    insecureRegistry,
+		HostsDir:            hostsDir,
+		Experimental:        experimental,
+		HostGatewayIP:       hostGatewayIP,
+		BridgeIP:            bridgeIP,
+		KubeHideDupe:        kubeHideDupe,
+		CDISpecDirs:         cdiSpecDirs,
+		DNS:                 dns,
+		DNSOpts:             dnsOpts,
+		DNSSearch:           dnsSearch,
+		SelinuxEnabled:      selinuxEnabled,
+		DisableAttachBroker: disableAttachBroker,
 	}, nil
 }
 
