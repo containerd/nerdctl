@@ -68,7 +68,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2 //gomodjail:unconfined
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/rootless-containers/bypass4netns v0.4.2 //gomodjail:unconfined
-	github.com/rootless-containers/rootlesskit/v3 v3.2.0-beta.0 //gomodjail:unconfined
+	github.com/rootless-containers/rootlesskit/v3 v3.2.0 //gomodjail:unconfined
 	github.com/spf13/cobra v1.10.2 //gomodjail:unconfined
 	github.com/spf13/pflag v1.0.10 //gomodjail:unconfined
 	github.com/vishvananda/netlink v1.3.1 //gomodjail:unconfined
