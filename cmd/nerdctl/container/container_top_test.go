@@ -17,9 +17,11 @@
 package container
 
 import (
+	"errors"
 	"runtime"
 	"testing"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 
@@ -66,6 +68,48 @@ func TestTop(t *testing.T) {
 		},
 	}
 
+	testCase.Run(t)
+}
+
+func TestTopStoppedContainer(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(require.Linux, nerdtest.CgroupsAccessible)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--network", "none", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+		helpers.Ensure("stop", "--time", "1", data.Identifier())
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("top", data.Identifier())
+	}
+
+	testCase.Expected = test.Expects(1, []error{errors.New("is not running")}, nil)
+	testCase.Run(t)
+}
+
+func TestTopPausedContainer(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(require.Linux, nerdtest.CgroupsAccessible)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		helpers.Ensure("run", "-d", "--network", "none", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+		helpers.Ensure("pause", data.Identifier())
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("top", data.Identifier())
+	}
+
+	testCase.Expected = test.Expects(0, nil, expect.Contains("sleep"))
 	testCase.Run(t)
 }
 
