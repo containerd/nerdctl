@@ -74,8 +74,8 @@ func containerTop(ctx context.Context, stdio io.Writer, client *containerd.Clien
 		return err
 	}
 
-	if status.Status != containerd.Running {
-		return nil
+	if status.Status != containerd.Running && status.Status != containerd.Paused {
+		return fmt.Errorf("container %s is not running (status: %s)", id, status.Status)
 	}
 
 	//TO DO handle restarting case: wait for container to restart and then launch top command
