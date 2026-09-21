@@ -56,3 +56,22 @@ func TestNetworkMatchesFilter(t *testing.T) {
 		})
 	}
 }
+
+func TestNetworkFilterRejectsInvalidInput(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		filter string
+		want   string
+	}{
+		{"name", "bad format of filter"},
+		{"label", "bad format of filter"},
+		{"names=frontend", "invalid filter 'names'"},
+		{"labels=env=prod", "invalid filter 'labels'"},
+		{"driver=bridge", "invalid filter 'driver'"},
+	} {
+		t.Run(tc.filter, func(t *testing.T) {
+			_, _, err := getNetworkFilterFuncs([]string{tc.filter})
+			assert.ErrorContains(t, err, tc.want)
+		})
+	}
+}

@@ -172,34 +172,33 @@ func getNetworkFilterFuncs(filters []string) ([]func(*map[string]string) bool, [
 	nameFilterFuncs := make([]func(string) bool, 0)
 
 	for _, filter := range filters {
-		if strings.HasPrefix(filter, "name") || strings.HasPrefix(filter, "label") {
-			filter, value, ok := strings.Cut(filter, "=")
-			if !ok {
-				continue
+		key, value, ok := strings.Cut(filter, "=")
+		if !ok {
+			return nil, nil, fmt.Errorf("invalid argument %q for \"-f, --filter\": bad format of filter (expected name=value)", filter)
+		}
+		switch key {
+		case "name":
+			re, err := regexp.Compile(value)
+			if err != nil {
+				return nil, nil, err
 			}
-			switch filter {
-			case "name":
-				re, err := regexp.Compile(value)
-				if err != nil {
-					return nil, nil, err
+			nameFilterFuncs = append(nameFilterFuncs, func(name string) bool {
+				return re.MatchString(name)
+			})
+		case "label":
+			k, v, hasValue := strings.Cut(value, "=")
+			labelFilterFuncs = append(labelFilterFuncs, func(labels *map[string]string) bool {
+				if labels == nil {
+					return false
 				}
-				nameFilterFuncs = append(nameFilterFuncs, func(name string) bool {
-					return re.MatchString(name)
-				})
-			case "label":
-				k, v, hasValue := strings.Cut(value, "=")
-				labelFilterFuncs = append(labelFilterFuncs, func(labels *map[string]string) bool {
-					if labels == nil {
-						return false
-					}
-					val, ok := (*labels)[k]
-					if !ok || (hasValue && val != v) {
-						return false
-					}
-					return true
-				})
-			}
-			continue
+				val, ok := (*labels)[k]
+				if !ok || (hasValue && val != v) {
+					return false
+				}
+				return true
+			})
+		default:
+			return nil, nil, fmt.Errorf("invalid filter '%s'", key)
 		}
 	}
 	return labelFilterFuncs, nameFilterFuncs, nil
