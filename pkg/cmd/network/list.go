@@ -100,14 +100,14 @@ func List(ctx context.Context, options types.NetworkListOptions) error {
 		return err
 	}
 
-	labelFilterFuncs, nameFilterFuncs, err := getNetworkFilterFuncs(filters)
+	labelFilterFuncs, nameFilterFuncs, driverFilters, err := getNetworkFilterFuncs(filters)
 	if err != nil {
 		return err
 	}
 	if len(filters) > 0 {
 		filtered := make([]*netutil.NetworkConfig, 0)
 		for _, net := range netConfigs {
-			if networkMatchesFilter(net, labelFilterFuncs, nameFilterFuncs) {
+			if networkMatchesFilter(net, labelFilterFuncs, nameFilterFuncs, driverFilters) {
 				filtered = append(filtered, net)
 			}
 		}
@@ -167,45 +167,62 @@ func List(ctx context.Context, options types.NetworkListOptions) error {
 	return nil
 }
 
-func getNetworkFilterFuncs(filters []string) ([]func(*map[string]string) bool, []func(string) bool, error) {
+func getNetworkFilterFuncs(filters []string) ([]func(*map[string]string) bool, []func(string) bool, []string, error) {
 	labelFilterFuncs := make([]func(*map[string]string) bool, 0)
 	nameFilterFuncs := make([]func(string) bool, 0)
+	var driverFilters []string
 
 	for _, filter := range filters {
-		if strings.HasPrefix(filter, "name") || strings.HasPrefix(filter, "label") {
-			filter, value, ok := strings.Cut(filter, "=")
-			if !ok {
-				continue
+		key, value, ok := strings.Cut(filter, "=")
+		if !ok {
+			return nil, nil, nil, fmt.Errorf("invalid argument %q for \"-f, --filter\": bad format of filter (expected name=value)", filter)
+		}
+		switch key {
+		case "name":
+			re, err := regexp.Compile(value)
+			if err != nil {
+				return nil, nil, nil, err
 			}
-			switch filter {
-			case "name":
-				re, err := regexp.Compile(value)
-				if err != nil {
-					return nil, nil, err
+			nameFilterFuncs = append(nameFilterFuncs, func(name string) bool {
+				return re.MatchString(name)
+			})
+		case "label":
+			k, v, hasValue := strings.Cut(value, "=")
+			labelFilterFuncs = append(labelFilterFuncs, func(labels *map[string]string) bool {
+				if labels == nil {
+					return false
 				}
-				nameFilterFuncs = append(nameFilterFuncs, func(name string) bool {
-					return re.MatchString(name)
-				})
-			case "label":
-				k, v, hasValue := strings.Cut(value, "=")
-				labelFilterFuncs = append(labelFilterFuncs, func(labels *map[string]string) bool {
-					if labels == nil {
-						return false
-					}
-					val, ok := (*labels)[k]
-					if !ok || (hasValue && val != v) {
-						return false
-					}
-					return true
-				})
-			}
-			continue
+				val, ok := (*labels)[k]
+				if !ok || (hasValue && val != v) {
+					return false
+				}
+				return true
+			})
+		case "driver":
+			driverFilters = append(driverFilters, value)
+		default:
+			return nil, nil, nil, fmt.Errorf("invalid filter '%s'", key)
 		}
 	}
-	return labelFilterFuncs, nameFilterFuncs, nil
+	return labelFilterFuncs, nameFilterFuncs, driverFilters, nil
 }
 
-func networkMatchesFilter(net *netutil.NetworkConfig, labelFilterFuncs []func(*map[string]string) bool, nameFilterFuncs []func(string) bool) bool {
+func networkMatchesFilter(net *netutil.NetworkConfig, labelFilterFuncs []func(*map[string]string) bool, nameFilterFuncs []func(string) bool, driverFilters []string) bool {
+	if len(driverFilters) > 0 {
+		if len(net.Plugins) == 0 {
+			return false
+		}
+		matched := false
+		for _, driver := range driverFilters {
+			if driver == net.Plugins[0].Network.Type {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
 	// Match against the user-visible labels only, so a --filter label= query can
 	// neither select on nor be confused by nerdctl-internal keys.
 	visible := visibleNetworkLabels(net.NerdctlLabels)
