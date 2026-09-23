@@ -937,14 +937,15 @@ func TestRunHealthcheckFlags(t *testing.T) {
 	testCase.Require = require.Not(nerdtest.Rootless)
 
 	testCases := []struct {
-		name              string
-		args              []string
-		shouldFail        bool
-		expectTest        []string
-		expectRetries     int
-		expectInterval    time.Duration
-		expectTimeout     time.Duration
-		expectStartPeriod time.Duration
+		name                string
+		args                []string
+		shouldFail          bool
+		expectTest          []string
+		expectRetries       int
+		expectInterval      time.Duration
+		expectTimeout       time.Duration
+		expectStartPeriod   time.Duration
+		expectStartInterval time.Duration
 	}{
 		{
 			name: "Valid_full_config",
@@ -954,12 +955,14 @@ func TestRunHealthcheckFlags(t *testing.T) {
 				"--health-timeout", "5s",
 				"--health-retries", "3",
 				"--health-start-period", "2s",
+				"--health-start-interval", "1s",
 			},
-			expectTest:        []string{"CMD-SHELL", "curl -f http://localhost || exit 1"},
-			expectInterval:    30 * time.Second,
-			expectTimeout:     5 * time.Second,
-			expectRetries:     3,
-			expectStartPeriod: 2 * time.Second,
+			expectTest:          []string{"CMD-SHELL", "curl -f http://localhost || exit 1"},
+			expectInterval:      30 * time.Second,
+			expectTimeout:       5 * time.Second,
+			expectRetries:       3,
+			expectStartPeriod:   2 * time.Second,
+			expectStartInterval: 1 * time.Second,
 		},
 		{
 			name: "No_healthcheck",
@@ -993,6 +996,14 @@ func TestRunHealthcheckFlags(t *testing.T) {
 			args: []string{
 				"--health-cmd", "true",
 				"--health-timeout", "-5s",
+			},
+			shouldFail: true,
+		},
+		{
+			name: "Negative_start_interval",
+			args: []string{
+				"--health-cmd", "true",
+				"--health-start-interval", "-1s",
 			},
 			shouldFail: true,
 		},
@@ -1066,6 +1077,9 @@ func TestRunHealthcheckFlags(t *testing.T) {
 							}
 							if tc.expectStartPeriod > 0 {
 								assert.Equal(t, hc.StartPeriod, tc.expectStartPeriod)
+							}
+							if tc.expectStartInterval > 0 {
+								assert.Equal(t, hc.StartInterval, tc.expectStartInterval)
 							}
 						},
 					),
