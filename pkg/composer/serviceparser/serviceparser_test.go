@@ -936,6 +936,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 5s
+      start_interval: 2s
   cmd_exec:
     image: alpine:3.14
     healthcheck:
@@ -965,6 +966,7 @@ services:
 	assert.Assert(t, in(c.RunArgs, "--health-timeout=10s"))
 	assert.Assert(t, in(c.RunArgs, "--health-retries=3"))
 	assert.Assert(t, in(c.RunArgs, "--health-start-period=5s"))
+	assert.Assert(t, in(c.RunArgs, "--health-start-interval=2s"))
 
 	c = getContainersFromService(t, project, "cmd_exec")[0]
 	assert.Assert(t, in(c.RunArgs, "--health-cmd=curl -f http://localhost"))

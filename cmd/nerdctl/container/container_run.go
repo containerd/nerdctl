@@ -256,6 +256,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().Duration("health-timeout", 0, "Maximum time to allow one check to run; 0 uses the image value or 30s when unset there too")
 	cmd.Flags().Int("health-retries", 0, "Consecutive failures needed to report unhealthy; 0 uses the image value or 3 when unset there too")
 	cmd.Flags().Duration("health-start-period", 0, "Start period for the container to initialize before starting health-retries countdown")
+	cmd.Flags().Duration("health-start-interval", 0, "Time between running the check during the start period; 0 uses the image value or 5s when unset there too")
 	cmd.Flags().Bool("no-healthcheck", false, "Disable any container-specified HEALTHCHECK")
 
 	// #region env flags

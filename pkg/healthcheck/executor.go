@@ -34,6 +34,15 @@ import (
 
 // ExecuteHealthCheck executes the health check command for a container
 func ExecuteHealthCheck(ctx context.Context, task containerd.Task, container containerd.Container, hc *Healthcheck) error {
+	run, err := shouldRunProbe(ctx, container, hc)
+	if err != nil {
+		return err
+	}
+	if !run {
+		log.G(ctx).Debugf("skipping health check tick for %s: next probe is not due yet", container.ID())
+		return nil
+	}
+
 	// Prepare process spec for health check command
 	processSpec, err := prepareProcessSpec(ctx, container, hc)
 	if err != nil {
@@ -61,6 +70,50 @@ func ExecuteHealthCheck(ctx context.Context, task containerd.Task, container con
 		return fmt.Errorf("failed to update health status: %w", err)
 	}
 	return nil
+}
+
+// shouldRunProbe reports whether a probe should actually execute on this tick.
+//
+// The systemd timer that drives ticks (see CreateTimer) runs at a single fixed cadence for the
+// whole container lifetime, sized to the faster of --health-interval and --health-start-interval
+// so it can be responsive during the start period. This function is what makes the cadence
+// actually vary: while still within --health-start-period, a probe is due every
+// --health-start-interval; once that period has elapsed (or ended early via a healthy result),
+// ticks that arrive before a full --health-interval has passed since the last probe are skipped,
+// so the effective probe cadence matches the configured --health-interval.
+func shouldRunProbe(ctx context.Context, container containerd.Container, hc *Healthcheck) (bool, error) {
+	state, err := readHealthStateFromLabels(ctx, container)
+	if err != nil {
+		return false, fmt.Errorf("failed to read health state from labels: %w", err)
+	}
+	// No prior state recorded: this is the first tick for this container, always run it.
+	if state == nil {
+		return true, nil
+	}
+
+	info, err := container.Info(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get container info: %w", err)
+	}
+
+	return shouldRunProbeAt(time.Now(), info.CreatedAt, state.LastProbeAt, state.InStartPeriod, hc), nil
+}
+
+// shouldRunProbeAt is the pure decision behind shouldRunProbe: given "now", it decides whether a
+// probe is due, based on when the container was created, when a probe last actually ran, whether
+// we're still tracking the container as being within its start period, and the health check
+// configuration currently in effect.
+func shouldRunProbeAt(now, containerCreated, lastProbeAt time.Time, inStartPeriod bool, hc *Healthcheck) bool {
+	// No prior probe recorded: always run the first one.
+	if lastProbeAt.IsZero() {
+		return true
+	}
+
+	target := hc.Interval
+	if hc.StartPeriod > 0 && inStartPeriod && now.Sub(containerCreated) < hc.StartPeriod {
+		target = hc.StartInterval
+	}
+	return now.Sub(lastProbeAt) >= target
 }
 
 // probeHealthCheck executes the health check command inside the container context
@@ -174,7 +227,9 @@ func updateHealthStatus(ctx context.Context, container containerd.Container, hcC
 		}
 	}
 
-	// Write updated health state back to labels
+	// Record when this probe ran so the next tick can tell whether it is due yet
+	// (see shouldRunProbe), and update the label with new health state.
+	currentHealth.LastProbeAt = hcResult.Start
 	if err := writeHealthStateToLabels(ctx, container, currentHealth); err != nil {
 		return fmt.Errorf("failed to write health state to labels: %w", err)
 	}
