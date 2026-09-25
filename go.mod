@@ -6,7 +6,7 @@ go 1.26.6
 // containerd, Docker/Moby, OCI, and golang.org/x packages are trusted
 //gosocialcheck:trusted
 require (
-	github.com/containerd/accelerated-container-image v1.4.4 //gomodjail:unconfined
+	github.com/containerd/accelerated-container-image v1.4.5 //gomodjail:unconfined
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
 	github.com/containerd/containerd/api v1.12.0 //gomodjail:unconfined
