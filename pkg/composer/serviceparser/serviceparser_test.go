@@ -378,6 +378,33 @@ services:
 	}
 }
 
+func TestParseCgroup(t *testing.T) {
+	const dockerComposeYAML = `
+services:
+  foo:
+    image: nginx:alpine
+    cgroup: host
+    cgroup_parent: foo.slice
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	fooSvc, err := project.GetService("foo")
+	assert.NilError(t, err)
+
+	foo, err := Parse(project, fooSvc)
+	assert.NilError(t, err)
+
+	t.Logf("foo: %+v", foo)
+	for _, c := range foo.Containers {
+		assert.Assert(t, in(c.RunArgs, "--cgroupns=host"))
+		assert.Assert(t, in(c.RunArgs, "--cgroup-parent=foo.slice"))
+	}
+}
+
 func TestParseRelative(t *testing.T) {
 	t.Parallel()
 
