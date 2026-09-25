@@ -27,6 +27,7 @@ require (
 	github.com/docker/cli v29.8.1+incompatible //gomodjail:unconfined
 	github.com/docker/go-connections v0.8.1 //gomodjail:unconfined
 	github.com/docker/go-units v0.5.0
+	github.com/moby/buildkit v0.33.0
 	github.com/moby/moby/client v0.6.0 //gomodjail:unconfined
 	github.com/moby/moby/v2 v2.0.0-beta.24 //gomodjail:unconfined
 	github.com/moby/sys/mount v0.3.5 //gomodjail:unconfined
@@ -90,20 +91,21 @@ require (
 	//gomodjail:unconfined
 	github.com/containerd/ttrpc v1.2.9 // indirect
 	//gomodjail:unconfined
-	github.com/docker/docker-credential-helpers v0.9.3 // indirect
+	github.com/docker/docker-credential-helpers v0.9.8 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/moby/api v1.56.0 // indirect
 	//gomodjail:unconfined
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/symlink v0.3.0 // indirect
-	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
+	golang.org/x/exp v0.0.0-20260603202125-055de637280b // indirect
 )
 
 require (
 	cyphar.com/go-pathrs v0.2.5 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
+	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	//gomodjail:unconfined
 	github.com/cilium/ebpf v0.22.0 // indirect
@@ -146,6 +148,7 @@ require (
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	//gomodjail:unconfined
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.1 // indirect
 	github.com/sasha-s/go-deadlock v0.3.5 // indirect
@@ -157,6 +160,7 @@ require (
 	github.com/stefanberger/go-pkcs11uri v0.0.0-20230803200340-78284954bff6 // indirect
 	//gomodjail:unconfined
 	github.com/tinylib/msgp v1.3.0 // indirect
+	github.com/tonistiigi/go-csvvalue v0.0.0-20240814133006-030d3b2625d0 // indirect
 	//gomodjail:unconfined
 	github.com/vbatts/tar-split v0.12.3 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
