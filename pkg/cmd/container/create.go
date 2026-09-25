@@ -1084,6 +1084,9 @@ func withHealthcheck(options types.ContainerCreateOptions, ensuredImage *imgutil
 	if options.HealthStartPeriod != 0 {
 		hc.StartPeriod = options.HealthStartPeriod
 	}
+	if options.HealthStartInterval != 0 {
+		hc.StartInterval = options.HealthStartInterval
+	}
 
 	// Apply defaults for any unset values, but only if we have a healthcheck configured
 	if len(hc.Test) > 0 && hc.Test[0] != "NONE" {
