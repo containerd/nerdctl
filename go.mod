@@ -63,7 +63,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1 //gomodjail:unconfined
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/ipfs/go-cid v0.6.2 //gomodjail:unconfined
-	github.com/klauspost/compress v1.20.0
+	github.com/klauspost/compress v1.20.1
 	github.com/mattn/go-isatty v0.0.24 //gomodjail:unconfined
 	github.com/muesli/cancelreader v0.2.2 //gomodjail:unconfined
 	github.com/pelletier/go-toml/v2 v2.4.3
