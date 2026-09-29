@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/compose-spec/compose-go/v2/types"
+	cdiparser "tags.cncf.io/container-device-interface/pkg/parser"
 
 	"github.com/containerd/log"
 
@@ -563,6 +564,12 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 	}
 
 	for _, v := range svc.Devices {
+		// A CDI device is passed by its qualified name alone; `nerdctl run`
+		// only recognizes the name when nothing is appended to it.
+		if cdiparser.IsQualifiedName(v.Source) {
+			c.RunArgs = append(c.RunArgs, fmt.Sprintf("--device=%s", v.Source))
+			continue
+		}
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--device=%s:%s:%s", v.Source, v.Target, v.Permissions))
 	}
 
