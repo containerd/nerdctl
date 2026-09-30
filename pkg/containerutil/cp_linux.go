@@ -28,6 +28,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/sys/unix"
+
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/core/mount"
@@ -262,7 +264,11 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 		if options.FollowSymLink {
 			tarC = append(tarC, "-h")
 		}
-		tarC = append(tarC, "-c", "-f", "-", tarCArg)
+		// Use -C rather than setting the working directory of the tar process, as GNU tar
+		// 1.30-13.el8_10 (AlmaLinux 8) fails with "Cannot getcwd" when its working directory is
+		// under /proc/<pid>/root of another mount namespace.
+		// https://github.com/containerd/nerdctl/issues/5237
+		tarC = append(tarC, "-C", tarCDir, "-c", "-f", "-", tarCArg)
 	}
 
 	tarXDir := destinationSpec.resolvedPath
@@ -277,7 +283,13 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 		if options.Container2Host && isGNUTar {
 			tarX = append(tarX, "--no-same-owner")
 		}
-		tarX = append(tarX, "-f", "-")
+		tarX = append(tarX, "-C", tarXDir, "-f", "-")
+
+		// tar opens the -C directory by itself and fails with an unhelpful error when the directory
+		// is not accessible, so detect this beforehand.
+		if accessErr := unix.Access(tarXDir, unix.X_OK); errors.Is(accessErr, unix.EACCES) {
+			return ErrTargetIsReadOnly
+		}
 	}
 
 	if rootlessutil.IsRootless() {
@@ -293,12 +305,10 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 	// WARNING: some of our testing on stderr might not be portable across different versions of tar
 	// In these cases (readonly target), we will just get the straight tar output instead
 	tarCCmd := exec.CommandContext(ctx, tarC[0], tarC[1:]...)
-	tarCCmd.Dir = tarCDir
 	tarCCmd.Stdin = nil
 	tarCCmd.Stderr = os.Stderr
 
 	tarXCmd := exec.CommandContext(ctx, tarX[0], tarX[1:]...)
-	tarXCmd.Dir = tarXDir
 	if sourceSpec.fromStdin {
 		// Reading from tar should pipe stdin into dst
 		tarXCmd.Stdin = bufio.NewReader(os.Stdin)
@@ -319,12 +329,12 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 	var tarErr bytes.Buffer
 	tarXCmd.Stderr = &tarErr
 
-	log.G(ctx).Debugf("executing %v in %q", tarCCmd.Args, tarCCmd.Dir)
+	log.G(ctx).Debugf("executing %v", tarCCmd.Args)
 	if err := tarCCmd.Start(); err != nil {
 		return errors.Join(fmt.Errorf("failed to execute %v", tarCCmd.Args), err)
 	}
 
-	log.G(ctx).Debugf("executing %v in %q", tarXCmd.Args, tarXCmd.Dir)
+	log.G(ctx).Debugf("executing %v", tarXCmd.Args)
 	if err := tarXCmd.Start(); err != nil {
 		if strings.Contains(err.Error(), "permission denied") {
 			return ErrTargetIsReadOnly
