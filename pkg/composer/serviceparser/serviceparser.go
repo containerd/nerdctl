@@ -62,6 +62,8 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		"BlkioConfig",
 		"CapAdd",
 		"CapDrop",
+		"Cgroup",
+		"CgroupParent",
 		"CPUS",
 		"CPUSet",
 		"CPUShares",
@@ -561,6 +563,14 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 
 	if svc.CPUShares != 0 {
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--cpu-shares=%d", svc.CPUShares))
+	}
+
+	if svc.Cgroup != "" {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--cgroupns=%s", svc.Cgroup))
+	}
+
+	if svc.CgroupParent != "" {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--cgroup-parent=%s", svc.CgroupParent))
 	}
 
 	for _, v := range svc.Devices {
