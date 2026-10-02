@@ -17,9 +17,10 @@
 package netutil
 
 type natConfig struct {
-	PluginType string                 `json:"type"`
-	Master     string                 `json:"master,omitempty"`
-	IPAM       map[string]interface{} `json:"ipam"`
+	PluginType   string                 `json:"type"`
+	Master       string                 `json:"master,omitempty"`
+	IPAM         map[string]interface{} `json:"ipam"`
+	Capabilities map[string]bool        `json:"capabilities,omitempty"`
 }
 
 func (*natConfig) GetPluginType() string {
@@ -30,6 +31,10 @@ func newNatPlugin(master string) *natConfig {
 	return &natConfig{
 		PluginType: "nat",
 		Master:     master,
+		Capabilities: map[string]bool{
+			"portMappings": true,
+			"dns":          true,
+		},
 	}
 }
 

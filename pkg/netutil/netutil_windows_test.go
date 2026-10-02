@@ -16,10 +16,26 @@
 
 package netutil
 
-import "testing"
+import (
+	"testing"
+
+	"gotest.tools/v3/assert"
+)
 
 // Tests whether nerdctl properly creates the default network when required.
 // On Windows, the default driver used will be "nat". (netutil.DefaultNetworkName)
 func TestDefaultNetworkCreation(t *testing.T) {
 	testDefaultNetworkCreation(t)
+}
+
+func TestGenerateCNIPluginsNatCapabilities(t *testing.T) {
+	e := &CNIEnv{}
+	plugins, err := e.generateCNIPlugins("nat", "nat", nil, nil, false, false)
+	assert.NilError(t, err)
+	assert.Assert(t, len(plugins) == 1)
+	nat, ok := plugins[0].(*natConfig)
+	assert.Assert(t, ok)
+	assert.Assert(t, nat.Capabilities != nil)
+	assert.Assert(t, nat.Capabilities["portMappings"])
+	assert.Assert(t, nat.Capabilities["dns"])
 }
