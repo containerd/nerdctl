@@ -65,3 +65,37 @@ func TestUnknownNonEmptyFields(t *testing.T) {
 		[]string{"FooStr", "FooStr3"},
 		UnknownNonEmptyFields(&foo3, "FooBool"))
 }
+
+func TestUnknownNonEmptyFieldsEmbedded(t *testing.T) {
+	type Inner struct {
+		InnerStr  string
+		InnerStr2 string
+	}
+	type Inner2 struct {
+		Inner2Str string
+	}
+	type outer struct {
+		OuterStr string
+		Inner
+		*Inner2
+	}
+
+	o := outer{
+		OuterStr: "foo",
+		Inner: Inner{
+			InnerStr:  "bar",
+			InnerStr2: "baz",
+		},
+		Inner2: &Inner2{
+			Inner2Str: "qux",
+		},
+	}
+	assert.DeepEqual(t,
+		[]string{"InnerStr2", "Inner2Str"},
+		UnknownNonEmptyFields(&o, "OuterStr", "InnerStr"))
+
+	o.Inner2 = nil
+	assert.DeepEqual(t,
+		[]string{"OuterStr", "InnerStr", "InnerStr2"},
+		UnknownNonEmptyFields(o))
+}
