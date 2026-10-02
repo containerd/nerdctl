@@ -163,6 +163,11 @@ linters:
         - name: package-naming
           # 1 occurrence (pkg/api/types). Renaming a public package is not worth the churn.
           disabled: true
+        - name: multiline-if-init
+          # 34 occurrences. New in revive v1.17 (golangci-lint v2.14).
+          # Would force rewriting the `if err := f(...); err != nil` statements whose call
+          # arguments are spread over several lines.
+          disabled: true
 
         ##### P2: nice to have.
         - name: max-public-structs
