@@ -357,6 +357,7 @@ services:
       - /dev/a
       - /dev/b:/dev/b
       - /dev/c:/dev/c:rw
+      - vendor.com/class=name
 `
 	comp := testutil.NewComposeDir(t, dockerComposeYAML)
 	defer comp.CleanUp()
@@ -375,6 +376,7 @@ services:
 		assert.Assert(t, in(c.RunArgs, "--device=/dev/a:/dev/a:rwm"))
 		assert.Assert(t, in(c.RunArgs, "--device=/dev/b:/dev/b:rwm"))
 		assert.Assert(t, in(c.RunArgs, "--device=/dev/c:/dev/c:rw"))
+		assert.Assert(t, in(c.RunArgs, "--device=vendor.com/class=name"))
 	}
 }
 
