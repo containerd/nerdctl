@@ -44,7 +44,7 @@ jobs:
           cache-dependency-path: src/github.com/containerd/nerdctl
 
       - name: "Run"
-        uses: containerd/project-checks@d7751f3c375b8fe4a84c02a068184ee4c1f59bc4  # v1.2.2
+        uses: containerd/project-checks@9d887fad80ae4e40d6f10a68529082e7fc06a9af  # v1.2.3
         with:
           working-directory: src/github.com/containerd/nerdctl
           repo-access-token: ${{ secrets.GITHUB_TOKEN }}
