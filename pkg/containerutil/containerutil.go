@@ -357,10 +357,10 @@ func Start(ctx context.Context, container containerd.Container, isAttach bool, i
 			if session.Exited() {
 				return
 			}
-			select {
-			case detachC <- struct{}{}:
-			case <-ctx.Done():
-			}
+			// Closed rather than sent on, for the reason given in the same
+			// place in the run path: a send can deadlock against the select
+			// below committing to statusC, and this is the sole sender here.
+			close(detachC)
 		}()
 	} else {
 		close(streamed)

@@ -579,10 +579,14 @@ func runAction(cmd *cobra.Command, args []string) error {
 				// signalling detachC here would make it report a detach instead.
 				return
 			}
-			select {
-			case detachC <- struct{}{}:
-			case <-ctx.Done():
-			}
+			// Closed rather than sent on, so that this never blocks. A send
+			// would: if the container exits at the same moment, the select
+			// below can commit to statusC, leaving no receiver, and this
+			// goroutine would then hold up the close of streamed that the
+			// statusC branch waits for, turning a clean exit into a drain
+			// timeout. taskutil only wires its own sender on the legacy path,
+			// which this one excludes, so this is the channel's sole sender.
+			close(detachC)
 		}()
 	} else {
 		close(streamed)
