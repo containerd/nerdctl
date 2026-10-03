@@ -159,6 +159,13 @@ type LogConfig struct {
 	// read before the process signals readiness to the shim, which is on the
 	// critical path of creating the task.
 	Terminal bool `json:"terminal,omitempty"`
+	// DisableAttachBroker records that the container was created with the
+	// attach broker switched off, so that the logging process does not take
+	// ownership of its stdio either. Without it the switch would leave a
+	// detached container serving attach sessions, which is the opposite of
+	// backing the change out. It is written by the CLI, because the flag is
+	// not visible to this process.
+	DisableAttachBroker bool `json:"disableAttachBroker,omitempty"`
 }
 
 // LogConfigFilePath returns the path of log-config.json
@@ -539,11 +546,21 @@ func loggerFunc(dataStore string) (logging.LoggerFunc, error) {
 				// knows -t. Asking containerd here instead would put a connect
 				// and two RPCs on the critical path of creating the task: the
 				// shim blocks on ready() below.
-				tee, stopBroker := startBroker(ctx, dataStore, config.Namespace, config.ID, logConfig.Terminal)
-				// The adapter calls this itself with the right answer; this is
-				// the belt and braces for the paths that never reach it, and
-				// claims nothing about the container.
-				defer stopBroker(false)
+				//
+				// Both are left nil when the container was created with the
+				// broker switched off: the adapter then logs without owning the
+				// stdio, as it did before multi-session attach.
+				var (
+					tee        func(stream string, p []byte)
+					stopBroker func(exited bool)
+				)
+				if !logConfig.DisableAttachBroker {
+					tee, stopBroker = startBroker(ctx, dataStore, config.Namespace, config.ID, logConfig.Terminal)
+					// The adapter calls this itself with the right answer; this
+					// is the belt and braces for the paths that never reach it,
+					// and claims nothing about the container.
+					defer stopBroker(false)
+				}
 
 				if err := ready(); err != nil {
 					return err

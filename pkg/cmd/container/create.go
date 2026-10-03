@@ -1192,6 +1192,7 @@ func writeCIDFile(path, id string) error {
 // generateLogConfig creates a LogConfig for the current container store
 func generateLogConfig(dataStore string, id string, logDriver string, logOpt []string, ns, address string, disableAttachBroker, terminal bool) (logConfig logging.LogConfig, err error) {
 	logConfig.Terminal = terminal
+	logConfig.DisableAttachBroker = disableAttachBroker
 	var u *url.URL
 	// "none" is a registered no-op driver rather than an absence of logging: it
 	// still goes through the internal logging process, which is what owns the

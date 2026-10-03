@@ -85,6 +85,14 @@ container with a foreign log driver already looks like, so every branch above
 takes the legacy path without any new code. It only affects containers created
 while it is set: a running container's stdio is already bound.
 
+Leaving the data store empty is not enough on its own. A detached container has
+URI stdio either way, so its logging process would still bind a socket and still
+serve sessions, which is the opposite of backing the change out. The choice is
+therefore also written to the container's log config as `disableAttachBroker`,
+and the logging process skips `startBroker` when it is set. The flag itself is
+not visible there: that process is spawned by containerd from the log URI, not
+by the CLI.
+
 ## Falling back
 
 `nerdctl attach` asks containerd how the task's stdio is wired, through the
