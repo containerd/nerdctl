@@ -271,6 +271,29 @@ func TestFilterByReference(t *testing.T) {
 			referencePatterns: []string{"foobar"},
 			expectedImages:    []images.Image{},
 		},
+		{
+			// Dangling refs kept alive by `rmi -f` on a running image are named ":" or, since
+			// #4109, ":<digest>". Neither is a parsable reference, so they must be skipped
+			// rather than erroring out the whole filter. See issues #3852 and #4109.
+			name: "SkipsDanglingRefsWithoutErroring",
+			images: []images.Image{
+				{
+					Name: "foo:latest",
+				},
+				{
+					Name: ":",
+				},
+				{
+					Name: ":sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+				},
+			},
+			referencePatterns: []string{"foo"},
+			expectedImages: []images.Image{
+				{
+					Name: "foo:latest",
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {
