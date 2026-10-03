@@ -34,7 +34,22 @@ func (n *NoneLogger) PreProcess(ctx context.Context, dataStore string, config *l
 	return nil
 }
 
+// Process is not reached: WriteLogEntry below makes this a SyncDriver, and
+// loggingProcessAdapter only starts the Process goroutine for a driver that is
+// not one. It must stay that way. Returning without draining the channels while
+// the logger fed them would stall the container on its own stdout once the
+// buffer filled.
 func (n *NoneLogger) Process(stdout <-chan string, stderr <-chan string) error {
+	return nil
+}
+
+// WriteLogEntry discards the entry.
+//
+// Implementing SyncDriver is what keeps this driver off the buffered channels
+// in loggingProcessAdapter. Without it the logger would queue every line for a
+// consumer that never reads, and a container producing more than the buffer
+// holds would block on its own stdout.
+func (n *NoneLogger) WriteLogEntry(stream, line string) error {
 	return nil
 }
 

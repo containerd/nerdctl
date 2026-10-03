@@ -49,33 +49,40 @@ type Config struct {
 	DNSSearch        []string `toml:"dns_search,omitempty"`
 	DisableHCSystemd bool     `toml:"disable_hc_systemd"`
 	SelinuxEnabled   bool     `toml:"selinux_enabled"`
+	// DisableAttachBroker turns off multi-session attach and puts a container's
+	// stdio back on the FIFOs nerdctl used before it. It exists so that the
+	// change can be backed out in the field without a downgrade; it is not a
+	// feature switch, and is expected to go away once the broker has proven
+	// itself.
+	DisableAttachBroker bool `toml:"disable_attach_broker"`
 }
 
 // New creates a default Config object statically,
 // without interpolating CLI flags, env vars, and toml.
 func New() *Config {
 	return &Config{
-		Debug:            false,
-		DebugFull:        false,
-		LogFile:          "",
-		Address:          defaults.DefaultAddress,
-		Namespace:        namespaces.Default,
-		Snapshotter:      defaults.DefaultSnapshotter,
-		CNIPath:          ncdefaults.CNIPath(),
-		CNINetConfPath:   ncdefaults.CNINetConfPath(),
-		DataRoot:         ncdefaults.DataRoot(),
-		CgroupManager:    ncdefaults.CgroupManager(),
-		InsecureRegistry: false,
-		SelinuxEnabled:   false,
-		HostsDir:         ncdefaults.HostsDirs(),
-		Experimental:     true,
-		HostGatewayIP:    ncdefaults.HostGatewayIP(),
-		KubeHideDupe:     false,
-		CDISpecDirs:      ncdefaults.CDISpecDirs(),
-		UsernsRemap:      "",
-		DNS:              []string{},
-		DNSOpts:          []string{},
-		DNSSearch:        []string{},
-		DisableHCSystemd: false,
+		Debug:               false,
+		DebugFull:           false,
+		LogFile:             "",
+		Address:             defaults.DefaultAddress,
+		Namespace:           namespaces.Default,
+		Snapshotter:         defaults.DefaultSnapshotter,
+		CNIPath:             ncdefaults.CNIPath(),
+		CNINetConfPath:      ncdefaults.CNINetConfPath(),
+		DataRoot:            ncdefaults.DataRoot(),
+		CgroupManager:       ncdefaults.CgroupManager(),
+		InsecureRegistry:    false,
+		SelinuxEnabled:      false,
+		DisableAttachBroker: false,
+		HostsDir:            ncdefaults.HostsDirs(),
+		Experimental:        true,
+		HostGatewayIP:       ncdefaults.HostGatewayIP(),
+		KubeHideDupe:        false,
+		CDISpecDirs:         ncdefaults.CDISpecDirs(),
+		UsernsRemap:         "",
+		DNS:                 []string{},
+		DNSOpts:             []string{},
+		DNSSearch:           []string{},
+		DisableHCSystemd:    false,
 	}
 }
