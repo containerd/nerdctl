@@ -169,6 +169,12 @@ func NewTask(ctx context.Context, client *containerd.Client, container container
 			ioCreator = cioutil.NewContainerIO(opts.Namespace, opts.LogURI, false, opts.StdinFIFO, streams.stdIn, streams.stdOut, streams.stdErr)
 		}
 
+	case opts.IsTerminal && opts.IsDetach && opts.LogURI == "none":
+		// "none" is the one log URI that is not a URI, so there is no logging
+		// process to hand the stdio to, and discarding it is what the driver
+		// asks for. Reachable only with the broker switched off, since "none"
+		// otherwise goes through the internal logging process.
+		ioCreator = cio.NullIO
 	case opts.IsTerminal && opts.IsDetach:
 		ioCreator, err = terminalBrokerIO(opts)
 		if err != nil {
