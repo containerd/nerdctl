@@ -721,9 +721,12 @@ Attach stdin, stdout, and stderr to a running container. For example:
 2. `ctrl-p ctrl-q` to detach from the container
 3. `nerdctl attach test` to attach to the container
 
+Several sessions can be attached to the same container at once, and they all see its output. Input is accepted from any of
+them, but only for a container that has stdin: one created with `-it` and still running the task nerdctl started. A container
+created without `-t`, or one restarted by containerd's restart monitor, is output only. `docs/dev/attach.md` explains why.
+
 Caveats:
 
-- Several sessions can be attached to the same container at once: they all see the container's output, and any of them can type into it.
 - A container whose stdio is a set of FIFOs still allows a single session. That is the case for containers created by a version of nerdctl
   that predates the attach socket, and for foreground `nerdctl run -it` on a platform without one. Behind the scenes there is then only one
   FIFO for stdin, stdout and stderr respectively, so all the sessions read from and write to the same 3 FIFOs, which results in mixed input
