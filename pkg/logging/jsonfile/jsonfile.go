@@ -70,6 +70,9 @@ func (s *SyncEncoder) Encode(stream, line string) error {
 func Encode(stdout <-chan string, stderr <-chan string, writer io.Writer) error {
 	enc := json.NewEncoder(writer)
 	var encMu sync.Mutex
+	// A failed file write can leave a partial JSON line and poisons Encoder.
+	// Keep draining both streams, then restart encoding at a line boundary.
+	writeFailed := false
 	var wg sync.WaitGroup
 	wg.Add(2)
 	f := func(dataChan <-chan string, name string) {
@@ -81,12 +84,20 @@ func Encode(stdout <-chan string, stderr <-chan string, writer io.Writer) error 
 			e.Log = logEntry
 			e.Time = time.Now().UTC()
 			encMu.Lock()
-			encErr := enc.Encode(e)
-			encMu.Unlock()
-			if encErr != nil {
-				log.L.WithError(encErr).Errorf("failed to encode JSON")
-				return
+			if writeFailed {
+				if _, err := io.WriteString(writer, "\n"); err != nil {
+					encMu.Unlock()
+					continue
+				}
+				enc = json.NewEncoder(writer)
+				writeFailed = false
+				log.L.Info("JSON log writing recovered")
 			}
+			if encErr := enc.Encode(e); encErr != nil {
+				writeFailed = true
+				log.L.WithError(encErr).Error("failed to encode JSON; draining output until writing recovers")
+			}
+			encMu.Unlock()
 		}
 	}
 	go f(stdout, "stdout")
