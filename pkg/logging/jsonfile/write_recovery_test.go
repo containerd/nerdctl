@@ -78,3 +78,25 @@ func TestEncodeDrainsAndRecoversAfterPartialWrite(t *testing.T) {
 		}
 	}
 }
+
+func TestSyncEncoderRetriesUnderlyingWriter(t *testing.T) {
+	w := &temporarilyFullWriter{}
+	enc := NewSyncEncoder(w)
+	if err := enc.Encode("stdout", "partial\n"); err == nil {
+		t.Fatal("expected initial write failure")
+	}
+	if err := enc.Encode("stderr", "dropped\n"); err == nil {
+		t.Fatal("expected continued write failure")
+	}
+	if err := enc.Encode("stderr", "recovered\n"); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSuffix(w.buf.String(), "\n"), "\n")
+	var e Entry
+	if err := json.Unmarshal([]byte(lines[len(lines)-1]), &e); err != nil {
+		t.Fatal(err)
+	}
+	if e.Log != "recovered\n" || e.Stream != "stderr" {
+		t.Fatalf("bad recovered entry: %+v", e)
+	}
+}

@@ -47,57 +47,47 @@ func Path(dataStore, ns, id string) string {
 // method is safe for concurrent use, so it can be shared between the goroutines
 // reading a container's stdout and stderr.
 type SyncEncoder struct {
-	mu  sync.Mutex
-	enc *json.Encoder
+	mu          sync.Mutex
+	enc         *json.Encoder
+	writer      io.Writer
+	writeFailed bool
 }
 
 // NewSyncEncoder returns a SyncEncoder that writes to w.
 func NewSyncEncoder(w io.Writer) *SyncEncoder {
-	return &SyncEncoder{enc: json.NewEncoder(w)}
+	return &SyncEncoder{enc: json.NewEncoder(w), writer: w}
 }
 
 // Encode writes a single log entry for the given stream.
 func (s *SyncEncoder) Encode(stream, line string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.enc.Encode(&Entry{
-		Stream: stream,
-		Log:    line,
-		Time:   time.Now().UTC(),
-	})
+	if s.writeFailed {
+		// End any partial record before resuming. Encoder retains write errors,
+		// so it must also be recreated when the underlying writer recovers.
+		if _, err := io.WriteString(s.writer, "\n"); err != nil {
+			return err
+		}
+		s.enc = json.NewEncoder(s.writer)
+		s.writeFailed = false
+	}
+	err := s.enc.Encode(&Entry{Stream: stream, Log: line, Time: time.Now().UTC()})
+	s.writeFailed = err != nil
+	return err
 }
 
 func Encode(stdout <-chan string, stderr <-chan string, writer io.Writer) error {
-	enc := json.NewEncoder(writer)
-	var encMu sync.Mutex
-	// A failed file write can leave a partial JSON line and poisons Encoder.
-	// Keep draining both streams, then restart encoding at a line boundary.
-	writeFailed := false
+	enc := NewSyncEncoder(writer)
 	var wg sync.WaitGroup
 	wg.Add(2)
 	f := func(dataChan <-chan string, name string) {
 		defer wg.Done()
-		e := &Entry{
-			Stream: name,
-		}
 		for logEntry := range dataChan {
-			e.Log = logEntry
-			e.Time = time.Now().UTC()
-			encMu.Lock()
-			if writeFailed {
-				if _, err := io.WriteString(writer, "\n"); err != nil {
-					encMu.Unlock()
-					continue
-				}
-				enc = json.NewEncoder(writer)
-				writeFailed = false
-				log.L.Info("JSON log writing recovered")
+			if err := enc.Encode(name, logEntry); err != nil {
+				// A stopped consumer backs up container stdout/stderr indefinitely.
+				// Drop unwritable records but keep draining and retry future writes.
+				log.L.WithError(err).Error("failed to encode JSON log entry")
 			}
-			if encErr := enc.Encode(e); encErr != nil {
-				writeFailed = true
-				log.L.WithError(encErr).Error("failed to encode JSON; draining output until writing recovers")
-			}
-			encMu.Unlock()
 		}
 	}
 	go f(stdout, "stdout")
