@@ -1,7 +1,7 @@
 //gomodjail:confined
 module github.com/containerd/nerdctl/v2
 
-go 1.26.6
+go 1.26.8
 
 // containerd, Docker/Moby, OCI, and golang.org/x packages are trusted
 //gosocialcheck:trusted
@@ -27,8 +27,8 @@ require (
 	github.com/docker/cli v29.8.2+incompatible //gomodjail:unconfined
 	github.com/docker/go-connections v0.8.1 //gomodjail:unconfined
 	github.com/docker/go-units v0.5.0
-	github.com/moby/moby/client v0.6.0 //gomodjail:unconfined
-	github.com/moby/moby/v2 v2.0.0-beta.24 //gomodjail:unconfined
+	github.com/moby/moby/client v0.6.1 //gomodjail:unconfined
+	github.com/moby/moby/v2 v2.0.0-beta.25 //gomodjail:unconfined
 	github.com/moby/sys/mount v0.3.5 //gomodjail:unconfined
 	github.com/moby/sys/signal v0.7.1 //gomodjail:unconfined
 	github.com/moby/sys/user v0.4.1 //gomodjail:unconfined
@@ -48,7 +48,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/Microsoft/go-winio v0.6.3-0.20251027160822-ad3df93bed29
+	github.com/Microsoft/go-winio v0.6.3-0.20260930231756-f19d9717deb0
 	github.com/Microsoft/hcsshim v0.15.0-rc.4
 	github.com/compose-spec/compose-go/v2 v2.15.0 //gomodjail:unconfined
 	github.com/containernetworking/cni v1.3.1 //gomodjail:unconfined
@@ -88,12 +88,12 @@ require (
 	github.com/containerd/log/otel v0.1.0 // indirect
 	github.com/containerd/plugin v1.1.0 // indirect
 	//gomodjail:unconfined
-	github.com/containerd/ttrpc v1.2.9 // indirect
+	github.com/containerd/ttrpc v1.2.10 // indirect
 	//gomodjail:unconfined
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
-	github.com/moby/moby/api v1.56.0 // indirect
+	github.com/moby/moby/api v1.56.1 // indirect
 	//gomodjail:unconfined
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/symlink v0.3.0 // indirect
@@ -102,7 +102,7 @@ require (
 
 require (
 	cyphar.com/go-pathrs v0.2.5 // indirect
-	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20260917205352-e937bb47801a // indirect
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	//gomodjail:unconfined
@@ -171,7 +171,7 @@ require (
 	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260825221802-da73d73af1c5 // indirect
 	//gomodjail:unconfined
-	google.golang.org/grpc v1.83.2 // indirect
+	google.golang.org/grpc v1.84.0 // indirect
 	//gomodjail:unconfined
 	google.golang.org/protobuf v1.36.12 // indirect
 	//gomodjail:unconfined
