@@ -88,6 +88,22 @@ func TestShouldRunProbeAt(t *testing.T) {
 			want:          true, // 60s elapsed >= 60s health-interval
 		},
 		{
+			description:   "inside the start period, waits only for the time left when less than start-interval remains",
+			now:           created.Add(29 * time.Second),
+			lastProbeAt:   created.Add(27 * time.Second),
+			inStartPeriod: true,
+			hc:            hc,
+			want:          false, // 2s elapsed < 3s left of the start period
+		},
+		{
+			description:   "inside the start period, runs once the time left has elapsed",
+			now:           created.Add(30 * time.Second),
+			lastProbeAt:   created.Add(27 * time.Second),
+			inStartPeriod: true,
+			hc:            hc,
+			want:          true, // 3s elapsed >= 3s left, shorter than the 5s start-interval
+		},
+		{
 			description:   "treats a zero start period as never in the start-interval phase",
 			now:           created.Add(2 * time.Second),
 			lastProbeAt:   created.Add(1 * time.Second),
