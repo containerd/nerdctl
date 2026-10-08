@@ -17,6 +17,7 @@
 package volume
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -416,6 +417,16 @@ func TestVolumeLsFilter(t *testing.T) {
 					},
 				}
 			},
+		},
+		{
+			Description: "Invalid filter key",
+			Command:     test.Command("volume", "ls", "--filter", "dangling=true"),
+			Expected:    test.Expects(1, []error{errors.New("invalid filter 'dangling'")}, nil),
+		},
+		{
+			Description: "Filter without value separator",
+			Command:     test.Command("volume", "ls", "--filter", "name"),
+			Expected:    test.Expects(1, []error{errors.New("bad format of filter")}, nil),
 		},
 	}
 

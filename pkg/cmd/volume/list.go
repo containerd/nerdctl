@@ -216,49 +216,55 @@ func getVolumeFilterFuncs(filters []string) ([]func(*map[string]string) bool, []
 		}},
 	}
 	for _, filter := range filters {
-		if strings.HasPrefix(filter, "name") || strings.HasPrefix(filter, "label") {
-			filter, value, ok := strings.Cut(filter, "=")
-			if !ok {
+		// Try size filters first: they use compound operators (>=, <=, >, <, =) so a plain = split
+		// would not work. Only accept the token when the text before the operator is exactly "size".
+		sizeMatched := false
+		for _, sizeOperator := range sizeOperators {
+			subs := strings.SplitN(filter, sizeOperator.Operand, 2)
+			if len(subs) != 2 || subs[0] != "size" {
 				continue
 			}
-			switch filter {
-			case "name":
-				re, err := regexp.Compile(value)
-				if err != nil {
-					return nil, nil, nil, false, err
-				}
-				nameFilterFuncs = append(nameFilterFuncs, func(name string) bool {
-					return re.MatchString(name)
-				})
-			case "label":
-				k, v, hasValue := strings.Cut(value, "=")
-				labelFilterFuncs = append(labelFilterFuncs, func(labels *map[string]string) bool {
-					if labels == nil {
-						return false
-					}
-					val, ok := (*labels)[k]
-					if !ok || (hasValue && val != v) {
-						return false
-					}
-					return true
-				})
+			v, err := strconv.Atoi(subs[1])
+			if err != nil {
+				return nil, nil, nil, false, err
 			}
+			sizeFilterFuncs = append(sizeFilterFuncs, func(size int64) bool {
+				return sizeOperator.Compare(int64(v), size)
+			})
+			sizeMatched = true
+			break
+		}
+		if sizeMatched {
 			continue
 		}
-		if strings.HasPrefix(filter, "size") {
-			for _, sizeOperator := range sizeOperators {
-				if subs := strings.SplitN(filter, sizeOperator.Operand, 2); len(subs) == 2 {
-					v, err := strconv.Atoi(subs[1])
-					if err != nil {
-						return nil, nil, nil, false, err
-					}
-					sizeFilterFuncs = append(sizeFilterFuncs, func(size int64) bool {
-						return sizeOperator.Compare(int64(v), size)
-					})
-					break
-				}
+
+		key, value, ok := strings.Cut(filter, "=")
+		if !ok {
+			return nil, nil, nil, false, fmt.Errorf("invalid argument %q for \"-f, --filter\": bad format of filter (expected name=value)", filter)
+		}
+		switch key {
+		case "name":
+			re, err := regexp.Compile(value)
+			if err != nil {
+				return nil, nil, nil, false, err
 			}
-			continue
+			nameFilterFuncs = append(nameFilterFuncs, func(name string) bool {
+				return re.MatchString(name)
+			})
+		case "label":
+			k, v, hasValue := strings.Cut(value, "=")
+			labelFilterFuncs = append(labelFilterFuncs, func(labels *map[string]string) bool {
+				if labels == nil {
+					return false
+				}
+				val, ok := (*labels)[k]
+				if !ok || (hasValue && val != v) {
+					return false
+				}
+				return true
+			})
+		default:
+			return nil, nil, nil, false, fmt.Errorf("invalid filter '%s'", key)
 		}
 	}
 	return labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs, isFilter, nil
