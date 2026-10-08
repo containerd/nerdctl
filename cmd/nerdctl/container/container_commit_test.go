@@ -18,6 +18,7 @@ package container
 
 import (
 	"testing"
+	"time"
 
 	"gotest.tools/v3/assert"
 
@@ -89,6 +90,28 @@ func TestCommit(t *testing.T) {
 	}
 
 	testCase.Run(t)
+}
+
+func TestCommitTimeoutFlagParsing(t *testing.T) {
+	// time.ParseDuration special-cases a bare "0" as a valid duration
+	// without a unit, so both "--timeout=0" and "--timeout=0s" parse.
+	testCases := []struct {
+		args     []string
+		expected time.Duration
+	}{
+		{nil, time.Hour},
+		{[]string{"--timeout=0"}, 0},
+		{[]string{"--timeout=0s"}, 0},
+		{[]string{"--timeout=90m"}, 90 * time.Minute},
+		{[]string{"--timeout=4h"}, 4 * time.Hour},
+	}
+	for _, tc := range testCases {
+		cmd := CommitCommand()
+		assert.NilError(t, cmd.Flags().Parse(tc.args))
+		timeout, err := cmd.Flags().GetDuration("timeout")
+		assert.NilError(t, err)
+		assert.Equal(t, tc.expected, timeout)
+	}
 }
 
 func TestCommitWithTimeout(t *testing.T) {
