@@ -478,8 +478,6 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 	}
 
 	vfSet := strutil.SliceToSet(options.VolumesFrom)
-	var vfMountPoints []dockercompat.MountPoint
-	var vfAnonVolumes []string
 
 	for _, c := range containers {
 		ls, err := c.Labels(ctx)
@@ -499,6 +497,8 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 		}
 
 		if idMatch || nameMatch {
+			var vfMountPoints []dockercompat.MountPoint
+			var vfAnonVolumes []string
 			if av, found := ls[labels.AnonymousVolumes]; found {
 				err = json.Unmarshal([]byte(av), &vfAnonVolumes)
 				if err != nil {
@@ -519,7 +519,19 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			opts = append(opts, withMounts(s.Mounts))
+			// Inherit user mounts without replacing the target container's
+			// system mounts, such as /dev/shm, with the source's defaults.
+			mountDestinations := make(map[string]struct{}, len(vfMountPoints))
+			for _, mp := range vfMountPoints {
+				mountDestinations[filepath.Clean(mp.Destination)] = struct{}{}
+			}
+			var inheritedMounts []specs.Mount
+			for _, m := range s.Mounts {
+				if _, ok := mountDestinations[filepath.Clean(m.Destination)]; ok {
+					inheritedMounts = append(inheritedMounts, m)
+				}
+			}
+			opts = append(opts, withMounts(inheritedMounts))
 			anonVolumes = append(anonVolumes, vfAnonVolumes...)
 			mountPoints = append(mountPoints, ps...)
 		}
