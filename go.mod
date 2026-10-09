@@ -48,7 +48,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/Microsoft/go-winio v0.6.3-0.20260930231756-f19d9717deb0
+	github.com/Microsoft/go-winio v0.6.3
 	github.com/Microsoft/hcsshim v0.15.0-rc.4
 	github.com/compose-spec/compose-go/v2 v2.15.0 //gomodjail:unconfined
 	github.com/containernetworking/cni v1.3.1 //gomodjail:unconfined
