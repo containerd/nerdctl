@@ -52,7 +52,8 @@ func ValidateHealthcheckFlags(options types.ContainerCreateOptions) error {
 		options.HealthInterval != 0 ||
 			options.HealthTimeout != 0 ||
 			options.HealthRetries != 0 ||
-			options.HealthStartPeriod != 0
+			options.HealthStartPeriod != 0 ||
+			options.HealthStartInterval != 0
 
 	if options.NoHealthcheck {
 		if options.HealthCmd != "" || healthFlagsSet {
@@ -72,6 +73,9 @@ func ValidateHealthcheckFlags(options types.ContainerCreateOptions) error {
 	}
 	if options.HealthStartPeriod < 0 {
 		return fmt.Errorf("--health-start-period cannot be negative")
+	}
+	if options.HealthStartInterval < 0 {
+		return fmt.Errorf("--health-start-interval cannot be negative")
 	}
 	return nil
 }

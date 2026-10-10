@@ -14,11 +14,10 @@ Health checks can be configured in multiple ways:
    - `--health-timeout`: Maximum time to allow one check to run (default: 30s)
    - `--health-retries`: Consecutive failures needed to report unhealthy (default: 3)
    - `--health-start-period`: Start period for the container to initialize before starting health-retries countdown
+   - `--health-start-interval`: Time between running the check during the start period (default: 5s)
    - `--no-healthcheck`: Disable any container-specified HEALTHCHECK
 
 2. At image build time using HEALTHCHECK in a Dockerfile
-
-**Note:** The `--health-start-interval` option is currently not supported by nerdctl.
 
 ## Configuration Priority
 
@@ -90,7 +89,17 @@ nerdctl run -d --name app \
   myapp
 ```
 
-3. Disable health checks:
+3. Health check that probes more frequently while starting up:
+```bash
+nerdctl run -d --name app \
+  --health-cmd="./health-check.sh" \
+  --health-interval=30s \
+  --health-start-period=60s \
+  --health-start-interval=5s \
+  myapp
+```
+
+4. Disable health checks:
 ```bash
 nerdctl run --no-healthcheck myapp
 ```

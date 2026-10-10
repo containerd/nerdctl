@@ -62,14 +62,19 @@ func CreateTimer(ctx context.Context, container containerd.Container, cfg *confi
 		cmdOpts = append(cmdOpts, "--setenv=BUILDKIT_HOST="+buildKitHost)
 	}
 
-	// Always use health-interval for timer frequency
-	//
+	// Tick at the faster of health-interval and health-start-interval; ExecuteHealthCheck skips
+	// ticks that arrive before the applicable interval has elapsed.
+	tickInterval := hc.Interval
+	if hc.StartPeriod > 0 && hc.StartInterval > 0 {
+		tickInterval = min(tickInterval, hc.StartInterval)
+	}
+
 	// --collect:
 	// Even when the healthcheck fails with the error "container is not running" after the container has
 	// stopped, and the transient service unit enters a failed state, it will still be subject to garbage
 	// collection due to the --collect option. Without this option, `systemctl reset-failed` would explicitly be needed.
 	// See: https://www.freedesktop.org/software/systemd/man/latest/systemd-run.html#-G
-	cmdOpts = append(cmdOpts, "--unit", containerID, "--on-unit-inactive="+hc.Interval.String(), "--timer-property=AccuracySec=1s", "--collect")
+	cmdOpts = append(cmdOpts, "--unit", containerID, "--on-unit-inactive="+tickInterval.String(), "--timer-property=AccuracySec=1s", "--collect")
 
 	cmdOpts = append(cmdOpts, nerdctlCmd)
 	cmdOpts = append(cmdOpts, nerdctlArgs...)
