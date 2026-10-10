@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -43,6 +44,7 @@ func (w *temporarilyFullWriter) Write(p []byte) (int, error) {
 }
 
 func TestEncodeDrainsAndRecoversAfterPartialWrite(t *testing.T) {
+	t.Parallel()
 	stdout, stderr := make(chan string), make(chan string)
 	w := &temporarilyFullWriter{}
 	done := make(chan error, 1)
@@ -80,6 +82,7 @@ func TestEncodeDrainsAndRecoversAfterPartialWrite(t *testing.T) {
 }
 
 func TestSyncEncoderRetriesUnderlyingWriter(t *testing.T) {
+	t.Parallel()
 	w := &temporarilyFullWriter{}
 	enc := NewSyncEncoder(w)
 	if err := enc.Encode("stdout", "partial\n"); err == nil {
@@ -98,5 +101,58 @@ func TestSyncEncoderRetriesUnderlyingWriter(t *testing.T) {
 	}
 	if e.Log != "recovered\n" || e.Stream != "stderr" {
 		t.Fatalf("bad recovered entry: %+v", e)
+	}
+}
+
+// permanentlyFullWriter models a sink that keeps returning ENOSPC. Count writes
+// to ensure the consumers actually try the sink instead of discarding all input.
+type permanentlyFullWriter struct {
+	writes atomic.Int64
+}
+
+func (w *permanentlyFullWriter) Write([]byte) (int, error) {
+	w.writes.Add(1)
+	return 0, errors.New("no space left on device")
+}
+
+func TestEncodeDrainsBothStreamsWhileWriterRemainsFull(t *testing.T) {
+	t.Parallel()
+	stdout, stderr := make(chan string), make(chan string)
+	writer := &permanentlyFullWriter{}
+	done := make(chan error, 1)
+	go func() { done <- Encode(stdout, stderr, writer) }()
+	// Closing both channels also releases the encoder if an assertion fails.
+	t.Cleanup(func() {
+		if stdout != nil {
+			close(stdout)
+		}
+		if stderr != nil {
+			close(stderr)
+		}
+	})
+	for _, stream := range []chan string{stdout, stderr} {
+		for range 3 {
+			select {
+			case stream <- "discarded\n":
+			case <-time.After(5 * time.Second):
+				t.Fatal("container output blocked while the log writer was full")
+			}
+		}
+	}
+	// On success, finish here rather than relying on cleanup for the assertion.
+	// A closed channel variable lets cleanup remain safe on both paths.
+	close(stdout)
+	close(stderr)
+	stdout, stderr = nil, nil
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("encoder did not finish after both streams closed")
+	}
+	if got := writer.writes.Load(); got != 6 {
+		t.Fatalf("writer attempts = %d, want 6", got)
 	}
 }
