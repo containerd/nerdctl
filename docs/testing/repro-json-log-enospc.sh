@@ -43,6 +43,7 @@ mounted=true
     --log-opt "log-path=$work/logs/output.log" --log-opt max-size=1m --log-opt max-file=2 \
     -v "$work/control:/control" docker.io/library/alpine:3.22 sh -c '
     echo READY
+    echo 0 > /control/progress
     touch /control/ready
     while [ ! -e /control/flood ]; do sleep 0.05; done
     payload=$(head -c 1024 /dev/zero | tr "\000" x)
@@ -51,7 +52,10 @@ mounted=true
         printf "%s\n" "$payload"
         printf "%s\n" "$payload" >&2
         i=$((i + 1))
-        printf "%s\n" "$i" > /control/progress
+        if [ $((i % 100)) -eq 0 ]; then
+            printf "%s\n" "$i" > /control/progress.tmp
+            mv /control/progress.tmp /control/progress
+        fi
     done
     touch /control/flood-done
     while [ ! -e /control/recover ]; do sleep 0.05; done
