@@ -18,6 +18,7 @@ package container
 
 import (
 	"testing"
+	"time"
 
 	"gotest.tools/v3/assert"
 
@@ -87,6 +88,104 @@ func TestCommit(t *testing.T) {
 			Expected: test.Expects(0, nil, expect.Equals("hello-test-commit\n")),
 		},
 	}
+
+	testCase.Run(t)
+}
+
+func TestCommitTimeoutFlagParsing(t *testing.T) {
+	// time.ParseDuration special-cases a bare "0" as a valid duration
+	// without a unit, so both "--timeout=0" and "--timeout=0s" parse.
+	testCases := []struct {
+		args     []string
+		expected time.Duration
+	}{
+		{nil, time.Hour},
+		{[]string{"--timeout=0"}, 0},
+		{[]string{"--timeout=0s"}, 0},
+		{[]string{"--timeout=90m"}, 90 * time.Minute},
+		{[]string{"--timeout=4h"}, 4 * time.Hour},
+	}
+	for _, tc := range testCases {
+		cmd := CommitCommand()
+		assert.NilError(t, cmd.Flags().Parse(tc.args))
+		timeout, err := cmd.Flags().GetDuration("timeout")
+		assert.NilError(t, err)
+		assert.Equal(t, tc.expected, timeout)
+	}
+}
+
+func TestCommitWithTimeout(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		require.Not(nerdtest.Docker),
+		require.Not(require.Windows),
+		nerdtest.CGroup,
+	)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		identifier := data.Identifier()
+		helpers.Ensure("run", "-d", "--name", identifier, testutil.CommonImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, identifier)
+		helpers.Ensure("exec", identifier, "sh", "-euxc", `echo hello-test-commit-timeout > /foo`)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		helpers.Anyhow("rmi", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		identifier := data.Identifier()
+		helpers.Ensure(
+			"commit",
+			"--timeout=2h",
+			"-c", `CMD ["/foo"]`,
+			"-c", `ENTRYPOINT ["cat"]`,
+			"--pause=false",
+			identifier, identifier,
+		)
+		return helpers.Command("run", "--rm", identifier)
+	}
+
+	testCase.Expected = test.Expects(0, nil, expect.Equals("hello-test-commit-timeout\n"))
+
+	testCase.Run(t)
+}
+
+func TestCommitWithTimeoutZero(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.All(
+		require.Not(nerdtest.Docker),
+		require.Not(require.Windows),
+		nerdtest.CGroup,
+	)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		identifier := data.Identifier()
+		helpers.Ensure("run", "-d", "--name", identifier, testutil.CommonImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, identifier)
+		helpers.Ensure("exec", identifier, "sh", "-euxc", `echo hello-test-commit-timeout0 > /foo`)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+		helpers.Anyhow("rmi", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		identifier := data.Identifier()
+		helpers.Ensure(
+			"commit",
+			"--timeout=0s",
+			"-c", `CMD ["/foo"]`,
+			"-c", `ENTRYPOINT ["cat"]`,
+			"--pause=false",
+			identifier, identifier,
+		)
+		return helpers.Command("run", "--rm", identifier)
+	}
+
+	testCase.Expected = test.Expects(0, nil, expect.Equals("hello-test-commit-timeout0\n"))
 
 	testCase.Run(t)
 }
