@@ -409,58 +409,73 @@ services:
 }
 
 func TestComposeRunWithLabel(t *testing.T) {
-	dockerComposeYAML := fmt.Sprintf(`
+	for _, tc := range []struct {
+		name   string
+		labels string
+	}{
+		{name: "without service labels"},
+		{name: "with service labels", labels: `    labels:
+      - "foo=bar"
+      - "keep=service"
+`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dockerComposeYAML := fmt.Sprintf(`
 services:
   alpine:
     image: %s
+    network_mode: none
     entrypoint:
       - echo
       - "dummy log"
-    labels:
-      - "foo=bar"
-`, testutil.CommonImage)
+%s`, testutil.CommonImage, tc.labels)
 
-	testCase := nerdtest.Setup()
+			testCase := nerdtest.Setup()
 
-	testCase.Setup = func(data test.Data, helpers test.Helpers) {
-		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
-		projectName := filepath.Base(filepath.Dir(composePath))
-		t.Logf("projectName=%q", projectName)
+			testCase.Setup = func(data test.Data, helpers test.Helpers) {
+				composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
+				projectName := filepath.Base(filepath.Dir(composePath))
+				t.Logf("projectName=%q", projectName)
+			}
+
+			testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				cmd := helpers.Command(
+					"compose",
+					"-f",
+					data.Temp().Path("compose.yaml"),
+					"run",
+					"--label",
+					"foo=rab",
+					"--label",
+					"x=y",
+					"--name",
+					data.Identifier(),
+					"alpine",
+				)
+				cmd.WithPseudoTTY()
+				return cmd
+			}
+
+			testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, tt tig.T) {
+						container := nerdtest.InspectContainer(helpers, data.Identifier())
+						assert.Assert(tt, container.Config != nil, "cannot fetch container config")
+						assert.Equal(tt, container.Config.Labels["foo"], "rab")
+						assert.Equal(tt, container.Config.Labels["x"], "y")
+						if tc.labels != "" {
+							assert.Equal(tt, container.Config.Labels["keep"], "service")
+						}
+					},
+				}
+			}
+
+			testCase.Cleanup = composeRunCleanup()
+
+			testCase.Run(t)
+		})
 	}
-
-	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
-		cmd := helpers.Command(
-			"compose",
-			"-f",
-			data.Temp().Path("compose.yaml"),
-			"run",
-			"--label",
-			"foo=rab",
-			"--label",
-			"x=y",
-			"--name",
-			data.Identifier(),
-			"alpine",
-		)
-		cmd.WithPseudoTTY()
-		return cmd
-	}
-
-	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
-		return &test.Expected{
-			ExitCode: expect.ExitCodeSuccess,
-			Output: func(stdout string, tt tig.T) {
-				container := nerdtest.InspectContainer(helpers, data.Identifier())
-				assert.Assert(tt, container.Config != nil, "cannot fetch container config")
-				assert.Equal(tt, container.Config.Labels["foo"], "rab")
-				assert.Equal(tt, container.Config.Labels["x"], "y")
-			},
-		}
-	}
-
-	testCase.Cleanup = composeRunCleanup()
-
-	testCase.Run(t)
 }
 
 func TestComposeRunWithArgs(t *testing.T) {
