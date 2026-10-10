@@ -18,14 +18,18 @@ package compose
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/opencontainers/go-digest"
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
+	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -126,5 +130,91 @@ volumes:
 		},
 	}
 
+	testCase.Run(t)
+}
+
+func TestComposeImageDigestFallback(t *testing.T) {
+	pinned := digest.FromString("original image")
+	current := digest.FromString("retagged image")
+	for _, tc := range []struct {
+		name   string
+		labels map[string]string
+		want   digest.Digest
+	}{
+		{name: "pinned", labels: map[string]string{labels.ImageDigest: pinned.String()}, want: pinned},
+		{name: "legacy", want: current},
+		{name: "invalid label", labels: map[string]string{labels.ImageDigest: "invalid"}, want: current},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, composeImageDigest(tc.labels, current), tc.want)
+		})
+	}
+}
+
+func TestComposeImagesAfterRetag(t *testing.T) {
+	testCase := nerdtest.Setup()
+	// Docker does not support image convert or image inspect --mode native,
+	// which this test uses to retag the image and verify its manifest digest.
+	testCase.Require = require.All(nerdtest.Private, require.Not(nerdtest.Docker))
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		imageName := data.Identifier("image")
+		containerName := data.Identifier("container")
+		helpers.Ensure("pull", testutil.AlpineImage)
+		helpers.Ensure("tag", testutil.AlpineImage, imageName)
+		data.Temp().Save(fmt.Sprintf(`services:
+  test:
+    image: %s
+    container_name: %s
+    network_mode: none
+    command: ["sleep", "%s"]
+`, imageName, containerName, nerdtest.Infinity), "compose.yaml")
+		data.Labels().Set("composeYaml", data.Temp().Path("compose.yaml"))
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+		originalID := strings.TrimSpace(helpers.Capture("inspect", "--format", "{{.Image}}", containerName))
+		data.Labels().Set("originalID", originalID)
+		data.Labels().Set("originalShortID", strings.TrimPrefix(originalID, "sha256:")[:12])
+
+		// Changing the manifest format retags the image without rebuilding it.
+		helpers.Ensure("image", "convert", "--oci", testutil.AlpineImage, imageName)
+		updatedID := strings.TrimSpace(helpers.Capture("image", "inspect", "--mode", "native", "--format", "{{.Image.Target.Digest}}", imageName))
+		assert.Assert(helpers.T(), originalID != updatedID)
+		data.Labels().Set("updatedShortID", strings.TrimPrefix(updatedID, "sha256:")[:12])
+	}
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "table",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{ExitCode: expect.ExitCodeSuccess, Output: expect.All(
+					expect.Contains(data.Labels().Get("originalShortID")),
+					expect.DoesNotContain(data.Labels().Get("updatedShortID")),
+				)}
+			},
+		},
+		{
+			Description: "json",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images", "--format", "json")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{ExitCode: expect.ExitCodeSuccess, Output: expect.Contains(data.Labels().Get("originalID"))}
+			},
+		},
+		{
+			Description: "quiet",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images", "--quiet")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{ExitCode: expect.ExitCodeSuccess, Output: expect.Equals(data.Labels().Get("originalShortID") + "\n")}
+			},
+		},
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down")
+	}
 	testCase.Run(t)
 }

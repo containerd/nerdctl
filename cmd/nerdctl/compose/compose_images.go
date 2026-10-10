@@ -22,6 +22,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
@@ -106,12 +107,15 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 func printComposeImageIDs(ctx context.Context, containers []containerd.Container) error {
 	ids := []string{}
 	for _, c := range containers {
+		info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
+		if err != nil {
+			return err
+		}
 		image, err := c.Image(ctx)
 		if err != nil {
 			return err
 		}
-		metaImage := image.Metadata()
-		id := metaImage.Target.Digest.String()
+		id := composeImageDigest(info.Labels, image.Target().Digest).String()
 		if !strutil.InStringSlice(ids, id) {
 			ids = append(ids, id)
 		}
@@ -156,7 +160,7 @@ func printComposeImages(ctx context.Context, cmd *cobra.Command, containers []co
 
 			metaImage := image.Metadata()
 			repository, tag := imgutil.ParseRepoTag(metaImage.Name)
-			imageID := metaImage.Target.Digest.String()
+			imageID := composeImageDigest(info.Labels, metaImage.Target.Digest).String()
 			if repository == "" {
 				repository = "<none>"
 			}
@@ -208,4 +212,13 @@ func printComposeImages(ctx context.Context, cmd *cobra.Command, containers []co
 	}
 
 	return w.Flush()
+}
+
+// Image tags can change after a container is created. Prefer the digest pinned
+// at creation, falling back to the current image for containers without it.
+func composeImageDigest(containerLabels map[string]string, fallback digest.Digest) digest.Digest {
+	if pinned, err := digest.Parse(containerLabels[labels.ImageDigest]); err == nil {
+		return pinned
+	}
+	return fallback
 }
