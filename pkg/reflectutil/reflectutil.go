@@ -22,7 +22,6 @@ import (
 )
 
 func UnknownNonEmptyFields(structOrStructPtr interface{}, knownNames ...string) []string {
-	var unknown []string
 	knownNamesMap := make(map[string]struct{}, len(knownNames))
 	for _, name := range knownNames {
 		knownNamesMap[name] = struct{}{}
@@ -37,12 +36,25 @@ func UnknownNonEmptyFields(structOrStructPtr interface{}, knownNames ...string) 
 	default:
 		panic(fmt.Errorf("expected Ptr or Struct, got %+v", kind))
 	}
+	return unknownNonEmptyFields(val, knownNamesMap)
+}
+
+func unknownNonEmptyFields(val reflect.Value, knownNamesMap map[string]struct{}) []string {
+	var unknown []string
 	for i := 0; i < val.NumField(); i++ {
 		iField := val.Field(i)
 		if isEmpty(iField) {
 			continue
 		}
-		iName := val.Type().Field(i).Name
+		iStructField := val.Type().Field(i)
+		// Walk embedded structs, so that their promoted fields are checked by their own names.
+		// e.g., compose-go v2.16 moved ServiceConfig.Image to ServiceConfig.ContainerSpec.Image .
+		// Embedded pointers are not followed, as they may form a cycle (`type T struct { *T }`).
+		if iStructField.Anonymous && iField.Kind() == reflect.Struct {
+			unknown = append(unknown, unknownNonEmptyFields(iField, knownNamesMap)...)
+			continue
+		}
+		iName := iStructField.Name
 		if _, ok := knownNamesMap[iName]; !ok {
 			unknown = append(unknown, iName)
 		}
