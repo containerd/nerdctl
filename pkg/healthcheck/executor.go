@@ -19,6 +19,7 @@ package healthcheck
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"syscall"
 	"time"
@@ -32,15 +33,45 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idgen"
 )
 
-// ExecuteHealthCheck executes the health check command for a container
+// EnvScheduled is set to "1" in the environment of the systemd service that runs the health check
+// on a timer. A manual `nerdctl container healthcheck` does not have it.
+const EnvScheduled = "NERDCTL_HEALTHCHECK_SCHEDULED"
+
+// ExecuteHealthCheck executes the health check command for a container.
+// A manual run probes once. A scheduled run keeps probing every start interval
+// while the container is in its start period.
 func ExecuteHealthCheck(ctx context.Context, task containerd.Task, container containerd.Container, hc *Healthcheck) error {
+	scheduled := os.Getenv(EnvScheduled) == "1"
+	for {
+		ran, err := probeOnce(ctx, task, container, hc)
+		if err != nil || !ran || !scheduled {
+			return err
+		}
+
+		delay, again, err := nextStartProbe(ctx, container, hc)
+		if err != nil || !again {
+			return err
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil
+		case <-timer.C:
+		}
+	}
+}
+
+// probeOnce runs the health check command once and records the result.
+// It reports false if there was nothing to run.
+func probeOnce(ctx context.Context, task containerd.Task, container containerd.Container, hc *Healthcheck) (bool, error) {
 	// Prepare process spec for health check command
 	processSpec, err := prepareProcessSpec(ctx, container, hc)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if processSpec == nil {
-		return nil
+		return false, nil
 	}
 
 	startTime := time.Now()
@@ -52,15 +83,45 @@ func ExecuteHealthCheck(ctx context.Context, task containerd.Task, container con
 			ExitCode: -1,
 			Output:   err.Error(),
 		})
-		return fmt.Errorf("health check probe failed: %w", err)
+		return true, fmt.Errorf("health check probe failed: %w", err)
 	}
 
 	// Success case, update health status
 	result.Start = startTime
 	if err := updateHealthStatus(ctx, container, hc, result); err != nil {
-		return fmt.Errorf("failed to update health status: %w", err)
+		return true, fmt.Errorf("failed to update health status: %w", err)
 	}
-	return nil
+	return true, nil
+}
+
+// nextStartProbe reads the container state and tells whether another start-phase probe is due.
+func nextStartProbe(ctx context.Context, container containerd.Container, hc *Healthcheck) (time.Duration, bool, error) {
+	state, err := readHealthStateFromLabels(ctx, container)
+	if err != nil {
+		return 0, false, fmt.Errorf("failed to read health state from labels: %w", err)
+	}
+	if state == nil {
+		return 0, false, nil
+	}
+	info, err := container.Info(ctx)
+	if err != nil {
+		return 0, false, fmt.Errorf("failed to get container info: %w", err)
+	}
+	delay, again := startProbeDelay(time.Now(), info.CreatedAt, state.InStartPeriod, hc)
+	return delay, again, nil
+}
+
+// startProbeDelay tells how long to wait before the next start-phase probe, and whether there is one.
+// Like Docker, if less than start-interval of the start period is left, the next probe is due when it ends.
+func startProbeDelay(now, created time.Time, inStartPeriod bool, hc *Healthcheck) (time.Duration, bool) {
+	if !inStartPeriod || hc.StartPeriod <= 0 || hc.StartInterval <= 0 || hc.StartInterval >= hc.Interval {
+		return 0, false
+	}
+	left := created.Add(hc.StartPeriod).Sub(now)
+	if left <= 0 {
+		return 0, false
+	}
+	return min(hc.StartInterval, left), true
 }
 
 // probeHealthCheck executes the health check command inside the container context
@@ -174,7 +235,6 @@ func updateHealthStatus(ctx context.Context, container containerd.Container, hcC
 		}
 	}
 
-	// Write updated health state back to labels
 	if err := writeHealthStateToLabels(ctx, container, currentHealth); err != nil {
 		return fmt.Errorf("failed to write health state to labels: %w", err)
 	}

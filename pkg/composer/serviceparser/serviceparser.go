@@ -135,9 +135,9 @@ func warnUnknownFields(svc types.ServiceConfig) {
 			"Interval",
 			"Retries",
 			"StartPeriod",
+			"StartInterval",
 			"Disable",
 			"Extensions",
-			// TODO: add support 'StartInterval'
 		); len(unknown) > 0 {
 			log.L.Warnf("Ignoring: service %s: healthcheck: %+v", svc.Name, unknown)
 		}
@@ -847,24 +847,35 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 		if disabled {
 			c.RunArgs = append(c.RunArgs, "--no-healthcheck")
 		} else {
-			if hc.Interval != nil {
-				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-interval=%s", time.Duration(*hc.Interval).String()))
-			}
-			if hc.Timeout != nil {
-				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-timeout=%s", time.Duration(*hc.Timeout).String()))
-			}
-			if hc.Retries != nil {
-				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-retries=%d", *hc.Retries))
-			}
-			if hc.StartPeriod != nil {
-				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-start-period=%s", time.Duration(*hc.StartPeriod).String()))
-			}
+			c.RunArgs = append(c.RunArgs, healthcheckTimingArgs(hc)...)
 		}
 	}
 
 	c.RunArgs = append(c.RunArgs, parsed.Image) // NOT svc.Image
 	c.RunArgs = append(c.RunArgs, svc.Command...)
 	return &c, nil
+}
+
+// healthcheckTimingArgs returns the --health-* flags for the interval, timeout,
+// retries, start period and start interval of a compose healthcheck.
+func healthcheckTimingArgs(hc *types.HealthCheckConfig) []string {
+	var args []string
+	if hc.Interval != nil {
+		args = append(args, fmt.Sprintf("--health-interval=%s", time.Duration(*hc.Interval).String()))
+	}
+	if hc.Timeout != nil {
+		args = append(args, fmt.Sprintf("--health-timeout=%s", time.Duration(*hc.Timeout).String()))
+	}
+	if hc.Retries != nil {
+		args = append(args, fmt.Sprintf("--health-retries=%d", *hc.Retries))
+	}
+	if hc.StartPeriod != nil {
+		args = append(args, fmt.Sprintf("--health-start-period=%s", time.Duration(*hc.StartPeriod).String()))
+	}
+	if hc.StartInterval != nil {
+		args = append(args, fmt.Sprintf("--health-start-interval=%s", time.Duration(*hc.StartInterval).String()))
+	}
+	return args
 }
 
 func servicePortConfigToFlagP(c types.ServicePortConfig) (string, error) {
