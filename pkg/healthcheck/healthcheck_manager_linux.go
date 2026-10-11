@@ -62,8 +62,9 @@ func CreateTimer(ctx context.Context, container containerd.Container, cfg *confi
 		cmdOpts = append(cmdOpts, "--setenv=BUILDKIT_HOST="+buildKitHost)
 	}
 
-	// Always use health-interval for timer frequency
-	//
+	// Tell the check it is run by the timer, so it can probe at the start interval during the start period.
+	cmdOpts = append(cmdOpts, "--setenv="+EnvScheduled+"=1")
+
 	// --collect:
 	// Even when the healthcheck fails with the error "container is not running" after the container has
 	// stopped, and the transient service unit enters a failed state, it will still be subject to garbage

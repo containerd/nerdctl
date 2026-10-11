@@ -189,6 +189,7 @@ func TestContainerHealthCheckDefaults(t *testing.T) {
 						assert.Equal(t, hc.Timeout, 30*time.Second, "expected default timeout of 30s")
 						assert.Equal(t, hc.Retries, 3, "expected default retries of 3")
 						assert.Equal(t, hc.StartPeriod, 0*time.Second, "expected default start period of 0s")
+						assert.Equal(t, hc.StartInterval, 5*time.Second, "expected default start interval of 5s")
 
 						// Verify the command was set correctly
 						assert.DeepEqual(t, hc.Test, []string{"CMD-SHELL", "echo healthy"})
@@ -206,6 +207,7 @@ func TestContainerHealthCheckDefaults(t *testing.T) {
 					"--health-timeout", "15s",
 					"--health-retries", "5",
 					"--health-start-period", "10s",
+					"--health-start-interval", "3s",
 					testutil.CommonImage, "sleep", nerdtest.Infinity)
 				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
 			},
@@ -234,6 +236,7 @@ func TestContainerHealthCheckDefaults(t *testing.T) {
 						assert.Equal(t, hc.Timeout, 15*time.Second, "expected custom timeout of 15s")
 						assert.Equal(t, hc.Retries, 5, "expected custom retries of 5")
 						assert.Equal(t, hc.StartPeriod, 10*time.Second, "expected custom start period of 10s")
+						assert.Equal(t, hc.StartInterval, 3*time.Second, "expected custom start interval of 3s")
 
 						// Verify the command was set correctly
 						assert.DeepEqual(t, hc.Test, []string{"CMD-SHELL", "echo custom"})
@@ -742,6 +745,117 @@ func TestContainerHealthCheckAdvance(t *testing.T) {
 						assert.Assert(t, h != nil, "expected health state")
 						assert.Equal(t, h.Status, healthcheck.Healthy, "expected healthy status even during start-period")
 						assert.Equal(t, h.FailingStreak, 0)
+					}),
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
+}
+
+// TestContainerHealthCheckStartInterval checks the probe cadence around --health-start-interval.
+func TestContainerHealthCheckStartInterval(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// Docker CLI does not provide a standalone healthcheck command.
+	testCase.Require = require.Not(nerdtest.Docker)
+
+	// Skip systemd tests in rootless environment to bypass dbus permission issues
+	if rootlessutil.IsRootless() {
+		t.Skip("systemd healthcheck tests are skipped in rootless environment")
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "Scheduled check probes every start-interval during the start period",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "exit 1",
+					"--health-interval", "60s",
+					"--health-start-period", "30s",
+					"--health-start-interval", "1s",
+					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				// No manual probe here: the timer-started check does all of them.
+				time.Sleep(6 * time.Second)
+				return helpers.Command("inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(func(stdout string, t tig.T) {
+						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+						h := inspect.State.Health
+						debug, _ := json.MarshalIndent(h, "", "  ")
+						t.Log(string(debug))
+						assert.Assert(t, h != nil, "expected health state")
+						// Failures inside the start period keep the status at starting.
+						assert.Equal(t, h.Status, healthcheck.Starting)
+						assert.Assert(t, len(h.Log) >= 3,
+							"expected at least 3 probes within a few start intervals")
+					}),
+				}
+			},
+		},
+		{
+			Description: "Timer keeps ticking at health-interval",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "exit 1",
+					"--health-interval", "30s",
+					"--health-start-period", "30s",
+					"--health-start-interval", "1s",
+					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				id := nerdtest.InspectContainer(helpers, data.Identifier()).ID
+				return helpers.Custom("systemctl", "show", id+".timer", "-p", "TimersMonotonic")
+			},
+			Expected: test.Expects(0, nil, expect.Contains("OnUnitInactiveUSec=30s")),
+		},
+		{
+			Description: "Manual healthcheck always runs one probe",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--name", data.Identifier(),
+					"--health-cmd", "true",
+					"--health-interval", "60s",
+					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+				before := nerdtest.InspectContainer(helpers, data.Identifier()).State.Health
+				n := 0
+				if before != nil {
+					n = len(before.Log)
+				}
+				data.Labels().Set("before", strconv.Itoa(n))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				helpers.Ensure("container", "healthcheck", data.Identifier())
+				return helpers.Command("container", "healthcheck", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: expect.All(func(stdout string, t tig.T) {
+						assert.Assert(t, !strings.Contains(stdout, "skipping"), "expected no skipped probe")
+						before, err := strconv.Atoi(data.Labels().Get("before"))
+						assert.NilError(t, err)
+						h := nerdtest.InspectContainer(helpers, data.Identifier()).State.Health
+						assert.Assert(t, h != nil, "expected health state")
+						assert.Assert(t, len(h.Log) >= before+2,
+							"expected both manual runs to add a log entry, had %d before and %d after", before, len(h.Log))
 					}),
 				}
 			},

@@ -133,9 +133,9 @@ func warnUnknownFields(svc types.ServiceConfig) {
 			"Interval",
 			"Retries",
 			"StartPeriod",
+			"StartInterval",
 			"Disable",
 			"Extensions",
-			// TODO: add support 'StartInterval'
 		); len(unknown) > 0 {
 			log.L.Warnf("Ignoring: service %s: healthcheck: %+v", svc.Name, unknown)
 		}
@@ -849,6 +849,9 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 			}
 			if hc.StartPeriod != nil {
 				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-start-period=%s", time.Duration(*hc.StartPeriod).String()))
+			}
+			if hc.StartInterval != nil {
+				c.RunArgs = append(c.RunArgs, fmt.Sprintf("--health-start-interval=%s", time.Duration(*hc.StartInterval).String()))
 			}
 		}
 	}
