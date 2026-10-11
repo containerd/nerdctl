@@ -14,11 +14,10 @@ Health checks can be configured in multiple ways:
    - `--health-timeout`: Maximum time to allow one check to run (default: 30s)
    - `--health-retries`: Consecutive failures needed to report unhealthy (default: 3)
    - `--health-start-period`: Start period for the container to initialize before starting health-retries countdown
+   - `--health-start-interval`: Time between running the check during the start period (default: 5s)
    - `--no-healthcheck`: Disable any container-specified HEALTHCHECK
 
 2. At image build time using HEALTHCHECK in a Dockerfile
-
-**Note:** The `--health-start-interval` option is currently not supported by nerdctl.
 
 ## Configuration Priority
 
@@ -40,7 +39,8 @@ You can disable health checks using the following flag during container create/r
 
 nerdctl provides a container healthcheck command that can be manually triggered by the user. This command runs the
 configured health check inside the container and reports the result. It serves as the entry point for executing
-health checks, especially in scenarios where external scheduling is used.
+health checks, especially in scenarios where external scheduling is used. A run is skipped if the next probe is not
+due yet: `--health-start-interval` applies during the start period and `--health-interval` after it.
 
 Example:
 ```
@@ -61,7 +61,7 @@ On Linux systems with systemd, nerdctl automatically creates and manages systemd
 
 1. When a container with health checks is created, nerdctl:
    - Creates a systemd timer unit for the container
-   - Configures the timer according to the health check interval
+   - Configures the timer to tick at the shorter of the health check interval and the start interval
    - Starts monitoring the container's health status
 
 2. The health check status can be one of:
@@ -90,7 +90,17 @@ nerdctl run -d --name app \
   myapp
 ```
 
-3. Disable health checks:
+3. Health check that probes more frequently while starting up:
+```bash
+nerdctl run -d --name app \
+  --health-cmd="./health-check.sh" \
+  --health-interval=30s \
+  --health-start-period=60s \
+  --health-start-interval=5s \
+  myapp
+```
+
+4. Disable health checks:
 ```bash
 nerdctl run --no-healthcheck myapp
 ```

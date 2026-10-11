@@ -40,14 +40,15 @@ const (
 )
 
 const (
-	DefaultProbeInterval   = 30 * time.Second // Default interval between probe runs. Also applies before the first probe.
-	DefaultProbeTimeout    = 30 * time.Second // Max duration a single probe run may take before it's considered failed.
-	DefaultStartPeriod     = 0 * time.Second  // Grace period for container startup before health checks count as failures.
-	DefaultProbeRetries    = 3                // Number of consecutive failures before marking container as unhealthy.
-	MaxLogEntries          = 5                // Maximum number of health check log entries to keep.
-	MaxOutputLenForInspect = 4096             // Max output length (in bytes) stored in health check logs during inspect. Longer outputs are truncated.
-	MaxOutputLen           = 1 * 1024 * 1024  // Max output size for health check logs: 1MB limit (prevents excessive memory usage)
-	HealthLogFilename      = "health.json"    // HealthLogFilename is the name of the file used to persist health check status for a container.
+	DefaultProbeInterval      = 30 * time.Second // Default interval between probe runs. Also applies before the first probe.
+	DefaultProbeTimeout       = 30 * time.Second // Max duration a single probe run may take before it's considered failed.
+	DefaultStartPeriod        = 0 * time.Second  // Grace period for container startup before health checks count as failures.
+	DefaultProbeStartInterval = 5 * time.Second  // Default interval between probe runs while still within the start period.
+	DefaultProbeRetries       = 3                // Number of consecutive failures before marking container as unhealthy.
+	MaxLogEntries             = 5                // Maximum number of health check log entries to keep.
+	MaxOutputLenForInspect    = 4096             // Max output length (in bytes) stored in health check logs during inspect. Longer outputs are truncated.
+	MaxOutputLen              = 1 * 1024 * 1024  // Max output size for health check logs: 1MB limit (prevents excessive memory usage)
+	HealthLogFilename         = "health.json"    // HealthLogFilename is the name of the file used to persist health check status for a container.
 )
 
 // NOTE: Health, HealthcheckResult and Healthcheck types are kept Docker-compatible.
@@ -69,11 +70,12 @@ type HealthcheckResult struct {
 
 // Healthcheck represents the health check configuration
 type Healthcheck struct {
-	Test        []string      `json:"Test,omitempty"`        // Test is the check to perform that the container is healthy
-	Interval    time.Duration `json:"Interval,omitempty"`    // Interval is the time to wait between checks
-	Timeout     time.Duration `json:"Timeout,omitempty"`     // Timeout is the time to wait before considering the check to have hung
-	Retries     int           `json:"Retries,omitempty"`     // Retries is the number of consecutive failures needed to consider a container as unhealthy
-	StartPeriod time.Duration `json:"StartPeriod,omitempty"` // StartPeriod is the period for the container to initialize before the health check starts
+	Test          []string      `json:"Test,omitempty"`          // Test is the check to perform that the container is healthy
+	Interval      time.Duration `json:"Interval,omitempty"`      // Interval is the time to wait between checks
+	Timeout       time.Duration `json:"Timeout,omitempty"`       // Timeout is the time to wait before considering the check to have hung
+	Retries       int           `json:"Retries,omitempty"`       // Retries is the number of consecutive failures needed to consider a container as unhealthy
+	StartPeriod   time.Duration `json:"StartPeriod,omitempty"`   // StartPeriod is the period for the container to initialize before the health check starts
+	StartInterval time.Duration `json:"StartInterval,omitempty"` // StartInterval is the time to wait between checks while still within the start period
 }
 
 // HealthState stores the current health state of a container
@@ -81,6 +83,7 @@ type HealthState struct {
 	Status        HealthStatus // Status is one of [Starting], [Healthy] or [Unhealthy]
 	FailingStreak int          // FailingStreak is the number of consecutive failures
 	InStartPeriod bool         // InStartPeriod indicates if we're in the start period workflow
+	LastProbeAt   time.Time    `json:",omitempty"` // LastProbeAt is the start time of the most recently executed (non-skipped) probe
 }
 
 // ToJSONString serializes HealthState to a JSON string for label storage
@@ -147,6 +150,9 @@ func (hc *Healthcheck) ApplyDefaults() {
 	}
 	if hc.StartPeriod == 0 {
 		hc.StartPeriod = DefaultStartPeriod
+	}
+	if hc.StartInterval == 0 {
+		hc.StartInterval = DefaultProbeStartInterval
 	}
 	if hc.Retries == 0 {
 		hc.Retries = DefaultProbeRetries
