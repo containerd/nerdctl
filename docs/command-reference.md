@@ -238,6 +238,7 @@ Resource flags:
   - Default: "private" on cgroup v2 hosts, "host" on cgroup v1 hosts
 - :whale: `--cgroup-parent`: Optional parent cgroup for the container
 - :whale: `--device`: Add a host device to the container
+- :whale: `--device-cgroup-rule`: Add a rule to the cgroup allowed devices list, in the form `TYPE MAJOR:MINOR ACCESS` (e.g. `c 189:* rmw`)
 
 Intel RDT flags:
 
@@ -474,7 +475,7 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--device-cgroup-rule`, `--disable-content-trust`,
+    `--disable-content-trust`,
     `--health-start-interval`, `--link*`, `--storage-opt`,
     `--volume-driver`
 
