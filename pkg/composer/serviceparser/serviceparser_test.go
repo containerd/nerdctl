@@ -668,25 +668,29 @@ func TestParseImageVolumeServiceNameIsLiteral(t *testing.T) {
 		{
 			name: "build service",
 			referencedService: types.ServiceConfig{
-				Name:     "builder",
-				Build:    &types.BuildConfig{},
-				Platform: "linux/amd64",
+				Name:          "builder",
+				ContainerSpec: types.ContainerSpec{Platform: "linux/amd64"},
+				WorkloadSpec:  types.WorkloadSpec{Build: &types.BuildConfig{}},
 			},
 		},
 		{
 			name: "explicit image",
 			referencedService: types.ServiceConfig{
-				Name:     "builder",
-				Image:    "nginx:alpine",
-				Platform: "linux/amd64",
+				Name: "builder",
+				ContainerSpec: types.ContainerSpec{
+					Image:    "nginx:alpine",
+					Platform: "linux/amd64",
+				},
 			},
 		},
 		{
 			name: "disabled explicit image service",
 			referencedService: types.ServiceConfig{
-				Name:     "builder",
-				Image:    "nginx:alpine",
-				Platform: "linux/amd64",
+				Name: "builder",
+				ContainerSpec: types.ContainerSpec{
+					Image:    "nginx:alpine",
+					Platform: "linux/amd64",
+				},
 			},
 			disabled: true,
 		},
@@ -696,14 +700,16 @@ func TestParseImageVolumeServiceNameIsLiteral(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			app := types.ServiceConfig{
-				Name:     "app",
-				Image:    "alpine",
-				Platform: "linux/arm64",
-				Volumes: []types.ServiceVolumeConfig{{
-					Type:   types.VolumeTypeImage,
-					Source: "builder",
-					Target: "/website",
-				}},
+				Name: "app",
+				ContainerSpec: types.ContainerSpec{
+					Image:    "alpine",
+					Platform: "linux/arm64",
+					Volumes: []types.ServiceVolumeConfig{{
+						Type:   types.VolumeTypeImage,
+						Source: "builder",
+						Target: "/website",
+					}},
+				},
 			}
 			project := &types.Project{
 				Name:     "project",
