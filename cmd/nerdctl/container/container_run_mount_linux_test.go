@@ -1160,6 +1160,34 @@ func TestRunVolumesFrom(t *testing.T) {
 	testCase.Run(t)
 }
 
+func TestRunVolumesFromPreservesShmMount(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Private
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		sharedDir := data.Temp().Dir("shared")
+		data.Temp().Save("shared", "shared", "marker")
+		data.Temp().Dir("shm")
+		data.Temp().Save("target", "shm", "marker")
+
+		helpers.Ensure("create", "--net=none", "--name", data.Identifier("from"),
+			"-v", sharedDir+":/mnt:ro", testutil.AlpineImage)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run", "--rm", "--net=none",
+			"--volumes-from", data.Identifier("from"),
+			"-v", data.Temp().Path("shm")+":/dev/shm:ro",
+			testutil.AlpineImage, "cat", "/mnt/marker", "/dev/shm/marker")
+	}
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("sharedtarget"))
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier("from"))
+	}
+
+	testCase.Run(t)
+}
+
 func TestBindMountWhenHostFolderDoesNotExist(t *testing.T) {
 	testCase := nerdtest.Setup()
 
