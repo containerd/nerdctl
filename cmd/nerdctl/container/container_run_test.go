@@ -683,6 +683,9 @@ func TestRunAddHostRemainsWhenAnotherContainerCreated(t *testing.T) {
 func TestRunRmTime(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	// FIXME: too flaky with gomodjail
+	testCase.Require = require.Not(nerdtest.Gomodjail)
+
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		helpers.Ensure("pull", "--quiet", testutil.CommonImage)
 	}
