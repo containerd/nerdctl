@@ -788,7 +788,7 @@ func containerImageDigest(ctx context.Context, container containerd.Container) (
 		}
 		return "", false, err
 	}
-	if dgst, ok := pinnedImageDigest(info.Labels); ok {
+	if dgst, ok := PinnedImageDigest(info.Labels); ok {
 		return dgst, true, nil
 	}
 
@@ -802,10 +802,10 @@ func containerImageDigest(ctx context.Context, container containerd.Container) (
 	return image.Target().Digest, true, nil
 }
 
-// pinnedImageDigest returns the image target digest a container pinned at creation time. An
+// PinnedImageDigest returns the image target digest a container pinned at creation time. An
 // unparsable value is treated as absent, so that a hand-edited label degrades to resolving the
 // image by name rather than dropping the container from the in-use set.
-func pinnedImageDigest(containerLabels map[string]string) (digest.Digest, bool) {
+func PinnedImageDigest(containerLabels map[string]string) (digest.Digest, bool) {
 	value := containerLabels[labels.ImageDigest]
 	if value == "" {
 		return "", false
