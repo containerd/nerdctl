@@ -10,7 +10,7 @@ require (
 	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
 	github.com/containerd/console v1.0.5 //gomodjail:unconfined
 	github.com/containerd/containerd/api v1.12.0 //gomodjail:unconfined
-	github.com/containerd/containerd/v2 v2.4.1 //gomodjail:unconfined
+	github.com/containerd/containerd/v2 v2.4.2 //gomodjail:unconfined
 	github.com/containerd/continuity v0.5.0 //gomodjail:unconfined
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
@@ -20,9 +20,9 @@ require (
 	github.com/containerd/nerdctl/mod/tigron v0.0.0 //gomodjail:unconfined
 	github.com/containerd/nydus-snapshotter v0.16.1 //gomodjail:unconfined
 	github.com/containerd/platforms v1.0.0-rc.5 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter v0.18.2 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter/estargz v0.18.2 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter/ipfs v0.18.2 //gomodjail:unconfined
+	github.com/containerd/stargz-snapshotter v0.19.1-0.20261021040618-950b4ccca10e //gomodjail:unconfined
+	github.com/containerd/stargz-snapshotter/estargz v0.19.1-0.20261021040618-950b4ccca10e //gomodjail:unconfined
+	github.com/containerd/stargz-snapshotter/ipfs v0.19.1-0.20261021040618-950b4ccca10e //gomodjail:unconfined
 	github.com/containerd/typeurl/v2 v2.3.0
 	github.com/docker/cli v29.8.2+incompatible //gomodjail:unconfined
 	github.com/docker/go-connections v0.8.1 //gomodjail:unconfined
