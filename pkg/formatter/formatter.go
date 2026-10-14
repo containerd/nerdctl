@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/go-cni"
+	"github.com/containerd/typeurl/v2"
 )
 
 func ContainerStatus(ctx context.Context, c containerd.Container) string {
@@ -71,6 +72,14 @@ func ContainerStatus(ctx context.Context, c containerd.Container) string {
 	default:
 		return titleCaser.String(string(s))
 	}
+}
+
+func GetCommandFromSpec(spec typeurl.Any, trunc, quote bool) (string, error) {
+	var s oci.Spec
+	if err := json.Unmarshal(spec.GetValue(), &s); err != nil {
+		return "", err
+	}
+	return InspectContainerCommand(&s, trunc, quote), nil
 }
 
 func InspectContainerCommand(spec *oci.Spec, trunc, quote bool) string {
