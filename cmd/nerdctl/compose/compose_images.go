@@ -18,20 +18,27 @@ package compose
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"text/tabwriter"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/containers"
+	"github.com/containerd/containerd/v2/core/content"
+	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/snapshots"
 	"github.com/containerd/containerd/v2/pkg/progress"
+	"github.com/containerd/platforms"
 
 	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
+	imagecmd "github.com/containerd/nerdctl/v2/pkg/cmd/image"
 	"github.com/containerd/nerdctl/v2/pkg/formatter"
 	"github.com/containerd/nerdctl/v2/pkg/imgutil"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
@@ -100,18 +107,25 @@ func imagesAction(cmd *cobra.Command, args []string) error {
 
 	sn := client.SnapshotService(globalOptions.Snapshotter)
 
-	return printComposeImages(ctx, cmd, containers, sn, format)
+	return printComposeImages(ctx, cmd, client, containers, sn, format)
 }
 
 func printComposeImageIDs(ctx context.Context, containers []containerd.Container) error {
 	ids := []string{}
 	for _, c := range containers {
-		image, err := c.Image(ctx)
+		info, err := c.Info(ctx, containerd.WithoutRefreshedMetadata)
 		if err != nil {
 			return err
 		}
-		metaImage := image.Metadata()
-		id := metaImage.Target.Digest.String()
+		dgst, ok := imagecmd.PinnedImageDigest(info.Labels)
+		if !ok {
+			image, err := c.Image(ctx)
+			if err != nil {
+				return err
+			}
+			dgst = image.Target().Digest
+		}
+		id := dgst.String()
 		if !strutil.InStringSlice(ids, id) {
 			ids = append(ids, id)
 		}
@@ -124,7 +138,7 @@ func printComposeImageIDs(ctx context.Context, containers []containerd.Container
 	return nil
 }
 
-func printComposeImages(ctx context.Context, cmd *cobra.Command, containers []containerd.Container, sn snapshots.Snapshotter, format string) error {
+func printComposeImages(ctx context.Context, cmd *cobra.Command, client *containerd.Client, containers []containerd.Container, sn snapshots.Snapshotter, format string) error {
 	type composeImagePrintable struct {
 		ContainerName string
 		Repository    string
@@ -144,7 +158,7 @@ func printComposeImages(ctx context.Context, cmd *cobra.Command, containers []co
 			}
 			containerName := info.Labels[labels.Name]
 
-			image, err := c.Image(ctx)
+			image, err := composeContainerImage(ctx, client, c, info)
 			if err != nil {
 				return err
 			}
@@ -208,4 +222,42 @@ func printComposeImages(ctx context.Context, cmd *cobra.Command, containers []co
 	}
 
 	return w.Flush()
+}
+
+// composeContainerImage resolves the content pinned at container creation, so the
+// image ID and unpacked size cannot follow a tag onto a different image.
+func composeContainerImage(ctx context.Context, client *containerd.Client, c containerd.Container, info containers.Container) (containerd.Image, error) {
+	dgst, ok := imagecmd.PinnedImageDigest(info.Labels)
+	if !ok {
+		return c.Image(ctx)
+	}
+
+	desc := ocispec.Descriptor{Digest: dgst}
+	blob, err := content.ReadBlob(ctx, client.ContentStore(), desc)
+	if err != nil {
+		return nil, err
+	}
+	var index ocispec.Index
+	if err := json.Unmarshal(blob, &index); err != nil {
+		return nil, err
+	}
+	desc.MediaType = index.MediaType
+	// OCI manifests and indexes may omit their mediaType field.
+	if desc.MediaType == "" {
+		desc.MediaType = ocispec.MediaTypeImageManifest
+		if index.Manifests != nil {
+			desc.MediaType = ocispec.MediaTypeImageIndex
+		}
+	}
+	desc.Size = int64(len(blob))
+
+	platform := platforms.DefaultSpec()
+	if value := info.Labels[labels.Platform]; value != "" {
+		platform, err = platforms.Parse(value)
+		if err != nil {
+			return nil, err
+		}
+	}
+	metadata := images.Image{Name: info.Image, Target: desc}
+	return containerd.NewImageWithPlatform(client, metadata, platforms.OnlyStrict(platform)), nil
 }

@@ -120,7 +120,7 @@ func TestPinnedImageDigest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			dgst, ok := pinnedImageDigest(tc.containerLabels)
+			dgst, ok := PinnedImageDigest(tc.containerLabels)
 			assert.Equal(t, ok, tc.expected != "")
 			assert.Equal(t, string(dgst), tc.expected)
 		})

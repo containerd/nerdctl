@@ -18,11 +18,13 @@ package compose
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
@@ -126,5 +128,76 @@ volumes:
 		},
 	}
 
+	testCase.Run(t)
+}
+
+func TestComposeImagesAfterRetag(t *testing.T) {
+	testCase := nerdtest.Setup()
+	// Docker does not support image inspect --mode native, which this test
+	// uses to verify the manifest digest after retagging.
+	testCase.Require = require.All(nerdtest.Private, require.Not(nerdtest.Docker))
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		imageName := data.Identifier("image")
+		containerName := data.Identifier("container")
+		helpers.Ensure("pull", testutil.AlpineImage)
+		helpers.Ensure("pull", testutil.BusyboxImage)
+		helpers.Ensure("tag", testutil.AlpineImage, imageName)
+		data.Temp().Save(fmt.Sprintf(`services:
+  test:
+    image: %s
+    container_name: %s
+    network_mode: none
+    command: ["sleep", "%s"]
+`, imageName, containerName, nerdtest.Infinity), "compose.yaml")
+		data.Labels().Set("composeYaml", data.Temp().Path("compose.yaml"))
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+		originalID := strings.TrimSpace(helpers.Capture("inspect", "--format", "{{.Image}}", containerName))
+		data.Labels().Set("originalID", originalID)
+		data.Labels().Set("originalShortID", strings.TrimPrefix(originalID, "sha256:")[:12])
+
+		data.Labels().Set("originalTable", helpers.Capture("compose", "-f", data.Temp().Path("compose.yaml"), "images"))
+		data.Labels().Set("originalJSON", helpers.Capture("compose", "-f", data.Temp().Path("compose.yaml"), "images", "--format", "json"))
+		originalSize := strings.TrimSpace(helpers.Capture("image", "inspect", "--format", "{{.Size}}", testutil.AlpineImage))
+		updatedSize := strings.TrimSpace(helpers.Capture("image", "inspect", "--format", "{{.Size}}", testutil.BusyboxImage))
+		assert.Assert(helpers.T(), originalSize != updatedSize)
+
+		// Retag to an image with a different rootfs so both ID and size must stay pinned.
+		helpers.Ensure("tag", testutil.BusyboxImage, imageName)
+		updatedID := strings.TrimSpace(helpers.Capture("image", "inspect", "--mode", "native", "--format", "{{.Image.Target.Digest}}", imageName))
+		assert.Assert(helpers.T(), originalID != updatedID)
+	}
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "table",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{ExitCode: expect.ExitCodeSuccess, Output: expect.Equals(data.Labels().Get("originalTable"))}
+			},
+		},
+		{
+			Description: "json",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images", "--format", "json")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{ExitCode: expect.ExitCodeSuccess, Output: expect.Equals(data.Labels().Get("originalJSON"))}
+			},
+		},
+		{
+			Description: "quiet",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("compose", "-f", data.Labels().Get("composeYaml"), "images", "--quiet")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{ExitCode: expect.ExitCodeSuccess, Output: expect.Equals(data.Labels().Get("originalShortID") + "\n")}
+			},
+		},
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down")
+	}
 	testCase.Run(t)
 }
