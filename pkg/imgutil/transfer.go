@@ -125,6 +125,38 @@ func PullImageWithTransfer(ctx context.Context, client *containerd.Client, parse
 	}
 	defer cleanup()
 
+	snapshotter := options.GOptions.Snapshotter
+	snOpt := getSnapshotterOpts(snapshotter)
+	if snOpt.needsVerify() {
+		var dOpts []dockerconfigresolver.Opt
+		if options.GOptions.InsecureRegistry {
+			log.G(ctx).Warnf("skipping verifying HTTPS certs for %q", parsedReference.Domain)
+			dOpts = append(dOpts, dockerconfigresolver.WithSkipVerifyCerts(true))
+		}
+		dOpts = append(dOpts, dockerconfigresolver.WithHostsDirs(options.GOptions.HostsDir))
+		resolver, err := dockerconfigresolver.New(ctx, parsedReference.Domain, dOpts...)
+		if err != nil {
+			return nil, err
+		}
+		if err := snOpt.verify(ctx, client, rawRef, resolver); err != nil {
+			if !errors.Is(err, http.ErrSchemeMismatch) && !errutil.IsErrConnectionRefused(err) {
+				return nil, fmt.Errorf("snapshot verifier returned an error: %w", err)
+			}
+			if !options.GOptions.InsecureRegistry {
+				return nil, fmt.Errorf("server doesn't seem to support HTTPS: %w", err)
+			}
+			log.G(ctx).WithError(err).Warnf("server %q does not seem to support HTTPS, falling back to plain HTTP", parsedReference.Domain)
+			dOpts = append(dOpts, dockerconfigresolver.WithPlainHTTP(true))
+			resolver, err = dockerconfigresolver.New(ctx, parsedReference.Domain, dOpts...)
+			if err != nil {
+				return nil, err
+			}
+			if err := snOpt.verify(ctx, client, rawRef, resolver); err != nil {
+				return nil, fmt.Errorf("snapshot verifier returned an error: %w", err)
+			}
+		}
+	}
+
 	transferErr := doTransfer(ctx, client, fetcher, store, options.Quiet, progressWriter)
 
 	if transferErr != nil && (errors.Is(transferErr, http.ErrSchemeMismatch) || errutil.IsErrConnectionRefused(transferErr) || errutil.IsErrHTTPResponseToHTTPSClient(transferErr) || errutil.IsErrTLSHandshakeFailure(transferErr)) {
@@ -155,9 +187,6 @@ func PullImageWithTransfer(ctx context.Context, client *containerd.Client, parse
 	if err != nil {
 		return nil, err
 	}
-
-	snapshotter := options.GOptions.Snapshotter
-	snOpt := getSnapshotterOpts(snapshotter)
 
 	return &EnsuredImage{
 		Ref:         rawRef,
