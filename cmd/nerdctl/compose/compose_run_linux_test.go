@@ -409,16 +409,34 @@ services:
 }
 
 func TestComposeRunWithLabel(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		labels string
+	}{
+		{name: "without service labels"},
+		{name: "with service labels", labels: `    labels:
+      - "foo=bar"
+      - "keep=service"
+`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testComposeRunWithLabel(t, tc.labels)
+		})
+	}
+}
+
+func testComposeRunWithLabel(t *testing.T, labels string) {
+	t.Helper()
+
 	dockerComposeYAML := fmt.Sprintf(`
 services:
   alpine:
     image: %s
+    network_mode: none
     entrypoint:
       - echo
       - "dummy log"
-    labels:
-      - "foo=bar"
-`, testutil.CommonImage)
+%s`, testutil.CommonImage, labels)
 
 	testCase := nerdtest.Setup()
 
@@ -454,6 +472,9 @@ services:
 				assert.Assert(tt, container.Config != nil, "cannot fetch container config")
 				assert.Equal(tt, container.Config.Labels["foo"], "rab")
 				assert.Equal(tt, container.Config.Labels["x"], "y")
+				if labels != "" {
+					assert.Equal(tt, container.Config.Labels["keep"], "service")
+				}
 			},
 		}
 	}

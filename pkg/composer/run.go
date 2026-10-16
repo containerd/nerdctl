@@ -150,7 +150,7 @@ func (c *Composer) Run(ctx context.Context, ro RunOptions) error {
 		label := types.NewMappingWithEquals(ro.Label)
 		for k, v := range label {
 			if v != nil {
-				targetSvc.Labels.Add(k, *v)
+				targetSvc.Labels = targetSvc.Labels.Add(k, *v)
 			}
 		}
 	}
