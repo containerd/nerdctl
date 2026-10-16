@@ -863,6 +863,40 @@ services:
 
 }
 
+func TestParseHostname(t *testing.T) {
+	t.Parallel()
+	const dockerComposeYAML = `
+services:
+  implicit:
+    image: nginx:alpine
+  explicit:
+    image: nginx:alpine
+    hostname: myhost
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	// An explicit hostname is always passed through.
+	for _, c := range getContainersFromService(t, project, "explicit") {
+		assert.Assert(t, in(c.RunArgs, "--hostname=myhost"))
+	}
+
+	// Without a hostname, the service name is used as the default, except on Windows
+	// where --hostname is rejected.
+	for _, c := range getContainersFromService(t, project, "implicit") {
+		if runtime.GOOS == "windows" {
+			for _, arg := range c.RunArgs {
+				assert.Assert(t, !strings.HasPrefix(arg, "--hostname"), "unexpected %q", arg)
+			}
+		} else {
+			assert.Assert(t, in(c.RunArgs, "--hostname=implicit"))
+		}
+	}
+}
+
 func TestParseConfigs(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
