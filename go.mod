@@ -24,11 +24,11 @@ require (
 	github.com/containerd/stargz-snapshotter/estargz v0.18.2 //gomodjail:unconfined
 	github.com/containerd/stargz-snapshotter/ipfs v0.18.2 //gomodjail:unconfined
 	github.com/containerd/typeurl/v2 v2.3.0
-	github.com/docker/cli v29.8.2+incompatible //gomodjail:unconfined
-	github.com/docker/go-connections v0.8.1 //gomodjail:unconfined
+	github.com/docker/cli v29.9.0+incompatible //gomodjail:unconfined
+	github.com/docker/go-connections v0.8.2 //gomodjail:unconfined
 	github.com/docker/go-units v0.5.0
-	github.com/moby/moby/client v0.6.1 //gomodjail:unconfined
-	github.com/moby/moby/v2 v2.0.0-beta.25 //gomodjail:unconfined
+	github.com/moby/moby/client v0.6.2 //gomodjail:unconfined
+	github.com/moby/moby/v2 v2.0.0-beta.27 //gomodjail:unconfined
 	github.com/moby/sys/mount v0.3.5 //gomodjail:unconfined
 	github.com/moby/sys/signal v0.7.1 //gomodjail:unconfined
 	github.com/moby/sys/user v0.4.1 //gomodjail:unconfined
@@ -102,7 +102,7 @@ require (
 
 require (
 	cyphar.com/go-pathrs v0.2.5 // indirect
-	github.com/Azure/go-ansiterm v0.0.0-20260917205352-e937bb47801a // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20261006220739-8c912ac31dd4 // indirect
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	//gomodjail:unconfined
