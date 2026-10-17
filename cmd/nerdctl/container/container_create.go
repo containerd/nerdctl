@@ -229,6 +229,11 @@ func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 			opt.Device = append(opt.Device, device)
 		}
 	}
+
+	opt.DeviceCgroupRule, err = cmd.Flags().GetStringArray("device-cgroup-rule")
+	if err != nil {
+		return opt, err
+	}
 	// #endregion
 
 	// #region for blkio flags
