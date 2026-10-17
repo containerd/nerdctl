@@ -20,9 +20,9 @@ require (
 	github.com/containerd/nerdctl/mod/tigron v0.0.0 //gomodjail:unconfined
 	github.com/containerd/nydus-snapshotter v0.16.1 //gomodjail:unconfined
 	github.com/containerd/platforms v1.0.0-rc.5 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter v0.18.2 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter/estargz v0.18.2 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter/ipfs v0.18.2 //gomodjail:unconfined
+	github.com/containerd/stargz-snapshotter v0.19.0 //gomodjail:unconfined
+	github.com/containerd/stargz-snapshotter/estargz v0.19.0 //gomodjail:unconfined
+	github.com/containerd/stargz-snapshotter/ipfs v0.19.0 //gomodjail:unconfined
 	github.com/containerd/typeurl/v2 v2.3.0
 	github.com/docker/cli v29.9.0+incompatible //gomodjail:unconfined
 	github.com/docker/go-connections v0.8.2 //gomodjail:unconfined
