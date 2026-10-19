@@ -49,7 +49,7 @@ require (
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Microsoft/go-winio v0.6.4
-	github.com/Microsoft/hcsshim v0.15.0-rc.4
+	github.com/Microsoft/hcsshim v0.15.0
 	github.com/compose-spec/compose-go/v2 v2.16.1 //gomodjail:unconfined
 	github.com/containernetworking/cni v1.3.1 //gomodjail:unconfined
 	github.com/containernetworking/plugins v1.9.1 //gomodjail:unconfined
@@ -164,12 +164,12 @@ require (
 	//gomodjail:unconfined
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0 // indirect
 	//gomodjail:unconfined
-	go.opentelemetry.io/otel v1.46.0 // indirect
-	go.opentelemetry.io/otel/metric v1.46.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.46.0 // indirect
-	go.opentelemetry.io/otel/trace v1.46.0 // indirect
+	go.opentelemetry.io/otel v1.47.0 // indirect
+	go.opentelemetry.io/otel/metric v1.47.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.47.0 // indirect
+	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260825221802-da73d73af1c5 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
 	//gomodjail:unconfined
 	google.golang.org/grpc v1.84.0 // indirect
 	//gomodjail:unconfined
@@ -180,5 +180,7 @@ require (
 	sigs.k8s.io/knftables v0.0.18 // indirect
 	tags.cncf.io/container-device-interface/specs-go v1.1.1 // indirect
 )
+
+require go.opentelemetry.io/otel/log v1.47.0 // indirect
 
 replace github.com/containerd/nerdctl/mod/tigron v0.0.0 => ./mod/tigron
