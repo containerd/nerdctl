@@ -45,6 +45,7 @@ func ImportCommand() *cobra.Command {
 
 	cmd.Flags().StringP("message", "m", "", "Set commit message for imported image")
 	cmd.Flags().String("platform", "", "Set platform for imported image (e.g., linux/amd64)")
+	cmd.Flags().StringArrayP("change", "c", nil, "Apply Dockerfile instruction to the created image")
 	return cmd
 }
 
@@ -58,6 +59,10 @@ func importOptions(cmd *cobra.Command, args []string) (types.ImageImportOptions,
 		return types.ImageImportOptions{}, err
 	}
 	platform, err := cmd.Flags().GetString("platform")
+	if err != nil {
+		return types.ImageImportOptions{}, err
+	}
+	changes, err := cmd.Flags().GetStringArray("change")
 	if err != nil {
 		return types.ImageImportOptions{}, err
 	}
@@ -97,6 +102,7 @@ func importOptions(cmd *cobra.Command, args []string) (types.ImageImportOptions,
 		Reference: reference,
 		Message:   message,
 		Platform:  platform,
+		Changes:   changes,
 	}, nil
 }
 
