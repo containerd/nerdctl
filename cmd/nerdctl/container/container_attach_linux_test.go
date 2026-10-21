@@ -39,17 +39,10 @@ Important notes:
 - for both docker and nerdctl, you can run+detach of a container and exit 0, while the container would actually fail starting
 - nerdctl (not docker): on run, detach will race anything on stdin before the detach sequence from reaching the container
 - nerdctl AND docker: on attach ^
-- exit code variants: https://github.com/containerd/nerdctl/issues/3571
+- on attach (not run), detaching exits with status 1 for both nerdctl and docker: https://github.com/containerd/nerdctl/issues/3571
 */
 
 func TestAttach(t *testing.T) {
-	// In nerdctl the detach return code from the container after attach is 0, but in docker the return code is 1.
-	// This behaviour is reported in https://github.com/containerd/nerdctl/issues/3571
-	ex := 0
-	if nerdtest.IsDocker() {
-		ex = 1
-	}
-
 	testCase := nerdtest.Setup()
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -90,7 +83,9 @@ func TestAttach(t *testing.T) {
 
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
-			ExitCode: ex,
+			// Detaching from attach exits with status 1, like docker.
+			// https://github.com/containerd/nerdctl/issues/3571
+			ExitCode: 1,
 			Errors:   []error{errors.New("read detach keys")},
 			Output: expect.All(
 				expect.Contains("markmark"),
@@ -105,13 +100,6 @@ func TestAttach(t *testing.T) {
 }
 
 func TestAttachDetachKeys(t *testing.T) {
-	// In nerdctl the detach return code from the container after attach is 0, but in docker the return code is 1.
-	// This behaviour is reported in https://github.com/containerd/nerdctl/issues/3571
-	ex := 0
-	if nerdtest.IsDocker() {
-		ex = 1
-	}
-
 	testCase := nerdtest.Setup()
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -150,7 +138,9 @@ func TestAttachDetachKeys(t *testing.T) {
 
 	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
 		return &test.Expected{
-			ExitCode: ex,
+			// Detaching from attach exits with status 1, like docker.
+			// https://github.com/containerd/nerdctl/issues/3571
+			ExitCode: 1,
 			Errors:   []error{errors.New("read detach keys")},
 			Output: expect.All(
 				expect.Contains("markmark"),

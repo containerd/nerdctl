@@ -157,6 +157,9 @@ func Attach(ctx context.Context, client *containerd.Client, req string, options 
 			return errors.New("got a nil IO from the task")
 		}
 		io.Wait()
+		// Like docker, exit with status 1 when the user detaches from the container.
+		// https://github.com/containerd/nerdctl/issues/3571
+		return errutil.NewExitCoderErr(1)
 	case status := <-statusC:
 		cStatus, err = task.Status(ctx)
 		if err != nil {
