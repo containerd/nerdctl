@@ -56,11 +56,8 @@ If `CONTAINERD_NAMESPACE` is not specified, that location will be `$XDG_RUNTIME_
 
 ### Rootful
 
-```
-$ sudo systemctl enable --now buildkit
-```
-
-Then add the following configuration to `/etc/buildkit/buildkitd.toml` to enable containerd worker.
+To use the containerd worker, add the following configuration to `/etc/buildkit/buildkitd.toml`.
+This configuration is not needed for [OCI worker mode](#setting-up-buildkit-with-oci-worker).
 
 ```toml
 [worker.oci]
@@ -70,6 +67,18 @@ Then add the following configuration to `/etc/buildkit/buildkitd.toml` to enable
   enabled = true
   # namespace should be "k8s.io" for Kubernetes (including Rancher Desktop)
   namespace = "default"
+```
+
+After saving the configuration, enable and start BuildKit:
+
+```
+$ sudo systemctl enable --now buildkit
+```
+
+If BuildKit was already running when the configuration was changed, restart it to apply the new worker settings:
+
+```
+$ sudo systemctl restart buildkit
 ```
 
 ## Setting up BuildKit with OCI worker
