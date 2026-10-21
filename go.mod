@@ -24,11 +24,11 @@ require (
 	github.com/containerd/stargz-snapshotter/estargz v0.18.2 //gomodjail:unconfined
 	github.com/containerd/stargz-snapshotter/ipfs v0.18.2 //gomodjail:unconfined
 	github.com/containerd/typeurl/v2 v2.3.0
-	github.com/docker/cli v29.9.0+incompatible //gomodjail:unconfined
+	github.com/docker/cli v29.9.1+incompatible //gomodjail:unconfined
 	github.com/docker/go-connections v0.8.2 //gomodjail:unconfined
 	github.com/docker/go-units v0.5.0
 	github.com/moby/moby/client v0.6.2 //gomodjail:unconfined
-	github.com/moby/moby/v2 v2.0.0-beta.27 //gomodjail:unconfined
+	github.com/moby/moby/v2 v2.0.0-beta.28 //gomodjail:unconfined
 	github.com/moby/sys/mount v0.3.5 //gomodjail:unconfined
 	github.com/moby/sys/signal v0.7.1 //gomodjail:unconfined
 	github.com/moby/sys/user v0.4.1 //gomodjail:unconfined
@@ -68,7 +68,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2 //gomodjail:unconfined
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/rootless-containers/bypass4netns v0.4.2 //gomodjail:unconfined
-	github.com/rootless-containers/rootlesskit/v3 v3.2.0 //gomodjail:unconfined
+	github.com/rootless-containers/rootlesskit/v3 v3.3.0 //gomodjail:unconfined
 	github.com/spf13/cobra v1.10.2 //gomodjail:unconfined
 	github.com/spf13/pflag v1.0.10 //gomodjail:unconfined
 	github.com/vishvananda/netlink v1.3.1 //gomodjail:unconfined
