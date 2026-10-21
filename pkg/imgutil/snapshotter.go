@@ -17,10 +17,12 @@
 package imgutil
 
 import (
+	"context"
 	"strings"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/containerd/v2/core/remotes"
 	ctdsnapshotters "github.com/containerd/containerd/v2/pkg/snapshotters"
 	"github.com/containerd/log"
 	"github.com/containerd/stargz-snapshotter/fs/source"
@@ -44,7 +46,7 @@ const (
 // remote snapshotters explicitly handled by nerdctl
 var builtinRemoteSnapshotterOpts = map[string]snapshotterOpts{
 	snapshotterNameOverlaybd: &remoteSnapshotterOpts{snapshotter: "overlaybd"},
-	snapshotterNameStargz:    &remoteSnapshotterOpts{snapshotter: "stargz", extraLabels: stargzExtraLabels},
+	snapshotterNameStargz:    &remoteSnapshotterOpts{snapshotter: "stargz", extraLabels: stargzExtraLabels, verifier: stargzVerifier},
 	snapshotterNameNydus:     &remoteSnapshotterOpts{snapshotter: "nydus"},
 	snapshotterNameSoci:      &remoteSnapshotterOpts{snapshotter: "soci", extraLabels: sociExtraLabels},
 	snapshotterNameCvmfs:     &remoteSnapshotterOpts{snapshotter: "cvmfs-snapshotter"},
@@ -55,6 +57,8 @@ var builtinRemoteSnapshotterOpts = map[string]snapshotterOpts{
 type snapshotterOpts interface {
 	apply(config *pull.Config, ref string, rFlags types.RemoteSnapshotterFlags)
 	isRemote() bool
+	verify(ctx context.Context, client *containerd.Client, ref string, resolver remotes.Resolver) error
+	needsVerify() bool
 }
 
 // getSnapshotterOpts get snapshotter opts by fuzzy matching of the snapshotter name
@@ -76,6 +80,7 @@ func getSnapshotterOpts(snapshotter string) snapshotterOpts {
 type remoteSnapshotterOpts struct {
 	snapshotter string
 	extraLabels func(func(images.Handler) images.Handler, types.RemoteSnapshotterFlags) func(images.Handler) images.Handler
+	verifier    func(ctx context.Context, client *containerd.Client, ref string, resolver remotes.Resolver) error
 }
 
 func (rs *remoteSnapshotterOpts) isRemote() bool {
@@ -94,6 +99,17 @@ func (rs *remoteSnapshotterOpts) apply(config *pull.Config, ref string, rFlags t
 	)
 }
 
+func (rs *remoteSnapshotterOpts) verify(ctx context.Context, client *containerd.Client, ref string, resolver remotes.Resolver) error {
+	if rs.verifier != nil {
+		return rs.verifier(ctx, client, ref, resolver)
+	}
+	return nil
+}
+
+func (rs *remoteSnapshotterOpts) needsVerify() bool {
+	return rs.verifier != nil
+}
+
 // defaultSnapshotterOpts is for snapshotters that
 // not handled separately
 type defaultSnapshotterOpts struct {
@@ -108,6 +124,14 @@ func (dsn *defaultSnapshotterOpts) apply(config *pull.Config, _ref string, rFlag
 
 // defaultSnapshotterOpts is not a remote snapshotter
 func (dsn *defaultSnapshotterOpts) isRemote() bool {
+	return false
+}
+
+func (dsn *defaultSnapshotterOpts) verify(ctx context.Context, client *containerd.Client, ref string, resolver remotes.Resolver) error {
+	return nil
+}
+
+func (dsn *defaultSnapshotterOpts) needsVerify() bool {
 	return false
 }
 
