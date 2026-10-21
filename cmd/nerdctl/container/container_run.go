@@ -186,6 +186,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	cmd.Flags().Uint64("cpu-rt-runtime", 0, "Limit CPU real-time runtime in microseconds")
 	// device is defined as StringSlice, not StringArray, to allow specifying "--device=DEV1,DEV2" (compatible with Podman)
 	cmd.Flags().StringSlice("device", nil, "Add a host device to the container")
+	cmd.Flags().StringArray("device-cgroup-rule", nil, "Add a rule to the cgroup allowed devices list")
 	// ulimit is defined as StringSlice, not StringArray, to allow specifying "--ulimit=ULIMIT1,ULIMIT2" (compatible with Podman)
 	cmd.Flags().StringSlice("ulimit", nil, "Ulimit options")
 	cmd.Flags().String("rdt-class", "", "Name of the RDT class (or CLOS) to associate the container with")
