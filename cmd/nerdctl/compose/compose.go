@@ -53,6 +53,7 @@ func Command() *cobra.Command {
 		pullCommand(),
 		downCommand(),
 		psCommand(),
+		lsCommand(),
 		killCommand(),
 		restartCommand(),
 		removeCommand(),
