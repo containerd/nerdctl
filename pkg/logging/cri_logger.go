@@ -92,7 +92,7 @@ func ReadLogs(opts *LogViewOptions, stdout, stderr io.Writer, stopChannel chan o
 		return fmt.Errorf("failed to try resolving symlinks in path %q: %v", logPath, err)
 	}
 	logPath = evaluated
-	f, err := os.Open(logPath)
+	f, err := openFileShareDelete(logPath)
 	if err != nil {
 		return fmt.Errorf("failed to open log file %q: %v", logPath, err)
 	}
