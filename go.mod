@@ -24,7 +24,7 @@ require (
 	github.com/containerd/stargz-snapshotter/estargz v0.18.2 //gomodjail:unconfined
 	github.com/containerd/stargz-snapshotter/ipfs v0.18.2 //gomodjail:unconfined
 	github.com/containerd/typeurl/v2 v2.3.0
-	github.com/docker/cli v29.9.1+incompatible //gomodjail:unconfined
+	github.com/docker/cli v29.9.2+incompatible //gomodjail:unconfined
 	github.com/docker/go-connections v0.8.2 //gomodjail:unconfined
 	github.com/docker/go-units v0.5.0
 	github.com/moby/moby/client v0.6.2 //gomodjail:unconfined
