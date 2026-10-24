@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -84,12 +85,32 @@ func Remove(ctx context.Context, client *containerd.Client, containers []string,
 		},
 	}
 
-	err := walker.WalkAll(ctx, containers, true)
-	if err != nil && options.Force {
-		log.G(ctx).Error(err)
-		return nil
+	return removeAll(ctx, containers, walker.Walk, options.Force)
+}
+
+// removeAll calls walk for every request in reqs and returns all errors joined by `\n`.
+// In force mode, a request that matches no container is only logged, so that
+// `rm -f` stays idempotent, but a failure to remove an existing container is still
+// returned to the caller.
+func removeAll(ctx context.Context, reqs []string, walk func(context.Context, string) (int, error), force bool) error {
+	var errs []string
+	for _, req := range reqs {
+		n, err := walk(ctx, req)
+		if err == nil && n == 0 {
+			err = fmt.Errorf("no such container: %s", req)
+			if force {
+				log.G(ctx).Error(err)
+				continue
+			}
+		}
+		if err != nil {
+			errs = append(errs, err.Error())
+		}
 	}
-	return err
+	if len(errs) > 0 {
+		return fmt.Errorf("%d errors:\n%s", len(errs), strings.Join(errs, "\n"))
+	}
+	return nil
 }
 
 // RemoveContainer removes a container from containerd store.
