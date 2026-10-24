@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	containerd "github.com/containerd/containerd/v2/client"
 
@@ -45,8 +46,11 @@ func Remove(ctx context.Context, client *containerd.Client, containerID string, 
 	n, err := walker.Walk(ctx, containerID)
 	if err != nil {
 		return err
-	} else if n == 0 {
-		return fmt.Errorf("error removing checkpoint for container: %s, no such container", containerID)
+	}
+	if n == 0 {
+		// The checkpoint directory is keyed only by name, so it outlives the
+		// container. Delete that directory when it is still there.
+		return removeOrphanedCheckpoint(options.CheckpointDir, checkpointName, containerID)
 	}
 
 	targetPath, err := checkpointutil.GetCheckpointDir(options.CheckpointDir, checkpointName, container.ID(), false)
@@ -54,5 +58,19 @@ func Remove(ctx context.Context, client *containerd.Client, containerID string, 
 		return err
 	}
 
+	return os.RemoveAll(targetPath)
+}
+
+// removeOrphanedCheckpoint deletes a named checkpoint after its container is gone.
+// A missing directory stays the "no such container" error. Any other problem
+// with the path, such as a file where the directory should be, is returned as-is.
+func removeOrphanedCheckpoint(checkpointDir, checkpointName, containerID string) error {
+	targetPath, err := checkpointutil.GetCheckpointDir(checkpointDir, checkpointName, containerID, false)
+	if err != nil {
+		if _, statErr := os.Stat(filepath.Join(checkpointDir, checkpointName)); statErr != nil && os.IsNotExist(statErr) {
+			return fmt.Errorf("error removing checkpoint for container: %s, no such container", containerID)
+		}
+		return err
+	}
 	return os.RemoveAll(targetPath)
 }
