@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -672,10 +673,13 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 	}
 	if !netTypeContainer {
 		hostname := svc.Hostname
-		if hostname == "" {
+		// Windows does not support --hostname, so only pass it when the user set it explicitly.
+		if hostname == "" && runtime.GOOS != "windows" {
 			hostname = svc.Name
 		}
-		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--hostname=%s", hostname))
+		if hostname != "" {
+			c.RunArgs = append(c.RunArgs, fmt.Sprintf("--hostname=%s", hostname))
+		}
 	}
 
 	if svc.Pid != "" {
