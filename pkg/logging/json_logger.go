@@ -164,7 +164,7 @@ func viewLogsJSONFile(lvopts LogViewOptions, stdout, stderr io.Writer, stopChann
 // If `LogViewOptions.Follow` is provided, it will refresh and re-read the file until
 // it receives something through the stopChannel.
 func viewLogsJSONFileDirect(lvopts LogViewOptions, jsonLogFilePath string, stdout, stderr io.Writer, stopChannel chan os.Signal) error {
-	fin, err := os.OpenFile(jsonLogFilePath, os.O_RDONLY, 0400)
+	fin, err := openFileShareDelete(jsonLogFilePath)
 	if err != nil {
 		return err
 	}
