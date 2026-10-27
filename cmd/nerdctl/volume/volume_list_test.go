@@ -17,6 +17,7 @@
 package volume
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -24,6 +25,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
@@ -416,6 +418,17 @@ func TestVolumeLsFilter(t *testing.T) {
 					},
 				}
 			},
+		},
+		{
+			Description: "Invalid filter key",
+			Require:     require.Not(nerdtest.Docker),
+			Command:     test.Command("volume", "ls", "--filter", "dangling=true"),
+			Expected:    test.Expects(1, []error{errors.New("invalid filter 'dangling'")}, nil),
+		},
+		{
+			Description: "Filter without value separator",
+			Command:     test.Command("volume", "ls", "--filter", "name"),
+			Expected:    test.Expects(expect.ExitCodeGenericFail, []error{errors.New("bad format of filter")}, nil),
 		},
 	}
 
