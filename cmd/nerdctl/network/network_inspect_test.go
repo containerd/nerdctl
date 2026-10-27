@@ -303,18 +303,19 @@ func TestNetworkInspectByID(t *testing.T) {
 func TestNetworkInspectWithContainers(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	// On Windows, containers on freshly created nat networks race with each other in HNS
+	// (hcnCreateNetwork: "The object already exists", https://github.com/containerd/nerdctl/issues/4322).
+	// Do not run the subtests, or other tests, in parallel with them.
+	noParallel := runtime.GOOS == "windows"
+	testCase.NoParallel = noParallel
+
 	testCase.SubTests = []*test.Case{
 		{
+			NoParallel:  noParallel,
 			Description: "Verify that only active containers appear in the network inspect output",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier("nginx-network-1"))
 				helpers.Ensure("network", "create", data.Identifier("nginx-network-2"))
-
-				// See https://github.com/containerd/nerdctl/issues/4322
-				// Maybe network create on windows is asynchronous?
-				if runtime.GOOS == "windows" {
-					time.Sleep(time.Second)
-				}
 
 				helpers.Ensure("create", "--name", data.Identifier("nginx-container-1"), "--network", data.Identifier("nginx-network-1"), testutil.NginxAlpineImage)
 				helpers.Ensure("create", "--name", data.Identifier("nginx-container-2"), "--network", data.Identifier("nginx-network-1"), testutil.NginxAlpineImage)
@@ -348,16 +349,11 @@ func TestNetworkInspectWithContainers(t *testing.T) {
 			},
 		},
 		{
+			NoParallel:  noParallel,
 			Description: "Display containers belonging to multiple networks in the output of nerdctl network inspect",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier("network-1"))
 				helpers.Ensure("network", "create", data.Identifier("network-2"))
-
-				// See https://github.com/containerd/nerdctl/issues/4322
-				// Maybe network create on windows is asynchronous?
-				if runtime.GOOS == "windows" {
-					time.Sleep(time.Second)
-				}
 
 				containerID := helpers.Capture("run", "-d", "--name", data.Identifier(), "--network", data.Identifier("network-1"), "--network", data.Identifier("network-2"), testutil.CommonImage, "sleep", nerdtest.Infinity)
 
@@ -383,16 +379,11 @@ func TestNetworkInspectWithContainers(t *testing.T) {
 			},
 		},
 		{
+			NoParallel:  noParallel,
 			Description: "Display only containers attached to the specific network",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier("some-network"))
 				helpers.Ensure("network", "create", data.Identifier("some-network-as-well"))
-
-				// See https://github.com/containerd/nerdctl/issues/4322
-				// Maybe network create on windows is asynchronous?
-				if runtime.GOOS == "windows" {
-					time.Sleep(time.Second)
-				}
 
 				helpers.Ensure("run", "-d", "--name", data.Identifier(), "--network", data.Identifier("some-network-as-well"), testutil.CommonImage, "sleep", nerdtest.Infinity)
 			},
@@ -415,14 +406,10 @@ func TestNetworkInspectWithContainers(t *testing.T) {
 			},
 		},
 		{
+			NoParallel:  noParallel,
 			Description: "Test container network details",
 			Setup: func(data test.Data, helpers test.Helpers) {
 				helpers.Ensure("network", "create", data.Identifier("test-network"))
-
-				// See https://github.com/containerd/nerdctl/issues/4322
-				if runtime.GOOS == "windows" {
-					time.Sleep(time.Second)
-				}
 
 				// Create and start a container on this network
 				helpers.Ensure("run", "-d", "--name", data.Identifier("test-container"),
