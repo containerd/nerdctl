@@ -591,9 +591,6 @@ func (e *CNIEnv) parseSubnet(subnetStr string) (*net.IPNet, error) {
 	if !subnet.IP.Equal(subnetIP) {
 		return nil, fmt.Errorf("unexpected subnet %q, maybe you meant %q?", subnetStr, subnet.String())
 	}
-	if subnetutil.IntersectsWithNetworks(subnet, usedSubnets) {
-		return nil, fmt.Errorf("subnet %s overlaps with other one on this address space", subnetStr)
-	}
 	return subnet, nil
 }
 
