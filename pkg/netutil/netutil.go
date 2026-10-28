@@ -571,11 +571,11 @@ func networkID(name string) string {
 }
 
 func (e *CNIEnv) parseSubnet(subnetStr string) (*net.IPNet, error) {
-	usedSubnets, err := e.usedSubnets()
-	if err != nil {
-		return nil, err
-	}
 	if subnetStr == "" {
+		usedSubnets, err := e.usedSubnets()
+		if err != nil {
+			return nil, err
+		}
 		_, defaultSubnet, _ := net.ParseCIDR(StartingCIDR)
 		subnet, err := subnetutil.GetFreeSubnet(defaultSubnet, usedSubnets)
 		if err != nil {
