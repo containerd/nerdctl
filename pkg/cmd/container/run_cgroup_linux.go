@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/docker/go-units"
@@ -51,11 +53,28 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions, interna
 		log.L.Warn("Disabling the OOM killer on containers without setting a '-m/--memory' limit may be dangerous.")
 	}
 
-	if options.GOptions.CgroupManager == "none" {
-		if !rootlessutil.IsRootless() {
-			return nil, errors.New(`cgroup-manager "none" is only supported for rootless`)
-		}
+	// A rootful host cannot use the "none" cgroup manager whatever else is requested, so
+	// that is rejected before the request itself is looked at.
+	if options.GOptions.CgroupManager == "none" && !rootlessutil.IsRootless() {
+		return nil, errors.New(`cgroup-manager "none" is only supported for rootless`)
+	}
 
+	// The rules are parsed before the "none" case below, so that a malformed rule is
+	// reported even where the rules themselves cannot be applied.
+	deviceCgroupRules := make([]specs.LinuxDeviceCgroup, 0, len(options.DeviceCgroupRule))
+	for _, f := range options.DeviceCgroupRule {
+		rule, err := ParseDeviceCgroupRule(f)
+		if err != nil {
+			return nil, err
+		}
+		deviceCgroupRules = append(deviceCgroupRules, rule)
+	}
+
+	if options.GOptions.CgroupManager == "none" {
+		if len(deviceCgroupRules) > 0 {
+			log.L.Warn(`cgroup manager is set to "none", discarding device cgroup rules. ` +
+				"(Hint: enable cgroup v2 with systemd: https://rootlesscontaine.rs/getting-started/common/cgroup2/)")
+		}
 		if options.CPUs > 0.0 || options.Memory != "" || options.MemorySwap != "" || options.PidsLimit > 0 {
 			log.L.Warn(`cgroup manager is set to "none", discarding resource limit requests. ` +
 				"(Hint: enable cgroup v2 with systemd: https://rootlesscontaine.rs/getting-started/common/cgroup2/)")
@@ -224,6 +243,8 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions, interna
 		internalLabels.deviceMapping = append(internalLabels.deviceMapping, deviceMap)
 	}
 
+	opts = append(opts, withDeviceCgroupRules(deviceCgroupRules))
+
 	return opts, nil
 }
 
@@ -309,6 +330,57 @@ func validateDeviceMode(mode string) error {
 		}
 	}
 	return nil
+}
+
+// deviceCgroupRuleRegexp matches a device cgroup rule in the form used by the
+// Linux devices cgroup, as in "c 189:* rmw": a type, a major:minor pair in which
+// either number may be "*", and the access bits.
+//
+// See https://docs.kernel.org/admin-guide/cgroup-v1/devices.html
+var deviceCgroupRuleRegexp = regexp.MustCompile(`^([acb]) ([0-9]+|\*):([0-9]+|\*) ([rwm]{1,3})$`)
+
+// ParseDeviceCgroupRule parses the given device cgroup rule into an entry for the
+// device allow list of the OCI spec. A "*" major or minor number becomes -1, which
+// the runtime expands to "any".
+func ParseDeviceCgroupRule(s string) (specs.LinuxDeviceCgroup, error) {
+	matches := deviceCgroupRuleRegexp.FindStringSubmatch(s)
+	if matches == nil {
+		return specs.LinuxDeviceCgroup{}, fmt.Errorf("invalid device cgroup rule format: %q", s)
+	}
+
+	parseNumber := func(field string) (int64, error) {
+		if field == "*" {
+			return -1, nil
+		}
+		return strconv.ParseInt(field, 10, 64)
+	}
+
+	major, err := parseNumber(matches[2])
+	if err != nil {
+		return specs.LinuxDeviceCgroup{}, fmt.Errorf("invalid major number in device cgroup rule %q: %w", s, err)
+	}
+	minor, err := parseNumber(matches[3])
+	if err != nil {
+		return specs.LinuxDeviceCgroup{}, fmt.Errorf("invalid minor number in device cgroup rule %q: %w", s, err)
+	}
+
+	return specs.LinuxDeviceCgroup{
+		Allow:  true,
+		Type:   matches[1],
+		Major:  &major,
+		Minor:  &minor,
+		Access: matches[4],
+	}, nil
+}
+
+// withDeviceCgroupRules appends the given rules to the device allow list.
+// The list starts with an entry denying every device, so a rule only takes
+// effect when it comes after it.
+func withDeviceCgroupRules(rules []specs.LinuxDeviceCgroup) oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
+		s.Linux.Resources.Devices = append(s.Linux.Resources.Devices, rules...)
+		return nil
+	}
 }
 
 func withUnified(unified map[string]string) oci.SpecOpts {

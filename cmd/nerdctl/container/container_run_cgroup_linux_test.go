@@ -496,6 +496,155 @@ func TestParseDevice(t *testing.T) {
 	}
 }
 
+func TestParseDeviceCgroupRule(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		s              string
+		expectedType   string
+		expectedMajor  int64
+		expectedMinor  int64
+		expectedAccess string
+		err            string
+	}
+	testCases := []testCase{
+		{
+			s:              "c 189:* rmw",
+			expectedType:   "c",
+			expectedMajor:  189,
+			expectedMinor:  -1,
+			expectedAccess: "rmw",
+		},
+		{
+			s:              "b 8:0 r",
+			expectedType:   "b",
+			expectedMajor:  8,
+			expectedMinor:  0,
+			expectedAccess: "r",
+		},
+		{
+			s:              "a *:* rwm",
+			expectedType:   "a",
+			expectedMajor:  -1,
+			expectedMinor:  -1,
+			expectedAccess: "rwm",
+		},
+		{
+			s:              "c *:5 w",
+			expectedType:   "c",
+			expectedMajor:  -1,
+			expectedMinor:  5,
+			expectedAccess: "w",
+		},
+		{
+			// Docker keeps the numbers given for type "a" rather than
+			// normalizing them, so the rule has to survive unchanged.
+			s:              "a 1:2 rwm",
+			expectedType:   "a",
+			expectedMajor:  1,
+			expectedMinor:  2,
+			expectedAccess: "rwm",
+		},
+		{
+			s:   "c 189 rmw",
+			err: "invalid device cgroup rule format",
+		},
+		{
+			s:   "x 1:1 rmw",
+			err: "invalid device cgroup rule format",
+		},
+		{
+			s:   "c 1:1 rwmq",
+			err: "invalid device cgroup rule format",
+		},
+		{
+			s:   "c -1:1 rwm",
+			err: "invalid device cgroup rule format",
+		},
+		{
+			s:   "c 1:1 rwm extra",
+			err: "invalid device cgroup rule format",
+		},
+		{
+			// The format allows any number of digits, so a value past int64
+			// reaches the conversion and has to be rejected there.
+			s:   "c 18446744073709551616:1 rwm",
+			err: "invalid major number in device cgroup rule",
+		},
+		{
+			s:   "c 1:18446744073709551616 rwm",
+			err: "invalid minor number in device cgroup rule",
+		},
+		{
+			s:   "",
+			err: "invalid device cgroup rule format",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.s)
+		rule, err := container.ParseDeviceCgroupRule(tc.s)
+		if tc.err == "" {
+			assert.NilError(t, err)
+			assert.Equal(t, true, rule.Allow)
+			assert.Equal(t, tc.expectedType, rule.Type)
+			assert.Equal(t, tc.expectedMajor, *rule.Major)
+			assert.Equal(t, tc.expectedMinor, *rule.Minor)
+			assert.Equal(t, tc.expectedAccess, rule.Access)
+		} else {
+			assert.ErrorContains(t, err, tc.err)
+		}
+	}
+}
+
+func TestRunDeviceCgroupRule(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "rules are accepted",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--device-cgroup-rule", "c 189:* rmw",
+					"--device-cgroup-rule", "b 8:0 r",
+					"--device-cgroup-rule", "a *:* rwm",
+					testutil.AlpineImage, "true")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+		},
+		{
+			Description: "a malformed rule is rejected",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--device-cgroup-rule", "c 189 rmw",
+					testutil.AlpineImage, "true")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeGenericFail,
+					Errors:   []error{fmt.Errorf("invalid device cgroup rule format")},
+				}
+			},
+		},
+		{
+			// create shares the rule handling with run, so it has to reject the same input.
+			Description: "a malformed rule is rejected by create",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("create",
+					"--device-cgroup-rule", "c 189 rmw",
+					testutil.AlpineImage, "true")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeGenericFail,
+					Errors:   []error{fmt.Errorf("invalid device cgroup rule format")},
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
+}
+
 func TestRunCgroupConf(t *testing.T) {
 	testCase := nerdtest.Setup()
 	testCase.Require = require.All(

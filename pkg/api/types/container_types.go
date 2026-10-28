@@ -169,6 +169,8 @@ type ContainerCreateOptions struct {
 	Device []string
 	// CDIDevices specifies the CDI devices to add to the container
 	CDIDevices []string
+	// DeviceCgroupRule specifies rules to add to the device cgroup allow list
+	DeviceCgroupRule []string
 	// #endregion
 
 	// #region for blkio related flags

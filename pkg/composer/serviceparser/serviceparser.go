@@ -73,6 +73,7 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		"ContainerName",
 		"DependsOn",
 		"Deploy",
+		"DeviceCgroupRules",
 		"Devices",
 		"Dockerfile", // handled by the loader (normalizer)
 		"DNS",
@@ -582,6 +583,10 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 			continue
 		}
 		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--device=%s:%s:%s", v.Source, v.Target, v.Permissions))
+	}
+
+	for _, v := range svc.DeviceCgroupRules {
+		c.RunArgs = append(c.RunArgs, fmt.Sprintf("--device-cgroup-rule=%s", v))
 	}
 
 	for _, v := range svc.DNS {
