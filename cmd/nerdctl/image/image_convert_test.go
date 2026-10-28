@@ -84,4 +84,5 @@ func addRootFlagsForConvertOptionsTest(t *testing.T, cmd *cobra.Command) {
 	flags.StringSlice("global-dns-opts", nil, "")
 	flags.StringSlice("global-dns-search", nil, "")
 	flags.Bool("selinux-enabled", false, "")
+	flags.Bool("disable-attach-broker", false, "")
 }
