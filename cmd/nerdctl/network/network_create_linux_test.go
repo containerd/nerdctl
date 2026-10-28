@@ -326,6 +326,31 @@ func TestNetworkCreate(t *testing.T) {
 			},
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 		},
+		{
+			Description: "with an explicit subnet overlapping an existing network",
+			// Docker rejects overlapping pools, nerdctl honors an explicit --subnet (#4281).
+			Require: require.Not(nerdtest.Docker),
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier("1"), "--subnet", "10.7.0.0/24")
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("network", "rm", data.Identifier())
+				helpers.Anyhow("network", "rm", data.Identifier("1"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("network", "create", data.Identifier(), "--subnet", "10.7.0.0/25")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						netw := nerdtest.InspectNetwork(helpers, data.Identifier())
+						assert.Equal(t, len(netw.IPAM.Config), 1)
+						assert.Equal(t, netw.IPAM.Config[0].Subnet, "10.7.0.0/25")
+					},
+				}
+			},
+		},
 	}
 
 	testCase.Run(t)
