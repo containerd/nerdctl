@@ -81,9 +81,12 @@ linters:
           # Default is 10
           arguments: [30]
         - name: add-constant
+          # revive v1.17.1 (golangci-lint v2.15) started flagging literals it used to miss.
+          # 3 and 4 are the quarter fractions used to abbreviate over-long output, and the
+          # strings are line separators: naming either would not make them any clearer.
           arguments:
-            - allowInts: "0,1,2"
-              allowStrs: '""'
+            - allowInts: "0,1,2,3,4"
+              allowStrs: '"","\n","\n\n","="'
         - name: flag-parameter
           # Not sure why this is valuable.
           disabled: true

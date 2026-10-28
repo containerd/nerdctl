@@ -28,6 +28,8 @@ const (
 	maxLines      = 50
 	kMaxLength    = 7
 	spacer        = " "
+	// rowDecoration is the width of the characters framing a row: `| `, ` | `, and ` |`.
+	rowDecoration = 7
 )
 
 // Table formats a `n x 2` dataset into a series of n rows by 2 columns.
@@ -43,7 +45,7 @@ func Table(data [][]any, mark string) string {
 
 		output += fmt.Sprintf("+%s+\n", strings.Repeat(mark, maxLineLength-2))
 
-		for _, line := range chunk(value, maxLineLength-kMaxLength-7, maxLines) {
+		for _, line := range chunk(value, maxLineLength-kMaxLength-rowDecoration, maxLines) {
 			output += fmt.Sprintf(
 				"| %s | %s |\n",
 				// Keys longer than one line of kMaxLength will be striped to one line
