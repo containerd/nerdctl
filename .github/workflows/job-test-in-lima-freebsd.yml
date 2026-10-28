@@ -43,7 +43,12 @@ jobs:
           set -eux
           limactl start --plain --name=default template://freebsd
           lima freebsd-version -kru
-          lima sudo pkg install -y bash go containerd runj
+          lima sudo pkg install -y bash go containerd
+          # TODO: Pin runj until https://github.com/samuelkarp/runj/issues/72 is fixed.
+          # https://github.com/containerd/nerdctl/issues/5273
+          lima fetch -o /tmp/runj.pkg "https://pkg.FreeBSD.org/FreeBSD:15:amd64/release_1/All/Hashed/runj-0.2.0_5~7081553f66.pkg"
+          lima sh -c 'test "$(sha256 -q /tmp/runj.pkg)" = 7081553f66757ff67e4b58872e6ae31e8070f2a1fa63d2e7edba38bb1c1abdcf'
+          lima sudo pkg -o ASSUME_ALWAYS_YES=yes add /tmp/runj.pkg
 
       - name: "Init: copy source into the guest VM"
         run: |
