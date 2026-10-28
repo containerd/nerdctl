@@ -598,8 +598,12 @@ COPY --from=builder /go/src/logger/logger /
 
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		data.Temp().Save(dockerfile, "Dockerfile")
+		// The last stage is `FROM scratch` with the binary copied to its root, so exporting
+		// the whole stage puts it at `<temp>/logger`. Do not pass a `src`: BuildKit ignored
+		// it until v0.34, which added it (moby/buildkit#7226) and now resolves it against
+		// the exported stage.
 		helpers.Ensure("build", data.Temp().Path(),
-			"--output", fmt.Sprintf("type=local,src=/go/src/logger/logger,dest=%s", data.Temp().Path()))
+			"--output", fmt.Sprintf("type=local,dest=%s", data.Temp().Path()))
 		helpers.Anyhow("container", "rm", "-f", data.Identifier())
 	}
 
