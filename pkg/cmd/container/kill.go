@@ -27,6 +27,7 @@ import (
 	"github.com/moby/sys/signal"
 
 	containerd "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/core/runtime/restart"
 	"github.com/containerd/containerd/v2/pkg/cio"
 	"github.com/containerd/errdefs"
 	"github.com/containerd/go-cni"
@@ -85,9 +86,21 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 			containerutil.UpdateErrorLabel(ctx, container, err)
 		}
 	}()
-	if err := containerutil.UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
+
+	containerLabels, err := inspectContainerLabels(ctx, container)
+	if err != nil {
 		return err
 	}
+	shouldUpdate, err := ShouldUpdateExplicitlyStopped(signal, containerLabels)
+	if err != nil {
+		return err
+	}
+	if shouldUpdate {
+		if err := containerutil.UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
+			return err
+		}
+	}
+
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		return err
@@ -124,6 +137,85 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 		}
 	}
 	return nil
+}
+
+func inspectContainerLabels(ctx context.Context, container containerd.Container) (map[string]string, error) {
+	containerLabels, err := container.Labels(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if containerLabels == nil {
+		containerLabels = make(map[string]string)
+	}
+	if spec, err := container.Spec(ctx); err == nil && spec != nil {
+		for k, v := range spec.Annotations {
+			if _, exists := containerLabels[k]; !exists {
+				containerLabels[k] = v
+			}
+		}
+	}
+	return containerLabels, nil
+}
+
+// ShouldUpdateExplicitlyStopped determines whether nerdctl kill should mark the container
+// as explicitly stopped in its restart label.
+//
+// In accordance with Docker compatibility (moby daemon/kill.go):
+//  1. When no stop signal is configured, or when the signal sent is SIGKILL or matches
+//     the container's configured stop signal, setting explicitly-stopped is correct.
+//  2. When a stop signal is explicitly configured and a non-matching signal is sent,
+//     nerdctl should NOT set explicitly-stopped unless the container's restart policy is unless-stopped.
+func ShouldUpdateExplicitlyStopped(sig syscall.Signal, containerLabels map[string]string) (bool, error) {
+	if sig == syscall.SIGKILL {
+		return true, nil
+	}
+
+	stopSignalStr, hasStopSignal := getStopSignal(containerLabels)
+	if !hasStopSignal {
+		return true, nil
+	}
+
+	stopSig, err := signal.ParseSignal(stopSignalStr)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse stop signal %q: %w", stopSignalStr, err)
+	}
+
+	if sig == stopSig {
+		return true, nil
+	}
+
+	policyStr := getRestartPolicy(containerLabels)
+	if policyStr != "" {
+		rp, err := restart.NewPolicy(policyStr)
+		if err == nil && rp.Name() == "unless-stopped" {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func getStopSignal(containerLabels map[string]string) (string, bool) {
+	if s, ok := containerLabels[labels.StopSignal]; ok && s != "" {
+		return s, true
+	}
+	if s, ok := containerLabels[containerd.StopSignalLabel]; ok && s != "" {
+		parsed, err := signal.ParseSignal(s)
+		if err == nil && parsed != syscall.SIGTERM {
+			return s, true
+		}
+	}
+	return "", false
+}
+
+func getRestartPolicy(containerLabels map[string]string) string {
+	if s, ok := containerLabels[labels.RestartPolicy]; ok && s != "" {
+		return s
+	}
+	if s, ok := containerLabels[restart.PolicyLabel]; ok && s != "" {
+		return s
+	}
+	return ""
 }
 
 // cleanupNetwork removes cni network setup, specifically the forwards

@@ -97,9 +97,11 @@ func createOptions(cmd *cobra.Command) (types.ContainerCreateOptions, error) {
 	if err != nil {
 		return opt, err
 	}
-	opt.StopSignal, err = cmd.Flags().GetString("stop-signal")
-	if err != nil {
-		return opt, err
+	if cmd.Flags().Changed("stop-signal") {
+		opt.StopSignal, err = cmd.Flags().GetString("stop-signal")
+		if err != nil {
+			return opt, err
+		}
 	}
 	opt.StopTimeout, err = cmd.Flags().GetInt("stop-timeout")
 	if err != nil {
