@@ -89,8 +89,8 @@ ffmpeg_soci:
 
 # Large enough for testing soci index creation
 ubuntu:
-  ref: "public.ecr.aws/docker/library/ubuntu"
-  tag: "23.10"
+  ref: "ghcr.io/stargz-containers/ubuntu"
+  tag: "26.04-org"
 
 coredns:
   ref: "public.ecr.aws/eks-distro/coredns/coredns"
