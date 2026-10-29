@@ -1272,7 +1272,7 @@ func generateGcFunc(ctx context.Context, container containerd.Container, ns, id,
 				log.G(ctx).WithError(err).Warnf("failed to instantiate hostsstore for %q", internalLabels.namespace)
 			} else {
 				if _, err := hs.HostsPath(id); err != nil {
-					log.G(ctx).WithError(err).Warnf("an etchosts directory for container %q dosen't exist", id)
+					log.G(ctx).WithError(err).Warnf("an etchosts directory for container %q doesn't exist", id)
 				} else if err = hs.Delete(id); err != nil {
 					log.G(ctx).WithError(err).Warnf("failed to remove an etchosts directory for container %q", id)
 				}

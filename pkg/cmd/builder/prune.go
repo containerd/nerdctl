@@ -45,11 +45,11 @@ func Prune(ctx context.Context, options types.BuilderPruneOptions) ([]buildkitut
 	buildctlCmd.Stderr = options.Stderr
 	stdout, err := buildctlCmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("faild to get stdout piper for %v: %w", buildctlCmd.Args, err)
+		return nil, fmt.Errorf("failed to get stdout pipe for %v: %w", buildctlCmd.Args, err)
 	}
 	defer stdout.Close()
 	if err = buildctlCmd.Start(); err != nil {
-		return nil, fmt.Errorf("faild to start %v: %w", buildctlCmd.Args, err)
+		return nil, fmt.Errorf("failed to start %v: %w", buildctlCmd.Args, err)
 	}
 	dec := json.NewDecoder(stdout)
 	result := make([]buildkitutil.UsageInfo, 0)
@@ -58,12 +58,12 @@ func Prune(ctx context.Context, options types.BuilderPruneOptions) ([]buildkitut
 		if err := dec.Decode(&v); err == io.EOF {
 			break
 		} else if err != nil {
-			return nil, fmt.Errorf("faild to decode output from %v: %w", buildctlCmd.Args, err)
+			return nil, fmt.Errorf("failed to decode output from %v: %w", buildctlCmd.Args, err)
 		}
 		result = append(result, v)
 	}
 	if err = buildctlCmd.Wait(); err != nil {
-		return nil, fmt.Errorf("faild to wait for %v to complete: %w", buildctlCmd.Args, err)
+		return nil, fmt.Errorf("failed to wait for %v to complete: %w", buildctlCmd.Args, err)
 	}
 
 	return result, nil
