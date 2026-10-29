@@ -113,6 +113,7 @@
   - [:whale: nerdctl compose logs](#whale-nerdctl-compose-logs)
   - [:whale: nerdctl compose build](#whale-nerdctl-compose-build)
   - [:whale: nerdctl compose create](#whale-nerdctl-compose-create)
+  - [:whale: nerdctl compose attach](#whale-nerdctl-compose-attach)
   - [:whale: nerdctl compose exec](#whale-nerdctl-compose-exec)
   - [:whale: nerdctl compose down](#whale-nerdctl-compose-down)
   - [:whale: nerdctl compose images](#whale-nerdctl-compose-images)
@@ -1790,6 +1791,22 @@ Flags:
 - :whale: `--no-recreate`: Don't recreate containers if they exist, conflict with `--force-recreate`
 - :whale: `--pull`: Pull images before running. (support always|missing|never) (default "missing")
 
+### :whale: nerdctl compose attach
+
+Attach local standard input, output, and error streams to a service's running container
+
+Like `nerdctl attach`, it needs a container created with `stdin_open: true` and `tty: true`.
+`nerdctl compose up` runs such a service in the foreground, like `nerdctl run -it`; detach from it
+with the detach keys (`ctrl-p ctrl-q` by default) to leave it running for `nerdctl compose attach`.
+
+Usage: `nerdctl compose attach [OPTIONS] SERVICE`
+
+Flags:
+
+- :whale: `--index`: index of the container if the service has multiple instances. (default 1)
+- :whale: `--detach-keys`: Override the default detach keys (default "ctrl-p,ctrl-q")
+- :whale: `--no-stdin`: Do not attach STDIN
+
 ### :whale: nerdctl compose exec
 
 Execute a command on a running container of the service.
@@ -2084,7 +2101,6 @@ Network management:
 
 Compose:
 
-- `docker compose attach`
 - `docker compose events`
 - `docker compose ls`
 - `docker compose scale`
