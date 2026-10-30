@@ -280,19 +280,19 @@ endif
 ##########################
 install-dev-tools:
 	$(call title, $@)
-	# golangci: v2.14.0 (2026-09-24)
+	# golangci: v2.15.0 (2026-10-16)
 	# git-validation: v1.2.2 (2025-02-26)
 	# ltag: v0.3.0 (2025-03-04)
 	# gotestsum: v1.13.0 (2025-09-11)
 	# go-licenses: v2.0.1 (2025-09-08)
-	# gosocialcheck: v0.2.0 (2026-09-11)
+	# gosocialcheck: v0.2.1 (2026-10-19)
 	@cd $(MAKEFILE_DIR) \
 	        && go install github.com/google/go-licenses/v2@3e084b0caf710f7bfead967567539214f598c0a2 \
-		&& go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@114493f9b3e7257d29e4130f2b4a4aadefbb6845 \
+		&& go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@25c5369a93aacb8cccea0d46e1569ca4a194564d \
 		&& go install github.com/vbatts/git-validation@7b60e35b055dd2eab5844202ffffad51d9c93922 \
 		&& go install github.com/containerd/ltag@66e6a514664ee2d11a470735519fa22b1a9eaabd \
 		&& go install gotest.tools/gotestsum@c4a0df2e75a225d979a444342dd3db752b53619f \
-		&& go install github.com/AkihiroSuda/gosocialcheck/cmd/gosocialcheck@2c7caa6b92b1661a3a767cd8b768a49fc640016a
+		&& go install github.com/AkihiroSuda/gosocialcheck/cmd/gosocialcheck@7e8d7a1b8a7b59397d7c97c260eaaa1ff29566e6
 	# gomodjail: v2.0.1 (2026-09-09)
 	# Not installed on Windows hosts: gomodjail does not build there, as its dynamic mode
 	# is compiled in unconditionally (https://github.com/AkihiroSuda/gomodjail)
