@@ -5,7 +5,7 @@
 
 [cosign](https://github.com/sigstore/cosign) is tool that allows you to sign and verify container images with the
 public/private key pairs or without them by providing
-a [Keyless support](https://github.com/sigstore/cosign/blob/main/KEYLESS.md).
+a [Keyless support](https://docs.sigstore.dev/cosign/signing/overview/).
 
 Keyless uses ephemeral keys and certificates, which are signed automatically by
 the [fulcio](https://github.com/sigstore/fulcio) root CA. Signatures are stored in
@@ -29,7 +29,7 @@ under the hood with make use of flags `--sign` while pushing the container image
 container image.
 
 > * Ensure cosign executable in your `$PATH`.
-> * You can install cosign by following this page: https://docs.sigstore.dev/cosign/installation
+> * You can install cosign by following this page: https://docs.sigstore.dev/cosign/system_config/installation/
 
 Prepare your environment:
 

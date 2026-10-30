@@ -8,7 +8,7 @@ Usage:
 - Deploy `bootstrap.yaml` and `nerdctl-ipfs-registry.yaml` (e.g. using `kubectl apply`)
 - Make sure nodes contain containerd >= v1.5.8 and stargz-snapshotter.
   - Here we use `ghcr.io/containerd/stargz-snapshotter:0.12.1-kind` that contains both of them. (This image requires kind >= 0.16.0)
-- You might want to change some configuration written in `nerdctl-ipfs-registry.yaml` (e.g. [chaning profile based on your node's resource requirements](https://docs.ipfs.tech/how-to/default-profile/#available-profiles))
+- You might want to change some configuration written in `nerdctl-ipfs-registry.yaml` (e.g. [changing profile based on your node's resource requirements](https://github.com/ipfs/kubo/blob/master/docs/config.md#profiles))
 
 ## About eStargz and Stargz Snapshotter
 

@@ -407,7 +407,7 @@ The pushed image appears in https://console.cloud.google.com/gcr/ .
 Private by default.
 
 ## JFrog Artifactory (Cloud/On-Prem)
-See also https://www.jfrog.com/confluence/display/JFROG/Getting+Started+with+Artifactory+as+a+Docker+Registry
+See also https://docs.jfrog.com/artifactory/docs/docker-repositories
 
 ### Logging in
 ```console
