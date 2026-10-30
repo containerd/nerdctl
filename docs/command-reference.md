@@ -132,6 +132,7 @@
   - [:whale: nerdctl compose run](#whale-nerdctl-compose-run)
   - [:whale: nerdctl compose top](#whale-nerdctl-compose-top)
   - [:whale: nerdctl compose version](#whale-nerdctl-compose-version)
+  - [:whale: nerdctl compose wait](#whale-nerdctl-compose-wait)
 - [IPFS management](#ipfs-management)
   - [:nerd_face: nerdctl ipfs registry serve](#nerd_face-nerdctl-ipfs-registry-serve)
 - [Global flags](#global-flags)
@@ -2024,6 +2025,16 @@ Flags:
 - :whale: `-f, --format`: Format the output. Values: [pretty | json] (default "pretty")
 - :whale: `--short`: Shows only Compose's version number
 
+### :whale: nerdctl compose wait
+
+Block until the containers of the given services stop. The exit code of each container is printed, and the command exits with the exit code of the last one to stop
+
+Usage: `nerdctl compose wait [OPTIONS] SERVICE [SERVICE...]`
+
+Flags:
+
+- :whale: `--down-project`: Drop the project when the containers stop
+
 ## IPFS management
 
 P2P image distribution (IPFS) is completely optional. Your host is NOT connected to any P2P network, unless you opt in to [install and run IPFS daemon](https://docs.ipfs.io/install/).
@@ -2089,7 +2100,6 @@ Compose:
 - `docker compose ls`
 - `docker compose scale`
 - `docker compose stats`
-- `docker compose wait`
 - `docker compose watch`
 
 Builder:
