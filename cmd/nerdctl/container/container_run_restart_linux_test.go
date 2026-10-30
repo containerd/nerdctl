@@ -368,3 +368,129 @@ func TestRunRestartStatusLabel(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestRunRestartKillSignal(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = require.Not(nerdtest.Docker)
+
+	testCase.SubTests = []*test.Case{
+		{
+			Description: "configured stop signal with non-matching signal does not mark restart always explicitly stopped",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--restart=always", "--stop-signal", "SIGUSR1",
+					"--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("kill", "--signal", "HUP", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+						assert.Equal(t, 1, len(dc))
+						assert.Assert(t, dc[0].Config.Labels[restart.ExplicitlyStoppedLabel] != "true",
+							"a container with configured stop signal killed with SIGHUP must stay eligible for restart under policy always")
+					}),
+				}
+			},
+		},
+		{
+			Description: "configured stop signal with non-matching signal marks restart unless-stopped explicitly stopped",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--restart=unless-stopped", "--stop-signal", "SIGUSR1",
+					"--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("kill", "--signal", "HUP", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+						assert.Equal(t, 1, len(dc))
+						assert.Equal(t, dc[0].Config.Labels[restart.ExplicitlyStoppedLabel], "true")
+					}),
+				}
+			},
+		},
+		{
+			Description: "configured stop signal matching signal marks container explicitly stopped",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--restart=always", "--stop-signal", "SIGUSR1",
+					"--name", data.Identifier(), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("kill", "--signal", "USR1", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+						assert.Equal(t, 1, len(dc))
+						assert.Equal(t, dc[0].Config.Labels[restart.ExplicitlyStoppedLabel], "true")
+					}),
+				}
+			},
+		},
+		{
+			Description: "no stop signal configured marks container explicitly stopped on non-stop signal",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--restart=always", "--name", data.Identifier(),
+					testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("kill", "--signal", "HUP", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+						assert.Equal(t, 1, len(dc))
+						assert.Equal(t, dc[0].Config.Labels[restart.ExplicitlyStoppedLabel], "true")
+					}),
+				}
+			},
+		},
+		{
+			Description: "default SIGKILL marks container explicitly stopped",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("run", "-d", "--restart=always", "--name", data.Identifier(),
+					testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("kill", data.Identifier())
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Identifier())
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+						assert.Equal(t, 1, len(dc))
+						assert.Equal(t, dc[0].Config.Labels[restart.ExplicitlyStoppedLabel], "true")
+					}),
+				}
+			},
+		},
+	}
+
+	testCase.Run(t)
+}

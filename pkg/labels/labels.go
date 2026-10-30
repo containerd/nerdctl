@@ -106,6 +106,12 @@ const (
 	// StopTimeout is seconds to wait for stop a container.
 	StopTimeout = Prefix + "stop-timeout"
 
+	// StopSignal is the signal to stop a container.
+	StopSignal = Prefix + "stop-signal"
+
+	// RestartPolicy is the restart policy of a container.
+	RestartPolicy = Prefix + "restart-policy"
+
 	MACAddress = Prefix + "mac-address"
 
 	// PIDContainer is the `nerdctl run --pid` for restarting

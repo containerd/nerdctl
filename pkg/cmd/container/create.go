@@ -810,14 +810,33 @@ func withStop(stopSignal string, stopTimeout int, ensuredImage *imgutil.EnsuredI
 		if c.Labels == nil {
 			c.Labels = make(map[string]string)
 		}
-		var err error
+		explicitStopSignal := stopSignal
+		defaultSignal := stopSignal
+		if defaultSignal == "" {
+			defaultSignal = "SIGTERM"
+		}
 		if ensuredImage != nil {
-			stopSignal, err = containerd.GetOCIStopSignal(ctx, ensuredImage.Image, stopSignal)
+			resolvedSignal, err := containerd.GetOCIStopSignal(ctx, ensuredImage.Image, defaultSignal)
 			if err != nil {
 				return err
 			}
+			if explicitStopSignal != "" {
+				c.Labels[labels.StopSignal] = explicitStopSignal
+				c.Labels[containerd.StopSignalLabel] = explicitStopSignal
+			} else if ensuredImage.ImageConfig.StopSignal != "" {
+				c.Labels[labels.StopSignal] = ensuredImage.ImageConfig.StopSignal
+				c.Labels[containerd.StopSignalLabel] = ensuredImage.ImageConfig.StopSignal
+			} else {
+				c.Labels[containerd.StopSignalLabel] = resolvedSignal
+			}
+		} else {
+			if explicitStopSignal != "" {
+				c.Labels[labels.StopSignal] = explicitStopSignal
+				c.Labels[containerd.StopSignalLabel] = explicitStopSignal
+			} else {
+				c.Labels[containerd.StopSignalLabel] = defaultSignal
+			}
 		}
-		c.Labels[containerd.StopSignalLabel] = stopSignal
 		if stopTimeout != 0 {
 			c.Labels[labels.StopTimeout] = strconv.Itoa(stopTimeout)
 		}
