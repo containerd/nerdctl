@@ -94,7 +94,7 @@ func ParseFilters(filters []string) (*Filters, error) {
 				f.Since = append(f.Since, fmt.Sprintf("name==%s", parsedReference.String()))
 				f.Since = append(f.Since, fmt.Sprintf("name==%s", tempFilterToken[1]))
 			} else if tempFilterToken[0] == FilterUntilType {
-				if len(tempFilterToken[0]) == 0 {
+				if len(tempFilterToken[1]) == 0 {
 					return nil, errNoUntilTimestamp
 				} else if len(f.Until) > 0 {
 					return nil, errMultipleUntilFilters

@@ -34,6 +34,48 @@ func TestParseFiltersLabelValueContainingEquals(t *testing.T) {
 	assert.Error(t, err, `invalid filter "dangling=true=garbage"`)
 }
 
+func TestParseFiltersUntil(t *testing.T) {
+	tests := []struct {
+		name        string
+		filters     []string
+		expectedErr error
+		expected    string
+	}{
+		{
+			name:     "Timestamp",
+			filters:  []string{"until=1h"},
+			expected: "1h",
+		},
+		{
+			name:        "EmptyTimestampReturnsError",
+			filters:     []string{"until="},
+			expectedErr: errNoUntilTimestamp,
+		},
+		{
+			name:        "EmptyTimestampBeforeTimestampReturnsError",
+			filters:     []string{"until=", "until=1h"},
+			expectedErr: errNoUntilTimestamp,
+		},
+		{
+			name:        "MultipleTimestampsReturnError",
+			filters:     []string{"until=1h", "until=2h"},
+			expectedErr: errMultipleUntilFilters,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			filters, err := ParseFilters(test.filters)
+			if test.expectedErr != nil {
+				assert.ErrorIs(t, err, test.expectedErr)
+				return
+			}
+			assert.NilError(t, err)
+			assert.Equal(t, filters.Until, test.expected)
+		})
+	}
+}
+
 func TestApplyFilters(t *testing.T) {
 	tests := []struct {
 		name           string
