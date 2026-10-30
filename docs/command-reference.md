@@ -131,6 +131,7 @@
   - [:whale: nerdctl compose rm](#whale-nerdctl-compose-rm)
   - [:whale: nerdctl compose run](#whale-nerdctl-compose-run)
   - [:whale: nerdctl compose top](#whale-nerdctl-compose-top)
+  - [:whale: nerdctl compose ls](#whale-nerdctl-compose-ls)
   - [:whale: nerdctl compose version](#whale-nerdctl-compose-version)
 - [IPFS management](#ipfs-management)
   - [:nerd_face: nerdctl ipfs registry serve](#nerd_face-nerdctl-ipfs-registry-serve)
@@ -2013,6 +2014,24 @@ Display the running processes of service containers
 
 Usage: `nerdctl compose top [SERVICES...]`
 
+### :whale: nerdctl compose ls
+
+List Compose projects in the selected containerd namespace. No Compose file is
+required in the current directory. By default, only running containers contribute
+to the project list; `--all` also includes stopped, created and paused containers.
+
+Usage: `nerdctl compose ls [OPTIONS]`
+
+- :whale: `-a, --all`: Include stopped Compose projects
+- :whale: `-q, --quiet`: Only display project names
+- :whale: `--format=(table|json)`: Output format (default: `table`)
+- :whale: `--filter name=REGEXP`: Filter by project name; repeated filters are ORed
+
+Table and JSON output include `Name`, `Status` and `ConfigFiles`. Project names,
+status counts and configuration paths are sorted for stable output. Containers
+created before the config-files label was introduced display `N/A` when no
+configuration path is available. Quiet output takes precedence over the format.
+
 ### :whale: nerdctl compose version
 
 Show the Compose version information (which is the nerdctl version)
@@ -2086,7 +2105,6 @@ Compose:
 
 - `docker compose attach`
 - `docker compose events`
-- `docker compose ls`
 - `docker compose scale`
 - `docker compose stats`
 - `docker compose wait`

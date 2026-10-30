@@ -240,6 +240,7 @@ func (c *Composer) upServiceContainer(ctx context.Context, service *serviceparse
 	container.RunArgs = append([]string{
 		"--cidfile=" + cidFilename,
 		fmt.Sprintf("-l=%s=%s", labels.ComposeProject, c.project.Name),
+		fmt.Sprintf("-l=%s=%s", labels.ComposeProjectConfigFiles, strings.Join(c.project.ComposeFiles, ",")),
 		fmt.Sprintf("-l=%s=%s", labels.ComposeService, service.Unparsed.Name),
 		fmt.Sprintf("-l=%s=%s", labels.ComposeConfigHash, currentHash),
 	}, container.RunArgs...)
