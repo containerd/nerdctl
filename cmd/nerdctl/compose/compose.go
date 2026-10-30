@@ -64,6 +64,7 @@ func Command() *cobra.Command {
 		pauseCommand(),
 		unpauseCommand(),
 		topCommand(),
+		statsCommand(),
 		createCommand(),
 		waitCommand(),
 		scaleCommand(),
