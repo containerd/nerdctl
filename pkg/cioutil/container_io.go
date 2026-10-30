@@ -125,7 +125,7 @@ func (c *ncio) Close() error {
 		select {
 		case err := <-done:
 			if err != nil {
-				lastErr = fmt.Errorf("faied to run cmd.wait: %w", err)
+				lastErr = fmt.Errorf("failed to run cmd.wait: %w", err)
 			}
 		case <-time.After(binaryIOProcTermTimeout):
 

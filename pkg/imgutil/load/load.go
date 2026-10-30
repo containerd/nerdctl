@@ -105,7 +105,7 @@ func FromOCIArchive(ctx context.Context, client *containerd.Client, pathToOCIArc
 	if strings.Contains(pathToOCIArchive, separator) {
 		subs := strings.Split(pathToOCIArchive, separator)
 		if len(subs) != 2 {
-			return nil, errors.New("too many seperators found in oci-archive path")
+			return nil, errors.New("too many separators found in oci-archive path")
 		}
 		pathToOCIArchive = subs[0]
 	}
