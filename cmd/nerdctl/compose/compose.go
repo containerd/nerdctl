@@ -64,6 +64,7 @@ func Command() *cobra.Command {
 		unpauseCommand(),
 		topCommand(),
 		createCommand(),
+		attachCommand(),
 	)
 
 	return cmd
