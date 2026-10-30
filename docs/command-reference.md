@@ -130,6 +130,7 @@
   - [:whale: nerdctl compose restart](#whale-nerdctl-compose-restart)
   - [:whale: nerdctl compose rm](#whale-nerdctl-compose-rm)
   - [:whale: nerdctl compose run](#whale-nerdctl-compose-run)
+  - [:whale: nerdctl compose stats](#whale-nerdctl-compose-stats)
   - [:whale: nerdctl compose top](#whale-nerdctl-compose-top)
   - [:whale: nerdctl compose version](#whale-nerdctl-compose-version)
 - [IPFS management](#ipfs-management)
@@ -2007,6 +2008,19 @@ Unimplemented `docker-compose run` (V1) flags: `--use-aliases`, `--no-TTY`
 
 Unimplemented `docker compose run` (V2) flags: `--use-aliases`, `--no-TTY`, `--tty`
 
+### :whale: nerdctl compose stats
+
+Display a live stream of resource usage statistics of service containers
+
+Usage: `nerdctl compose stats [OPTIONS] [SERVICE...]`
+
+Flags:
+
+- :whale: `-a, --all`: Show all containers (default shows just running)
+- :whale: `--format`: Pretty-print stats using a Go template, e.g, `{{json .}}`
+- :whale: `--no-stream`: Disable streaming stats and only pull the first result
+- :whale: `--no-trunc`: Do not truncate output
+
 ### :whale: nerdctl compose top
 
 Display the running processes of service containers
@@ -2088,7 +2102,6 @@ Compose:
 - `docker compose events`
 - `docker compose ls`
 - `docker compose scale`
-- `docker compose stats`
 - `docker compose wait`
 - `docker compose watch`
 
