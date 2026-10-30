@@ -152,7 +152,7 @@ kind: KubeletConfiguration
 apiVersion: kubelet.config.k8s.io/v1beta1
 cgroupDriver: "systemd"
 ```
-See also https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/configure-cgroup-driver/
+See also https://kubernetes.io/docs/setup/production-environment/container-runtimes/#cgroup-drivers
 
 </p>
 </details>

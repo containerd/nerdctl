@@ -5,7 +5,7 @@ all the layers of container images into a stacked file system that containerd ca
 of required layers and outputs a directory containing the final file system. It is also responsible to clean up the output
 directory when containers using it are stopped.
 
-See the official [documentation](https://cvmfs.readthedocs.io/en/latest/cpt-containers.html#how-to-use-the-cernvm-fs-snapshotter) to learn further information.
+See the official [documentation](https://cvmfs.readthedocs.io/en/latest/cpt-containers/#how-to-use-the-cernvm-fs-snapshotter) to learn further information.
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ See the official [documentation](https://cvmfs.readthedocs.io/en/latest/cpt-cont
         address = "/run/containerd-cvmfs-grpc/containerd-cvmfs-grpc.sock"
 ```
 - The default CernVM-FS repository hosting the flat root filesystems of the container images is `unpacked.cern.ch`.
-  The container images are unpacked into the CernVM-FS repository by the [DUCC](https://cvmfs.readthedocs.io/en/latest/cpt-ducc.html)
+  The container images are unpacked into the CernVM-FS repository by the [DUCC](https://cvmfs.readthedocs.io/en/latest/cpt-ducc/)
   (Daemon that Unpacks Container Images into CernVM-FS) tool.
   You can change the repository adding the following line to `/etc/containerd-cvmfs-grpc/config.toml`:
 ```toml
