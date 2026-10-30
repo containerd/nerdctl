@@ -27,7 +27,6 @@ which was derived from [Docker Compose file version 3 specification](https://doc
 - `services.<SERVICE>.deploy.rollback_config`
 - `services.<SERVICE>.deploy.placement`
 - `services.<SERVICE>.deploy.endpoint_mode`
-- `services.<SERVICE>.healthcheck.start_interval`
 - `configs.<CONFIG>.external`
 - `secrets.<SECRET>.external`
 

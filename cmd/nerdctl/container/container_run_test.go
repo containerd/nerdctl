@@ -944,14 +944,15 @@ func TestRunHealthcheckFlags(t *testing.T) {
 	testCase.Require = require.Not(nerdtest.Rootless)
 
 	testCases := []struct {
-		name              string
-		args              []string
-		shouldFail        bool
-		expectTest        []string
-		expectRetries     int
-		expectInterval    time.Duration
-		expectTimeout     time.Duration
-		expectStartPeriod time.Duration
+		name                string
+		args                []string
+		shouldFail          bool
+		expectTest          []string
+		expectRetries       int
+		expectInterval      time.Duration
+		expectTimeout       time.Duration
+		expectStartPeriod   time.Duration
+		expectStartInterval time.Duration
 	}{
 		{
 			name: "Valid_full_config",
@@ -961,12 +962,14 @@ func TestRunHealthcheckFlags(t *testing.T) {
 				"--health-timeout", "5s",
 				"--health-retries", "3",
 				"--health-start-period", "2s",
+				"--health-start-interval", "1s",
 			},
-			expectTest:        []string{"CMD-SHELL", "curl -f http://localhost || exit 1"},
-			expectInterval:    30 * time.Second,
-			expectTimeout:     5 * time.Second,
-			expectRetries:     3,
-			expectStartPeriod: 2 * time.Second,
+			expectTest:          []string{"CMD-SHELL", "curl -f http://localhost || exit 1"},
+			expectInterval:      30 * time.Second,
+			expectTimeout:       5 * time.Second,
+			expectRetries:       3,
+			expectStartPeriod:   2 * time.Second,
+			expectStartInterval: 1 * time.Second,
 		},
 		{
 			name: "No_healthcheck",
@@ -1000,6 +1003,14 @@ func TestRunHealthcheckFlags(t *testing.T) {
 			args: []string{
 				"--health-cmd", "true",
 				"--health-timeout", "-5s",
+			},
+			shouldFail: true,
+		},
+		{
+			name: "Negative_start_interval",
+			args: []string{
+				"--health-cmd", "true",
+				"--health-start-interval", "-1s",
 			},
 			shouldFail: true,
 		},
@@ -1074,6 +1085,9 @@ func TestRunHealthcheckFlags(t *testing.T) {
 							if tc.expectStartPeriod > 0 {
 								assert.Equal(t, hc.StartPeriod, tc.expectStartPeriod)
 							}
+							if tc.expectStartInterval > 0 {
+								assert.Equal(t, hc.StartInterval, tc.expectStartInterval)
+							}
 						},
 					),
 				}
@@ -1091,6 +1105,9 @@ func TestRunHealthcheckFromImage(t *testing.T) {
 	dockerfile := fmt.Sprintf(`FROM %s
 HEALTHCHECK --interval=30s --timeout=10s CMD wget -q --spider http://localhost:8080 || exit 1
 	`, testutil.CommonImage)
+	startIntervalDockerfile := fmt.Sprintf(`FROM %s
+HEALTHCHECK --interval=30s --start-period=20s --start-interval=2s CMD true
+`, testutil.CommonImage)
 
 	testCase := nerdtest.Setup()
 	testCase.Require = require.All(nerdtest.Build, require.Not(nerdtest.Rootless))
@@ -1098,6 +1115,14 @@ HEALTHCHECK --interval=30s --timeout=10s CMD wget -q --spider http://localhost:8
 		data.Temp().Save(dockerfile, "Dockerfile")
 		data.Labels().Set("image", data.Identifier())
 		helpers.Ensure("build", "-t", data.Labels().Get("image"), data.Temp().Path())
+
+		data.Temp().Save(startIntervalDockerfile, "start-interval", "Dockerfile")
+		data.Labels().Set("start-interval-image", data.Identifier("start-interval"))
+		helpers.Ensure("build", "-t", data.Labels().Get("start-interval-image"), data.Temp().Path("start-interval"))
+	}
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rmi", "-f", data.Identifier())
+		helpers.Anyhow("rmi", "-f", data.Identifier("start-interval"))
 	}
 	testCase.SubTests = []*test.Case{
 		{
@@ -1143,6 +1168,51 @@ HEALTHCHECK --interval=30s --timeout=10s CMD wget -q --spider http://localhost:8
 						hc := inspect.Config.Healthcheck
 						assert.Assert(t, hc != nil, "expected healthcheck config to be present")
 						assert.DeepEqual(t, hc.Test, []string{"NONE"})
+					}),
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+		},
+		{
+			Description: "start_interval_from_image",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-d", "--name", data.Identifier(),
+					data.Labels().Get("start-interval-image"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: expect.All(func(stdout string, t tig.T) {
+						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+						hc := inspect.Config.Healthcheck
+						assert.Assert(t, hc != nil, "expected healthcheck config to be present")
+						assert.Equal(t, 20*time.Second, hc.StartPeriod)
+						assert.Equal(t, 2*time.Second, hc.StartInterval)
+					}),
+				}
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			},
+		},
+		{
+			Description: "start_interval_flag_overrides_image",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "-d", "--name", data.Identifier(),
+					"--health-start-interval=3s",
+					data.Labels().Get("start-interval-image"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: expect.All(func(stdout string, t tig.T) {
+						inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+						hc := inspect.Config.Healthcheck
+						assert.Assert(t, hc != nil, "expected healthcheck config to be present")
+						assert.Equal(t, 20*time.Second, hc.StartPeriod)  // From Dockerfile
+						assert.Equal(t, 3*time.Second, hc.StartInterval) // From CLI flag
 					}),
 				}
 			},

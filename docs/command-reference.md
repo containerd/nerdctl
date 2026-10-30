@@ -366,6 +366,7 @@ Health check flags:
 - :whale: `--health-timeout`: Time to wait before considering the check failed (e.g., 5s)
 - :whale: `--health-retries`: Number of failures before container is considered unhealthy
 - :whale: `--health-start-period`: Start period for the container to initialize before starting health-retries countdown
+- :whale: `--health-start-interval`: Time between running the check during the start period (e.g., 5s)
 - :whale: `--no-healthcheck`: Disable any health checks defined by image or CLI
 
 Logging flags:
@@ -475,8 +476,7 @@ IPFS flags:
 - :nerd_face: `--ipfs-address`: Multiaddr of IPFS API (default uses `$IPFS_PATH` env variable if defined or local directory `~/.ipfs`)
 
 Unimplemented `docker run` flags:
-    `--disable-content-trust`,
-    `--health-start-interval`, `--link*`, `--storage-opt`,
+    `--disable-content-trust`, `--link*`, `--storage-opt`,
     `--volume-driver`
 
 ### :whale: nerdctl exec
