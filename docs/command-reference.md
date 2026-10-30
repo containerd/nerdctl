@@ -132,6 +132,7 @@
   - [:whale: nerdctl compose run](#whale-nerdctl-compose-run)
   - [:whale: nerdctl compose top](#whale-nerdctl-compose-top)
   - [:whale: nerdctl compose version](#whale-nerdctl-compose-version)
+  - [:whale: nerdctl compose scale](#whale-nerdctl-compose-scale)
 - [IPFS management](#ipfs-management)
   - [:nerd_face: nerdctl ipfs registry serve](#nerd_face-nerdctl-ipfs-registry-serve)
 - [Global flags](#global-flags)
@@ -2024,6 +2025,16 @@ Flags:
 - :whale: `-f, --format`: Format the output. Values: [pretty | json] (default "pretty")
 - :whale: `--short`: Shows only Compose's version number
 
+### :whale: nerdctl compose scale
+
+Set the number of containers for services. Missing replicas are created and started in the background, and replicas above the requested number are stopped and removed
+
+Usage: `nerdctl compose scale [OPTIONS] SERVICE=REPLICAS [SERVICE=REPLICAS...]`
+
+Flags:
+
+- :whale: `--no-deps`: Don't start linked services
+
 ## IPFS management
 
 P2P image distribution (IPFS) is completely optional. Your host is NOT connected to any P2P network, unless you opt in to [install and run IPFS daemon](https://docs.ipfs.io/install/).
@@ -2087,7 +2098,6 @@ Compose:
 - `docker compose attach`
 - `docker compose events`
 - `docker compose ls`
-- `docker compose scale`
 - `docker compose stats`
 - `docker compose wait`
 - `docker compose watch`

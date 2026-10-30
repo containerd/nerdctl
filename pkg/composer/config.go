@@ -83,6 +83,13 @@ func ServiceHash(o types.ServiceConfig) (string, error) {
 	o.PullPolicy = ""
 	o.Scale = new(int)
 	*(o.Scale) = 1
+	// compose-go stores the number of replicas (including `scale` and `--scale`) in
+	// deploy.replicas, so ignore it too: scaling a service must not recreate its containers.
+	if o.Deploy != nil {
+		deploy := *o.Deploy
+		deploy.Replicas = nil
+		o.Deploy = &deploy
+	}
 	bytes, err := json.Marshal(o)
 	if err != nil {
 		return "", err
