@@ -133,6 +133,16 @@ and_underscore=working too`
 	}
 }
 
+// Test TestParseEnvFileWithBOM for an env file that starts with a UTF-8 byte order mark.
+func TestParseEnvFileWithBOM(t *testing.T) {
+	tmpFile := tmpFileWithContent(t, "\ufefffoo=bar\nbaz=quux\n")
+	tmpFile2 := tmpFileWithContent(t, "\ufeff# comment\nqux=quuz\n")
+
+	lines, err := parseEnvVars([]string{tmpFile, tmpFile2})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, lines, []string{"foo=bar", "baz=quux", "qux=quuz"})
+}
+
 // Test TestParseEnvFileEmptyFile for an empty file.
 func TestParseEnvFileEmptyFile(t *testing.T) {
 	tmpFile := tmpFileWithContent(t, "")

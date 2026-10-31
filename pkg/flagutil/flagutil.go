@@ -69,6 +69,9 @@ func ReplaceOrAppendEnvValues(defaults, overrides []string) []string {
 	return results
 }
 
+// utf8BOM is the UTF-8 encoded byte order mark.
+const utf8BOM = "\ufeff"
+
 func parseEnvVars(paths []string) ([]string, error) {
 	vars := make([]string, 0)
 	for _, path := range paths {
@@ -79,8 +82,16 @@ func parseEnvVars(paths []string) ([]string, error) {
 		defer f.Close()
 
 		sc := bufio.NewScanner(f)
+		firstLine := true
 		for sc.Scan() {
-			line := strings.TrimSpace(sc.Text())
+			text := sc.Text()
+			if firstLine {
+				// Editors on Windows often save files with a UTF-8 byte order mark.
+				// Strip it like Docker does, so it does not end up in the first variable name.
+				text = strings.TrimPrefix(text, utf8BOM)
+				firstLine = false
+			}
+			line := strings.TrimSpace(text)
 			// skip comment lines and empty line
 			if len(line) == 0 || strings.HasPrefix(line, "#") {
 				continue
