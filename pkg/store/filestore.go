@@ -76,6 +76,9 @@ func (vs *fileStore) Lock() error {
 
 	dirFile, err := filesystem.Lock(vs.dir)
 	if err != nil {
+		// Release the in-process mutex, otherwise any later Lock call would block forever.
+		vs.mutex.Unlock()
+
 		return errors.Join(ErrLockFailure, err)
 	}
 
