@@ -74,7 +74,7 @@ require (
 	github.com/vishvananda/netlink v1.3.1 //gomodjail:unconfined
 	github.com/vishvananda/netns v0.0.5 //gomodjail:unconfined
 	github.com/yuchanns/srslog v1.1.0 //gomodjail:unconfined
-	go.yaml.in/yaml/v3 v3.0.5
+	go.yaml.in/yaml/v3 v3.0.6
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
 	gotest.tools/v3 v3.5.2 //gomodjail:unconfined
 	tags.cncf.io/container-device-interface v1.1.1 //gomodjail:unconfined
