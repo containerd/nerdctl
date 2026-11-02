@@ -17,6 +17,8 @@
 package store
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -219,4 +221,32 @@ func TestFileStoreConcurrent(t *testing.T) {
 		return nil
 	})
 	assert.NilError(t, lErr, "locking should not error")
+}
+
+func TestFileStoreLockFailureReleasesMutex(t *testing.T) {
+	parentDir := t.TempDir()
+	storeDir := filepath.Join(parentDir, "store")
+
+	tempStore, err := New(storeDir, 0, 0)
+	assert.NilError(t, err, "temporary store creation should succeed")
+
+	// Locking a store whose directory and parent are gone must fail.
+	assert.NilError(t, os.RemoveAll(parentDir))
+	err = tempStore.Lock()
+	assert.ErrorIs(t, err, ErrLockFailure)
+
+	// A failed Lock must not leave the store locked: once the directory is back, locking works again.
+	assert.NilError(t, os.MkdirAll(storeDir, defaultDirPerm))
+
+	done := make(chan error, 1)
+	go func() {
+		done <- tempStore.WithLock(func() error { return nil })
+	}()
+
+	select {
+	case err = <-done:
+		assert.NilError(t, err, "locking after a failed lock should succeed")
+	case <-time.After(5 * time.Second):
+		t.Fatal("Lock blocked forever after a previous Lock failure")
+	}
 }
