@@ -1657,6 +1657,9 @@ services:
 func TestComposeUpDependsOnCompletedFails(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	// The error message is nerdctl's.
+	testCase.Require = require.Not(nerdtest.Docker)
+
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		composeYAML := fmt.Sprintf(`
 services:
