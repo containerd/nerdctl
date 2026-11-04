@@ -1639,8 +1639,10 @@ services:
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		cmd := helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "events", "--format", "json", "svc1")
-		cmd.WithTimeout(10 * time.Second)
+		cmd.WithTimeout(20 * time.Second)
 		cmd.Background()
+		// Give the command time to subscribe to the events before the containers are created.
+		time.Sleep(4 * time.Second)
 		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
 		return cmd
 	}
