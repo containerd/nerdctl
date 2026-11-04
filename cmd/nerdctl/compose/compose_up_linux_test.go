@@ -1620,6 +1620,9 @@ services:
 func TestComposeEvents(t *testing.T) {
 	testCase := nerdtest.Setup()
 
+	// `docker compose events` has a different output format and no --format flag.
+	testCase.Require = require.Not(nerdtest.Docker)
+
 	testCase.Setup = func(data test.Data, helpers test.Helpers) {
 		composeYAML := fmt.Sprintf(`
 services:
