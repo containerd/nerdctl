@@ -1615,3 +1615,41 @@ services:
 
 	testCase.Run(t)
 }
+
+// `compose events` only shows the events of the containers of the project, and of the given services.
+func TestComposeEvents(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composeYAML := fmt.Sprintf(`
+services:
+  svc1:
+    image: %[1]s
+    command: tail -f /dev/null
+  svc2:
+    image: %[1]s
+    command: tail -f /dev/null
+`, testutil.CommonImage)
+		data.Temp().Save(composeYAML, "compose.yaml")
+		helpers.Ensure("pull", testutil.CommonImage)
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "events", "--format", "json", "svc1")
+		cmd.WithTimeout(10 * time.Second)
+		cmd.Background()
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+		return cmd
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeTimeout, nil, expect.All(
+		expect.Contains(`"com.docker.compose.service":"svc1"`),
+		expect.DoesNotContain(`"com.docker.compose.service":"svc2"`),
+	))
+
+	testCase.Run(t)
+}
