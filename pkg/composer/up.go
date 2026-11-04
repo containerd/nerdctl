@@ -43,6 +43,7 @@ type UpOptions struct {
 	NoRecreate           bool
 	Scale                map[string]int // map of service name to replicas
 	Pull                 string
+	NoDeps               bool // only bring up the given services, not their dependencies
 }
 
 func (opts UpOptions) recreateStrategy() string {
@@ -87,7 +88,11 @@ func (c *Composer) Up(ctx context.Context, uo UpOptions, services []string) erro
 		parsedServices = append(parsedServices, ps)
 		return nil
 	}
-	err := c.project.ForEachService(services, forEachFn)
+	var dependencyOptions []types.DependencyOption
+	if uo.NoDeps {
+		dependencyOptions = append(dependencyOptions, types.IgnoreDependencies)
+	}
+	err := c.project.ForEachService(services, forEachFn, dependencyOptions...)
 	if err != nil {
 		return err
 	}
