@@ -144,8 +144,9 @@ func (x *hostsStore) Acquire(meta Meta) (err error) {
 	})
 }
 
-// Release is triggered by Poststop hooks.
-// It is called after the containerd task is deleted but before the delete operation returns.
+// Release is triggered by Poststop hooks, and by `nerdctl stop` and `nerdctl kill` when they tear down the network.
+// From the Poststop hook, it is called after the containerd task is deleted but before the delete operation returns.
+// Releasing an already released container is a no-op.
 func (x *hostsStore) Release(id string) (err error) {
 	// We remove "meta.json" but we still retain the "hosts" file
 	// because it is needed for restarting. The "hosts" is removed on
@@ -159,6 +160,9 @@ func (x *hostsStore) Release(id string) (err error) {
 
 	return x.safeStore.WithLock(func() error {
 		if err = x.safeStore.Delete(id, metaJSON); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				return nil
+			}
 			return err
 		}
 
