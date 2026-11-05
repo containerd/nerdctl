@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/system"
+	"github.com/containerd/nerdctl/v2/pkg/composer"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 )
 
@@ -78,6 +79,12 @@ func eventsAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	project := c.ProjectName()
+
+	// Like compose logs, release the compose lock before streaming. Events don't need it, and holding
+	// it until the command exits would block every other compose command in the meantime.
+	if err := composer.Unlock(); err != nil {
+		return err
+	}
 
 	return system.Events(ctx, client, types.SystemEventsOptions{
 		Stdout:   cmd.OutOrStdout(),
