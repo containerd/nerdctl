@@ -1635,15 +1635,18 @@ services:
 `, testutil.CommonImage)
 		data.Temp().Save(composeYAML, "compose.yaml")
 		helpers.Ensure("pull", testutil.CommonImage)
+		// Creating the containers can take longer than the events command runs, so do it first.
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
 	}
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		cmd := helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "events", "--format", "json", "svc1")
 		cmd.WithTimeout(20 * time.Second)
 		cmd.Background()
-		// Give the command time to subscribe to the events before the containers are created.
-		time.Sleep(4 * time.Second)
-		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+		// Give the command time to subscribe to the events, then kill both services.
+		// The kill is quick and emits task exit events while the containers still exist.
+		time.Sleep(5 * time.Second)
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "kill")
 		return cmd
 	}
 
