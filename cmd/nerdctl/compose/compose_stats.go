@@ -26,6 +26,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/compose"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/container"
+	"github.com/containerd/nerdctl/v2/pkg/composer"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
 )
 
@@ -106,6 +107,12 @@ func statsAction(cmd *cobra.Command, args []string) error {
 	// so stop here when the project has no matching containers.
 	if len(containerIDs) == 0 {
 		return nil
+	}
+
+	// Like compose logs, release the compose lock before streaming. Stats don't need it, and holding
+	// it until the command exits would block every other compose command in the meantime.
+	if err := composer.Unlock(); err != nil {
+		return err
 	}
 
 	return container.Stats(ctx, client, containerIDs, types.ContainerStatsOptions{
