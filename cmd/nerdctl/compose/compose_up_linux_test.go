@@ -1645,8 +1645,10 @@ services:
 		cmd.Background()
 		// Give the command time to subscribe to the events, then kill both services.
 		// The kill is quick and emits task exit events while the containers still exist.
+		// Use plain `nerdctl kill`, so that the kill does not depend on the compose lock.
 		time.Sleep(5 * time.Second)
-		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "kill")
+		project := filepath.Base(filepath.Dir(data.Temp().Path("compose.yaml")))
+		helpers.Ensure("kill", project+"-svc1-1", project+"-svc2-1")
 		return cmd
 	}
 
