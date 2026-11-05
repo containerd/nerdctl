@@ -1641,7 +1641,9 @@ services:
 
 	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
 		cmd := helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "events", "--format", "json", "svc1")
-		cmd.WithTimeout(20 * time.Second)
+		// Each nerdctl invocation can take several seconds on slow CI hosts (compose kill alone took
+		// about 15s on EL8), so leave the events command enough time to receive and print the events.
+		cmd.WithTimeout(60 * time.Second)
 		cmd.Background()
 		// Give the command time to subscribe to the events, then kill both services.
 		// The kill is quick and emits task exit events while the containers still exist.
