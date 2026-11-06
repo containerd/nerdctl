@@ -956,7 +956,6 @@ func groupAddFromNative(sp *specs.Spec) ([]string, error) {
 func convertToNatPort(portMappings []cni.PortMapping) (*nat.PortMap, error) {
 	portMap := make(nat.PortMap)
 	for _, portMapping := range portMappings {
-		ports := []nat.PortBinding{}
 		p := nat.PortBinding{
 			HostIP:   portMapping.HostIP,
 			HostPort: strconv.FormatInt(int64(portMapping.HostPort), 10),
@@ -965,8 +964,7 @@ func convertToNatPort(portMappings []cni.PortMapping) (*nat.PortMap, error) {
 		if err != nil {
 			return nil, err
 		}
-		ports = append(ports, p)
-		portMap[newP] = ports
+		portMap[newP] = append(portMap[newP], p)
 	}
 	return &portMap, nil
 }

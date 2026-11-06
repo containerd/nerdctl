@@ -751,6 +751,64 @@ func TestNetworkSettingsFromNative(t *testing.T) {
 				},
 			},
 		},
+		// Given native.NetNS with several host ports published for the same container port, Return all the bindings
+		//   UseCase: Inspect a Running Container started with -p 8075:77 -p 8076:77
+		{
+			name: "Given NetNS with several host ports for one container port, Return all bindings",
+			n: &native.NetNS{
+				Interfaces: []native.NetInterface{
+					{
+						Interface: net.Interface{
+							Index: 1,
+							MTU:   1500,
+							Name:  "eth0",
+							Flags: net.FlagUp,
+						},
+						HardwareAddr: "xx:xx:xx:xx:xx:xx",
+						Flags:        []string{},
+						Addrs:        []string{"10.0.4.30/24"},
+					},
+				},
+				PortMappings: []cni.PortMapping{
+					{
+						HostPort:      8075,
+						ContainerPort: 77,
+						Protocol:      "tcp",
+						HostIP:        "127.0.0.1",
+					},
+					{
+						HostPort:      8076,
+						ContainerPort: 77,
+						Protocol:      "tcp",
+						HostIP:        "127.0.0.1",
+					},
+				},
+			},
+			s: &specs.Spec{
+				Annotations: map[string]string{},
+			},
+			expected: &NetworkSettings{
+				Ports: &nat.PortMap{
+					nat.Port("77/tcp"): []nat.PortBinding{
+						{
+							HostIP:   "127.0.0.1",
+							HostPort: "8075",
+						},
+						{
+							HostIP:   "127.0.0.1",
+							HostPort: "8076",
+						},
+					},
+				},
+				Networks: map[string]*NetworkEndpointSettings{
+					"unknown-eth0": {
+						IPAddress:   "10.0.4.30",
+						IPPrefixLen: 24,
+						MacAddress:  "xx:xx:xx:xx:xx:xx",
+					},
+				},
+			},
+		},
 		// Given native.NetNS with single Interface without Port Annotations, Return valid NetworkSettings w/ empty Ports
 		//   UseCase: Inspect a Running Container without published ports
 		{
