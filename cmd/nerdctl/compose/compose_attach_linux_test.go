@@ -85,14 +85,11 @@ services:
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				cmd := helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "attach", "svc0")
 				cmd.WithPseudoTTY()
-				// compose attach loads the project and runs nerdctl attach in a subprocess first, which can take
-				// a few seconds on slow machines. Wait before sending the command, so it doesn't reach the
-				// container together with the detach keys, then give the container time to answer.
+				cmd.Feed(strings.NewReader("echo mark${NON}mark\n"))
 				cmd.WithFeeder(func() io.Reader {
-					time.Sleep(3 * time.Second)
-					return strings.NewReader("echo mark${NON}mark\n")
-				})
-				cmd.WithFeeder(func() io.Reader {
+					// Give the container time to read stdin and answer before detaching. compose attach
+					// loads the project and runs nerdctl attach in a subprocess first, so this takes
+					// longer than with nerdctl attach.
 					time.Sleep(3 * time.Second)
 					// ctrl+p and ctrl+q (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
 					return bytes.NewReader([]byte{16, 17})
