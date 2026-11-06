@@ -165,6 +165,11 @@ func (c *Composer) Services(ctx context.Context, svcs ...string) ([]*servicepars
 	return services, nil
 }
 
+// ProjectName returns the name of the compose project.
+func (c *Composer) ProjectName() string {
+	return c.project.Name
+}
+
 // ServiceNames returns service names in dependency order.
 func (c *Composer) ServiceNames(svcs ...string) ([]string, error) {
 	var names []string
