@@ -168,6 +168,7 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		if svc.Deploy.RestartPolicy != nil {
 			if unknown := reflectutil.UnknownNonEmptyFields(svc.Deploy.RestartPolicy,
 				"Condition",
+				"MaxAttempts",
 			); len(unknown) > 0 {
 				log.L.Warnf("Ignoring: service %s: deploy.restart_policy: %+v", svc.Name, unknown)
 			}
@@ -373,7 +374,12 @@ func getRestart(svc types.ServiceConfig) (string, error) {
 		if svc.Restart != "" {
 			log.L.Warnf("deploy.restart_policy and restart must not be set together, ignoring restart=%s", svc.Restart)
 		}
-		switch cond := svc.Deploy.RestartPolicy.Condition; cond {
+		maxAttempts := svc.Deploy.RestartPolicy.MaxAttempts
+		cond := svc.Deploy.RestartPolicy.Condition
+		if maxAttempts != nil && *maxAttempts > 0 && cond != "on-failure" {
+			log.L.Warnf("Ignoring: service %s: deploy.restart_policy.max_attempts=%d (only supported with condition \"on-failure\")", svc.Name, *maxAttempts)
+		}
+		switch cond {
 		case "", "any":
 			restartFlag = "always"
 		case "always":
@@ -383,7 +389,10 @@ func getRestart(svc types.ServiceConfig) (string, error) {
 		case "no":
 			return "", fmt.Errorf("deploy.restart_policy.condition: \"no\" is invalid, did you mean \"none\"?")
 		case "on-failure":
-			log.L.Warnf("Ignoring: service %s: deploy.restart_policy.condition=%q (unimplemented)", svc.Name, cond)
+			restartFlag = "on-failure"
+			if maxAttempts != nil && *maxAttempts > 0 {
+				restartFlag = fmt.Sprintf("on-failure:%d", *maxAttempts)
+			}
 		default:
 			log.L.Warnf("Ignoring: service %s: deploy.restart_policy.condition=%q (unknown)", svc.Name, cond)
 		}
