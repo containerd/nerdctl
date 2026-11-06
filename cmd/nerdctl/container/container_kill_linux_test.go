@@ -18,6 +18,7 @@ package container
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"testing"
@@ -32,6 +33,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	iptablesutil "github.com/containerd/nerdctl/v2/pkg/testutil/iptables"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
+	"github.com/containerd/nerdctl/v2/pkg/testutil/nettestutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/portlock"
 )
 
@@ -141,4 +143,44 @@ func TestKillCleanupForwards(t *testing.T) {
 	}
 
 	testCase.Run(t)
+}
+
+// TestKillPreservesForwards checks signals handled by nginx without exiting.
+func TestKillPreservesForwards(t *testing.T) {
+	t.Parallel()
+	for _, sig := range []string{"SIGHUP", "SIGUSR1"} {
+		t.Run(sig, func(t *testing.T) {
+			// tigron runs each case in parallel.
+			testCase := nerdtest.Setup()
+			checkHTTP := func(data test.Data, helpers test.Helpers) {
+				response, err := nettestutil.HTTPGet("http://127.0.0.1:"+data.Labels().Get("hostPort"), 5, false)
+				assert.NilError(helpers.T(), err)
+				assert.NilError(helpers.T(), response.Body.Close())
+				assert.Equal(helpers.T(), response.StatusCode, http.StatusOK)
+			}
+			testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+				if port, err := strconv.Atoi(data.Labels().Get("hostPort")); err == nil {
+					_ = portlock.Release(port)
+				}
+			}
+			testCase.Setup = func(data test.Data, helpers test.Helpers) {
+				port, err := portlock.Acquire(0)
+				assert.NilError(helpers.T(), err)
+				data.Labels().Set("hostPort", strconv.Itoa(port))
+				helpers.Ensure("run", "-d", "--name", data.Identifier(),
+					"-p", fmt.Sprintf("127.0.0.1:%d:80", port), testutil.NginxAlpineImage)
+				checkHTTP(data, helpers)
+			}
+			testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("kill", "--signal", sig, data.Identifier())
+			}
+			testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{ExitCode: expect.ExitCodeSuccess, Output: func(_ string, _ tig.T) {
+					checkHTTP(data, helpers)
+				}}
+			}
+			testCase.Run(t)
+		})
+	}
 }

@@ -61,10 +61,7 @@ func Kill(ctx context.Context, client *containerd.Client, reqs []string, options
 			if found.MatchCount > 1 {
 				return fmt.Errorf("multiple IDs found with provided prefix: %s", found.Req)
 			}
-			if err := cleanupNetwork(ctx, found.Container, options.GOptions); err != nil {
-				return fmt.Errorf("unable to cleanup network for container: %s, %q", found.Req, err)
-			}
-			if err := killContainer(ctx, found.Container, parsedSignal); err != nil {
+			if err := killContainer(ctx, found.Container, parsedSignal, options.GOptions); err != nil {
 				if errdefs.IsNotFound(err) {
 					fmt.Fprintf(options.Stderr, "No such container: %s\n", found.Req)
 					os.Exit(1)
@@ -79,15 +76,12 @@ func Kill(ctx context.Context, client *containerd.Client, reqs []string, options
 	return walker.WalkAll(ctx, reqs, true)
 }
 
-func killContainer(ctx context.Context, container containerd.Container, signal syscall.Signal) (err error) {
+func killContainer(ctx context.Context, container containerd.Container, sig syscall.Signal, globalOpts types.GlobalCommandOptions) (err error) {
 	defer func() {
 		if err != nil {
 			containerutil.UpdateErrorLabel(ctx, container, err)
 		}
 	}()
-	if err := containerutil.UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
-		return err
-	}
 	task, err := container.Task(ctx, cio.Load)
 	if err != nil {
 		return err
@@ -108,19 +102,51 @@ func killContainer(ctx context.Context, container containerd.Container, signal s
 	default:
 	}
 
-	if err := task.Kill(ctx, signal); err != nil {
-		return err
+	// Only SIGKILL and the configured stop signal express an intent to stop.
+	// Other signals may reload a service while it keeps using its network and
+	// healthcheck units. As with stop, a process may ignore its stop signal.
+	stopping := sig == syscall.SIGKILL
+	if !stopping {
+		containerLabels, err := container.Labels(ctx)
+		if err != nil {
+			return err
+		}
+		stopSignal, ok := containerLabels[containerd.StopSignalLabel]
+		if !ok {
+			stopSignal = "SIGTERM"
+		}
+		parsedStopSignal, err := signal.ParseSignal(stopSignal)
+		if err != nil {
+			return err
+		}
+		stopping = sig == parsedStopSignal
+	}
+	if stopping {
+		if err := containerutil.UpdateExplicitlyStoppedLabel(ctx, container, true); err != nil {
+			return err
+		}
 	}
 
-	// Clean up healthcheck systemd units
-	if err := healthcheck.RemoveTransientHealthCheckFiles(ctx, container); err != nil {
-		log.G(ctx).Warnf("failed to clean up healthcheck units for container %s: %s", container.ID(), err)
+	if err := task.Kill(ctx, sig); err != nil {
+		return err
 	}
 
 	// signal will be sent once resume is finished
 	if paused {
 		if err := task.Resume(ctx); err != nil {
 			log.G(ctx).Warnf("cannot unpause container %s: %s", container.ID(), err)
+		}
+	}
+
+	if stopping {
+		// An auto-removed container may already have run its post-stop hook and
+		// removed its metadata after the signal was delivered.
+		if err := cleanupNetwork(ctx, container, globalOpts); err != nil && !errdefs.IsNotFound(err) {
+			return fmt.Errorf("unable to cleanup network for container: %s: %w", container.ID(), err)
+		}
+		// Clean up healthcheck systemd units.
+		if err := healthcheck.RemoveTransientHealthCheckFiles(ctx, container); err != nil {
+			log.G(ctx).Warnf("failed to clean up healthcheck units for container %s: %s", container.ID(), err)
 		}
 	}
 	return nil
