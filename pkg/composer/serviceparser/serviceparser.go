@@ -152,6 +152,8 @@ func warnUnknownFields(svc types.ServiceConfig) {
 		switch dep.Condition {
 		case "", types.ServiceConditionStarted:
 			// NOP
+		case types.ServiceConditionHealthy, types.ServiceConditionCompletedSuccessfully:
+			// Waited for by the composer before the service is started.
 		default:
 			log.L.Warnf("Ignoring: service %s: depends_on: %s: condition %s", svc.Name, depName, dep.Condition)
 		}

@@ -1615,3 +1615,76 @@ services:
 
 	testCase.Run(t)
 }
+
+// A service waits for a dependency with `condition: service_completed_successfully`.
+func TestComposeUpDependsOnCompleted(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composeYAML := fmt.Sprintf(`
+services:
+  init:
+    image: %[1]s
+    command: sh -euc "sleep 2 && echo ready >/data/ready"
+    volumes:
+      - %[2]s:/data
+  app:
+    image: %[1]s
+    command: sh -euc "cat /data/ready"
+    volumes:
+      - %[2]s:/data
+    depends_on:
+      init:
+        condition: service_completed_successfully
+`, testutil.CommonImage, data.Temp().Path("data"))
+		data.Temp().Save(composeYAML, "compose.yaml")
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "up")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.Expected = test.Expects(0, nil, expect.Contains("ready"))
+
+	testCase.Run(t)
+}
+
+// `up` fails when a dependency with `condition: service_completed_successfully` exits with an error.
+func TestComposeUpDependsOnCompletedFails(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// The error message is nerdctl's.
+	testCase.Require = require.Not(nerdtest.Docker)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composeYAML := fmt.Sprintf(`
+services:
+  init:
+    image: %[1]s
+    command: sh -euc "exit 3"
+  app:
+    image: %[1]s
+    command: sh -euc "echo should not run"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+`, testutil.CommonImage)
+		data.Temp().Save(composeYAML, "compose.yaml")
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.Expected = test.Expects(1, []error{errors.New("exited with status code 3")}, nil)
+
+	testCase.Run(t)
+}
