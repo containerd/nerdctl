@@ -1619,6 +1619,9 @@ services:
 // `compose events` only shows the events of the containers of the project, and of the given services.
 func TestComposeEvents(t *testing.T) {
 	testCase := nerdtest.Setup()
+	// `compose events` waits for the compose lock before it subscribes. Parallel compose tests can
+	// hold it for seconds, and the events would then be emitted before the command listens.
+	testCase.NoParallel = true
 
 	// `docker compose events` has a different output format and no --format flag.
 	testCase.Require = require.Not(nerdtest.Docker)
