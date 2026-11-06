@@ -233,7 +233,7 @@ func parseFluentdConfig(config map[string]string) (fluent.Config, error) {
 		}
 		bufferLimit = int(parsedBufferLimit)
 	}
-	retryWait := int(defaultRetryWait)
+	retryWait := int(defaultRetryWait.Milliseconds())
 	if config[fluentdRetryWait] != "" {
 		temp, err := time.ParseDuration(config[fluentdRetryWait])
 		if err != nil {
