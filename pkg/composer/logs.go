@@ -69,6 +69,10 @@ func (c *Composer) Logs(ctx context.Context, lo LogsOptions, services []string) 
 }
 
 func (c *Composer) logs(ctx context.Context, containers []containerd.Container, lo LogsOptions) error {
+	if len(containers) == 0 {
+		return nil
+	}
+
 	var logTagMaxLen int
 	type containerState struct {
 		name      string
