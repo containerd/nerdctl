@@ -32,6 +32,9 @@ const (
 	//Compose Project Name
 	ComposeProject = "com.docker.compose.project"
 
+	// ComposeProjectConfigFiles records the files used to create the project.
+	ComposeProjectConfigFiles = "com.docker.compose.project.config_files"
+
 	//Compose Service Name
 	ComposeService = "com.docker.compose.service"
 
