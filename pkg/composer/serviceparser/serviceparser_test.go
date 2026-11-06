@@ -507,6 +507,52 @@ services:
 	}
 }
 
+func TestParseVolumeCreateHostPathAll(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("test is not compatible with windows")
+	}
+	base := t.TempDir()
+	dir1 := filepath.Join(base, "missing1")
+	dir2 := filepath.Join(base, "missing2")
+	dockerComposeYAML := fmt.Sprintf(`
+services:
+  foo:
+    image: nginx:alpine
+    volumes:
+    - type: bind
+      source: %s
+      target: /tgt/dir1
+      bind:
+        create_host_path: true
+    - type: bind
+      source: %s
+      target: /tgt/dir2
+      bind:
+        create_host_path: true
+    - type: bind
+      source: %s
+      target: /tgt/existing
+`, dir1, dir2, base)
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	fooSvc, err := project.GetService("foo")
+	assert.NilError(t, err)
+
+	foo, err := Parse(project, fooSvc)
+	assert.NilError(t, err)
+
+	assert.Assert(t, len(foo.Containers) > 0)
+	for _, c := range foo.Containers {
+		assert.DeepEqual(t, c.Mkdir, []string{dir1, dir2})
+	}
+}
+
 func TestServiceVolumeConfigToImageMount(t *testing.T) {
 	t.Parallel()
 
