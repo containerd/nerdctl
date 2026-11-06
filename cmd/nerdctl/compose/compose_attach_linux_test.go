@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -85,14 +84,24 @@ services:
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				cmd := helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "attach", "svc0")
 				cmd.WithPseudoTTY()
-				cmd.Feed(strings.NewReader("echo mark${NON}mark\n"))
+				// compose attach loads the project and runs nerdctl attach in a subprocess first, which can
+				// take several seconds on slow machines, and input that is pending together with the detach
+				// keys when nerdctl attach starts can be lost (see TestAttach). So send the command once a
+				// second for a while, then detach: whenever attach is up, a later command reaches the container.
 				cmd.WithFeeder(func() io.Reader {
-					// Give the container time to read stdin and answer before detaching. compose attach
-					// loads the project and runs nerdctl attach in a subprocess first, so this takes
-					// longer than with nerdctl attach.
-					time.Sleep(3 * time.Second)
-					// ctrl+p and ctrl+q (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
-					return bytes.NewReader([]byte{16, 17})
+					reader, writer := io.Pipe()
+					go func() {
+						for range 10 {
+							if _, err := writer.Write([]byte("echo mark${NON}mark\n")); err != nil {
+								return
+							}
+							time.Sleep(time.Second)
+						}
+						// ctrl+p and ctrl+q (see https://en.wikipedia.org/wiki/C0_and_C1_control_codes)
+						_, _ = writer.Write([]byte{16, 17})
+						_ = writer.Close()
+					}()
+					return reader
 				})
 				return cmd
 			},
