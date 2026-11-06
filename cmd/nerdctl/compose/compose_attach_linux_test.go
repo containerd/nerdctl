@@ -22,11 +22,15 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"gotest.tools/v3/assert"
+
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/composer/serviceparser"
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
@@ -48,7 +52,9 @@ services:
 
 		composePath := data.Temp().Save(dockerComposeYAML, "compose.yaml")
 		projectName := filepath.Base(filepath.Dir(composePath))
+		containerName := serviceparser.DefaultContainerName(projectName, "svc0", "1")
 		data.Labels().Set("composeYAML", composePath)
+		data.Labels().Set("containerName", containerName)
 
 		// compose up runs a service with stdin_open and tty like nerdctl run -it, in the foreground:
 		// give it a console and detach from it, like TestAttach does with nerdctl run -it.
@@ -60,7 +66,7 @@ services:
 			ExitCode: expect.ExitCodeSuccess,
 			Errors:   []error{errors.New("read detach keys")},
 		})
-		nerdtest.EnsureContainerStarted(helpers, serviceparser.DefaultContainerName(projectName, "svc0", "1"))
+		nerdtest.EnsureContainerStarted(helpers, containerName)
 	}
 
 	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
@@ -111,7 +117,12 @@ services:
 					// https://github.com/containerd/nerdctl/issues/3571
 					ExitCode: 1,
 					Errors:   []error{errors.New("read detach keys")},
-					Output:   expect.Contains("markmark"),
+					// The container has a TTY, so its logs have what the shell printed. Check them rather than
+					// the pseudo-TTY output, which can come back empty when attach exits on the detach keys.
+					Output: func(_ string, t tig.T) {
+						logs := helpers.Capture("logs", data.Labels().Get("containerName"))
+						assert.Assert(t, strings.Contains(logs, "markmark"))
+					},
 				}
 			},
 		},
