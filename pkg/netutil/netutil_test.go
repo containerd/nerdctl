@@ -130,6 +130,14 @@ func TestParseIPAMRange(t *testing.T) {
 	}
 }
 
+func TestParseSubnetAllowsOverlappingExplicitSubnet(t *testing.T) {
+	e := CNIEnv{NetconfPath: t.TempDir()}
+
+	got, err := e.parseSubnet("127.0.0.0/8")
+	assert.NilError(t, err)
+	assert.Equal(t, got.String(), "127.0.0.0/8")
+}
+
 func TestParseAuxAddresses(t *testing.T) {
 	t.Parallel()
 	type testCase struct {

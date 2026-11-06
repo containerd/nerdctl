@@ -571,11 +571,11 @@ func networkID(name string) string {
 }
 
 func (e *CNIEnv) parseSubnet(subnetStr string) (*net.IPNet, error) {
-	usedSubnets, err := e.usedSubnets()
-	if err != nil {
-		return nil, err
-	}
 	if subnetStr == "" {
+		usedSubnets, err := e.usedSubnets()
+		if err != nil {
+			return nil, err
+		}
 		_, defaultSubnet, _ := net.ParseCIDR(StartingCIDR)
 		subnet, err := subnetutil.GetFreeSubnet(defaultSubnet, usedSubnets)
 		if err != nil {
@@ -590,9 +590,6 @@ func (e *CNIEnv) parseSubnet(subnetStr string) (*net.IPNet, error) {
 	}
 	if !subnet.IP.Equal(subnetIP) {
 		return nil, fmt.Errorf("unexpected subnet %q, maybe you meant %q?", subnetStr, subnet.String())
-	}
-	if subnetutil.IntersectsWithNetworks(subnet, usedSubnets) {
-		return nil, fmt.Errorf("subnet %s overlaps with other one on this address space", subnetStr)
 	}
 	return subnet, nil
 }

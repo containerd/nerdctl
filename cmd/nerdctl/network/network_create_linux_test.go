@@ -326,6 +326,44 @@ func TestNetworkCreate(t *testing.T) {
 			},
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 		},
+		{
+			Description: "with an explicit subnet overlapping an existing network",
+			// Docker rejects overlapping pools, nerdctl honors an explicit --subnet (#4281).
+			Require:    require.Not(nerdtest.Docker),
+			NoParallel: true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("network", "create", data.Identifier("1"), "--subnet", "10.7.0.0/24")
+				helpers.Ensure("network", "create", data.Identifier(), "--subnet", "10.7.0.0/25")
+				helpers.Ensure("run", "-d", "--net", data.Identifier(),
+					"--name", data.Identifier("c1"), testutil.CommonImage, "sleep", "infinity")
+				nerdtest.EnsureContainerStarted(helpers, data.Identifier("c1"))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("container", "rm", "-f", data.Identifier("c1"))
+				helpers.Anyhow("network", "rm", data.Identifier())
+				helpers.Anyhow("network", "rm", data.Identifier("1"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				// A second container on the overlapping network must reach the first one.
+				return helpers.Command("run", "--rm", "--net", data.Identifier(),
+					testutil.CommonImage, "ping", "-c", "1", "-W", "1", data.Identifier("c1"))
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeSuccess,
+					Output: func(stdout string, t tig.T) {
+						netw := nerdtest.InspectNetwork(helpers, data.Identifier())
+						assert.Equal(t, len(netw.IPAM.Config), 1)
+						assert.Equal(t, netw.IPAM.Config[0].Subnet, "10.7.0.0/25")
+						ip := helpers.Capture("container", "inspect", "--format",
+							fmt.Sprintf("{{(index .NetworkSettings.Networks %q).IPAddress}}", data.Identifier()),
+							data.Identifier("c1"))
+						_, subnet, _ := net.ParseCIDR("10.7.0.0/25")
+						assert.Assert(t, subnet.Contains(net.ParseIP(strings.TrimSpace(ip))), "unexpected IP %q", ip)
+					},
+				}
+			},
+		},
 	}
 
 	testCase.Run(t)
