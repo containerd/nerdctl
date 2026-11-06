@@ -612,6 +612,9 @@ func TestRunDeviceCgroupRule(t *testing.T) {
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 		},
 		{
+			// Both CLIs reject the missing minor, but with different wording
+			// (nerdctl: "invalid device cgroup rule format", docker: "invalid
+			// device cgroup format"), so only the common prefix is matched.
 			Description: "a malformed rule is rejected",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm",
@@ -621,7 +624,7 @@ func TestRunDeviceCgroupRule(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeGenericFail,
-					Errors:   []error{fmt.Errorf("invalid device cgroup rule format")},
+					Errors:   []error{fmt.Errorf("invalid device cgroup")},
 				}
 			},
 		},
@@ -636,9 +639,31 @@ func TestRunDeviceCgroupRule(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeGenericFail,
-					Errors:   []error{fmt.Errorf("invalid device cgroup rule format")},
+					Errors:   []error{fmt.Errorf("invalid device cgroup")},
 				}
 			},
+		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestRunDeviceCgroupRuleDefaultDevices(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			// The rule only grants access to a non-standard major number (189,
+			// nvidia GPU), so the container's access to /dev/null, /dev/zero and
+			// /dev/urandom must come from the default allow list in the spec.
+			Description: "standard devices remain accessible",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--device-cgroup-rule", "c 189:* rmw",
+					testutil.AlpineImage, "sh", "-c",
+					"cat /dev/null && head -c 1 /dev/zero > /dev/null && head -c 1 /dev/urandom > /dev/null && echo ok")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("ok")),
 		},
 	}
 
