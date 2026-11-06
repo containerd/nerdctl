@@ -209,6 +209,73 @@ func TestStopCleanupForwards(t *testing.T) {
 	testCase.Run(t)
 }
 
+// Regression test for https://github.com/containerd/nerdctl/issues/5323
+// `stop` and `kill` give the IP address back to IPAM, so they must also remove the container from /etc/hosts.
+// Otherwise the stale entry can shadow the next container that gets the same address.
+func TestStopKillReleaseHostsEntry(t *testing.T) {
+	testCase := nerdtest.Setup()
+	// Docker does not write other containers into /etc/hosts.
+	testCase.Require = require.Not(nerdtest.Docker)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		data.Labels().Set("network", data.Identifier())
+		data.Labels().Set("peer", data.Identifier("peer"))
+		helpers.Ensure("network", "create", data.Labels().Get("network"))
+		helpers.Ensure("run", "-d", "--name", data.Labels().Get("peer"), "--network", data.Labels().Get("network"),
+			testutil.CommonImage, "sleep", nerdtest.Infinity)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Labels().Get("peer"))
+		helpers.Anyhow("network", "rm", data.Labels().Get("network"))
+	}
+
+	peerHosts := func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("exec", data.Labels().Get("peer"), "cat", "/etc/hosts")
+	}
+
+	for _, op := range []string{"stop", "kill"} {
+		testCase.SubTests = append(testCase.SubTests, &test.Case{
+			Description: op,
+			NoParallel:  true,
+			Setup: func(data test.Data, helpers test.Helpers) {
+				data.Labels().Set("target", data.Identifier())
+				helpers.Ensure("run", "-d", "--name", data.Labels().Get("target"), "--network", data.Labels().Get("network"),
+					testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("exec", data.Labels().Get("peer"), "grep", "-q", data.Labels().Get("target"), "/etc/hosts")
+				helpers.Ensure(op, data.Labels().Get("target"))
+				helpers.Ensure("wait", data.Labels().Get("target"))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Labels().Get("target"))
+			},
+			SubTests: []*test.Case{
+				{
+					Description: "name is removed from peer /etc/hosts",
+					NoParallel:  true,
+					Command:     peerHosts,
+					Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+						return test.Expects(expect.ExitCodeSuccess, nil, expect.DoesNotContain(data.Labels().Get("target")))(data, helpers)
+					},
+				},
+				{
+					Description: "name is back in peer /etc/hosts after start",
+					NoParallel:  true,
+					Setup: func(data test.Data, helpers test.Helpers) {
+						helpers.Ensure("start", data.Labels().Get("target"))
+					},
+					Command: peerHosts,
+					Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+						return test.Expects(expect.ExitCodeSuccess, nil, expect.Contains(data.Labels().Get("target")))(data, helpers)
+					},
+				},
+			},
+		})
+	}
+
+	testCase.Run(t)
+}
+
 // Regression test for https://github.com/containerd/nerdctl/issues/3353
 func TestStopCreated(t *testing.T) {
 	testCase := nerdtest.Setup()

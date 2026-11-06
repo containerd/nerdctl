@@ -35,6 +35,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/clientutil"
 	"github.com/containerd/nerdctl/v2/pkg/containerutil"
+	"github.com/containerd/nerdctl/v2/pkg/dnsutil/hostsstore"
 	"github.com/containerd/nerdctl/v2/pkg/healthcheck"
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
@@ -193,7 +194,15 @@ func cleanupNetwork(ctx context.Context, container containerd.Container, globalO
 				log.L.WithError(err).Errorf("failed to call cni.Remove")
 				return err
 			}
-			return nil
+
+			// The IP address is now back in the pool, so the hosts entry must go too.
+			// Otherwise the stale entry can shadow the next container that gets this address.
+			// See https://github.com/containerd/nerdctl/issues/5323
+			hs, err := hostsstore.New(dataStore, namespace)
+			if err != nil {
+				return err
+			}
+			return hs.Release(container.ID())
 		default:
 			return fmt.Errorf("unexpected network type %v", netType)
 		}
