@@ -87,7 +87,6 @@ services:
 		{
 			Description: "attaches to the service container",
 			NoParallel:  true,
-			Require:     nerdtest.IsFlaky("https://github.com/containerd/nerdctl/issues/5335"),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				cmd := helpers.Command("compose", "-f", data.Labels().Get("composeYAML"), "attach", "svc0")
 				cmd.WithPseudoTTY()
@@ -138,8 +137,7 @@ services:
 							// TODO: temporary, to find out why the input is lost on some CI runs.
 							var procs, state string
 							helpers.Command("exec", container, "sh", "-c",
-								"ps -o pid,stat,args; for fd in 0 1 2; do readlink /proc/1/fd/$fd; done; "+
-									"echo wchan: $(cat /proc/1/wchan); echo syscall: $(cat /proc/1/syscall); stty -a </proc/1/fd/0").
+								"ps -o pid,stat,args; ls -l /proc/1/fd; grep -E 'State|SigBlk|SigIgn' /proc/1/status").
 								Run(logOutput(&procs))
 							helpers.Command("inspect", "--format", "{{json .State}}", container).Run(logOutput(&state))
 							t.Log("container processes:\n" + procs + "\nstate: " + state)
