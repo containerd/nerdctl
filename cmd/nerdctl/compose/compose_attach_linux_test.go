@@ -124,7 +124,24 @@ services:
 						if strings.Contains(stdout, "markmark") {
 							return
 						}
-						written := helpers.Capture("exec", data.Labels().Get("containerName"), "cat", "/tmp/attached")
+						container := data.Labels().Get("containerName")
+						var written string
+						logOutput := func(out *string) *test.Expected {
+							return &test.Expected{
+								ExitCode: expect.ExitCodeNoCheck,
+								Output:   func(stdout string, t tig.T) { *out = stdout },
+							}
+						}
+						helpers.Command("exec", container, "cat", "/tmp/attached").Run(logOutput(&written))
+						if !strings.Contains(written, "markmark") {
+							// TODO: temporary, to find out why the input is lost on some CI runs.
+							var procs, state string
+							helpers.Command("exec", container, "sh", "-c",
+								"ps -o pid,stat,args; ls -l /proc/1/fd; grep -E 'State|SigBlk|SigIgn' /proc/1/status").
+								Run(logOutput(&procs))
+							helpers.Command("inspect", "--format", "{{json .State}}", container).Run(logOutput(&state))
+							t.Log("container processes:\n" + procs + "\nstate: " + state)
+						}
 						assert.Assert(t, strings.Contains(written, "markmark"),
 							"the command sent through attach did not run in the container")
 					},
