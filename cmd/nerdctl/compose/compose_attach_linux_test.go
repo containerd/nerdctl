@@ -117,15 +117,16 @@ services:
 					// https://github.com/containerd/nerdctl/issues/3571
 					ExitCode: 1,
 					Errors:   []error{errors.New("read detach keys")},
-					// The shell's output normally comes back through attach. The pseudo-TTY output can be empty
-					// when attach exits on the detach keys, so fall back to the container logs in that case.
+					// The shell's output normally comes back through attach, but the pseudo-TTY output can be empty
+					// when attach exits on the detach keys. The command also writes its output to a file, so check
+					// that file in the container in that case.
 					Output: func(stdout string, t tig.T) {
 						if strings.Contains(stdout, "markmark") {
 							return
 						}
-						logs := helpers.Capture("logs", data.Labels().Get("containerName"))
-						assert.Assert(t, strings.Contains(logs, "markmark"),
-							"neither the attach output nor the container logs contain the command output")
+						written := helpers.Capture("exec", data.Labels().Get("containerName"), "cat", "/tmp/attached")
+						assert.Assert(t, strings.Contains(written, "markmark"),
+							"the command sent through attach did not run in the container")
 					},
 				}
 			},
