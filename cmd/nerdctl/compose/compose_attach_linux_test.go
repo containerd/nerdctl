@@ -98,7 +98,7 @@ services:
 					reader, writer := io.Pipe()
 					go func() {
 						for range 10 {
-							if _, err := writer.Write([]byte("echo mark${NON}mark\n")); err != nil {
+							if _, err := writer.Write([]byte("echo mark${NON}mark | tee -a /tmp/attached\n")); err != nil {
 								return
 							}
 							time.Sleep(time.Second)
