@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -59,6 +60,81 @@ var (
 	ErrDestinationDirMustExist    = errors.New("the destination directory must exist to be able to copy a file") // * cp SOMEFILE foo:/NONEXISTENT/
 	ErrCannotCopyDirToFile        = errors.New("cannot copy a directory to a file")                              // cp SOMEDIR foo:/etc/issue
 )
+
+const (
+	// procSelfFd is where a process finds its own file descriptors by number.
+	procSelfFd = "/proc/self/fd/"
+	// pinnedDirArg is how the tar process refers to the directory handed to it as the first entry of ExtraFiles,
+	// which becomes its fd 3.
+	pinnedDirArg = procSelfFd + "3"
+)
+
+// openMountRoot opens the container mount whose host path is mountRoot as an os.Root, and returns the path of
+// relativePath inside it. A mount of a single file is opened on its parent directory.
+func openMountRoot(mountRoot, relativePath string) (*os.Root, string, error) {
+	if !filepath.IsAbs(mountRoot) {
+		return nil, "", fmt.Errorf("cannot copy into mount with non-path source %q", mountRoot)
+	}
+	st, err := os.Stat(mountRoot)
+	if err != nil {
+		return nil, "", err
+	}
+	if !st.IsDir() {
+		relativePath = filepath.Join(filepath.Base(mountRoot), relativePath)
+		mountRoot = filepath.Dir(mountRoot)
+	}
+	root, err := os.OpenRoot(mountRoot)
+	if err != nil {
+		return nil, "", err
+	}
+	if relativePath == "" {
+		relativePath = "."
+	}
+	return root, relativePath, nil
+}
+
+// openExtractDir prepares a copy into the container: it creates the destination when it does not exist, and returns
+// a handle on the directory tar extracts into, which is the destination itself if intoDest, and its parent otherwise.
+// A process in the container can replace any component of the destination with a symlink after it has been
+// resolved, and absolute symlinks under /proc/<pid>/root are followed against the host root. Both operations go
+// through an os.Root on the container mount so that they stay inside it, and tar gets the handle rather than a path.
+func openExtractDir(dest *pathSpecifier, intoDest bool) (*os.File, error) {
+	root, rel, err := openMountRoot(dest.mountRoot, dest.relativePath)
+	if err != nil {
+		return nil, errors.Join(ErrFilesystem, err)
+	}
+	defer root.Close()
+
+	// XXX FIXME: this seems wrong. What about ownership? We could be doing that inside a container
+	if !dest.exists {
+		if err = root.Mkdir(rel, 0o755); err != nil {
+			return nil, errors.Join(ErrFilesystem, err)
+		}
+	}
+
+	if !intoDest {
+		rel = filepath.Dir(rel)
+	}
+	dir, err := root.OpenFile(rel, unix.O_PATH|unix.O_DIRECTORY, 0)
+	if err != nil {
+		return nil, errors.Join(ErrFilesystem, err)
+	}
+	return dir, nil
+}
+
+// tarExtractCmd returns the command running tarX, a tar -x command line to which it appends -C and -f, so that tar
+// extracts the archive read from stdin into dir. If pinned (the handle from openExtractDir) is not nil, tar receives
+// it as its fd 3 and extracts there instead of resolving dir again.
+func tarExtractCmd(ctx context.Context, tarX []string, dir string, pinned *os.File) *exec.Cmd {
+	var extraFiles []*os.File
+	if pinned != nil {
+		dir = pinnedDirArg
+		extraFiles = []*os.File{pinned}
+	}
+	cmd := exec.CommandContext(ctx, tarX[0], append(slices.Clone(tarX[1:]), "-C", dir, "-f", "-")...)
+	cmd.ExtraFiles = extraFiles
+	return cmd
+}
 
 // getRoot will tentatively return the root of the container on the host (/proc/pid/root), along with the pid,
 // (eg: doable when the container is running)
@@ -213,8 +289,17 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 		return ErrDestinationDirMustExist
 	}
 
-	// XXX FIXME: this seems wrong. What about ownership? We could be doing that inside a container
-	if !destinationSpec.exists {
+	// tar extracts into the destination itself, or into its parent when copying a file to a new name
+	intoDest := sourceSpec.isADir || destinationSpec.endsWithSeparator || (destinationSpec.exists && destinationSpec.isADir)
+
+	var tarXDirFile *os.File
+	if !options.Container2Host {
+		tarXDirFile, err = openExtractDir(destinationSpec, intoDest)
+		if err != nil {
+			return err
+		}
+		defer tarXDirFile.Close()
+	} else if !destinationSpec.exists {
 		if err = os.Mkdir(destinationSpec.resolvedPath, 0o755); err != nil {
 			return errors.Join(ErrFilesystem, err)
 		}
@@ -272,7 +357,7 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 	}
 
 	tarXDir := destinationSpec.resolvedPath
-	if !sourceSpec.isADir && !destinationSpec.endsWithSeparator && !(destinationSpec.exists && destinationSpec.isADir) {
+	if !intoDest {
 		tarXDir = filepath.Dir(destinationSpec.resolvedPath)
 	}
 	var tarX []string
@@ -283,11 +368,15 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 		if options.Container2Host && isGNUTar {
 			tarX = append(tarX, "--no-same-owner")
 		}
-		tarX = append(tarX, "-C", tarXDir, "-f", "-")
 
 		// tar opens the -C directory by itself and fails with an unhelpful error when the directory
 		// is not accessible, so detect this beforehand.
-		if accessErr := unix.Access(tarXDir, unix.X_OK); errors.Is(accessErr, unix.EACCES) {
+		accessPath := tarXDir
+		if tarXDirFile != nil {
+			// this process has the handle under another number than tar
+			accessPath = procSelfFd + strconv.Itoa(int(tarXDirFile.Fd()))
+		}
+		if accessErr := unix.Access(accessPath, unix.X_OK); errors.Is(accessErr, unix.EACCES) {
 			return ErrTargetIsReadOnly
 		}
 	}
@@ -308,7 +397,12 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 	tarCCmd.Stdin = nil
 	tarCCmd.Stderr = os.Stderr
 
-	tarXCmd := exec.CommandContext(ctx, tarX[0], tarX[1:]...)
+	var tarXCmd *exec.Cmd
+	if destinationSpec.toStdout {
+		tarXCmd = exec.CommandContext(ctx, tarX[0], tarX[1:]...)
+	} else {
+		tarXCmd = tarExtractCmd(ctx, tarX, tarXDir, tarXDirFile)
+	}
 	if sourceSpec.fromStdin {
 		// Reading from tar should pipe stdin into dst
 		tarXCmd.Stdin = bufio.NewReader(os.Stdin)
