@@ -378,6 +378,11 @@ RUN echo "actually creating a layer so that docker sets the createdAt time"
 				),
 			},
 			{
+				Description: "reference=*fragment*",
+				Command:     test.Command("images", "--filter", "reference=*fragment*"),
+				Expected:    test.Expects(0, nil, expect.Contains("one-", "two-")),
+			},
+			{
 				Description: "before=ID:latest",
 				Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 					return helpers.Command("images", "--filter", fmt.Sprintf("before=%s:latest", data.Labels().Get("builtImageID")))

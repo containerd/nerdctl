@@ -343,11 +343,8 @@ func matchesReferences(image images.Image, referencePatterns []string) (bool, er
 		}
 
 		regexpMatch, err := regexp.MatchString(pattern, image.Name)
-		if err != nil {
-			return false, err
-		}
-
-		if familiarMatch || regexpMatch {
+		// A valid glob need not also be a valid regular expression.
+		if familiarMatch || (err == nil && regexpMatch) {
 			matches++
 		}
 	}

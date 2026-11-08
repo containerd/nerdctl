@@ -17,6 +17,7 @@
 package imgutil
 
 import (
+	"path"
 	"testing"
 	"time"
 
@@ -262,6 +263,11 @@ func TestFilterUntil(t *testing.T) {
 }
 
 func TestFilterByReference(t *testing.T) {
+	t.Parallel()
+	wildcardImages := []images.Image{
+		{Name: "docker.io/library/busybox:latest"},
+		{Name: "docker.io/library/alpine:latest"},
+	}
 	tests := []struct {
 		name              string
 		referencePatterns []string
@@ -273,6 +279,43 @@ func TestFilterByReference(t *testing.T) {
 			name:           "EmptyList",
 			images:         []images.Image{},
 			expectedImages: []images.Image{},
+		},
+		{
+			name:              "LeadingWildcardMatchesAll",
+			referencePatterns: []string{"*"},
+			images:            wildcardImages,
+			expectedImages:    wildcardImages,
+		},
+		{
+			name:              "LeadingWildcardWithNonmatchFirst",
+			referencePatterns: []string{"*alpine*"},
+			images:            wildcardImages,
+			expectedImages:    wildcardImages[1:],
+		},
+		{
+			name:              "LeadingWildcardWithoutMatch",
+			referencePatterns: []string{"*does-not-exist*"},
+			images:            wildcardImages,
+			expectedImages:    []images.Image{},
+		},
+		{
+			name:              "RegexpExtension",
+			referencePatterns: []string{"library/(alpine|busybox)"},
+			images:            wildcardImages,
+			expectedImages:    wildcardImages,
+		},
+		{
+			name:              "InvalidGlob",
+			referencePatterns: []string{"["},
+			images:            wildcardImages,
+			expectedImages:    []images.Image{},
+			expectedErr:       path.ErrBadPattern,
+		},
+		{
+			name:              "RequiresAllPatterns",
+			referencePatterns: []string{"*alpine*", "busybox*"},
+			images:            wildcardImages,
+			expectedImages:    []images.Image{},
 		},
 		{
 			name: "MatchByReference",
@@ -329,7 +372,7 @@ func TestFilterByReference(t *testing.T) {
 					Name: ":sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 				},
 			},
-			referencePatterns: []string{"foo"},
+			referencePatterns: []string{"foo", "*foo*"},
 			expectedImages: []images.Image{
 				{
 					Name: "foo:latest",
@@ -340,6 +383,7 @@ func TestFilterByReference(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			actualImages, err := FilterByReference(test.referencePatterns)(test.images)
 			if test.expectedErr == nil {
 				assert.NilError(t, err)
