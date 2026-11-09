@@ -42,7 +42,7 @@ dependencies=(
   containerd/fuse-overlayfs-snapshotter
   gotestyourself/gotestsum
   ipfs/kubo
-  containerd/nydus-snapshotter
+  dragonflyoss/nydus
   containernetworking/plugins
   rootless-containers/rootlesskit
   opencontainers/runc
@@ -64,6 +64,7 @@ FUSE_OVERLAYFS_CHECKSUM=linux
 # Avoids the full build
 BUILDG_CHECKSUM=buildg-v
 ROOTLESSKIT_CHECKSUM=linux
+NYDUS_CHECKSUM=linux
 STARGZ_SNAPSHOTTER_CHECKSUM=linux
 # We specifically want the static ones
 TINI_CHECKSUM=static

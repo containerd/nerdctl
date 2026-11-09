@@ -42,12 +42,12 @@ ARG BUILDG_VERSION=v0.5.3@BINARY
 ARG GOMODJAIL_VERSION=v2.0.1@5924a4079d0f70459a10973f715238dc336478ea
 
 # Test deps
-# Currently, the Docker Official Images and the test deps are not pinned by the hash
+# Some test deps and the Docker Official Images are not pinned by hash
 ARG GO_VERSION=1.26
 ARG UBUNTU_VERSION=26.04
 ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.2
-ARG NYDUS_VERSION=v2.4.5
-ARG SOCI_SNAPSHOTTER_VERSION=0.16.1
+ARG NYDUS_VERSION=v2.4.5@BINARY
+ARG SOCI_SNAPSHOTTER_VERSION=0.16.1@BINARY
 ARG KUBO_VERSION=v0.43.1
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.10.0@sha256:40fe21f44bb8cddf1eb1226db190d0a984118f62ee02a91b77d99448d28264a6 AS xx
@@ -277,18 +277,23 @@ COPY --from=ghcr.io/sigstore/cosign/cosign:v3.0.5@sha256:be924970ba7438c22e18067
 # (the static build, so that it also runs on EL hosts, whose glibc is older than what
 # the default build requires)
 ARG SOCI_SNAPSHOTTER_VERSION
-RUN fname="soci-snapshotter-${SOCI_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}-static.tar.gz" && \
+RUN SOCI_SNAPSHOTTER_VERSION=${SOCI_SNAPSHOTTER_VERSION%%@*}; \
+  fname="soci-snapshotter-${SOCI_SNAPSHOTTER_VERSION}-${TARGETOS:-linux}-${TARGETARCH:-amd64}-static.tar.gz" && \
   curl -o "${fname}" -fsSL --retry 5 --retry-delay 5 --retry-max-time 120 --connect-timeout 20 --proto '=https' --tlsv1.2 "https://github.com/awslabs/soci-snapshotter/releases/download/v${SOCI_SNAPSHOTTER_VERSION}/${fname}" && \
+  grep "${fname}" "/SHA256SUMS.d/soci-snapshotter-v${SOCI_SNAPSHOTTER_VERSION}" | sha256sum -c && \
   tar -C /out/bin -xvf "${fname}" soci soci-snapshotter-grpc && \
   rm -f "${fname}"
 # enable offline ipfs for integration test
 COPY --from=build-kubo /out/${TARGETARCH:-amd64}/* /out/bin/
 # install nydus components
 ARG NYDUS_VERSION
-RUN curl -o nydus-static.tgz -fsSL --retry 5 --retry-delay 5 --retry-max-time 120 --connect-timeout 20 --proto '=https' --tlsv1.2 "https://github.com/dragonflyoss/image-service/releases/download/${NYDUS_VERSION}/nydus-static-${NYDUS_VERSION}-linux-${TARGETARCH}.tgz" && \
-  tar xzf nydus-static.tgz && \
+RUN NYDUS_VERSION=${NYDUS_VERSION%%@*}; \
+  fname="nydus-static-${NYDUS_VERSION}-linux-${TARGETARCH}.tgz" && \
+  curl -o "${fname}" -fsSL --retry 5 --retry-delay 5 --retry-max-time 120 --connect-timeout 20 --proto '=https' --tlsv1.2 "https://github.com/dragonflyoss/nydus/releases/download/${NYDUS_VERSION}/${fname}" && \
+  grep "${fname}" "/SHA256SUMS.d/nydus-${NYDUS_VERSION}" | sha256sum -c && \
+  tar xzf "${fname}" && \
   mv nydus-static/nydus-image nydus-static/nydusd nydus-static/nydusify /out/bin/ && \
-  rm -rf nydus-static.tgz nydus-static
+  rm -rf "${fname}" nydus-static
 # tests need a tini-custom binary
 RUN cp /out/bin/tini /out/bin/tini-custom
 
