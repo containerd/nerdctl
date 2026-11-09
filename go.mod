@@ -24,11 +24,11 @@ require (
 	github.com/containerd/stargz-snapshotter/estargz v0.19.1 //gomodjail:unconfined
 	github.com/containerd/stargz-snapshotter/ipfs v0.19.1 //gomodjail:unconfined
 	github.com/containerd/typeurl/v2 v2.3.0
-	github.com/docker/cli v29.9.2+incompatible //gomodjail:unconfined
+	github.com/docker/cli v29.9.3+incompatible //gomodjail:unconfined
 	github.com/docker/go-connections v0.8.2 //gomodjail:unconfined
 	github.com/docker/go-units v0.5.0
 	github.com/moby/moby/client v0.6.2 //gomodjail:unconfined
-	github.com/moby/moby/v2 v2.0.0-beta.28 //gomodjail:unconfined
+	github.com/moby/moby/v2 v2.0.0-beta.29 //gomodjail:unconfined
 	github.com/moby/sys/mount v0.3.5 //gomodjail:unconfined
 	github.com/moby/sys/signal v0.7.1 //gomodjail:unconfined
 	github.com/moby/sys/user v0.5.0 //gomodjail:unconfined
@@ -41,7 +41,7 @@ require (
 	golang.org/x/crypto v0.58.0
 	golang.org/x/net v0.62.0 //gomodjail:unconfined
 	golang.org/x/sync v0.24.0 //gomodjail:unconfined
-	golang.org/x/sys v0.49.0 //gomodjail:unconfined
+	golang.org/x/sys v0.49.1-0.20261022125458-f5cb0306ac0e //gomodjail:unconfined
 	golang.org/x/term v0.47.0 //gomodjail:unconfined
 	golang.org/x/text v0.43.0
 )
@@ -74,7 +74,7 @@ require (
 	github.com/vishvananda/netlink v1.3.1 //gomodjail:unconfined
 	github.com/vishvananda/netns v0.0.5 //gomodjail:unconfined
 	github.com/yuchanns/srslog v1.1.0 //gomodjail:unconfined
-	go.yaml.in/yaml/v3 v3.0.5
+	go.yaml.in/yaml/v3 v3.0.6
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
 	gotest.tools/v3 v3.5.2 //gomodjail:unconfined
 	tags.cncf.io/container-device-interface v1.1.1 //gomodjail:unconfined
@@ -95,14 +95,14 @@ require (
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/moby/api v1.56.1 // indirect
 	//gomodjail:unconfined
-	github.com/moby/sys/mountinfo v0.7.2 // indirect
+	github.com/moby/sys/mountinfo v0.7.3 // indirect
 	github.com/moby/sys/symlink v0.3.0 // indirect
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
 )
 
 require (
 	cyphar.com/go-pathrs v0.2.5 // indirect
-	github.com/Azure/go-ansiterm v0.0.0-20261006220739-8c912ac31dd4 // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20261013165250-51075c6ea6bc // indirect
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	//gomodjail:unconfined
@@ -119,7 +119,7 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	//gomodjail:unconfined
-	github.com/godbus/dbus/v5 v5.2.2 // indirect
+	github.com/godbus/dbus/v5 v5.2.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	//gomodjail:unconfined
 	github.com/google/uuid v1.6.0 // indirect
@@ -156,22 +156,22 @@ require (
 	//gomodjail:unconfined
 	github.com/stefanberger/go-pkcs11uri v0.0.0-20230803200340-78284954bff6 // indirect
 	//gomodjail:unconfined
-	github.com/tinylib/msgp v1.3.0 // indirect
+	github.com/tinylib/msgp v1.4.0 // indirect
 	//gomodjail:unconfined
 	github.com/vbatts/tar-split v0.12.3 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	//gomodjail:unconfined
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.72.0 // indirect
 	//gomodjail:unconfined
 	go.opentelemetry.io/otel v1.47.0 // indirect
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261012220534-4341edf3f941 // indirect
 	//gomodjail:unconfined
-	google.golang.org/grpc v1.84.0 // indirect
+	google.golang.org/grpc v1.85.0 // indirect
 	//gomodjail:unconfined
 	google.golang.org/protobuf v1.36.12 // indirect
 	//gomodjail:unconfined
