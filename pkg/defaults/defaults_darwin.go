@@ -16,11 +16,17 @@
 
 // This is a dummy file to allow usage of library functions
 // on Darwin-based systems.
-// All functions and variables are empty/no-ops
+// Most functions and variables are stubs/no-ops
 
 package defaults
 
-import gocni "github.com/containerd/go-cni"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	gocni "github.com/containerd/go-cni"
+)
 
 const (
 	AppArmorProfileName = ""
@@ -33,15 +39,24 @@ func CNIPath() string {
 }
 
 func CNIRuntimeDir() (string, error) {
+	if os.Geteuid() != 0 {
+		return filepath.Join(xdgRuntimeDir(), "cni"), nil
+	}
 	return "/var/run/cni", nil
 }
 
 func CNINetConfPath() string {
+	if os.Geteuid() != 0 {
+		return filepath.Join(xdgConfigHome(), "cni", "net.d")
+	}
 	return gocni.DefaultNetDir
 }
 
 func DataRoot() string {
-	return "/var/lib/nerdctl"
+	if os.Geteuid() == 0 {
+		return "/var/lib/nerdctl"
+	}
+	return filepath.Join(xdgDataHome(), "nerdctl")
 }
 
 func CgroupManager() string {
@@ -53,11 +68,21 @@ func CgroupnsMode() string {
 }
 
 func NerdctlTOML() string {
+	if os.Geteuid() != 0 {
+		return filepath.Join(xdgConfigHome(), "nerdctl", "nerdctl.toml")
+	}
 	return "/etc/nerdctl/nerdctl.toml"
 }
 
 func HostsDirs() []string {
-	return []string{}
+	if os.Geteuid() != 0 {
+		xch := xdgConfigHome()
+		return []string{
+			filepath.Join(xch, "containerd", "certs.d"),
+			filepath.Join(xch, "docker", "certs.d"),
+		}
+	}
+	return []string{"/etc/containerd/certs.d", "/etc/docker/certs.d"}
 }
 
 func HostGatewayIP() string {
@@ -65,5 +90,44 @@ func HostGatewayIP() string {
 }
 
 func CDISpecDirs() []string {
+	if os.Geteuid() != 0 {
+		return []string{
+			filepath.Join(xdgConfigHome(), "cdi"),
+			filepath.Join(xdgRuntimeDir(), "cdi"),
+		}
+	}
 	return []string{"/etc/cdi", "/var/run/cdi"}
+}
+
+func xdgConfigHome() string {
+	if xch := os.Getenv("XDG_CONFIG_HOME"); xch != "" {
+		return xch
+	}
+	if home := os.Getenv("HOME"); home != "" {
+		return filepath.Join(home, ".config")
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		return filepath.Join(home, ".config")
+	}
+	return "/etc"
+}
+
+func xdgDataHome() string {
+	if xdh := os.Getenv("XDG_DATA_HOME"); xdh != "" {
+		return xdh
+	}
+	if home := os.Getenv("HOME"); home != "" {
+		return filepath.Join(home, ".local", "share")
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		return filepath.Join(home, ".local", "share")
+	}
+	return "/var/lib"
+}
+
+func xdgRuntimeDir() string {
+	if xdr := os.Getenv("XDG_RUNTIME_DIR"); xdr != "" {
+		return xdr
+	}
+	return fmt.Sprintf("/run/user/%d", os.Geteuid())
 }
