@@ -42,13 +42,13 @@ ARG BUILDG_VERSION=v0.5.3@BINARY
 ARG GOMODJAIL_VERSION=v2.0.1@5924a4079d0f70459a10973f715238dc336478ea
 
 # Test deps
-# Some test deps and the Docker Official Images are not pinned by hash
+# Docker Official Images intentionally track their latest revisions
 ARG GO_VERSION=1.26
 ARG UBUNTU_VERSION=26.04
-ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.2
+ARG CONTAINERIZED_SYSTEMD_VERSION=v0.1.2@3025bfd6df7b4c11ad69cc7bb0bc0874ecdf901a
 ARG NYDUS_VERSION=v2.4.5@BINARY
 ARG SOCI_SNAPSHOTTER_VERSION=0.16.1@BINARY
-ARG KUBO_VERSION=v0.43.1
+ARG KUBO_VERSION=v0.43.1@acc53c093810a8fe9a4bc2f023f0b1e0c1d629b5
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.10.0@sha256:40fe21f44bb8cddf1eb1226db190d0a984118f62ee02a91b77d99448d28264a6 AS xx
 
@@ -237,7 +237,7 @@ COPY --from=build-gomodjail /out/${TARGETARCH:-amd64}/* /out/bin/
 RUN echo "- gomodjail: ${GOMODJAIL_VERSION}" >> /out/share/doc/nerdctl-full/README.md
 ARG CONTAINERIZED_SYSTEMD_VERSION
 RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
-  http::helper github::file AkihiroSuda/containerized-systemd docker-entrypoint.sh "${CONTAINERIZED_SYSTEMD_VERSION}" > /docker-entrypoint.sh && \
+  http::helper github::file AkihiroSuda/containerized-systemd docker-entrypoint.sh "${CONTAINERIZED_SYSTEMD_VERSION##*@}" > /docker-entrypoint.sh && \
   chmod +x /docker-entrypoint.sh
 
 RUN echo "" >> /out/share/doc/nerdctl-full/README.md && \

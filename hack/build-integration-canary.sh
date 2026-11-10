@@ -42,6 +42,7 @@ dependencies=(
   containerd/fuse-overlayfs-snapshotter
   gotestyourself/gotestsum
   ipfs/kubo
+  AkihiroSuda/containerized-systemd
   dragonflyoss/nydus
   containernetworking/plugins
   rootless-containers/rootlesskit
