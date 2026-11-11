@@ -498,11 +498,12 @@ func TestParseDevice(t *testing.T) {
 
 func TestParseDeviceCgroupRule(t *testing.T) {
 	t.Parallel()
+	int64Ptr := func(v int64) *int64 { return &v }
 	type testCase struct {
 		s              string
 		expectedType   string
-		expectedMajor  int64
-		expectedMinor  int64
+		expectedMajor  *int64
+		expectedMinor  *int64
 		expectedAccess string
 		err            string
 	}
@@ -510,29 +511,29 @@ func TestParseDeviceCgroupRule(t *testing.T) {
 		{
 			s:              "c 189:* rmw",
 			expectedType:   "c",
-			expectedMajor:  189,
-			expectedMinor:  -1,
+			expectedMajor:  int64Ptr(189),
+			expectedMinor:  nil,
 			expectedAccess: "rmw",
 		},
 		{
 			s:              "b 8:0 r",
 			expectedType:   "b",
-			expectedMajor:  8,
-			expectedMinor:  0,
+			expectedMajor:  int64Ptr(8),
+			expectedMinor:  int64Ptr(0),
 			expectedAccess: "r",
 		},
 		{
 			s:              "a *:* rwm",
 			expectedType:   "a",
-			expectedMajor:  -1,
-			expectedMinor:  -1,
+			expectedMajor:  nil,
+			expectedMinor:  nil,
 			expectedAccess: "rwm",
 		},
 		{
 			s:              "c *:5 w",
 			expectedType:   "c",
-			expectedMajor:  -1,
-			expectedMinor:  5,
+			expectedMajor:  nil,
+			expectedMinor:  int64Ptr(5),
 			expectedAccess: "w",
 		},
 		{
@@ -540,8 +541,8 @@ func TestParseDeviceCgroupRule(t *testing.T) {
 			// normalizing them, so the rule has to survive unchanged.
 			s:              "a 1:2 rwm",
 			expectedType:   "a",
-			expectedMajor:  1,
-			expectedMinor:  2,
+			expectedMajor:  int64Ptr(1),
+			expectedMinor:  int64Ptr(2),
 			expectedAccess: "rwm",
 		},
 		{
@@ -587,8 +588,8 @@ func TestParseDeviceCgroupRule(t *testing.T) {
 			assert.NilError(t, err)
 			assert.Equal(t, true, rule.Allow)
 			assert.Equal(t, tc.expectedType, rule.Type)
-			assert.Equal(t, tc.expectedMajor, *rule.Major)
-			assert.Equal(t, tc.expectedMinor, *rule.Minor)
+			assert.DeepEqual(t, tc.expectedMajor, rule.Major)
+			assert.DeepEqual(t, tc.expectedMinor, rule.Minor)
 			assert.Equal(t, tc.expectedAccess, rule.Access)
 		} else {
 			assert.ErrorContains(t, err, tc.err)
@@ -612,6 +613,9 @@ func TestRunDeviceCgroupRule(t *testing.T) {
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 		},
 		{
+			// Both CLIs reject the missing minor, but with different wording
+			// (nerdctl: "invalid device cgroup rule format", docker: "invalid
+			// device cgroup format"), so only the common prefix is matched.
 			Description: "a malformed rule is rejected",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm",
@@ -621,7 +625,7 @@ func TestRunDeviceCgroupRule(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeGenericFail,
-					Errors:   []error{fmt.Errorf("invalid device cgroup rule format")},
+					Errors:   []error{fmt.Errorf("invalid device cgroup")},
 				}
 			},
 		},
@@ -636,9 +640,31 @@ func TestRunDeviceCgroupRule(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeGenericFail,
-					Errors:   []error{fmt.Errorf("invalid device cgroup rule format")},
+					Errors:   []error{fmt.Errorf("invalid device cgroup")},
 				}
 			},
+		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestRunDeviceCgroupRuleDefaultDevices(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			// The rule only grants access to a non-standard major number (189,
+			// nvidia GPU), so the container's access to /dev/null, /dev/zero and
+			// /dev/urandom must come from the default allow list in the spec.
+			Description: "standard devices remain accessible",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--device-cgroup-rule", "c 189:* rmw",
+					testutil.AlpineImage, "sh", "-c",
+					"cat /dev/null && head -c 1 /dev/zero > /dev/null && head -c 1 /dev/urandom > /dev/null && echo ok")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("ok")),
 		},
 	}
 
