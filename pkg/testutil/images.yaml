@@ -77,7 +77,7 @@ stargz:
 
 wordpress:
   ref: "ghcr.io/stargz-containers/wordpress"
-  tag: "5.7-org"
+  tag: "6.7.1-org"
 
 fedora_esgz:
   ref: "ghcr.io/stargz-containers/fedora"
