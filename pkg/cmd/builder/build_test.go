@@ -339,7 +339,7 @@ func TestBuildctlResourceArgs(t *testing.T) {
 	tests := []struct {
 		name          string
 		ulimits       []string
-		shmSize       string
+		shmSize       int64
 		cgroupParent  string
 		cgroupManager string
 		expected      []string
@@ -360,24 +360,19 @@ func TestBuildctlResourceArgs(t *testing.T) {
 			expectedErr: `invalid ulimit "nofile"`,
 		},
 		{
-			name:     "shm-size is converted to bytes",
-			shmSize:  "64m",
+			name:     "shm-size is passed in bytes",
+			shmSize:  64 << 20,
 			expected: []string{"--opt=shm-size=67108864"},
 		},
 		{
-			name:        "invalid shm-size",
-			shmSize:     "lots",
-			expectedErr: `invalid shm-size "lots"`,
-		},
-		{
-			name:        "zero shm-size",
-			shmSize:     "0",
-			expectedErr: "must be greater than 0",
+			name:        "negative shm-size",
+			shmSize:     -1,
+			expectedErr: "must not be negative",
 		},
 		{
 			name:          "all flags",
 			ulimits:       []string{"nofile=1024"},
-			shmSize:       "1g",
+			shmSize:       1 << 30,
 			cgroupParent:  "build.slice",
 			cgroupManager: "systemd",
 			expected: []string{

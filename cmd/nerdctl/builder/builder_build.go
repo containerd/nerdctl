@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/log"
@@ -195,7 +196,11 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
 	}
-	shmSize, err := cmd.Flags().GetString("shm-size")
+	shmSizeStr, err := cmd.Flags().GetString("shm-size")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
+	shmSize, err := parseShmSize(shmSizeStr)
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
 	}
@@ -314,4 +319,19 @@ func canonicalizeAttest(attestType string, in string) string {
 		return fmt.Sprintf("type=%s,disabled=%t", attestType, !b)
 	}
 	return fmt.Sprintf("type=%s,%s", attestType, in)
+}
+
+// parseShmSize converts a --shm-size value such as "64m" to bytes. An empty value returns 0.
+func parseShmSize(s string) (int64, error) {
+	if s == "" {
+		return 0, nil
+	}
+	size, err := units.RAMInBytes(s)
+	if err != nil {
+		return 0, fmt.Errorf("invalid shm-size %q: %w", s, err)
+	}
+	if size <= 0 {
+		return 0, fmt.Errorf("invalid shm-size %q: must be greater than 0", s)
+	}
+	return size, nil
 }

@@ -1098,6 +1098,23 @@ RUN test "$(df -k /dev/shm | awk 'NR==2 {print $2}')" = "65536"
 	testCase.Run(t)
 }
 
+func TestBuildInvalidShmSize(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Require: nerdtest.Build,
+		Setup: func(data test.Data, helpers test.Helpers) {
+			data.Temp().Save(fmt.Sprintf("FROM %s\n", testutil.CommonImage), "Dockerfile")
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("build", data.Temp().Path(), "--shm-size", "lots")
+		},
+		Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
+	}
+
+	testCase.Run(t)
+}
+
 func TestBuildWithBuildkitConfig(t *testing.T) {
 	nerdtest.Setup()
 

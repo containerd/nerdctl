@@ -669,7 +669,7 @@ func readOCIIndexFromPath(path string) (*ocispec.Index, error) {
 
 // buildctlResourceArgs converts the --ulimit, --shm-size and --cgroup-parent flags into
 // dockerfile frontend attributes. These apply to each RUN instruction, not to the build as a whole.
-func buildctlResourceArgs(ulimits []string, shmSize, cgroupParent, cgroupManager string) ([]string, error) {
+func buildctlResourceArgs(ulimits []string, shmSize int64, cgroupParent, cgroupManager string) ([]string, error) {
 	var args []string
 	if len(ulimits) > 0 {
 		for _, u := range ulimits {
@@ -680,16 +680,11 @@ func buildctlResourceArgs(ulimits []string, shmSize, cgroupParent, cgroupManager
 		// BuildKit reads all ulimits from a single comma-separated attribute
 		args = append(args, "--opt=ulimit="+strings.Join(ulimits, ","))
 	}
-	if shmSize != "" {
-		size, err := units.RAMInBytes(shmSize)
-		if err != nil {
-			return nil, fmt.Errorf("invalid shm-size %q: %w", shmSize, err)
-		}
-		if size <= 0 {
-			return nil, fmt.Errorf("invalid shm-size %q: must be greater than 0", shmSize)
-		}
-		// BuildKit expects plain bytes, without a unit suffix
-		args = append(args, "--opt=shm-size="+strconv.FormatInt(size, 10))
+	if shmSize < 0 {
+		return nil, fmt.Errorf("invalid shm-size %d: must not be negative", shmSize)
+	}
+	if shmSize > 0 {
+		args = append(args, "--opt=shm-size="+strconv.FormatInt(shmSize, 10))
 	}
 	if cgroupParent != "" {
 		parent, err := buildkitCgroupParent(cgroupParent, cgroupManager)
