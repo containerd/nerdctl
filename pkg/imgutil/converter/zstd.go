@@ -35,10 +35,10 @@ import (
 )
 
 // ZstdLayerConvertFunc converts legacy tar.gz layers into zstd layers with
-// the specified compression level.
+// the specified compression level. Layers that are already zstd are left unchanged.
 func ZstdLayerConvertFunc(options types.ImageConvertOptions) (converter.ConvertFunc, error) {
 	return func(ctx context.Context, cs content.Store, desc ocispec.Descriptor) (*ocispec.Descriptor, error) {
-		if !images.IsLayerType(desc.MediaType) {
+		if !images.IsLayerType(desc.MediaType) || desc.MediaType == ocispec.MediaTypeImageLayerZstd {
 			// No conversion. No need to return an error here.
 			return nil, nil
 		}
