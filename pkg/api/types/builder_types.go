@@ -76,6 +76,12 @@ type BuilderBuildOptions struct {
 	// SourcePolicyFile is the path to a BuildKit source policy file.
 	// Passed through to buildctl as --source-policy-file.
 	SourcePolicyFile string
+	// Ulimit is a list of ulimits for RUN instructions (format: "name=soft[:hard]")
+	Ulimit []string
+	// ShmSize is the size of /dev/shm for RUN instructions, in bytes. 0 leaves the BuildKit default.
+	ShmSize int64
+	// CgroupParent is the parent cgroup for RUN instructions
+	CgroupParent string
 }
 
 // BuilderDiskUsageOptions specifies options for querying the build cache disk usage.

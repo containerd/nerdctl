@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 
 	"github.com/containerd/log"
@@ -47,6 +48,10 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	}
 	cmd.Flags().String("buildkit-host", "", "BuildKit address")
 	cmd.Flags().StringArray("add-host", nil, "Add a custom host-to-IP mapping (format: \"host:ip\")")
+	// ulimit is defined as StringSlice, not StringArray, to match "nerdctl run --ulimit"
+	cmd.Flags().StringSlice("ulimit", nil, "Ulimit options for RUN instructions (format: \"name=soft[:hard]\")")
+	cmd.Flags().String("shm-size", "", "Size of /dev/shm for RUN instructions")
+	cmd.Flags().String("cgroup-parent", "", "Optional parent cgroup for RUN instructions")
 	cmd.Flags().StringArrayP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
 	cmd.Flags().StringP("file", "f", "", "Name of the Dockerfile")
 	cmd.Flags().String("target", "", "Set the target build stage to build")
@@ -187,6 +192,22 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
 	}
+	ulimit, err := cmd.Flags().GetStringSlice("ulimit")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
+	shmSizeStr, err := cmd.Flags().GetString("shm-size")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
+	shmSize, err := parseShmSize(shmSizeStr)
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
+	cgroupParent, err := cmd.Flags().GetString("cgroup-parent")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
 
 	attest, err := cmd.Flags().GetStringArray("attest")
 	if err != nil {
@@ -252,6 +273,9 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 		ExtendedBuildContext: extendedBuildCtx,
 		ExtraHosts:           extraHosts,
 		SourcePolicyFile:     sourcePolicyFile,
+		Ulimit:               ulimit,
+		ShmSize:              shmSize,
+		CgroupParent:         cgroupParent,
 	}, nil
 }
 
@@ -295,4 +319,19 @@ func canonicalizeAttest(attestType string, in string) string {
 		return fmt.Sprintf("type=%s,disabled=%t", attestType, !b)
 	}
 	return fmt.Sprintf("type=%s,%s", attestType, in)
+}
+
+// parseShmSize converts a --shm-size value such as "64m" to bytes. An empty value returns 0.
+func parseShmSize(s string) (int64, error) {
+	if s == "" {
+		return 0, nil
+	}
+	size, err := units.RAMInBytes(s)
+	if err != nil {
+		return 0, fmt.Errorf("invalid shm-size %q: %w", s, err)
+	}
+	if size <= 0 {
+		return 0, fmt.Errorf("invalid shm-size %q: must be greater than 0", s)
+	}
+	return size, nil
 }

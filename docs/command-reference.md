@@ -807,6 +807,11 @@ Flags:
 - :whale: `--network=(default|host|none)`: Set the networking mode for the RUN instructions during build.(compatible with `buildctl build`)
 - :whale: `--build-context`: Set additional contexts for build (e.g. dir2=/path/to/dir2, myorg/myapp=docker-image://path/to/myorg/myapp)
 - :whale: `--add-host`: Add a custom host-to-IP mapping (format: `host:ip`)
+- :whale: `--ulimit`: Ulimit options for `RUN` instructions (format: `name=soft[:hard]`, e.g. `nofile=1024:2048`)
+- :whale: `--shm-size`: Size of `/dev/shm` for `RUN` instructions (e.g. `64m`)
+- :whale: `--cgroup-parent`: Parent cgroup for `RUN` instructions. With the systemd cgroup manager this must be a slice (`xxx.slice`), like for `nerdctl run`.
+  These three flags apply to each `RUN` instruction separately, not to the build as a whole.
+  `--cgroup-parent` is ignored by rootless BuildKit ([moby/buildkit#7287](https://github.com/moby/buildkit/issues/7287)).
 - :nerd_face: `--source-policy-file`: BuildKit source policy JSON file for reproducible builds. See [BuildKit build-repro docs](https://github.com/moby/buildkit/blob/master/docs/build-repro.md).
   For compatibility with Docker Buildx, the `EXPERIMENTAL_BUILDKIT_SOURCE_POLICY` environment variable is also supported. Example no-op policy: `{"rules":[]}`
 

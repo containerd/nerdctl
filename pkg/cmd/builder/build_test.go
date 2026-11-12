@@ -332,3 +332,117 @@ func TestGetDigestFromMetaFile(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildctlResourceArgs(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		ulimits       []string
+		shmSize       int64
+		cgroupParent  string
+		cgroupManager string
+		expected      []string
+		expectedErr   string
+	}{
+		{
+			name:     "no flags",
+			expected: nil,
+		},
+		{
+			name:     "ulimits are joined into one attribute",
+			ulimits:  []string{"nofile=1024:2048", "nproc=100"},
+			expected: []string{"--opt=ulimit=nofile=1024:2048,nproc=100"},
+		},
+		{
+			name:        "invalid ulimit",
+			ulimits:     []string{"nofile"},
+			expectedErr: `invalid ulimit "nofile"`,
+		},
+		{
+			name:     "shm-size is passed in bytes",
+			shmSize:  64 << 20,
+			expected: []string{"--opt=shm-size=67108864"},
+		},
+		{
+			name:        "negative shm-size",
+			shmSize:     -1,
+			expectedErr: "must not be negative",
+		},
+		{
+			name:          "all flags",
+			ulimits:       []string{"nofile=1024"},
+			shmSize:       1 << 30,
+			cgroupParent:  "build.slice",
+			cgroupManager: "systemd",
+			expected: []string{
+				"--opt=ulimit=nofile=1024",
+				"--opt=shm-size=1073741824",
+				"--opt=cgroup-parent=build.slice:buildkit:",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			args, err := buildctlResourceArgs(tc.ulimits, tc.shmSize, tc.cgroupParent, tc.cgroupManager)
+			if tc.expectedErr != "" {
+				assert.ErrorContains(t, err, tc.expectedErr)
+				return
+			}
+			assert.NilError(t, err)
+			assert.DeepEqual(t, args, tc.expected)
+		})
+	}
+}
+
+func TestBuildkitCgroupParent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		cgroupParent  string
+		cgroupManager string
+		expected      string
+		expectedErr   string
+	}{
+		{
+			name:          "systemd slice gets the buildkit prefix",
+			cgroupParent:  "build.slice",
+			cgroupManager: "systemd",
+			expected:      "build.slice:buildkit:",
+		},
+		{
+			name:          "BuildKit systemd form is passed through",
+			cgroupParent:  "build.slice:custom:",
+			cgroupManager: "systemd",
+			expected:      "build.slice:custom:",
+		},
+		{
+			name:          "systemd requires a slice",
+			cgroupParent:  "/build",
+			cgroupManager: "systemd",
+			expectedErr:   `should be a valid slice named as "xxx.slice"`,
+		},
+		{
+			name:          "cgroupfs path is passed through",
+			cgroupParent:  "/build",
+			cgroupManager: "cgroupfs",
+			expected:      "/build",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			parent, err := buildkitCgroupParent(tc.cgroupParent, tc.cgroupManager)
+			if tc.expectedErr != "" {
+				assert.ErrorContains(t, err, tc.expectedErr)
+				return
+			}
+			assert.NilError(t, err)
+			assert.Equal(t, parent, tc.expected)
+		})
+	}
+}

@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/docker/go-units"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -502,6 +503,12 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		buildctlArgs = append(buildctlArgs, "--opt=add-hosts="+strings.Join(extraHosts, ","))
 	}
 
+	resourceArgs, err := buildctlResourceArgs(options.Ulimit, options.ShmSize, options.CgroupParent, options.GOptions.CgroupManager)
+	if err != nil {
+		return "", nil, false, "", nil, nil, err
+	}
+	buildctlArgs = append(buildctlArgs, resourceArgs...)
+
 	// Source policy file: use explicit option if set, otherwise fallback to env var for Buildx compatibility
 	if sourcePolicyFile := GetEffectiveSourcePolicyFile(options.SourcePolicyFile); sourcePolicyFile != "" {
 		buildctlArgs = append(buildctlArgs, "--source-policy-file="+sourcePolicyFile)
@@ -658,4 +665,53 @@ func readOCIIndexFromPath(path string) (*ocispec.Index, error) {
 		return nil, err
 	}
 	return ociIndex, nil
+}
+
+// buildctlResourceArgs converts the --ulimit, --shm-size and --cgroup-parent flags into
+// dockerfile frontend attributes. These apply to each RUN instruction, not to the build as a whole.
+func buildctlResourceArgs(ulimits []string, shmSize int64, cgroupParent, cgroupManager string) ([]string, error) {
+	var args []string
+	if len(ulimits) > 0 {
+		for _, u := range ulimits {
+			if _, err := units.ParseUlimit(u); err != nil {
+				return nil, fmt.Errorf("invalid ulimit %q: %w", u, err)
+			}
+		}
+		// BuildKit reads all ulimits from a single comma-separated attribute
+		args = append(args, "--opt=ulimit="+strings.Join(ulimits, ","))
+	}
+	if shmSize < 0 {
+		return nil, fmt.Errorf("invalid shm-size %d: must not be negative", shmSize)
+	}
+	if shmSize > 0 {
+		args = append(args, "--opt=shm-size="+strconv.FormatInt(shmSize, 10))
+	}
+	if cgroupParent != "" {
+		parent, err := buildkitCgroupParent(cgroupParent, cgroupManager)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, "--opt=cgroup-parent="+parent)
+	}
+	return args, nil
+}
+
+// buildkitCgroupParent converts a --cgroup-parent value into the form BuildKit expects.
+//
+// BuildKit only treats the parent as a systemd slice when it contains ".slice" and ends with ":",
+// and then appends the step ID directly. Anything else becomes the cgroupfs path
+// /<parent>/buildkit/<id>. With the systemd cgroup manager, "nerdctl run" accepts "xxx.slice",
+// so the same value is turned into "xxx.slice:buildkit:" here. Values already in BuildKit's
+// systemd form are passed through as is.
+func buildkitCgroupParent(cgroupParent, cgroupManager string) (string, error) {
+	if cgroupManager != "systemd" {
+		return cgroupParent, nil
+	}
+	if strings.Contains(cgroupParent, ".slice") && strings.HasSuffix(cgroupParent, ":") {
+		return cgroupParent, nil
+	}
+	if len(cgroupParent) <= len(".slice") || !strings.HasSuffix(cgroupParent, ".slice") {
+		return "", errors.New(`cgroup-parent for systemd cgroup should be a valid slice named as "xxx.slice"`)
+	}
+	return cgroupParent + ":buildkit:", nil
 }
