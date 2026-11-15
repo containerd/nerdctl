@@ -70,7 +70,7 @@ func setPlatformOptions(
 				return nil, fmt.Errorf("failed to parse memory bytes %q: %w", options.Memory, err)
 			}
 			uvmMemmory := map[string]string{
-				uvmMemorySizeInMB: fmt.Sprintf("%v", mem64),
+				uvmMemorySizeInMB: fmt.Sprintf("%v", mem64/units.MiB),
 			}
 			opts = append(opts, oci.WithAnnotations(uvmMemmory))
 		}
