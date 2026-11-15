@@ -30,6 +30,7 @@ import (
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
 
+	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
 	"github.com/containerd/nerdctl/mod/tigron/tig"
 
@@ -1077,4 +1078,69 @@ func cpContainerSubTest(description string, tc testcases, copyToContainer bool, 
 			return exp
 		},
 	}
+}
+
+// TestCopyToContainerPinsDestination swaps the destination directory for a symlink to a host directory right before
+// tar extracts, from a wrapper around tar, and checks that the copy still lands in the container.
+func TestCopyToContainerPinsDestination(t *testing.T) {
+	testCase := nerdtest.Setup()
+	// The wrapper reaches the container through /proc/<pid>/root, and is picked up through $TAR by nerdctl only.
+	testCase.Require = require.All(require.Not(nerdtest.Docker), nerdtest.Rootful)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		tarBinary, _, err := tarutil.FindTarBinary()
+		assert.NilError(t, err)
+		tempDir := t.TempDir()
+		outside := filepath.Join(tempDir, "outside")
+		assert.NilError(t, os.Mkdir(outside, dirPerm))
+		sourceFile := filepath.Join(tempDir, "payload")
+		assert.NilError(t, os.WriteFile(sourceFile, []byte(data.Identifier()), filePerm))
+
+		helpers.Ensure("run", "-d", "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+		nerdtest.EnsureContainerStarted(helpers, data.Identifier())
+		helpers.Ensure("exec", data.Identifier(), "mkdir", "-p", "/data/x")
+		pid := strings.TrimSpace(helpers.Capture("inspect", "--format", "{{.State.Pid}}", data.Identifier()))
+
+		// Before extracting, move the destination aside and put a symlink to a host directory in its place, as a
+		// process in the container could.
+		dest := fmt.Sprintf("/proc/%s/root/data/x", pid)
+		wrapper := filepath.Join(tempDir, "tar")
+		script := fmt.Sprintf(`#!/bin/sh
+for arg; do
+	if [ "$arg" = -x ]; then
+		mv %[1]q %[1]q.orig && ln -s %[2]q %[1]q || exit 1
+	fi
+done
+exec %[3]q "$@"
+`, dest, outside, tarBinary)
+		assert.NilError(t, os.WriteFile(wrapper, []byte(script), 0o755))
+
+		data.Labels().Set("wrapper", wrapper)
+		data.Labels().Set("outside", outside)
+		data.Labels().Set("sourceFile", sourceFile)
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("rm", "-f", data.Identifier())
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command("cp", data.Labels().Get("sourceFile"), data.Identifier()+":/data/x")
+		cmd.Setenv("TAR", data.Labels().Get("wrapper"))
+		return cmd
+	}
+
+	testCase.Expected = func(data test.Data, helpers test.Helpers) *test.Expected {
+		return &test.Expected{
+			Output: func(stdout string, t tig.T) {
+				entries, err := os.ReadDir(data.Labels().Get("outside"))
+				assert.NilError(t, err)
+				assert.Equal(t, len(entries), 0, "the copy followed the symlink out of the container")
+				assert.Equal(t, helpers.Capture("exec", data.Identifier(), "cat", "/data/x.orig/payload"), data.Identifier(),
+					"the copy did not land in the directory nerdctl opened")
+			},
+		}
+	}
+
+	testCase.Run(t)
 }

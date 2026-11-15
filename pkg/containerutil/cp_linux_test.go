@@ -19,6 +19,7 @@ package containerutil
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
+	"golang.org/x/sys/unix"
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/containerd/v2/pkg/oci"
@@ -90,7 +92,7 @@ func TestOpenExtractDir(t *testing.T) {
 	// a file copied to a new name: the destination is created, as before, and tar extracts into the parent
 	spec, err := getPathSpecFromContainer("/data/x/newname", conSpec, root)
 	assert.NilError(t, err)
-	dir, err := openExtractDir(spec, false)
+	dir, err := openExtractDir(spec, false, "")
 	assert.NilError(t, err)
 	assert.Equal(t, handlePath(t, dir), filepath.Join(root, "data", "x"))
 	assert.NilError(t, dir.Close())
@@ -101,7 +103,7 @@ func TestOpenExtractDir(t *testing.T) {
 	// a directory copied to a new name in a volume: the destination is created and tar extracts into it
 	spec, err = getPathSpecFromContainer("/vol/newdir", conSpec, root)
 	assert.NilError(t, err)
-	dir, err = openExtractDir(spec, true)
+	dir, err = openExtractDir(spec, true, "")
 	assert.NilError(t, err)
 	assert.Equal(t, handlePath(t, dir), filepath.Join(volume, "newdir"))
 	assert.NilError(t, dir.Close())
@@ -121,14 +123,14 @@ func TestOpenExtractDirFileBindMount(t *testing.T) {
 
 	spec, err := getPathSpecFromContainer("/etc/hosts", conSpec, root)
 	assert.NilError(t, err)
-	dir, err := openExtractDir(spec, false)
+	dir, err := openExtractDir(spec, false, "")
 	assert.NilError(t, err)
 	defer dir.Close()
 	assert.Equal(t, handlePath(t, dir), hostDir)
 }
 
 func TestOpenExtractDirRejectsNonPathSource(t *testing.T) {
-	_, err := openExtractDir(&pathSpecifier{mountRoot: "tmpfs", relativePath: "x"}, true)
+	_, err := openExtractDir(&pathSpecifier{mountRoot: "tmpfs", relativePath: "x"}, true, "")
 	assert.Assert(t, errors.Is(err, ErrFilesystem))
 	assert.ErrorContains(t, err, "non-path source")
 }
@@ -148,31 +150,136 @@ func TestOpenExtractDirSwapped(t *testing.T) {
 		{"relative symlink, created destination", true, "/data/x/new", true},
 		{"absolute symlink, file to new name", false, "/data/x/newname", false},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root, _, conSpec := containerRoot(t)
-			outside := tempDir(t)
-			spec, err := getPathSpecFromContainer(tc.dest, conSpec, root)
-			assert.NilError(t, err)
-
-			target := outside
-			if tc.relative {
-				target, err = filepath.Rel(filepath.Join(root, "data"), outside)
+		for _, running := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s, running=%v", tc.name, running), func(t *testing.T) {
+				root, _, conSpec := containerRoot(t)
+				outside := tempDir(t)
+				spec, err := getPathSpecFromContainer(tc.dest, conSpec, root)
 				assert.NilError(t, err)
-			}
-			swapForSymlink(t, filepath.Join(root, "data", "x"), target)
 
-			dir, err := openExtractDir(spec, tc.intoDest)
-			if err == nil {
-				p := handlePath(t, dir)
-				dir.Close()
-				t.Fatalf("opened %s outside of the container", p)
-			}
-			assert.Assert(t, errors.Is(err, ErrFilesystem), err)
-			entries, err := os.ReadDir(outside)
+				target := outside
+				if tc.relative {
+					target, err = filepath.Rel(filepath.Join(root, "data"), outside)
+					assert.NilError(t, err)
+				}
+				swapForSymlink(t, filepath.Join(root, "data", "x"), target)
+
+				liveRoot := ""
+				if running {
+					liveRoot = root
+				}
+				dir, err := openExtractDir(spec, tc.intoDest, liveRoot)
+				if err == nil {
+					p := handlePath(t, dir)
+					dir.Close()
+					t.Fatalf("opened %s outside of the container", p)
+				}
+				assert.Assert(t, errors.Is(err, ErrFilesystem), err)
+				assertEmpty(t, outside)
+			})
+		}
+	}
+}
+
+func assertEmpty(t *testing.T, dir string) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	assert.NilError(t, err)
+	assert.Equal(t, len(entries), 0, "created something outside of the container")
+}
+
+// bindMount bind mounts src on dst for the duration of the test, standing in for a mount of the container.
+func bindMount(t *testing.T, src, dst string) {
+	t.Helper()
+	if os.Geteuid() != 0 {
+		t.Skip("bind mounts require root")
+	}
+	assert.NilError(t, unix.Mount(src, dst, "", unix.MS_BIND, ""))
+	t.Cleanup(func() {
+		assert.NilError(t, unix.Unmount(dst, unix.MNT_DETACH))
+	})
+}
+
+// sharedMounts returns a running container standing in for /proc/<pid>/root, where the host directory share is
+// mounted at /parent and share/a/vol at /vol, so that the container can rename the host source of /vol.
+func sharedMounts(t *testing.T) (string, string, *oci.Spec) {
+	t.Helper()
+	root := tempDir(t)
+	share := tempDir(t)
+	assert.NilError(t, os.MkdirAll(filepath.Join(share, "a", "vol"), 0o755))
+	assert.NilError(t, os.MkdirAll(filepath.Join(root, "parent"), 0o755))
+	assert.NilError(t, os.MkdirAll(filepath.Join(root, "vol"), 0o755))
+	bindMount(t, share, filepath.Join(root, "parent"))
+	bindMount(t, filepath.Join(share, "a", "vol"), filepath.Join(root, "vol"))
+	return root, share, &oci.Spec{
+		Root: &specs.Root{Path: "rootfs"},
+		Mounts: []specs.Mount{
+			{Destination: "/parent", Source: share, Options: []string{"rbind"}},
+			{Destination: "/vol", Source: filepath.Join(share, "a", "vol"), Options: []string{"rbind"}},
+		},
+	}
+}
+
+// TestOpenExtractDirSwappedMountSource renames the host source of a mount, or one of its parents, from the
+// container through another mount, and puts a symlink to a host directory in its place. In a running container,
+// the copy still goes into the directory mounted in the container.
+func TestOpenExtractDirSwappedMountSource(t *testing.T) {
+	for _, swapped := range []string{filepath.Join("a", "vol"), "a"} {
+		t.Run(swapped, func(t *testing.T) {
+			root, share, conSpec := sharedMounts(t)
+			outside := tempDir(t)
+			assert.NilError(t, os.MkdirAll(filepath.Join(outside, "vol"), 0o755))
+			spec, err := getPathSpecFromContainer("/vol/new", conSpec, root)
 			assert.NilError(t, err)
-			assert.Equal(t, len(entries), 0, "created something outside of the container")
+
+			// the symlink leads to a host directory laid out like the one it replaces
+			target, created := filepath.Join(outside, "vol"), filepath.Join(share, "a", "vol.orig", "new")
+			if swapped == "a" {
+				target, created = outside, filepath.Join(share, "a.orig", "vol", "new")
+			}
+			swapForSymlink(t, filepath.Join(root, "parent", swapped), target)
+
+			dir, err := openExtractDir(spec, true, root)
+			assert.NilError(t, err)
+			defer dir.Close()
+			assert.Equal(t, handlePath(t, dir), filepath.Join(root, "vol", "new"))
+			_, err = os.Lstat(created)
+			assert.NilError(t, err, "the destination was not created in the mounted directory")
+			assertEmpty(t, filepath.Join(outside, "vol"))
 		})
 	}
+}
+
+// TestOpenExtractDirFileBindMountSwapped does the same for a mount of a single file: the copy goes into the
+// directory of its host source only while that is still the file mounted in the container.
+func TestOpenExtractDirFileBindMountSwapped(t *testing.T) {
+	root, share, conSpec := sharedMounts(t)
+	hosts := filepath.Join(share, "d", "hosts")
+	assert.NilError(t, os.MkdirAll(filepath.Dir(hosts), 0o755))
+	assert.NilError(t, os.WriteFile(hosts, nil, 0o644))
+	assert.NilError(t, os.MkdirAll(filepath.Join(root, "etc"), 0o755))
+	assert.NilError(t, os.WriteFile(filepath.Join(root, "etc", "hosts"), nil, 0o644))
+	bindMount(t, hosts, filepath.Join(root, "etc", "hosts"))
+	conSpec.Mounts = append(conSpec.Mounts, specs.Mount{Destination: "/etc/hosts", Source: hosts, Options: []string{"rbind"}})
+
+	spec, err := getPathSpecFromContainer("/etc/hosts", conSpec, root)
+	assert.NilError(t, err)
+	dir, err := openExtractDir(spec, false, root)
+	assert.NilError(t, err)
+	assert.Equal(t, handlePath(t, dir), filepath.Dir(hosts))
+	assert.NilError(t, dir.Close())
+
+	outside := tempDir(t)
+	assert.NilError(t, os.WriteFile(filepath.Join(outside, "hosts"), nil, 0o644))
+	swapForSymlink(t, filepath.Join(root, "parent", "d"), outside)
+	dir, err = openExtractDir(spec, false, root)
+	if err == nil {
+		p := handlePath(t, dir)
+		dir.Close()
+		t.Fatalf("opened %s outside of the container", p)
+	}
+	assert.Assert(t, errors.Is(err, ErrFilesystem), err)
+	assert.ErrorContains(t, err, "is not the file mounted in the container")
 }
 
 func TestTarExtractCmdUnpinned(t *testing.T) {
@@ -196,7 +303,7 @@ func TestTarExtractCmd(t *testing.T) {
 
 	spec, err := getPathSpecFromContainer("/data/x", conSpec, root)
 	assert.NilError(t, err)
-	dir, err := openExtractDir(spec, true)
+	dir, err := openExtractDir(spec, true, "")
 	assert.NilError(t, err)
 	defer dir.Close()
 
