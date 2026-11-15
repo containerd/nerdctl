@@ -19,7 +19,7 @@ require (
 	//gosocialcheck:trusted
 	github.com/containerd/containerd/v2 v2.4.2 //gomodjail:unconfined
 	//gosocialcheck:trusted
-	github.com/containerd/continuity v0.5.0 //gomodjail:unconfined
+	github.com/containerd/continuity v0.5.1-0.20261030162832-8b279b01a614 //gomodjail:unconfined
 	//gosocialcheck:trusted
 	github.com/containerd/errdefs v1.0.0
 	//gosocialcheck:trusted
@@ -142,6 +142,8 @@ require (
 	//gomodjail:unconfined
 	//gosocialcheck:trusted
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
+	//gomodjail:unconfined
+	github.com/erofs/go-erofs v0.3.3-0.20261101155608-4c135619312a // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
@@ -201,7 +203,7 @@ require (
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	//gomodjail:unconfined
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.72.0 // indirect
 	//gomodjail:unconfined
 	go.opentelemetry.io/otel v1.47.0 // indirect
 	go.opentelemetry.io/otel/log v1.47.0 // indirect
@@ -213,7 +215,7 @@ require (
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
 	//gomodjail:unconfined
-	google.golang.org/grpc v1.84.0 // indirect
+	google.golang.org/grpc v1.85.0 // indirect
 	//gomodjail:unconfined
 	google.golang.org/protobuf v1.36.12 // indirect
 	//gomodjail:unconfined
@@ -224,3 +226,5 @@ require (
 )
 
 replace github.com/containerd/nerdctl/mod/tigron v0.0.0 => ./mod/tigron
+
+replace github.com/containerd/containerd/v2 => github.com/jonyhy96/containerd/v2 v2.0.0-20261113031919-bfc4c1013555
