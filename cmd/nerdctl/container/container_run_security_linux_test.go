@@ -176,6 +176,17 @@ func TestRunSecurityOptSeccomp(t *testing.T) {
 	testCase.Run(t)
 }
 
+// expectAppArmorEnforced returns a comparator for the content of /proc/self/attr/apparmor/current
+// of a process confined by the profile.
+//
+// With kernel.apparmor_restrict_unprivileged_unconfined=1 (Ubuntu's default), runc's change_onexec
+// is converted into stacking since kernel commit 08c2f7c8d4b1 ("apparmor: fix unconfined user
+// namespace restriction forced stack"), so the label is "<PROFILE>//&unconfined".
+// https://github.com/containerd/nerdctl/issues/5350
+func expectAppArmorEnforced(profile string) test.Comparator {
+	return expect.Match(regexp.MustCompile("^" + regexp.QuoteMeta(profile) + `(//&unconfined)? \(enforce\)\n$`))
+}
+
 func TestRunApparmor(t *testing.T) {
 	testCase := nerdtest.Setup()
 
@@ -202,7 +213,7 @@ func TestRunApparmor(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeSuccess,
-					Output:   expect.Equals(fmt.Sprintf("%s (enforce)\n", data.Labels().Get("defaultProfile"))),
+					Output:   expectAppArmorEnforced(data.Labels().Get("defaultProfile")),
 				}
 			},
 		},
@@ -215,7 +226,7 @@ func TestRunApparmor(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeSuccess,
-					Output:   expect.Equals(fmt.Sprintf("%s (enforce)\n", data.Labels().Get("defaultProfile"))),
+					Output:   expectAppArmorEnforced(data.Labels().Get("defaultProfile")),
 				}
 			},
 		},
