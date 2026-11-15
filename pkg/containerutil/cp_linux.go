@@ -69,12 +69,9 @@ const (
 	pinnedDirArg = procSelfFd + "3"
 )
 
-// openMountRoot opens the container mount whose host path is mountRoot as an os.Root, and returns the path of
+// openHostMount opens the container mount whose host path is mountRoot as an os.Root, and returns the path of
 // relativePath inside it. A mount of a single file is opened on its parent directory.
-func openMountRoot(mountRoot, relativePath string) (*os.Root, string, error) {
-	if !filepath.IsAbs(mountRoot) {
-		return nil, "", fmt.Errorf("cannot copy into mount with non-path source %q", mountRoot)
-	}
+func openHostMount(mountRoot, relativePath string) (*os.Root, string, error) {
 	st, err := os.Stat(mountRoot)
 	if err != nil {
 		return nil, "", err
@@ -87,10 +84,65 @@ func openMountRoot(mountRoot, relativePath string) (*os.Root, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	if relativePath == "" {
-		relativePath = "."
-	}
 	return root, relativePath, nil
+}
+
+// openMountRoot opens the container mount that holds dest as an os.Root, and returns the path of dest inside it.
+// A mount of a single file is opened on its parent directory on the host.
+//
+// liveRoot is the root of the running container (/proc/<pid>/root), or "" when the container is not running.
+// The host path of a mount can be reachable from the container through another mount, so that a process in the
+// container can rename it and put a symlink in its place. In a running container, a directory mount is therefore
+// opened the way the container sees it, through liveRoot, and for a file mount the host file is checked to still
+// be the file mounted in the container.
+func openMountRoot(dest *pathSpecifier, liveRoot string) (*os.Root, string, error) {
+	if !filepath.IsAbs(dest.mountRoot) {
+		return nil, "", fmt.Errorf("cannot copy into mount with non-path source %q", dest.mountRoot)
+	}
+	rel := dest.relativePath
+	if rel == "" {
+		rel = "."
+	}
+	if liveRoot == "" {
+		return openHostMount(dest.mountRoot, rel)
+	}
+
+	container, err := os.OpenRoot(liveRoot)
+	if err != nil {
+		return nil, "", err
+	}
+	mountPath, err := filepath.Rel("/", dest.mountPath)
+	if err != nil {
+		container.Close()
+		return nil, "", err
+	}
+	if mountPath == "." {
+		return container, rel, nil
+	}
+	defer container.Close()
+
+	mounted, err := container.Stat(mountPath)
+	if err != nil {
+		return nil, "", err
+	}
+	if mounted.IsDir() {
+		root, err := container.OpenRoot(mountPath)
+		if err != nil {
+			return nil, "", err
+		}
+		return root, rel, nil
+	}
+
+	root, rel, err := openHostMount(dest.mountRoot, rel)
+	if err != nil {
+		return nil, "", err
+	}
+	source, err := root.Lstat(filepath.Base(dest.mountRoot))
+	if err != nil || !os.SameFile(source, mounted) {
+		root.Close()
+		return nil, "", errors.Join(fmt.Errorf("source of mount %q is not the file mounted in the container", dest.mountPath), err)
+	}
+	return root, rel, nil
 }
 
 // openExtractDir prepares a copy into the container: it creates the destination when it does not exist, and returns
@@ -98,8 +150,9 @@ func openMountRoot(mountRoot, relativePath string) (*os.Root, string, error) {
 // A process in the container can replace any component of the destination with a symlink after it has been
 // resolved, and absolute symlinks under /proc/<pid>/root are followed against the host root. Both operations go
 // through an os.Root on the container mount so that they stay inside it, and tar gets the handle rather than a path.
-func openExtractDir(dest *pathSpecifier, intoDest bool) (*os.File, error) {
-	root, rel, err := openMountRoot(dest.mountRoot, dest.relativePath)
+// liveRoot is as for openMountRoot.
+func openExtractDir(dest *pathSpecifier, intoDest bool, liveRoot string) (*os.File, error) {
+	root, rel, err := openMountRoot(dest, liveRoot)
 	if err != nil {
 		return nil, errors.Join(ErrFilesystem, err)
 	}
@@ -294,7 +347,11 @@ func CopyFiles(ctx context.Context, client *containerd.Client, container contain
 
 	var tarXDirFile *os.File
 	if !options.Container2Host {
-		tarXDirFile, err = openExtractDir(destinationSpec, intoDest)
+		liveRoot := ""
+		if pid != 0 {
+			liveRoot = root
+		}
+		tarXDirFile, err = openExtractDir(destinationSpec, intoDest, liveRoot)
 		if err != nil {
 			return err
 		}
