@@ -109,18 +109,18 @@ func processOptions(cmd *cobra.Command) (types.ContainerListOptions, FormattingA
 	}
 
 	return types.ContainerListOptions{
-			GOptions: globalOptions,
-			All:      all,
-			LastN:    lastN,
-			Truncate: trunc,
-			Size:     size || (format == "wide" && !quiet),
-			Filters:  filters,
-		}, FormattingAndPrintingOptions{
-			Stdout: cmd.OutOrStdout(),
-			Quiet:  quiet,
-			Format: format,
-			Size:   size,
-		}, nil
+		GOptions: globalOptions,
+		All:      all,
+		LastN:    lastN,
+		Truncate: trunc,
+		Size:     size || (format == "wide" && !quiet),
+		Filters:  filters,
+	}, FormattingAndPrintingOptions{
+		Stdout: cmd.OutOrStdout(),
+		Quiet:  quiet,
+		Format: format,
+		Size:   size,
+	}, nil
 }
 
 func psAction(cmd *cobra.Command, args []string) error {

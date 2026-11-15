@@ -32,7 +32,7 @@ jobs:
       runner: ubuntu-26.04
       guest: ${{ matrix.guest }}
       target: ${{ matrix.target }}
-      go-version: 1.26
+      go-version: 1.27
       skip-flaky: true  # skip the most flaky ones for now
 
   test-integration-freebsd:

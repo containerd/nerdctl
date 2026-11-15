@@ -34,7 +34,7 @@ jobs:
       canary: ${{ matrix.canary && true || false }}
       # Windows routinely go over 5 minutes
       timeout: 10
-      go-version: 1.26
+      go-version: 1.27
       windows-cni-version: v0.3.3
       linux-cni-version: v1.9.1
       linux-cni-sha: b98f74a0f8522f0a83867178729c1aa70f2158f90c45a2ca8fa791db1c76b303
@@ -125,7 +125,7 @@ jobs:
       ipv6: ${{ matrix.ipv6 && true || false }}
       canary: ${{ matrix.canary && true || false }}
       skip-flaky: ${{ matrix.skip-flaky && true || false }}
-      go-version: 1.26
+      go-version: 1.27
 
   test-integration-host:
     name: "in-host${{ inputs.hack }}"
@@ -151,7 +151,7 @@ jobs:
       # [v2.3.0-beta.2 regression] The virtual machine or container JSON document is invalid. (Hyper-V container)
       # https://github.com/containerd/containerd/issues/13254
       no-hyperv: ${{ matrix.canary && true || false }}
-      go-version: 1.26
+      go-version: 1.27
       windows-cni-version: v0.3.3
       docker-version: 5:29.9.3-1~ubuntu.26.04~resolute
       windows-containerd-version: 2.4.2

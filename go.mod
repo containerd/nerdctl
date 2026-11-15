@@ -1,62 +1,61 @@
 //gomodjail:confined
 module github.com/containerd/nerdctl/v2
 
-go 1.26.8
-
-// containerd, Docker/Moby, OCI, and golang.org/x packages are trusted
-//gosocialcheck:trusted
-require (
-	github.com/containerd/accelerated-container-image v1.4.5 //gomodjail:unconfined
-	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
-	github.com/containerd/console v1.0.5 //gomodjail:unconfined
-	github.com/containerd/containerd/api v1.12.0 //gomodjail:unconfined
-	github.com/containerd/containerd/v2 v2.4.2 //gomodjail:unconfined
-	github.com/containerd/continuity v0.5.0 //gomodjail:unconfined
-	github.com/containerd/errdefs v1.0.0
-	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
-	github.com/containerd/go-cni v1.1.14 //gomodjail:unconfined
-	github.com/containerd/imgcrypt/v2 v2.0.3 //gomodjail:unconfined
-	github.com/containerd/log v0.2.0 //gomodjail:unconfined
-	github.com/containerd/nerdctl/mod/tigron v0.0.0 //gomodjail:unconfined
-	github.com/containerd/nydus-snapshotter v0.16.1 //gomodjail:unconfined
-	github.com/containerd/platforms v1.0.0-rc.5 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter v0.19.1 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter/estargz v0.19.1 //gomodjail:unconfined
-	github.com/containerd/stargz-snapshotter/ipfs v0.19.1 //gomodjail:unconfined
-	github.com/containerd/typeurl/v2 v2.3.0
-	github.com/docker/cli v29.9.2+incompatible //gomodjail:unconfined
-	github.com/docker/go-connections v0.8.2 //gomodjail:unconfined
-	github.com/docker/go-units v0.5.0
-	github.com/moby/moby/client v0.6.2 //gomodjail:unconfined
-	github.com/moby/moby/v2 v2.0.0-beta.28 //gomodjail:unconfined
-	github.com/moby/sys/mount v0.3.5 //gomodjail:unconfined
-	github.com/moby/sys/signal v0.7.1 //gomodjail:unconfined
-	github.com/moby/sys/user v0.5.0 //gomodjail:unconfined
-	github.com/moby/sys/userns v0.2.1 //gomodjail:unconfined
-	github.com/moby/term v0.5.2 //gomodjail:unconfined
-	github.com/opencontainers/go-digest v1.0.0
-	github.com/opencontainers/image-spec v1.1.1
-	github.com/opencontainers/runtime-spec v1.3.0
-	github.com/opencontainers/selinux v1.15.1 //gomodjail:unconfined
-	golang.org/x/crypto v0.58.0
-	golang.org/x/net v0.62.0 //gomodjail:unconfined
-	golang.org/x/sync v0.25.0 //gomodjail:unconfined
-	golang.org/x/sys v0.50.0 //gomodjail:unconfined
-	golang.org/x/term v0.48.0 //gomodjail:unconfined
-	golang.org/x/text v0.44.0
-)
+go 1.27.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Microsoft/go-winio v0.6.4
 	github.com/Microsoft/hcsshim v0.15.0
 	github.com/compose-spec/compose-go/v2 v2.16.2 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/accelerated-container-image v1.4.5 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/cgroups/v3 v3.1.3 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/console v1.0.5 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/containerd/api v1.12.0 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/containerd/v2 v2.4.2 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/continuity v0.5.0 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/errdefs v1.0.0
+	//gosocialcheck:trusted
+	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/go-cni v1.1.14 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/imgcrypt/v2 v2.0.3 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/log v0.2.0 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/nerdctl/mod/tigron v0.0.0 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/nydus-snapshotter v0.16.1 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/platforms v1.0.0-rc.5 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/stargz-snapshotter v0.19.1 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/stargz-snapshotter/estargz v0.19.1 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/stargz-snapshotter/ipfs v0.19.1 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/typeurl/v2 v2.3.0
 	github.com/containernetworking/cni v1.3.1 //gomodjail:unconfined
 	github.com/containernetworking/plugins v1.9.1 //gomodjail:unconfined
 	github.com/coreos/go-iptables v0.8.0 //gomodjail:unconfined
 	github.com/coreos/go-systemd/v22 v22.7.0 //gomodjail:unconfined
 	github.com/cyphar/filepath-securejoin v0.7.0 //gomodjail:unconfined
 	github.com/distribution/reference v0.6.0
+	//gosocialcheck:trusted
+	github.com/docker/cli v29.9.2+incompatible //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/docker/go-connections v0.8.2 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/docker/go-units v0.5.0
 	github.com/fahedouch/go-logrotate v0.3.0 //gomodjail:unconfined
 	github.com/fatih/color v1.19.0 //gomodjail:unconfined
 	github.com/fluent/fluent-logger-golang v1.10.2 //gomodjail:unconfined
@@ -65,7 +64,29 @@ require (
 	github.com/ipfs/go-cid v0.6.2 //gomodjail:unconfined
 	github.com/klauspost/compress v1.20.3
 	github.com/mattn/go-isatty v0.0.24 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/moby/moby/client v0.6.2 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/moby/moby/v2 v2.0.0-beta.28 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/moby/sys/mount v0.3.5 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/moby/sys/signal v0.7.1 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/moby/sys/user v0.5.0 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/moby/sys/userns v0.2.1 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/moby/term v0.5.2 //gomodjail:unconfined
 	github.com/muesli/cancelreader v0.2.2 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/opencontainers/go-digest v1.0.0
+	//gosocialcheck:trusted
+	github.com/opencontainers/image-spec v1.1.1
+	//gosocialcheck:trusted
+	github.com/opencontainers/runtime-spec v1.3.0
+	//gosocialcheck:trusted
+	github.com/opencontainers/selinux v1.15.1 //gomodjail:unconfined
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/rootless-containers/bypass4netns v0.4.2 //gomodjail:unconfined
 	github.com/rootless-containers/rootlesskit/v3 v3.3.0 //gomodjail:unconfined
@@ -76,28 +97,20 @@ require (
 	github.com/yuchanns/srslog v1.1.0 //gomodjail:unconfined
 	go.yaml.in/yaml/v3 v3.0.6
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
+	//gosocialcheck:trusted
+	golang.org/x/crypto v0.58.0
+	//gosocialcheck:trusted
+	golang.org/x/net v0.62.0 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	golang.org/x/sync v0.25.0 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	golang.org/x/sys v0.50.0 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	golang.org/x/term v0.48.0 //gomodjail:unconfined
+	//gosocialcheck:trusted
+	golang.org/x/text v0.44.0
 	gotest.tools/v3 v3.5.2 //gomodjail:unconfined
 	tags.cncf.io/container-device-interface v1.1.1 //gomodjail:unconfined
-)
-
-//gosocialcheck:trusted
-require (
-	github.com/containerd/errdefs/pkg v0.3.0 // indirect
-	//gomodjail:unconfined
-	github.com/containerd/go-runc v1.2.1 // indirect
-	github.com/containerd/log/otel v0.1.0 // indirect
-	github.com/containerd/plugin v1.1.0 // indirect
-	//gomodjail:unconfined
-	github.com/containerd/ttrpc v1.2.10 // indirect
-	//gomodjail:unconfined
-	github.com/docker/docker-credential-helpers v0.9.3 // indirect
-	github.com/moby/docker-image-spec v1.3.1 // indirect
-	github.com/moby/locker v1.0.1 // indirect
-	github.com/moby/moby/api v1.56.1 // indirect
-	//gomodjail:unconfined
-	github.com/moby/sys/mountinfo v0.7.2 // indirect
-	github.com/moby/sys/symlink v0.3.0 // indirect
-	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
 )
 
 require (
@@ -108,12 +121,27 @@ require (
 	//gomodjail:unconfined
 	github.com/cilium/ebpf v0.22.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
+	//gosocialcheck:trusted
+	github.com/containerd/errdefs/pkg v0.3.0 // indirect
+	//gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/go-runc v1.2.1 // indirect
+	//gosocialcheck:trusted
+	github.com/containerd/log/otel v0.1.0 // indirect
+	//gosocialcheck:trusted
+	github.com/containerd/plugin v1.1.0 // indirect
+	//gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/containerd/ttrpc v1.2.10 // indirect
 	//gomodjail:unconfined
 	github.com/containers/ocicrypt v1.3.2 // indirect
 	//gomodjail:unconfined
 	github.com/creack/pty v1.1.24 // indirect
 	//gomodjail:unconfined
 	github.com/djherbis/times v1.6.0 // indirect
+	//gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/docker/docker-credential-helpers v0.9.3 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
@@ -134,6 +162,17 @@ require (
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	//gomodjail:unconfined
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	//gosocialcheck:trusted
+	github.com/moby/docker-image-spec v1.3.1 // indirect
+	//gosocialcheck:trusted
+	github.com/moby/locker v1.0.1 // indirect
+	//gosocialcheck:trusted
+	github.com/moby/moby/api v1.56.1 // indirect
+	//gomodjail:unconfined
+	//gosocialcheck:trusted
+	github.com/moby/sys/mountinfo v0.7.2 // indirect
+	//gosocialcheck:trusted
+	github.com/moby/sys/symlink v0.3.0 // indirect
 	github.com/mr-tron/base58 v1.3.0 // indirect
 	github.com/multiformats/go-base32 v0.1.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
@@ -165,10 +204,13 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0 // indirect
 	//gomodjail:unconfined
 	go.opentelemetry.io/otel v1.47.0 // indirect
+	go.opentelemetry.io/otel/log v1.47.0 // indirect
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
+	//gosocialcheck:trusted
+	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
 	//gomodjail:unconfined
 	google.golang.org/grpc v1.84.0 // indirect
@@ -180,7 +222,5 @@ require (
 	sigs.k8s.io/knftables v0.0.18 // indirect
 	tags.cncf.io/container-device-interface/specs-go v1.1.1 // indirect
 )
-
-require go.opentelemetry.io/otel/log v1.47.0 // indirect
 
 replace github.com/containerd/nerdctl/mod/tigron v0.0.0 => ./mod/tigron

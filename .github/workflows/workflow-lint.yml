@@ -39,7 +39,7 @@ jobs:
           #   canary: true
     with:
       timeout: 10
-      go-version: "1.26"
+      go-version: "1.27"
       runner: ubuntu-26.04
       # Note: in GitHub yaml world, if `matrix.canary` is undefined, and is passed to `inputs.canary`, the job
       # will not run. However, if you test it, it will coerce to `false`, hence:
@@ -52,7 +52,7 @@ jobs:
     uses: $/.github/workflows/job-lint-project.yml
     with:
       timeout: 5
-      go-version: "1.26"
+      go-version: "1.27"
       runner: ubuntu-26.04
 
   # Runs the gomodjail static analysis gate, that verifies that the Go modules annotated
@@ -76,7 +76,7 @@ jobs:
       - name: "Init: install go"
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           check-latest: true
           # This workflow also runs on push, so the setup-go cache is disabled
           # for zizmor's cache-poisoning audit
@@ -99,7 +99,7 @@ jobs:
     uses: $/.github/workflows/job-lint-deps.yml
     with:
       timeout: 10
-      go-version: "1.26"
+      go-version: "1.27"
       runner: ubuntu-26.04
 
   # Lint for shell and yaml files
@@ -118,10 +118,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - go-version: "1.26"
+          - go-version: "1.27"
           # Additionally build for canary
           # FIXME: failing since the release of go1.27rc1
-          # - go-version: "1.26"
+          # - go-version: "1.27"
           #   canary: true
     with:
       timeout: 10
