@@ -18,11 +18,14 @@ package checkpoint
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/require"
 	"github.com/containerd/nerdctl/mod/tigron/test"
+	"github.com/containerd/nerdctl/mod/tigron/tig"
 
 	"github.com/containerd/nerdctl/v2/pkg/testutil"
 	"github.com/containerd/nerdctl/v2/pkg/testutil/nerdtest"
@@ -101,6 +104,38 @@ func TestCheckpointRemove(t *testing.T) {
 				return &test.Expected{
 					ExitCode: 0,
 					Output:   expect.Equals(""),
+				}
+			},
+		},
+		{
+			Description: "remove-after-container-gone",
+			Setup: func(data test.Data, helpers test.Helpers) {
+				checkpointDir := data.Temp().Dir("checkpoint-orphan")
+				data.Labels().Set("checkpointDir", checkpointDir)
+				helpers.Ensure("run", "-d", "--name", data.Identifier("container-orphan"), testutil.CommonImage, "sleep", "infinity")
+				helpers.Ensure("checkpoint", "create", "--checkpoint-dir", checkpointDir, data.Identifier("container-orphan"), "checkpoint-orphan")
+				if _, err := os.Stat(filepath.Join(checkpointDir, "checkpoint-orphan")); err != nil {
+					helpers.T().Log("checkpoint directory was not created", err)
+					helpers.T().FailNow()
+				}
+				helpers.Ensure("rm", "-f", data.Identifier("container-orphan"))
+			},
+			Cleanup: func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier("container-orphan"))
+			},
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("checkpoint", "rm", "--checkpoint-dir", data.Labels().Get("checkpointDir"), data.Identifier("container-orphan"), "checkpoint-orphan")
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: 0,
+					Output: func(stdout string, t tig.T) {
+						_, err := os.Stat(filepath.Join(data.Labels().Get("checkpointDir"), "checkpoint-orphan"))
+						if !os.IsNotExist(err) {
+							t.Log("checkpoint directory still present", err)
+							t.FailNow()
+						}
+					},
 				}
 			},
 		},
