@@ -168,6 +168,20 @@ host::configuration(){
 	EOF
     apparmor_parser -r /etc/apparmor.d/fusermount3
   fi
+
+  # With kernel.apparmor_restrict_unprivileged_unconfined=1 (Ubuntu's default), runc's
+  # change_onexec to the container profile is converted into stacking
+  # ("nerdctl-default//&unconfined"), which the default profile does not allow to signal
+  # or ptrace (e.g., tini cannot forward SIGTERM).
+  # The restriction used to apply to change_profile only, but kernel commit
+  # 08c2f7c8d4b1 ("apparmor: fix unconfined user namespace restriction forced stack",
+  # CVE-2026-90231; Linux v7.3, backported to Ubuntu's 7.0.0-1019-azure) extended it to
+  # change_onexec, intentionally, to close an escape.
+  # FIXME: remove this workaround once https://github.com/containerd/containerd/pull/14487 is consumed.
+  # https://github.com/containerd/nerdctl/issues/5350
+  if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_unconfined ]; then
+    sysctl -w kernel.apparmor_restrict_unprivileged_unconfined=0
+  fi
 }
 
 host::services(){
