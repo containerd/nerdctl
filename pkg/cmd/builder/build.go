@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/docker/go-units"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -502,6 +503,12 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		buildctlArgs = append(buildctlArgs, "--opt=add-hosts="+strings.Join(extraHosts, ","))
 	}
 
+	resourceArgs, err := buildctlResourceArgs(options.Ulimit)
+	if err != nil {
+		return "", nil, false, "", nil, nil, err
+	}
+	buildctlArgs = append(buildctlArgs, resourceArgs...)
+
 	// Source policy file: use explicit option if set, otherwise fallback to env var for Buildx compatibility
 	if sourcePolicyFile := GetEffectiveSourcePolicyFile(options.SourcePolicyFile); sourcePolicyFile != "" {
 		buildctlArgs = append(buildctlArgs, "--source-policy-file="+sourcePolicyFile)
@@ -658,4 +665,20 @@ func readOCIIndexFromPath(path string) (*ocispec.Index, error) {
 		return nil, err
 	}
 	return ociIndex, nil
+}
+
+// buildctlResourceArgs converts the --ulimit flag into a dockerfile frontend
+// attribute. It applies to each RUN instruction, not to the build as a whole.
+func buildctlResourceArgs(ulimits []string) ([]string, error) {
+	var args []string
+	if len(ulimits) > 0 {
+		for _, u := range ulimits {
+			if _, err := units.ParseUlimit(u); err != nil {
+				return nil, fmt.Errorf("invalid ulimit %q: %w", u, err)
+			}
+		}
+		// BuildKit reads all ulimits from a single comma-separated attribute
+		args = append(args, "--opt=ulimit="+strings.Join(ulimits, ","))
+	}
+	return args, nil
 }

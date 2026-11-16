@@ -332,3 +332,42 @@ func TestGetDigestFromMetaFile(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildctlResourceArgs(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		ulimits     []string
+		expected    []string
+		expectedErr string
+	}{
+		{
+			name:     "no flags",
+			expected: nil,
+		},
+		{
+			name:     "ulimits are joined into one attribute",
+			ulimits:  []string{"nofile=1024:2048", "nproc=100"},
+			expected: []string{"--opt=ulimit=nofile=1024:2048,nproc=100"},
+		},
+		{
+			name:        "invalid ulimit",
+			ulimits:     []string{"nofile"},
+			expectedErr: `invalid ulimit "nofile"`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			args, err := buildctlResourceArgs(tc.ulimits)
+			if tc.expectedErr != "" {
+				assert.ErrorContains(t, err, tc.expectedErr)
+				return
+			}
+			assert.NilError(t, err)
+			assert.DeepEqual(t, args, tc.expected)
+		})
+	}
+}

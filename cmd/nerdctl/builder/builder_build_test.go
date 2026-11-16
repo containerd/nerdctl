@@ -1064,6 +1064,39 @@ RUN ping -c 5 beta
 	testCase.Run(t)
 }
 
+func TestBuildUlimit(t *testing.T) {
+	nerdtest.Setup()
+
+	// The check runs inside a RUN instruction, so the build fails if the limit is not applied
+	dockerfile := fmt.Sprintf(`FROM %s
+RUN test "$(ulimit -n)" = "1024"
+`, testutil.CommonImage)
+
+	testCase := &test.Case{
+		Require: require.All(
+			require.Not(require.Windows),
+			nerdtest.Build,
+		),
+		Cleanup: func(data test.Data, helpers test.Helpers) {
+			helpers.Anyhow("rmi", "-f", data.Identifier())
+		},
+		Setup: func(data test.Data, helpers test.Helpers) {
+			data.Temp().Save(dockerfile, "Dockerfile")
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command(
+				"build", data.Temp().Path(),
+				"-t", data.Identifier(),
+				"--no-cache",
+				"--ulimit", "nofile=1024:1024",
+			)
+		},
+		Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+	}
+
+	testCase.Run(t)
+}
+
 func TestBuildWithBuildkitConfig(t *testing.T) {
 	nerdtest.Setup()
 

@@ -47,6 +47,8 @@ If Dockerfile is not present and -f is not specified, it will look for Container
 	}
 	cmd.Flags().String("buildkit-host", "", "BuildKit address")
 	cmd.Flags().StringArray("add-host", nil, "Add a custom host-to-IP mapping (format: \"host:ip\")")
+	// ulimit is defined as StringSlice, not StringArray, to match "nerdctl run --ulimit"
+	cmd.Flags().StringSlice("ulimit", nil, "Ulimit options for RUN instructions (format: \"name=soft[:hard]\")")
 	cmd.Flags().StringArrayP("tag", "t", nil, "Name and optionally a tag in the 'name:tag' format")
 	cmd.Flags().StringP("file", "f", "", "Name of the Dockerfile")
 	cmd.Flags().String("target", "", "Set the target build stage to build")
@@ -187,6 +189,10 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 	if err != nil {
 		return types.BuilderBuildOptions{}, err
 	}
+	ulimit, err := cmd.Flags().GetStringSlice("ulimit")
+	if err != nil {
+		return types.BuilderBuildOptions{}, err
+	}
 
 	attest, err := cmd.Flags().GetStringArray("attest")
 	if err != nil {
@@ -252,6 +258,7 @@ func processBuildCommandFlag(cmd *cobra.Command, args []string) (types.BuilderBu
 		ExtendedBuildContext: extendedBuildCtx,
 		ExtraHosts:           extraHosts,
 		SourcePolicyFile:     sourcePolicyFile,
+		Ulimit:               ulimit,
 	}, nil
 }
 

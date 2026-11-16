@@ -76,6 +76,8 @@ type BuilderBuildOptions struct {
 	// SourcePolicyFile is the path to a BuildKit source policy file.
 	// Passed through to buildctl as --source-policy-file.
 	SourcePolicyFile string
+	// Ulimit is a list of ulimits for RUN instructions (format: "name=soft[:hard]")
+	Ulimit []string
 }
 
 // BuilderDiskUsageOptions specifies options for querying the build cache disk usage.
