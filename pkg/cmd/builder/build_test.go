@@ -339,6 +339,7 @@ func TestBuildctlResourceArgs(t *testing.T) {
 	tests := []struct {
 		name        string
 		ulimits     []string
+		shmSize     int64
 		expected    []string
 		expectedErr string
 	}{
@@ -356,12 +357,31 @@ func TestBuildctlResourceArgs(t *testing.T) {
 			ulimits:     []string{"nofile"},
 			expectedErr: `invalid ulimit "nofile"`,
 		},
+		{
+			name:     "shm-size is passed in bytes",
+			shmSize:  64 << 20,
+			expected: []string{"--opt=shm-size=67108864"},
+		},
+		{
+			name:        "negative shm-size",
+			shmSize:     -1,
+			expectedErr: "must not be negative",
+		},
+		{
+			name:    "all flags",
+			ulimits: []string{"nofile=1024"},
+			shmSize: 1 << 30,
+			expected: []string{
+				"--opt=ulimit=nofile=1024",
+				"--opt=shm-size=1073741824",
+			},
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			args, err := buildctlResourceArgs(tc.ulimits)
+			args, err := buildctlResourceArgs(tc.ulimits, tc.shmSize)
 			if tc.expectedErr != "" {
 				assert.ErrorContains(t, err, tc.expectedErr)
 				return

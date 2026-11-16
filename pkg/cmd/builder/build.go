@@ -503,7 +503,7 @@ func generateBuildctlArgs(ctx context.Context, client *containerd.Client, option
 		buildctlArgs = append(buildctlArgs, "--opt=add-hosts="+strings.Join(extraHosts, ","))
 	}
 
-	resourceArgs, err := buildctlResourceArgs(options.Ulimit)
+	resourceArgs, err := buildctlResourceArgs(options.Ulimit, options.ShmSize)
 	if err != nil {
 		return "", nil, false, "", nil, nil, err
 	}
@@ -667,9 +667,9 @@ func readOCIIndexFromPath(path string) (*ocispec.Index, error) {
 	return ociIndex, nil
 }
 
-// buildctlResourceArgs converts the --ulimit flag into a dockerfile frontend
-// attribute. It applies to each RUN instruction, not to the build as a whole.
-func buildctlResourceArgs(ulimits []string) ([]string, error) {
+// buildctlResourceArgs converts the --ulimit and --shm-size flags into
+// dockerfile frontend attributes. These apply to each RUN instruction, not to the build as a whole.
+func buildctlResourceArgs(ulimits []string, shmSize int64) ([]string, error) {
 	var args []string
 	if len(ulimits) > 0 {
 		for _, u := range ulimits {
@@ -679,6 +679,12 @@ func buildctlResourceArgs(ulimits []string) ([]string, error) {
 		}
 		// BuildKit reads all ulimits from a single comma-separated attribute
 		args = append(args, "--opt=ulimit="+strings.Join(ulimits, ","))
+	}
+	if shmSize < 0 {
+		return nil, fmt.Errorf("invalid shm-size %d: must not be negative", shmSize)
+	}
+	if shmSize > 0 {
+		args = append(args, "--opt=shm-size="+strconv.FormatInt(shmSize, 10))
 	}
 	return args, nil
 }

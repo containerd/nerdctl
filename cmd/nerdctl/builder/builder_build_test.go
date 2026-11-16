@@ -1064,12 +1064,13 @@ RUN ping -c 5 beta
 	testCase.Run(t)
 }
 
-func TestBuildUlimit(t *testing.T) {
+func TestBuildUlimitAndShmSize(t *testing.T) {
 	nerdtest.Setup()
 
-	// The check runs inside a RUN instruction, so the build fails if the limit is not applied
+	// The checks run inside RUN instructions, so the build fails if a limit is not applied
 	dockerfile := fmt.Sprintf(`FROM %s
 RUN test "$(ulimit -n)" = "1024"
+RUN test "$(df -k /dev/shm | awk 'NR==2 {print $2}')" = "131072"
 `, testutil.CommonImage)
 
 	testCase := &test.Case{
@@ -1089,9 +1090,27 @@ RUN test "$(ulimit -n)" = "1024"
 				"-t", data.Identifier(),
 				"--no-cache",
 				"--ulimit", "nofile=1024:1024",
+				"--shm-size", "128m",
 			)
 		},
 		Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
+	}
+
+	testCase.Run(t)
+}
+
+func TestBuildInvalidShmSize(t *testing.T) {
+	nerdtest.Setup()
+
+	testCase := &test.Case{
+		Require: nerdtest.Build,
+		Setup: func(data test.Data, helpers test.Helpers) {
+			data.Temp().Save(fmt.Sprintf("FROM %s\n", testutil.CommonImage), "Dockerfile")
+		},
+		Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+			return helpers.Command("build", data.Temp().Path(), "--shm-size", "lots")
+		},
+		Expected: test.Expects(expect.ExitCodeGenericFail, nil, nil),
 	}
 
 	testCase.Run(t)

@@ -808,7 +808,8 @@ Flags:
 - :whale: `--build-context`: Set additional contexts for build (e.g. dir2=/path/to/dir2, myorg/myapp=docker-image://path/to/myorg/myapp)
 - :whale: `--add-host`: Add a custom host-to-IP mapping (format: `host:ip`)
 - :whale: `--ulimit`: Ulimit options for `RUN` instructions (format: `name=soft[:hard]`, e.g. `nofile=1024:2048`)
-  This flag applies to each `RUN` instruction separately, not to the build as a whole.
+- :whale: `--shm-size`: Size of `/dev/shm` for `RUN` instructions (e.g. `64m`)
+  These two flags apply to each `RUN` instruction separately, not to the build as a whole.
 - :nerd_face: `--source-policy-file`: BuildKit source policy JSON file for reproducible builds. See [BuildKit build-repro docs](https://github.com/moby/buildkit/blob/master/docs/build-repro.md).
   For compatibility with Docker Buildx, the `EXPERIMENTAL_BUILDKIT_SOURCE_POLICY` environment variable is also supported. Example no-op policy: `{"rules":[]}`
 
