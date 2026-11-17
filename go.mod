@@ -14,7 +14,7 @@ require (
 	github.com/containerd/continuity v0.5.0 //gomodjail:unconfined
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/fifo v1.1.0 //gomodjail:unconfined
-	github.com/containerd/go-cni v1.1.14 //gomodjail:unconfined
+	github.com/containerd/go-cni v1.1.15 //gomodjail:unconfined
 	github.com/containerd/imgcrypt/v2 v2.0.3 //gomodjail:unconfined
 	github.com/containerd/log v0.2.0 //gomodjail:unconfined
 	github.com/containerd/nerdctl/mod/tigron v0.0.0 //gomodjail:unconfined
