@@ -187,7 +187,7 @@ func Events(ctx context.Context, client *containerd.Client, options types.System
 			return err
 		}
 	}
-	labelFilterEnabled := false
+	labelFilterEnabled := options.LabelsMatcher != nil
 	for _, f := range options.Filters {
 		if strings.HasPrefix(strings.ToLower(f), "label=") {
 			labelFilterEnabled = true
@@ -242,6 +242,9 @@ func Events(ctx context.Context, client *containerd.Client, options types.System
 			}
 			eOut := EventOut{e.Timestamp, id, e.Namespace, e.Topic, TopicToAction(e.Topic), string(out), labels}
 			match := applyFilters(&eOut, filterMap)
+			if match && options.LabelsMatcher != nil {
+				match = options.LabelsMatcher(labels)
+			}
 			if match {
 				if tmpl != nil {
 					var b bytes.Buffer
