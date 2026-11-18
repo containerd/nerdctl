@@ -18,19 +18,34 @@ package image
 
 import (
 	"context"
+	"fmt"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	transferimage "github.com/containerd/containerd/v2/core/transfer/image"
 
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
+	"github.com/containerd/nerdctl/v2/pkg/idutil/imagewalker"
 	"github.com/containerd/nerdctl/v2/pkg/platformutil"
 	"github.com/containerd/nerdctl/v2/pkg/referenceutil"
 )
 
 func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagOptions) error {
-	parsedSource, err := referenceutil.Parse(options.Source)
+	var srcName string
+	walker := &imagewalker.ImageWalker{
+		Client: client,
+		OnFound: func(ctx context.Context, found imagewalker.Found) error {
+			if srcName == "" {
+				srcName = found.Image.Name
+			}
+			return nil
+		},
+	}
+	matchCount, err := walker.Walk(ctx, options.Source)
 	if err != nil {
 		return err
+	}
+	if matchCount < 1 {
+		return fmt.Errorf("%s: not found", options.Source)
 	}
 
 	parsedTarget, err := referenceutil.Parse(options.Target)
@@ -42,12 +57,12 @@ func Tag(ctx context.Context, client *containerd.Client, options types.ImageTagO
 	if err != nil {
 		return err
 	}
-	err = EnsureAllContent(ctx, client, parsedSource.String(), platMC, options.GOptions)
+	err = EnsureAllContent(ctx, client, srcName, platMC, options.GOptions)
 	if err != nil {
 		return err
 	}
 
-	sourceStore := transferimage.NewStore(parsedSource.String())
+	sourceStore := transferimage.NewStore(srcName)
 	targetStore := transferimage.NewStore(parsedTarget.String())
 
 	return client.Transfer(ctx, sourceStore, targetStore)
