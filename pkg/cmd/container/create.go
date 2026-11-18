@@ -160,6 +160,12 @@ func Create(ctx context.Context, client *containerd.Client, args []string, netMa
 		withCDIDevices(options.CDIDevices...),
 	)
 
+	// withDeviceCgroupRules has to run after CDI injection: a CDI device can
+	// carry permissions narrower than "rwm" (for example a read-only
+	// /dev/net/tun mapping), and the fallback defaults are only appended for
+	// devices the spec does not already grant.
+	opts = append(opts, withDeviceCgroupRules(internalLabels.deviceCgroupRules))
+
 	if _, err := referenceutil.Parse(args[0]); errors.Is(err, referenceutil.ErrLoadOCIArchiveRequired) {
 		imageRef := args[0]
 
@@ -868,6 +874,9 @@ type internalLabels struct {
 
 	// label for device mapping set by the --device flag
 	deviceMapping []dockercompat.DeviceMapping
+
+	// rules parsed from --device-cgroup-rule, applied after CDI injection
+	deviceCgroupRules []specs.LinuxDeviceCgroup
 
 	user string
 
