@@ -1021,6 +1021,52 @@ services:
 	assert.Assert(t, in(c.RunArgs, "--restart=unless-stopped"))
 }
 
+func TestParseDeployRestartPolicy(t *testing.T) {
+	t.Parallel()
+	const dockerComposeYAML = `
+services:
+  any:
+    image: alpine:3.14
+    deploy:
+      restart_policy:
+        condition: any
+  none:
+    image: alpine:3.14
+    deploy:
+      restart_policy:
+        condition: none
+  onfailure_no_count:
+    image: alpine:3.14
+    deploy:
+      restart_policy:
+        condition: on-failure
+  onfailure_with_count:
+    image: alpine:3.14
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+`
+	comp := testutil.NewComposeDir(t, dockerComposeYAML)
+	defer comp.CleanUp()
+
+	project, err := testutil.LoadProject(comp.YAMLFullPath(), comp.ProjectName(), nil)
+	assert.NilError(t, err)
+
+	var c Container
+	c = getContainersFromService(t, project, "any")[0]
+	assert.Assert(t, in(c.RunArgs, "--restart=always"))
+
+	c = getContainersFromService(t, project, "none")[0]
+	assert.Assert(t, in(c.RunArgs, "--restart=no"))
+
+	c = getContainersFromService(t, project, "onfailure_no_count")[0]
+	assert.Assert(t, in(c.RunArgs, "--restart=on-failure"))
+
+	c = getContainersFromService(t, project, "onfailure_with_count")[0]
+	assert.Assert(t, in(c.RunArgs, "--restart=on-failure:5"))
+}
+
 func TestParseHealthCheck(t *testing.T) {
 	t.Parallel()
 	const dockerComposeYAML = `
