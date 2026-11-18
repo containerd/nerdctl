@@ -39,6 +39,9 @@ type SystemEventsOptions struct {
 	Format string
 	// Filter events based on given conditions
 	Filters []string
+	// LabelsMatcher, when set, limits the events to those of containers whose labels it accepts.
+	// Events that don't belong to a container are dropped.
+	LabelsMatcher func(labels map[string]string) bool
 }
 
 // SystemDfOptions specifies options for `nerdctl system df`.

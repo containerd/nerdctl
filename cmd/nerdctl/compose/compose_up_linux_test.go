@@ -1615,3 +1615,54 @@ services:
 
 	testCase.Run(t)
 }
+
+// `compose events` only shows the events of the containers of the project, and of the given services.
+func TestComposeEvents(t *testing.T) {
+	testCase := nerdtest.Setup()
+	// `compose events` waits for the compose lock before it subscribes. Parallel compose tests can
+	// hold it for seconds, and the events would then be emitted before the command listens.
+	testCase.NoParallel = true
+
+	// `docker compose events` has a different output format and no --format flag.
+	testCase.Require = require.Not(nerdtest.Docker)
+
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		composeYAML := fmt.Sprintf(`
+services:
+  svc1:
+    image: %[1]s
+    command: tail -f /dev/null
+  svc2:
+    image: %[1]s
+    command: tail -f /dev/null
+`, testutil.CommonImage)
+		data.Temp().Save(composeYAML, "compose.yaml")
+		helpers.Ensure("pull", testutil.CommonImage)
+		// Creating the containers can take longer than the events command runs, so do it first.
+		helpers.Ensure("compose", "-f", data.Temp().Path("compose.yaml"), "up", "-d")
+	}
+
+	testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+		cmd := helpers.Command("compose", "-f", data.Temp().Path("compose.yaml"), "events", "--format", "json", "svc1")
+		cmd.WithTimeout(20 * time.Second)
+		cmd.Background()
+		// Give the command time to subscribe to the events, then kill both services.
+		// The kill is quick and emits task exit events while the containers still exist.
+		// Use plain `nerdctl kill`, so that the kill does not depend on the compose lock.
+		time.Sleep(5 * time.Second)
+		project := filepath.Base(filepath.Dir(data.Temp().Path("compose.yaml")))
+		helpers.Ensure("kill", project+"-svc1-1", project+"-svc2-1")
+		return cmd
+	}
+
+	testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+		helpers.Anyhow("compose", "-f", data.Temp().Path("compose.yaml"), "down", "-v")
+	}
+
+	testCase.Expected = test.Expects(expect.ExitCodeTimeout, nil, expect.All(
+		expect.Contains(`"com.docker.compose.service":"svc1"`),
+		expect.DoesNotContain(`"com.docker.compose.service":"svc2"`),
+	))
+
+	testCase.Run(t)
+}
