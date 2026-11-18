@@ -21,6 +21,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/containerd/errdefs"
 	"gotest.tools/v3/assert"
 )
 
@@ -35,6 +36,7 @@ func TestWalkAllForce(t *testing.T) {
 		"missing": {count: 0},
 		"broken":  {count: -1, err: errors.New("failed to delete task: no such directory")},
 		"other":   {count: -1, err: errors.New("cannot kill")},
+		"gone":    {count: -1, err: errdefs.ErrNotFound},
 	}
 	var walked []string
 	walk := func(_ context.Context, req string) (int, error) {
@@ -58,6 +60,11 @@ func TestWalkAllForce(t *testing.T) {
 			name:        "a container that does not exist is not an error",
 			reqs:        []string{"missing"},
 			expectedRun: []string{"missing"},
+		},
+		{
+			name:        "a container that vanishes during removal is not an error",
+			reqs:        []string{"gone"},
+			expectedRun: []string{"gone"},
 		},
 		{
 			name:        "a container that cannot be removed fails",

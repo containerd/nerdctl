@@ -102,6 +102,11 @@ func walkAllForce(ctx context.Context, reqs []string, walk func(ctx context.Cont
 			log.G(ctx).Errorf("no such container: %s", req)
 			continue
 		}
+		if errdefs.IsNotFound(err) {
+			// it disappeared between the lookup and the removal
+			log.G(ctx).Errorf("no such container: %s", req)
+			continue
+		}
 		if err != nil {
 			errs = append(errs, err.Error())
 		}
