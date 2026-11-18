@@ -18,6 +18,7 @@ package container
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/containerd/nerdctl/v2/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/v2/pkg/labels"
 	"github.com/containerd/nerdctl/v2/pkg/namestore"
+	"github.com/containerd/nerdctl/v2/pkg/store"
 )
 
 // Rename change container name to a new name
@@ -93,7 +95,8 @@ func renameContainer(ctx context.Context, container containerd.Container, newNam
 		return err
 	}
 	if runtime.GOOS == "linux" {
-		if err = hostst.Update(id, newName); err != nil {
+		// A stopped container has no hosts entry to update.
+		if err = hostst.Update(id, newName); err != nil && !errors.Is(err, store.ErrNotFound) {
 			log.G(ctx).WithError(err).Warn("failed to update host networking definitions " +
 				"- if your container is using network 'none', this is expected - otherwise, please report this as a bug")
 		}
