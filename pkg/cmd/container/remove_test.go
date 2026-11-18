@@ -21,8 +21,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/containerd/errdefs"
 	"gotest.tools/v3/assert"
+
+	"github.com/containerd/errdefs"
 )
 
 func TestWalkAllForce(t *testing.T) {
