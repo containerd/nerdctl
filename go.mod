@@ -52,7 +52,7 @@ require (
 	github.com/Microsoft/hcsshim v0.15.0
 	github.com/compose-spec/compose-go/v2 v2.16.2 //gomodjail:unconfined
 	github.com/containernetworking/cni v1.3.1 //gomodjail:unconfined
-	github.com/containernetworking/plugins v1.9.1 //gomodjail:unconfined
+	github.com/containernetworking/plugins v1.10.0 //gomodjail:unconfined
 	github.com/coreos/go-iptables v0.8.0 //gomodjail:unconfined
 	github.com/coreos/go-systemd/v22 v22.7.0 //gomodjail:unconfined
 	github.com/cyphar/filepath-securejoin v0.7.0 //gomodjail:unconfined
@@ -128,7 +128,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	//gomodjail:unconfined
-	github.com/mattn/go-shellwords v1.0.13 // indirect
+	github.com/mattn/go-shellwords v1.0.16 // indirect
 	//gomodjail:unconfined
 	github.com/miekg/pkcs11 v1.1.2 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
@@ -177,10 +177,15 @@ require (
 	//gomodjail:unconfined
 	lukechampine.com/blake3 v1.3.0 // indirect
 	//gomodjail:unconfined
-	sigs.k8s.io/knftables v0.0.18 // indirect
+	sigs.k8s.io/knftables v0.0.22 // indirect
 	tags.cncf.io/container-device-interface/specs-go v1.1.1 // indirect
 )
 
-require go.opentelemetry.io/otel/log v1.47.0 // indirect
+require (
+	github.com/google/nftables v0.3.0 // indirect
+	github.com/mdlayher/netlink v1.11.2 // indirect
+	github.com/mdlayher/socket v0.8.0 // indirect
+	go.opentelemetry.io/otel/log v1.47.0 // indirect
+)
 
 replace github.com/containerd/nerdctl/mod/tigron v0.0.0 => ./mod/tigron
