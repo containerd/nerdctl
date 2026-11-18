@@ -689,11 +689,16 @@ func withDefaultUnprivilegedPortSysctl() oci.SpecOpts {
 			s.Linux.Sysctl = make(map[string]string)
 		}
 
-		if _, exists := s.Linux.Sysctl[key]; !exists {
+		if _, exists := s.Linux.Sysctl[key]; !exists && sysctlExists(key) {
 			s.Linux.Sysctl[key] = "0"
 		}
 		return nil
 	}
+}
+
+func sysctlExists(key string) bool {
+	_, err := os.Stat(filepath.Join("/proc/sys", strings.ReplaceAll(key, ".", "/")))
+	return err == nil
 }
 
 func withNerdctlOCIHook(cmd string, args []string) (oci.SpecOpts, error) {
