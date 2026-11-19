@@ -107,7 +107,7 @@ services:
       nofile:
         soft: 20000
         hard: 20000
-    image: wordpress:5.7
+    image: wordpress:6.7.1
     restart: always
     ports:
       - 8080:80
@@ -169,7 +169,7 @@ volumes:
 
 	t.Logf("wordpress: %+v", wp)
 	assert.Assert(t, wp.PullMode == "missing")
-	assert.Assert(t, wp.Image == "wordpress:5.7")
+	assert.Assert(t, wp.Image == "wordpress:6.7.1")
 	assert.Assert(t, len(wp.Containers) == 1)
 	wp1 := wp.Containers[0]
 	assert.Assert(t, wp1.Name == DefaultContainerName(project.Name, "wordpress", "1"))
