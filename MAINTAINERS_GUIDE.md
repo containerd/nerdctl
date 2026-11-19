@@ -12,7 +12,7 @@ See https://github.com/containerd/project/blob/main/GOVERNANCE.md
 ## Creating a release
 
 Eligibility to be a release manager:
-- MUST be an active Commiter (Core or Non-core)
+- MUST be an active Committer (Core or Non-core)
 - MUST have the GPG fingerprint listed in [`MAINTAINERS`](./MAINTAINERS)
 - MUST upload the GPG public key to `https://github.com/USERNAME.gpg`
 - MUST protect the GPG key with a passphrase or a hardware token.

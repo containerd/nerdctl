@@ -27,7 +27,7 @@ primitives (`assert`, `exec`), or do not integrate well into the natural go envi
 Projects and companies thus routinely end-up growing in-house tooling, that generally suffer from a number of
 rampant issues: lack of structure and expressiveness, helpers spaghetti, unclear test lifecycle (specifically
 cleanup), resource leakage and cross test interaction, ultimately encouraging bad test design leading to degraded
-and un-scalable situations (flakyness being of course the number 1 scourge).
+and un-scalable situations (flakiness being of course the number 1 scourge).
 
 Tigron was developed specifically to address these issues, based on the experience testing nerdctl, a large cli
 with a lot of integration tests.
@@ -37,7 +37,7 @@ appropriate.
 
 Tigron ambition is to provide a ready-to-use, clean, simple, go-native framework meant specifically to
 write tests for cli binaries, encouraging good test design and a stronger basis to build tests suite.
-It also comes with a set of helpers to accomodate most advanced scenarios (command backgrounding, stdin manipulation,
+It also comes with a set of helpers to accommodate most advanced scenarios (command backgrounding, stdin manipulation,
 support for pseudo ttys, environment filtering, etc.)
 
 ## Hack
