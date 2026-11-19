@@ -132,7 +132,7 @@ ci_run
 
 The following numbers are based on the above script, with cold cache.
 
-Unfortunately golang did segfault on me during the last (cross-run targetting amd), so, these numbers should be taken
+Unfortunately golang did segfault on me during the last (cross-run targeting amd), so, these numbers should be taken
 as (slightly) underestimated.
 
 Total number of requests: 7190
