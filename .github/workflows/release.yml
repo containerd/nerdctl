@@ -30,7 +30,7 @@ jobs:
     - name: "Set up QEMU"
       uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1  # v4.4.0
     - name: "Install go"
-      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+      uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5  # v7.1.0
       with:
         go-version: "1.26"
         check-latest: true
