@@ -60,6 +60,7 @@ selinux_enabled= true
 | `dns_opts`          |                                    |                           | Set global DNS options for containers                                                                                                                         | Since 2.1.3 |
 | `dns_search`        |                                    |                           | Set global DNS search domains for containers                                                                                                           | Since 2.1.3 |
 | `selinux_enabled`        |                                    |                           |Enable selinux support for containers                                                                                                           | Since 2.3.0 |
+| `disable_attach_broker` | `--disable-attach-broker`          | `NERDCTL_DISABLE_ATTACH_BROKER` | Put a container's stdio back on the FIFOs used before multi-session attach, so that only one session can attach at a time. Affects containers started from now on, not ones already running | Since 2.4.0 |
 
 The properties are parsed in the following precedence:
 1. CLI flag

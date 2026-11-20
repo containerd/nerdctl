@@ -193,6 +193,8 @@ func initRootCmdFlags(rootCmd *cobra.Command, tomlPath string) (*pflag.FlagSet, 
 	helpers.AddPersistentStringFlag(rootCmd, "bridge-ip", nil, nil, nil, aliasToBeInherited, cfg.BridgeIP, "NERDCTL_BRIDGE_IP", "IP address for the default nerdctl bridge network")
 	rootCmd.PersistentFlags().Bool("kube-hide-dupe", cfg.KubeHideDupe, "Deduplicate images for Kubernetes with namespace k8s.io")
 	rootCmd.PersistentFlags().Bool("selinux-enabled", cfg.SelinuxEnabled, "Enable selinux support")
+	helpers.AddPersistentBoolFlag(rootCmd, "disable-attach-broker", nil, nil, cfg.DisableAttachBroker, "NERDCTL_DISABLE_ATTACH_BROKER",
+		"Put a container's stdio back on the FIFOs used before multi-session attach. Only one session can then attach at a time. Affects containers started from now on, not ones already running")
 	rootCmd.PersistentFlags().StringSlice("cdi-spec-dirs", cfg.CDISpecDirs, "The directories to search for CDI spec files. Defaults to /etc/cdi,/var/run/cdi")
 	rootCmd.PersistentFlags().String("userns-remap", cfg.UsernsRemap, "Support idmapping for creating and running containers. This options is only supported on linux. If `host` is passed, no idmapping is done. if a user name is passed, it does idmapping based on the uidmap and gidmap ranges specified in /etc/subuid and /etc/subgid respectively")
 	helpers.HiddenPersistentStringArrayFlag(rootCmd, "global-dns", cfg.DNS, "Global DNS servers for containers")
