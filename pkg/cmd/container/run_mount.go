@@ -346,7 +346,8 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 			}
 		}
 
-		if runtime.GOOS == "linux" {
+		switch runtime.GOOS {
+		case "linux":
 			defer unmounter(tempDir)
 			for _, m := range mounts {
 				m := m
@@ -365,7 +366,9 @@ func generateMountOpts(ctx context.Context, client *containerd.Client, ensuredIm
 					return nil, nil, nil, fmt.Errorf("failed to mount %+v on %q: %w", m, tempDir, err)
 				}
 			}
-		} else {
+		case "darwin":
+			// NOP
+		default:
 			defer unmounter(tempDir)
 			if err := mount.All(mounts, tempDir); err != nil {
 				if err := s.Remove(ctx, tempDir); err != nil && !errdefs.IsNotFound(err) {
