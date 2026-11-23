@@ -44,8 +44,9 @@ func Remove(ctx context.Context, client *containerd.Client, deletedNamespaces []
 				continue
 			}
 		}
-		_, err := fmt.Fprintln(options.Stdout, target)
-		return err
+		if _, err := fmt.Fprintln(options.Stdout, target); err != nil {
+			return err
+		}
 	}
 	return exitErr
 }
