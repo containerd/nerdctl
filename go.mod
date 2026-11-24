@@ -39,7 +39,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.3.0
 	github.com/opencontainers/selinux v1.15.1 //gomodjail:unconfined
 	golang.org/x/crypto v0.59.0
-	golang.org/x/net v0.62.0 //gomodjail:unconfined
+	golang.org/x/net v0.63.0 //gomodjail:unconfined
 	golang.org/x/sync v0.25.0 //gomodjail:unconfined
 	golang.org/x/sys v0.50.0 //gomodjail:unconfined
 	golang.org/x/term v0.48.0 //gomodjail:unconfined
