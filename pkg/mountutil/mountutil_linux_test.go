@@ -258,6 +258,17 @@ func TestProcessFlagV(t *testing.T) {
 	}{
 		// Bind volumes: absolute path
 		{
+			rawSpec: "/mnt/foo:/mnt/foo",
+			wants: &Processed{
+				Type: "bind",
+				Mount: specs.Mount{
+					Type:        "none",
+					Destination: `/mnt/foo`,
+					Source:      `/mnt/foo`,
+					Options:     []string{"rprivate", "rbind"},
+				}},
+		},
+		{
 			rawSpec: "/mnt/foo:/mnt/foo:ro",
 			wants: &Processed{
 				Type: "bind",
@@ -277,7 +288,7 @@ func TestProcessFlagV(t *testing.T) {
 					Type:        "none",
 					Source:      "", // will not check source of relative paths
 					Destination: `/mnt/foo`,
-					Options:     []string{"rbind"},
+					Options:     []string{"rprivate", "rbind"},
 				}},
 		},
 		// Named volumes

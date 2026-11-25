@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	mobymount "github.com/moby/sys/mount"
+	"github.com/moby/sys/mountinfo"
 	"gotest.tools/v3/assert"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
@@ -895,6 +896,54 @@ func TestRunBindMountDeprecatedRRO(t *testing.T) {
 	}
 
 	testCase.Cleanup = cleanupBindMountWithSubmount
+
+	testCase.Run(t)
+}
+
+func TestRunShorthandBindMountPropagation(t *testing.T) {
+	testCase := nerdtest.Setup()
+	testCase.Require = nerdtest.Rootful
+
+	var source string
+	testCase.Setup = func(data test.Data, helpers test.Helpers) {
+		mountDir := data.Temp().Dir("mount-source")
+		data.Temp().Dir("mount-source", "implicit")
+		data.Temp().Dir("mount-source", "explicit")
+
+		assert.NilError(helpers.T(), mobymount.MakeMount(mountDir))
+		source = mountDir
+		assert.NilError(helpers.T(), mobymount.MakePrivate(source))
+		assert.NilError(helpers.T(), mobymount.MakeShared(source))
+	}
+	testCase.Cleanup = func(_ test.Data, helpers test.Helpers) {
+		if source != "" {
+			assert.NilError(helpers.T(), mobymount.Unmount(source))
+		}
+	}
+
+	testCase.Command = func(_ test.Data, helpers test.Helpers) test.TestableCommand {
+		return helpers.Command("run", "--rm", "--net", "none",
+			"-v", filepath.Join(source, "implicit")+":/mnt/implicit",
+			"-v", filepath.Join(source, "explicit")+":/mnt/explicit:rshared",
+			testutil.AlpineImage, "cat", "/proc/self/mountinfo")
+	}
+	testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil, func(stdout string, t tig.T) {
+		mounts, err := mountinfo.GetMountsFromReader(strings.NewReader(stdout), nil)
+		assert.NilError(t, err)
+
+		optional := make(map[string]string, len(mounts))
+		for _, mount := range mounts {
+			optional[mount.Mountpoint] = mount.Optional
+		}
+
+		implicit, ok := optional["/mnt/implicit"]
+		assert.Assert(t, ok, "missing shorthand bind mount")
+		assert.Equal(t, implicit, "", "shorthand bind mount should be private")
+
+		explicit, ok := optional["/mnt/explicit"]
+		assert.Assert(t, ok, "missing explicit bind mount")
+		assert.Assert(t, strings.Contains(" "+explicit, " shared:"), "expected shared mount, got %q", explicit)
+	})
 
 	testCase.Run(t)
 }
