@@ -68,10 +68,42 @@ calculate_subnet() {
   echo "$result/$((32 - prefix_len))"
 }
 
+# nat_address prints the IPv4 $1 (IPAddress or PrefixLength) of the nat adapter, or nothing if it does not exist.
+nat_address() {
+  powershell -c "(Get-NetIPAddress -InterfaceAlias 'vEthernet (nat)' -AddressFamily IPv4 -ErrorAction SilentlyContinue).$1"
+}
+
+# wait_for_nat waits up to $1 seconds for the nat adapter.
+wait_for_nat() {
+  local i
+  for (( i = 0; i < $1; i++ )); do
+    [ -z "$(nat_address IPAddress)" ] || return 0
+    sleep 1
+  done
+  return 1
+}
+
 # nat already exists on the Windows VM, the subnet and gateway
 # we specify should match that.
-: "${GATEWAY:=$(powershell -c "(Get-NetIPAddress -InterfaceAlias 'vEthernet (nat)' -AddressFamily IPv4).IPAddress")}"
-: "${PREFIX_LEN:=$(powershell -c "(Get-NetIPAddress -InterfaceAlias 'vEthernet (nat)' -AddressFamily IPv4).PrefixLength")}"
+if [ -z "${GATEWAY:-}" ] || [ -z "${PREFIX_LEN:-}" ]; then
+  # The docker service creates nat when it starts. On some runners the service exits at boot
+  # ("Incorrect function") and nat never shows up: start it again.
+  wait_for_nat 10 || {
+    powershell -c "Get-Service docker -ErrorAction Stop" >/dev/null 2>&1 || {
+      echo "vEthernet (nat) not found and no docker service to create it; set GATEWAY and PREFIX_LEN" >&2
+      exit 1
+    }
+    echo "vEthernet (nat) not found, starting the docker service"
+    # '|| true': the wait below decides; Start-Service's own error stays on stderr
+    powershell -c "Start-Service docker" || true
+    wait_for_nat 60
+  } || {
+    echo "vEthernet (nat) not found: cannot compute the nat subnet and gateway" >&2
+    exit 1
+  }
+  : "${GATEWAY:=$(nat_address IPAddress)}"
+  : "${PREFIX_LEN:=$(nat_address PrefixLength)}"
+fi
 
 subnet="$(calculate_subnet "$GATEWAY" "$PREFIX_LEN")"
 
