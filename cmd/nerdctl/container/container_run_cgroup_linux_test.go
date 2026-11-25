@@ -498,11 +498,12 @@ func TestParseDevice(t *testing.T) {
 
 func TestParseDeviceCgroupRule(t *testing.T) {
 	t.Parallel()
+	int64Ptr := func(v int64) *int64 { return &v }
 	type testCase struct {
 		s              string
 		expectedType   string
-		expectedMajor  int64
-		expectedMinor  int64
+		expectedMajor  *int64
+		expectedMinor  *int64
 		expectedAccess string
 		err            string
 	}
@@ -510,29 +511,29 @@ func TestParseDeviceCgroupRule(t *testing.T) {
 		{
 			s:              "c 189:* rmw",
 			expectedType:   "c",
-			expectedMajor:  189,
-			expectedMinor:  -1,
+			expectedMajor:  int64Ptr(189),
+			expectedMinor:  nil,
 			expectedAccess: "rmw",
 		},
 		{
 			s:              "b 8:0 r",
 			expectedType:   "b",
-			expectedMajor:  8,
-			expectedMinor:  0,
+			expectedMajor:  int64Ptr(8),
+			expectedMinor:  int64Ptr(0),
 			expectedAccess: "r",
 		},
 		{
 			s:              "a *:* rwm",
 			expectedType:   "a",
-			expectedMajor:  -1,
-			expectedMinor:  -1,
+			expectedMajor:  nil,
+			expectedMinor:  nil,
 			expectedAccess: "rwm",
 		},
 		{
 			s:              "c *:5 w",
 			expectedType:   "c",
-			expectedMajor:  -1,
-			expectedMinor:  5,
+			expectedMajor:  nil,
+			expectedMinor:  int64Ptr(5),
 			expectedAccess: "w",
 		},
 		{
@@ -540,8 +541,8 @@ func TestParseDeviceCgroupRule(t *testing.T) {
 			// normalizing them, so the rule has to survive unchanged.
 			s:              "a 1:2 rwm",
 			expectedType:   "a",
-			expectedMajor:  1,
-			expectedMinor:  2,
+			expectedMajor:  int64Ptr(1),
+			expectedMinor:  int64Ptr(2),
 			expectedAccess: "rwm",
 		},
 		{
@@ -587,8 +588,8 @@ func TestParseDeviceCgroupRule(t *testing.T) {
 			assert.NilError(t, err)
 			assert.Equal(t, true, rule.Allow)
 			assert.Equal(t, tc.expectedType, rule.Type)
-			assert.Equal(t, tc.expectedMajor, *rule.Major)
-			assert.Equal(t, tc.expectedMinor, *rule.Minor)
+			assert.DeepEqual(t, tc.expectedMajor, rule.Major)
+			assert.DeepEqual(t, tc.expectedMinor, rule.Minor)
 			assert.Equal(t, tc.expectedAccess, rule.Access)
 		} else {
 			assert.ErrorContains(t, err, tc.err)
@@ -612,6 +613,9 @@ func TestRunDeviceCgroupRule(t *testing.T) {
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, nil),
 		},
 		{
+			// Both CLIs reject the missing minor, but with different wording
+			// (nerdctl: "invalid device cgroup rule format", docker: "invalid
+			// device cgroup format"), so only the common prefix is matched.
 			Description: "a malformed rule is rejected",
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				return helpers.Command("run", "--rm",
@@ -621,7 +625,7 @@ func TestRunDeviceCgroupRule(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeGenericFail,
-					Errors:   []error{fmt.Errorf("invalid device cgroup rule format")},
+					Errors:   []error{fmt.Errorf("invalid device cgroup")},
 				}
 			},
 		},
@@ -636,9 +640,96 @@ func TestRunDeviceCgroupRule(t *testing.T) {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeGenericFail,
-					Errors:   []error{fmt.Errorf("invalid device cgroup rule format")},
+					Errors:   []error{fmt.Errorf("invalid device cgroup")},
 				}
 			},
+		},
+	}
+
+	testCase.Run(t)
+}
+
+func TestRunDeviceCgroupRuleDefaultDevices(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	testCase.SubTests = []*test.Case{
+		{
+			// The rule only grants access to a non-standard major number (189,
+			// nvidia GPU), so the container's access to /dev/null, /dev/zero and
+			// /dev/urandom must come from the default allow list in the spec.
+			Description: "standard devices remain accessible",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("run", "--rm",
+					"--device-cgroup-rule", "c 189:* rmw",
+					testutil.AlpineImage, "sh", "-c",
+					"cat /dev/null && head -c 1 /dev/zero > /dev/null && head -c 1 /dev/urandom > /dev/null && echo ok")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("ok")),
+		},
+	}
+
+	testCase.Run(t)
+}
+
+// loopControlDevice is a char device that is not part of the default device
+// allow list, so only --device-cgroup-rule can grant access to it.
+const loopControlDevice = "/dev/loop-control"
+
+// TestRunDeviceCgroupRuleGrantsDevice checks the rules at runtime instead of
+// only in the generated spec: the device is bind-mounted into the container, and
+// opening it stays denied until a rule covering it is passed. The wildcard minor
+// exercises the "*" encoding produced by the parser, which runc and crun read as
+// "any".
+func TestRunDeviceCgroupRuleGrantsDevice(t *testing.T) {
+	testCase := nerdtest.Setup()
+
+	// Without the devices controller (rootless on cgroup v2) opening the device
+	// is not denied, and with SELinux enforcing the bind mount itself would be
+	// the thing failing.
+	testCase.Require = require.All(
+		nerdtest.Rootful,
+		require.Not(nerdtest.Selinux),
+		&test.Requirement{
+			Check: func(data test.Data, helpers test.Helpers) (bool, string) {
+				if _, err := os.Stat(loopControlDevice); err != nil {
+					return false, fmt.Sprintf("%s is required to test device cgroup rules", loopControlDevice)
+				}
+				return true, ""
+			},
+		},
+	)
+
+	openDevice := func(helpers test.Helpers, rules ...string) test.TestableCommand {
+		args := []string{"run", "--rm", "-v", loopControlDevice + ":" + loopControlDevice}
+		for _, rule := range rules {
+			args = append(args, "--device-cgroup-rule", rule)
+		}
+		args = append(args, testutil.AlpineImage, "sh", "-c", ": < "+loopControlDevice+" && echo ok")
+		return helpers.Command(args...)
+	}
+
+	testCase.SubTests = []*test.Case{
+		{
+			// The bind mount makes the node visible, but the devices cgroup still
+			// denies opening it without a rule.
+			Description: "the device is denied without a rule",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return openDevice(helpers)
+			},
+			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
+				return &test.Expected{
+					ExitCode: expect.ExitCodeGenericFail,
+					Errors:   []error{fmt.Errorf("Operation not permitted")},
+				}
+			},
+		},
+		{
+			// "c 10:* r" has to cover 10:237, so the very same open succeeds.
+			Description: "a wildcard rule grants the device",
+			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return openDevice(helpers, "c 10:* r")
+			},
+			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Contains("ok")),
 		},
 	}
 

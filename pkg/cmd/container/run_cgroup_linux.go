@@ -243,7 +243,11 @@ func generateCgroupOpts(id string, options types.ContainerCreateOptions, interna
 		internalLabels.deviceMapping = append(internalLabels.deviceMapping, deviceMap)
 	}
 
-	opts = append(opts, withDeviceCgroupRules(deviceCgroupRules))
+	// The rules are applied late, after CDI injection in create.go: a CDI
+	// device can carry permissions narrower than the fallback defaults, and the
+	// coverage check in withDeviceCgroupRules only sees rules that are already
+	// in the spec when it runs.
+	internalLabels.deviceCgroupRules = deviceCgroupRules
 
 	return opts, nil
 }
@@ -340,19 +344,25 @@ func validateDeviceMode(mode string) error {
 var deviceCgroupRuleRegexp = regexp.MustCompile(`^([acb]) ([0-9]+|\*):([0-9]+|\*) ([rwm]{1,3})$`)
 
 // ParseDeviceCgroupRule parses the given device cgroup rule into an entry for the
-// device allow list of the OCI spec. A "*" major or minor number becomes -1, which
-// the runtime expands to "any".
+// device allow list of the OCI spec. A "*" major or minor number is left unset,
+// which both runc and crun read as "any". It must not be spelled out as -1: runc
+// maps a missing field to -1 itself, but crun writes a present -1 verbatim
+// ("c -1:-1 m") and the kernel rejects that on cgroup v1.
 func ParseDeviceCgroupRule(s string) (specs.LinuxDeviceCgroup, error) {
 	matches := deviceCgroupRuleRegexp.FindStringSubmatch(s)
 	if matches == nil {
 		return specs.LinuxDeviceCgroup{}, fmt.Errorf("invalid device cgroup rule format: %q", s)
 	}
 
-	parseNumber := func(field string) (int64, error) {
+	parseNumber := func(field string) (*int64, error) {
 		if field == "*" {
-			return -1, nil
+			return nil, nil
 		}
-		return strconv.ParseInt(field, 10, 64)
+		value, err := strconv.ParseInt(field, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return &value, nil
 	}
 
 	major, err := parseNumber(matches[2])
@@ -367,20 +377,10 @@ func ParseDeviceCgroupRule(s string) (specs.LinuxDeviceCgroup, error) {
 	return specs.LinuxDeviceCgroup{
 		Allow:  true,
 		Type:   matches[1],
-		Major:  &major,
-		Minor:  &minor,
+		Major:  major,
+		Minor:  minor,
 		Access: matches[4],
 	}, nil
-}
-
-// withDeviceCgroupRules appends the given rules to the device allow list.
-// The list starts with an entry denying every device, so a rule only takes
-// effect when it comes after it.
-func withDeviceCgroupRules(rules []specs.LinuxDeviceCgroup) oci.SpecOpts {
-	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *oci.Spec) error {
-		s.Linux.Resources.Devices = append(s.Linux.Resources.Devices, rules...)
-		return nil
-	}
 }
 
 func withUnified(unified map[string]string) oci.SpecOpts {
