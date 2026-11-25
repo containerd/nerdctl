@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 
 	containerd "github.com/containerd/containerd/v2/client"
@@ -84,12 +85,36 @@ func Remove(ctx context.Context, client *containerd.Client, containers []string,
 		},
 	}
 
-	err := walker.WalkAll(ctx, containers, true)
-	if err != nil && options.Force {
-		log.G(ctx).Error(err)
-		return nil
+	if !options.Force {
+		return walker.WalkAll(ctx, containers, true)
 	}
-	return err
+	return walkAllForce(ctx, containers, walker.Walk)
+}
+
+// walkAllForce walks every request for "rm --force". Like "docker rm -f", a container that does not
+// exist is only logged, but a container that exists and cannot be removed fails the command, so the
+// caller can tell the difference. It keeps going after a failure, to remove as many as it can.
+func walkAllForce(ctx context.Context, reqs []string, walk func(ctx context.Context, req string) (int, error)) error {
+	var errs []string
+	for _, req := range reqs {
+		n, err := walk(ctx, req)
+		if err == nil && n == 0 {
+			log.G(ctx).Errorf("no such container: %s", req)
+			continue
+		}
+		if errdefs.IsNotFound(err) {
+			// it disappeared between the lookup and the removal
+			log.G(ctx).Errorf("no such container: %s", req)
+			continue
+		}
+		if err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("%d errors:\n%s", len(errs), strings.Join(errs, "\n"))
+	}
+	return nil
 }
 
 // RemoveContainer removes a container from containerd store.
