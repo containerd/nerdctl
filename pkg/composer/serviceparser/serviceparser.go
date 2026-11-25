@@ -789,7 +789,7 @@ func newContainer(project *types.Project, parsed *Service, i int) (*Container, e
 			c.RunArgs = append(c.RunArgs, "-v="+vStr)
 		}
 
-		c.Mkdir = mkdir
+		c.Mkdir = append(c.Mkdir, mkdir...)
 	}
 
 	for _, config := range svc.Configs {
