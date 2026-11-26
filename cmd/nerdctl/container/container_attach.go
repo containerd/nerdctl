@@ -39,13 +39,19 @@ func AttachCommand() *cobra.Command {
 2. 'ctrl-p ctrl-q' to detach from the container
 3. 'nerdctl attach test' to attach to the container
 
+Several sessions can be attached to the same container at once, and they all see its output.
+Input is accepted from any of them, but only for a container that has stdin: one created with
+'-it' and still running the task nerdctl started. A container created without '-t', or one
+restarted by containerd's restart monitor, is output only.
+
 Caveats:
 
-- Currently only one attach session is allowed. When the second session tries to attach, currently no error will be returned from nerdctl.
-  However, since behind the scenes, there's only one FIFO for stdin, stdout, and stderr respectively,
-  if there are multiple sessions, all the sessions will be reading from and writing to the same 3 FIFOs, which will result in mixed input and partial output.
-- Until dual logging (issue #1946) is implemented,
-  a container that is spun up by either 'nerdctl run -d' or 'nerdctl start' (without '--attach') cannot be attached to.`
+- A container whose stdio is a set of FIFOs, because it was started by a version of nerdctl that predates
+  the attach socket or on a platform without one, still allows a single session: with more than one, all
+  sessions read from and write to the same 3 FIFOs, which results in mixed input and partial output.
+- A container whose output was handed to a logging process nerdctl cannot reach, either somebody else's
+  binary through a custom '--log-driver binary://' URI or a detached container on a platform without an
+  attach socket, cannot be attached to at all.`
 
 	var cmd = &cobra.Command{
 		Use:               "attach [flags] CONTAINER",
