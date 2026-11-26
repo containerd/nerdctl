@@ -201,6 +201,9 @@ func TestRootHelpHidesAliasImplementationFlags(t *testing.T) {
 	}
 
 	out := stdout.String()
+	// Collapse whitespace runs, as the column padding of the help output
+	// depends on the widest flag (and on the pflag version).
+	normalizedOut := strings.Join(strings.Fields(out), " ")
 	for _, unexpected := range []string{
 		"-a, --a",
 		"-H, --H",
@@ -211,10 +214,10 @@ func TestRootHelpHidesAliasImplementationFlags(t *testing.T) {
 		}
 	}
 	for _, expected := range []string{
-		"--address string           containerd address, optionally with \"unix://\" prefix [$CONTAINERD_ADDRESS] (aliases: -a, -H, --host)",
-		"--namespace string         containerd namespace, such as \"moby\" for Docker, \"k8s.io\" for Kubernetes [$CONTAINERD_NAMESPACE] (aliases: -n)",
+		"--address string containerd address, optionally with \"unix://\" prefix [$CONTAINERD_ADDRESS] (aliases: -a, -H, --host)",
+		"--namespace string containerd namespace, such as \"moby\" for Docker, \"k8s.io\" for Kubernetes [$CONTAINERD_NAMESPACE] (aliases: -n)",
 	} {
-		if !strings.Contains(out, expected) {
+		if !strings.Contains(normalizedOut, expected) {
 			t.Fatalf("help output missing %q\n%s", expected, out)
 		}
 	}
