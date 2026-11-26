@@ -1,7 +1,7 @@
 //gomodjail:confined
 module github.com/containerd/nerdctl/v2
 
-go 1.26.8
+go 1.26.11
 
 // containerd, Docker/Moby, OCI, and golang.org/x packages are trusted
 //gosocialcheck:trusted
@@ -50,7 +50,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/Microsoft/go-winio v0.6.4
 	github.com/Microsoft/hcsshim v0.15.0
-	github.com/compose-spec/compose-go/v2 v2.16.2 //gomodjail:unconfined
+	github.com/compose-spec/compose-go/v2 v2.17.0 //gomodjail:unconfined
 	github.com/containernetworking/cni v1.3.1 //gomodjail:unconfined
 	github.com/containernetworking/plugins v1.10.0 //gomodjail:unconfined
 	github.com/coreos/go-iptables v0.8.0 //gomodjail:unconfined
@@ -175,7 +175,8 @@ require (
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.4 // indirect
+	//gomodjail:unconfined
+	go.yaml.in/yaml/v4 v4.0.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261012220534-4341edf3f941 // indirect
 	//gomodjail:unconfined
 	google.golang.org/grpc v1.85.0 // indirect
