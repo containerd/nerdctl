@@ -718,22 +718,7 @@ func containerListFilterSubTests() []*test.Case {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeSuccess,
-					Output: func(stdout string, t tig.T) {
-						containerC := data.Labels().Get("container-C")
-						lines := strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
-
-						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-						err := tab.ParseHeader(lines[0])
-						assert.NilError(t, err)
-						for idx, line := range lines {
-							if idx == 0 {
-								continue
-							}
-							containerName, _ := tab.ReadRow(line, "NAMES")
-							assert.Equal(t, containerName, containerC, "unexpected container found")
-						}
-					},
+					Output:   expectOnlyExitedContainer(data),
 				}
 			},
 		},
@@ -746,22 +731,7 @@ func containerListFilterSubTests() []*test.Case {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeSuccess,
-					Output: func(stdout string, t tig.T) {
-						containerC := data.Labels().Get("container-C")
-						lines := strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
-
-						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-						err := tab.ParseHeader(lines[0])
-						assert.NilError(t, err)
-						for idx, line := range lines {
-							if idx == 0 {
-								continue
-							}
-							containerName, _ := tab.ReadRow(line, "NAMES")
-							assert.Equal(t, containerName, containerC, "unexpected container found")
-						}
-					},
+					Output:   expectOnlyExitedContainer(data),
 				}
 			},
 		},
@@ -774,25 +744,32 @@ func containerListFilterSubTests() []*test.Case {
 			Expected: func(data test.Data, helpers test.Helpers) *test.Expected {
 				return &test.Expected{
 					ExitCode: expect.ExitCodeSuccess,
-					Output: func(stdout string, t tig.T) {
-						containerC := data.Labels().Get("container-C")
-						lines := strings.Split(strings.TrimSpace(stdout), "\n")
-						assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
-
-						tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
-						err := tab.ParseHeader(lines[0])
-						assert.NilError(t, err)
-						for idx, line := range lines {
-							if idx == 0 {
-								continue
-							}
-							containerName, _ := tab.ReadRow(line, "NAMES")
-							assert.Equal(t, containerName, containerC, "unexpected container found")
-						}
-					},
+					Output:   expectOnlyExitedContainer(data),
 				}
 			},
 		},
+	}
+}
+
+// expectOnlyExitedContainer checks that the output of `ps` lists the exited container C, and none of the
+// running containers A and B. Other containers are ignored: the namespace is shared with other tests, which may
+// leave exited containers behind.
+func expectOnlyExitedContainer(data test.Data) test.Comparator {
+	return func(stdout string, t tig.T) {
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		assert.Assert(t, len(lines) >= 2, "expected at least 2 lines, got %d", len(lines))
+
+		tab := tabutil.NewReader("CONTAINER ID\tIMAGE\tCOMMAND\tCREATED\tSTATUS\tPORTS\tNAMES")
+		err := tab.ParseHeader(lines[0])
+		assert.NilError(t, err)
+		found := map[string]bool{}
+		for _, line := range lines[1:] {
+			containerName, _ := tab.ReadRow(line, "NAMES")
+			found[containerName] = true
+		}
+		assert.Assert(t, found[data.Labels().Get("container-C")], "exited container not found")
+		assert.Assert(t, !found[data.Labels().Get("container-A")], "running container found")
+		assert.Assert(t, !found[data.Labels().Get("container-B")], "running container found")
 	}
 }
 
