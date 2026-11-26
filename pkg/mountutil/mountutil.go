@@ -128,16 +128,13 @@ func ProcessFlagV(s string, volStore volumestore.VolumeStore, createDir bool, oc
 			AnonymousVolume: volSpec.AnonymousVolume,
 		}
 
-		// Parse volume options
 		if len(split) == 3 {
 			res.Mode = split[2]
+		}
 
-			rawOpts := res.Mode
-
-			options, res.Opts, err = getVolumeOptions(src, res.Type, rawOpts, ociRuntime)
-			if err != nil {
-				return nil, err
-			}
+		options, res.Opts, err = getVolumeOptions(src, res.Type, res.Mode, ociRuntime)
+		if err != nil {
+			return nil, err
 		}
 	default:
 		return nil, fmt.Errorf("failed to parse %q", s)
