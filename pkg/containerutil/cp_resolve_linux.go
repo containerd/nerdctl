@@ -58,6 +58,13 @@ type pathSpecifier struct {
 	readOnly             bool
 	fromStdin            bool
 	toStdout             bool
+
+	// For a container path: the host path of the container mount that holds the resource, where the mount is in the
+	// container, and the path of the resource relative to the mount. Writes into the container go through these
+	// (see openMountRoot).
+	mountRoot    string
+	mountPath    string
+	relativePath string
 }
 
 // getPathSpecFromHost builds a pathSpecifier from a host location
@@ -202,6 +209,9 @@ func getPathSpecFromContainer(originalPath string, conSpec *oci.Spec, containerH
 	// Now, finally get the location of the fully resolved containerPath (in the root? in a volume?)
 	containerMount, relativePath := pathResolver.getMount(resolvedContainerPath)
 	pathSpec.resolvedPath = filepath.Join(containerMount.hostPath, relativePath)
+	pathSpec.mountRoot = containerMount.hostPath
+	pathSpec.mountPath = containerMount.containerPath
+	pathSpec.relativePath = relativePath
 	// If the endpoint is readonly, flag it as such
 	if containerMount.readonly {
 		pathSpec.readOnly = true
