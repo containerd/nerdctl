@@ -705,7 +705,10 @@ func TestRunRmTime(t *testing.T) {
 			Output: func(stdout string, t tig.T) {
 				start, _ := time.Parse(time.RFC3339Nano, data.Labels().Get("start"))
 				took := time.Since(start)
-				deadline := 3 * time.Second
+				// The regression this test is for (https://github.com/containerd/nerdctl/issues/2726) made the
+				// removal take more than 10 seconds. Stay below that, but leave room for a loaded CI runner, as
+				// this test runs in parallel with the others.
+				deadline := 8 * time.Second
 				// FIXME: Investigate? it appears that since the move to containerd 2 on Windows, this is taking longer.
 				if runtime.GOOS == "windows" {
 					deadline = 10 * time.Second
