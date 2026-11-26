@@ -139,7 +139,7 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
       - name: "Run: zizmor"
-        uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd  # v0.8.1
+        uses: zizmorcore/zizmor-action@a818f16177a5395fc11d3c73577caabaa7119391  # v0.9.1
         with:
           inputs: .github/workflows
           # Do not send workflow diagnostics to GitHub Advanced Security code scanning in this project right now.
