@@ -47,6 +47,10 @@ func TestTagImageID(t *testing.T) {
 	for _, source := range []string{"name", "short ID", "full ID", "prefixed ID"} {
 		testCase.SubTests = append(testCase.SubTests, &test.Case{
 			Description: source,
+			// The subtests tag the same image. Resolving an ID walks every name pointing at
+			// that image, so a parallel subtest could resolve to a sibling's tag right
+			// before that sibling removes it in its cleanup.
+			NoParallel: true,
 			Cleanup: func(data test.Data, helpers test.Helpers) {
 				helpers.Anyhow("rmi", data.Identifier())
 			},
