@@ -77,7 +77,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.6
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
 	gotest.tools/v3 v3.5.2 //gomodjail:unconfined
-	tags.cncf.io/container-device-interface v1.1.1 //gomodjail:unconfined
+	tags.cncf.io/container-device-interface v1.1.2 //gomodjail:unconfined
 )
 
 //gosocialcheck:trusted
