@@ -122,8 +122,6 @@ require (
 	github.com/godbus/dbus/v5 v5.2.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	//gomodjail:unconfined
-	github.com/google/nftables v0.3.0 // indirect
-	//gomodjail:unconfined
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	//gomodjail:unconfined
@@ -131,10 +129,6 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	//gomodjail:unconfined
 	github.com/mattn/go-shellwords v1.0.16 // indirect
-	//gomodjail:unconfined
-	github.com/mdlayher/netlink v1.11.2 // indirect
-	//gomodjail:unconfined
-	github.com/mdlayher/socket v0.8.0 // indirect
 	//gomodjail:unconfined
 	github.com/miekg/pkcs11 v1.1.2 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
@@ -183,8 +177,6 @@ require (
 	google.golang.org/protobuf v1.36.12 // indirect
 	//gomodjail:unconfined
 	lukechampine.com/blake3 v1.3.0 // indirect
-	//gomodjail:unconfined
-	sigs.k8s.io/knftables v0.0.22 // indirect
 	tags.cncf.io/container-device-interface/specs-go v1.1.1 // indirect
 )
 

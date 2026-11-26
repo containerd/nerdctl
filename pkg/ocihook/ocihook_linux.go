@@ -21,13 +21,12 @@ import (
 	"os/exec"
 	"strings"
 
-	cniutils "github.com/containernetworking/plugins/pkg/utils"
-
 	"github.com/containerd/containerd/v2/contrib/apparmor"
 	"github.com/containerd/log"
 
 	"github.com/containerd/nerdctl/v2/pkg/apparmorutil"
 	"github.com/containerd/nerdctl/v2/pkg/defaults"
+	"github.com/containerd/nerdctl/v2/pkg/netutil"
 )
 
 func loadAppArmor() {
@@ -80,7 +79,7 @@ func cleanupIptablesRules(containerID string, cniNames []string) error {
 
 	// Delete CNI chains related to the container
 	for _, cniName := range cniNames {
-		chain := cniutils.FormatChainName(cniName, containerID)
+		chain := netutil.FormatCNIChainName(cniName, containerID)
 		deleteCmd := exec.Command("iptables", "-t", "nat", "-X", chain)
 		if deleteOutput, err := deleteCmd.CombinedOutput(); err != nil {
 			log.L.WithError(err).Warnf("failed to delete iptables chain: %s, output: %s", chain, string(deleteOutput))
