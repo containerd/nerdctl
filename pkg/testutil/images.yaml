@@ -84,8 +84,8 @@ fedora_esgz:
   tag: "30-esgz"
 
 ffmpeg_soci:
-  ref: "public.ecr.aws/soci-workshop-examples/ffmpeg"
-  tag: "latest"
+  ref: "ghcr.io/stargz-containers/soci-workshop-examples/ffmpeg"
+  tag: "latest-org"
 
 # Large enough for testing soci index creation
 ubuntu:
@@ -93,8 +93,8 @@ ubuntu:
   tag: "26.04-org"
 
 coredns:
-  ref: "public.ecr.aws/eks-distro/coredns/coredns"
-  tag: "v1.12.2-eks-1-31-latest"
+  ref: "ghcr.io/stargz-containers/eks-distro/coredns/coredns"
+  tag: "v1.12.2-eks-1-31-latest-org"
 
 # Future: images to add or update soon.
 # busybox:1.37.0@sha256:37f7b378a29ceb4c551b1b5582e27747b855bbfaa73fa11914fe0df028dc581f
