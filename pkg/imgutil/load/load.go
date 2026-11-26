@@ -87,7 +87,7 @@ func FromArchive(ctx context.Context, client *containerd.Client, options types.I
 	storeOpts = append(storeOpts, transferimage.WithNamedPrefix(fmt.Sprintf("import-%s", time.Now().Format("2006-01-02")), true))
 
 	pf, done, loadedImages := transferutil.ProgressHandlerLoadImage(ctx, client, beforeSet, options)
-	err = client.Transfer(ctx,
+	err = transferutil.Transfer(ctx, client,
 		tarchive.NewImageImportStream(options.Stdin, ""),
 		transferimage.NewStore("", storeOpts...),
 		transfer.WithProgress(pf),

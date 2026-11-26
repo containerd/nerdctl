@@ -260,6 +260,10 @@ func TestPush(t *testing.T) {
 			},
 			{
 				Description: "soci",
+				// The soci subtests create the same SOCI index (same image, same options) in the same content
+				// store, and soci fails when another process does it concurrently:
+				// "cannot apply garbage collection label to index ...: content digest ...: not found".
+				NoParallel: true,
 				Require: require.All(
 					nerdtest.Soci,
 					require.Not(nerdtest.Docker),
@@ -341,6 +345,10 @@ func TestPush(t *testing.T) {
 			},
 			{
 				Description: "all tags, soci",
+				// The soci subtests create the same SOCI index (same image, same options) in the same content
+				// store, and soci fails when another process does it concurrently:
+				// "cannot apply garbage collection label to index ...: content digest ...: not found".
+				NoParallel: true,
 				Require: require.All(
 					nerdtest.Soci,
 					require.Not(nerdtest.Docker),

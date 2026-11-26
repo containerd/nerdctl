@@ -19,7 +19,6 @@ package compose
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/containerd/nerdctl/mod/tigron/expect"
 	"github.com/containerd/nerdctl/mod/tigron/test"
@@ -48,9 +47,9 @@ func TestComposeLogsWithoutContainers(t *testing.T) {
 			Description: fmt.Sprintf("logs %v", args),
 			Command: func(data test.Data, helpers test.Helpers) test.TestableCommand {
 				cmdArgs := []string{"compose", "-f", data.Labels().Get("composeYaml"), "-p", data.Identifier(), "logs"}
-				cmd := helpers.Command(append(cmdArgs, args...)...)
-				cmd.WithTimeout(30 * time.Second)
-				return cmd
+				// Do not shorten the default timeout: a hang would still be caught, but compose commands
+				// are serialized by a global lock, which other compose tests may hold for a long time.
+				return helpers.Command(append(cmdArgs, args...)...)
 			},
 			Expected: test.Expects(expect.ExitCodeSuccess, nil, expect.Equals("")),
 		})

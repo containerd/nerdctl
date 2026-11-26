@@ -71,6 +71,13 @@ func TestRunStargz(t *testing.T) {
 // doesn't match the modified layer, the resulting image has the same ChainID as srcRef but different contents and
 // TOC digest. The image is stored in containerd as newRef.
 func createInvalidESGZImage(ctx context.Context, t tig.T, client *containerd.Client, srcRef, newRef string) {
+	// Hold a lease until the image is created, as the blobs written below are not referenced by anything
+	// until then, and would otherwise be collected by a garbage collection triggered concurrently.
+	ctx, done, err := client.WithLease(ctx)
+	assert.NilError(t, err)
+	defer func() {
+		assert.NilError(t, done(context.WithoutCancel(ctx)))
+	}()
 	cs := client.ContentStore()
 	srcImg, err := client.GetImage(ctx, srcRef)
 	assert.NilError(t, err)

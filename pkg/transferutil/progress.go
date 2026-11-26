@@ -192,6 +192,9 @@ func ProgressHandlerLoadImage(ctx context.Context, client *containerd.Client, be
 		}
 	}
 
+	// The images are still looked up after done() cancelled ctx, so the lookup must not be cancelled.
+	lookupCtx := context.WithoutCancel(ctx)
+
 	go func() {
 		defer close(closeC)
 		for {
@@ -202,7 +205,7 @@ func ProgressHandlerLoadImage(ctx context.Context, client *containerd.Client, be
 					continue
 				}
 				if p.Event == "saved" {
-					if img, err := client.ImageService().Get(ctx, p.Name); err == nil {
+					if img, err := client.ImageService().Get(lookupCtx, p.Name); err == nil {
 						if !beforeSet[img.Name] {
 							loadedImages = append(loadedImages, img)
 						}
@@ -274,7 +277,11 @@ func ProgressHandlerLoadImage(ctx context.Context, client *containerd.Client, be
 				fw.Flush()
 
 			case <-ctx.Done():
-				return
+				// Process the events that are still buffered before returning, notably the "saved" events,
+				// which are emitted at the very end of the transfer, and are needed to report the loaded images.
+				if len(pc) == 0 {
+					return
+				}
 			}
 		}
 	}()
