@@ -3,7 +3,7 @@
 # Usage: nerdctl --snapshotter=stargz compose -f docker-compose.stargz.yaml up
 services:
   wordpress:
-    image: ghcr.io/stargz-containers/wordpress:5.7-esgz
+    image: ghcr.io/stargz-containers/wordpress:6.7.1-esgz
     volumes:
       # workaround for https://github.com/containerd/stargz-snapshotter/issues/444
       - "/run"
