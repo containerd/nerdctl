@@ -94,7 +94,7 @@ func TestParseFluentdConfig(t *testing.T) {
 				FluentNetwork:          defaultProtocol,
 				FluentSocketPath:       "",
 				BufferLimit:            defaultBufferLimit,
-				RetryWait:              1000, // The fluent logger takes milliseconds.,
+				RetryWait:              1000, // The fluent logger takes milliseconds.
 				MaxRetry:               defaultMaxRetries,
 				Async:                  false,
 				AsyncReconnectInterval: 0,
