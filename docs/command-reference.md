@@ -684,6 +684,8 @@ Usage: `nerdctl update [OPTIONS] CONTAINER [CONTAINER...]`
 - :whale: `--blkio-weight`: Block IO (relative weight), between 10 and 1000, or 0 to disable (default 0)
 - :whale: `--restart=(no|always|on-failure|unless-stopped)`: Restart policy to apply when a container exits
 
+The restart policy can also be updated before the container is started. Updating the policy does not start the container.
+
 ### :whale: nerdctl wait
 
 Block until one or more containers stop, then print their exit codes.

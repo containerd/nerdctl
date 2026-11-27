@@ -368,3 +368,38 @@ func TestRunRestartStatusLabel(t *testing.T) {
 
 	testCase.Run(t)
 }
+
+func TestUpdateRestartPolicyBeforeStart(t *testing.T) {
+	for _, initialPolicy := range []string{"no", "always"} {
+		t.Run(initialPolicy, func(t *testing.T) {
+			testCase := nerdtest.Setup()
+			testCase.Setup = func(data test.Data, helpers test.Helpers) {
+				helpers.Ensure("create", "--net=none", "--restart="+initialPolicy, "--name", data.Identifier(), testutil.CommonImage, "sleep", nerdtest.Infinity)
+				helpers.Ensure("update", "--restart=on-failure:2", data.Identifier())
+				inspect := nerdtest.InspectContainer(helpers, data.Identifier())
+				assert.Equal(t, inspect.HostConfig.RestartPolicy.Name, "on-failure")
+				assert.Equal(t, inspect.HostConfig.RestartPolicy.MaximumRetryCount, 2)
+				assert.Assert(t, !inspect.State.Running)
+				assert.Equal(t, inspect.Config.Labels[restart.StatusLabel], "")
+				helpers.Ensure("start", data.Identifier())
+			}
+			testCase.Cleanup = func(data test.Data, helpers test.Helpers) {
+				helpers.Anyhow("rm", "-f", data.Identifier())
+			}
+			testCase.Command = func(data test.Data, helpers test.Helpers) test.TestableCommand {
+				return helpers.Command("inspect", data.Identifier())
+			}
+			testCase.Expected = test.Expects(expect.ExitCodeSuccess, nil,
+				expect.JSON([]dockercompat.Container{}, func(dc []dockercompat.Container, t tig.T) {
+					assert.Equal(t, len(dc), 1)
+					assert.Equal(t, dc[0].HostConfig.RestartPolicy.Name, "on-failure")
+					assert.Equal(t, dc[0].HostConfig.RestartPolicy.MaximumRetryCount, 2)
+					assert.Assert(t, dc[0].State.Running)
+					if !nerdtest.IsDocker() {
+						assert.Equal(t, dc[0].Config.Labels[restart.StatusLabel], "running")
+					}
+				}))
+			testCase.Run(t)
+		})
+	}
+}
