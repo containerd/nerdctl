@@ -23,6 +23,7 @@ import (
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/core/runtime/restart"
+	"github.com/containerd/errdefs"
 
 	"github.com/containerd/nerdctl/v2/pkg/strutil"
 )
@@ -89,6 +90,10 @@ func UpdateContainerRestartPolicyLabel(ctx context.Context, client *containerd.C
 	_, statusLabelExist := lables[restart.StatusLabel]
 	if !statusLabelExist {
 		task, err := container.Task(ctx, nil)
+		if errdefs.IsNotFound(err) {
+			// Leave the desired status unset until the container is started.
+			return container.Update(ctx, updateOpts...)
+		}
 		if err != nil {
 			return fmt.Errorf("failed to get task:%w", err)
 		}
