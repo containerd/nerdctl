@@ -135,6 +135,7 @@
   - [:whale: nerdctl compose version](#whale-nerdctl-compose-version)
   - [:whale: nerdctl compose wait](#whale-nerdctl-compose-wait)
   - [:whale: nerdctl compose scale](#whale-nerdctl-compose-scale)
+  - [:whale: nerdctl compose events](#whale-nerdctl-compose-events)
 - [IPFS management](#ipfs-management)
   - [:nerd_face: nerdctl ipfs registry serve](#nerd_face-nerdctl-ipfs-registry-serve)
 - [Global flags](#global-flags)
@@ -2068,6 +2069,17 @@ Flags:
 
 - :whale: `--no-deps`: Don't start linked services
 
+### :whale: nerdctl compose events
+
+Receive real time events from the containers of the project, or only of the given services. The output format is not compatible with Docker
+
+Usage: `nerdctl compose events [OPTIONS] [SERVICE...]`
+
+Flags:
+
+- :nerd_face: `--format`: Format the output using the given Go template, e.g, `{{json .}}`
+- :nerd_face: `-f, --filter`: Filter matches events based on given conditions, as in `nerdctl events`
+
 ## IPFS management
 
 P2P image distribution (IPFS) is completely optional. Your host is NOT connected to any P2P network, unless you opt in to [install and run IPFS daemon](https://docs.ipfs.io/install/).
@@ -2129,7 +2141,6 @@ Network management:
 Compose:
 
 - `docker compose attach`
-- `docker compose events`
 - `docker compose stats`
 - `docker compose watch`
 
