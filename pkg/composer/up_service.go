@@ -56,6 +56,11 @@ func (c *Composer) upServices(ctx context.Context, parsedServices []*servicepars
 	)
 	for _, ps := range parsedServices {
 		ps := ps
+		if !uo.NoDeps {
+			if err := c.waitForDependencies(ctx, ps); err != nil {
+				return err
+			}
+		}
 		var runEG errgroup.Group
 		services = append(services, ps.Unparsed.Name)
 		for _, container := range ps.Containers {
