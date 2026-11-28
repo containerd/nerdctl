@@ -54,19 +54,29 @@ func (c *Composer) Exec(ctx context.Context, eo ExecOptions) error {
 		return err
 	}
 
-	containers, err := c.Containers(ctx, eo.ServiceName)
+	container, err := c.serviceContainer(ctx, eo.ServiceName, eo.Index)
 	if err != nil {
-		return fmt.Errorf("fail to get containers for service %s: %w", eo.ServiceName, err)
+		return err
+	}
+	return c.exec(ctx, container, eo)
+}
+
+// serviceContainer returns the container of the given service at the given
+// index, starting at 1, for services that have multiple instances.
+func (c *Composer) serviceContainer(ctx context.Context, serviceName string, index int) (containerd.Container, error) {
+	containers, err := c.Containers(ctx, serviceName)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get containers for service %s: %w", serviceName, err)
 	}
 	if len(containers) == 0 {
-		return fmt.Errorf("no running containers from service %s", eo.ServiceName)
+		return nil, fmt.Errorf("no running containers from service %s", serviceName)
 	}
-	if eo.Index > len(containers) {
-		return fmt.Errorf("index (%d) out of range: only %d running instances from service %s",
-			eo.Index, len(containers), eo.ServiceName)
+	if index > len(containers) {
+		return nil, fmt.Errorf("index (%d) out of range: only %d running instances from service %s",
+			index, len(containers), serviceName)
 	}
 	if len(containers) == 1 {
-		return c.exec(ctx, containers[0], eo)
+		return containers[0], nil
 	}
 	// The order of the containers is not consistently ascending
 	// we need to re-sort them.
@@ -79,7 +89,7 @@ func (c *Composer) Exec(ctx context.Context, eo ExecOptions) error {
 		indexJ, _ := strconv.Atoi(segsJ[len(segsJ)-1])
 		return indexI < indexJ
 	})
-	return c.exec(ctx, containers[eo.Index-1], eo)
+	return containers[index-1], nil
 }
 
 // exec constructs/executes the `nerdctl exec` command to be executed on the given container.
